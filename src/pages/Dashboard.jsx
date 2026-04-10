@@ -76,7 +76,7 @@ export default function Dashboard() {
         ))}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
         {/* Chart */}
         <div className="card">
           <h3 style={{ marginBottom: '1.5rem' }}>Revenue Trend (Last 7 Days)</h3>
