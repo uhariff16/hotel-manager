@@ -5,7 +5,7 @@ export const useSettingsStore = create(
   persist(
     (set) => ({
       theme: 'light', // can be 'light' or 'dark'
-      resortName: 'Cheerful Chalet',
+      resortName: 'Hotel Manager',
       primaryColor: '#2f855a',
       contactPhone: '',
       contactEmail: '',
@@ -14,7 +14,7 @@ export const useSettingsStore = create(
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
     }),
     {
-      name: 'cheerful-chalet-settings',
+      name: 'hotel-manager-settings',
     }
   )
 );

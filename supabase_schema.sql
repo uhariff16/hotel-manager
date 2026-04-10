@@ -1,4 +1,4 @@
--- Database Schema for Cheerful Chalet
+-- Database Schema for Hotel Manager
 
 -- 1. Cottages
 CREATE TABLE cottages (
