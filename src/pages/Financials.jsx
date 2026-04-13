@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { useSettingsStore } from '../lib/store';
 
 export default function Financials() {
+  const { session, activeResortId } = useSettingsStore();
   const [incomes, setIncomes] = useState([]);
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -12,14 +14,14 @@ export default function Financials() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeResortId]);
 
   const fetchData = async () => {
     if (!isSupabaseConfigured()) { setLoading(false); return; }
     try {
       const [inc, exp] = await Promise.all([
-        supabase.from('incomes').select('*, bookings(reference_number)').order('date', { ascending: false }),
-        supabase.from('expenses').select('*').order('date', { ascending: false })
+        supabase.from('incomes').select('*, bookings(reference_number)').eq('resort_id', activeResortId).order('date', { ascending: false }),
+        supabase.from('expenses').select('*').eq('resort_id', activeResortId).order('date', { ascending: false })
       ]);
       setIncomes(inc.data || []);
       setExpenses(exp.data || []);
@@ -31,7 +33,7 @@ export default function Financials() {
   const handleIncomeSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = { ...newIncome };
+      const payload = { ...newIncome, tenant_id: session.user.id, resort_id: activeResortId };
       if (payload.source === 'Other') payload.source = payload.custom_source || 'Other';
       delete payload.custom_source;
       const { data, error } = await supabase.from('incomes').insert([payload]).select();
@@ -44,7 +46,7 @@ export default function Financials() {
   const handleExpenseSubmit = async (e) => {
     e.preventDefault();
     try {
-      const payload = { ...newExpense };
+      const payload = { ...newExpense, tenant_id: session.user.id, resort_id: activeResortId };
       if (payload.category === 'Other') payload.category = payload.custom_category || 'Other';
       delete payload.custom_category;
       const { data, error } = await supabase.from('expenses').insert([payload]).select();

@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, CalendarCheck, CheckCircle2 } from 'lucide-react';
 import { differenceInDays, eachDayOfInterval, isWeekend } from 'date-fns';
+import { useSettingsStore } from '../lib/store';
 
 export default function Bookings() {
+  const { session, activeResortId } = useSettingsStore();
   const [bookings, setBookings] = useState([]);
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -12,7 +14,7 @@ export default function Bookings() {
 
   const [bookingForm, setBookingForm] = useState({
     guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', number_of_guests: 1,
-    booking_type: 'Entire Cottage', cottage_id: '', room_ids: [],
+    booking_type: 'Entire Property', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
     reference_number: ''
@@ -40,6 +42,7 @@ export default function Bookings() {
       booking_source: b.booking_source || 'Direct',
       status: b.status,
       reference_number: b.reference_number || '',
+      price_type: b.price_type || 'Calculated',
       is_loading_edit: true
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -59,7 +62,7 @@ export default function Bookings() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeResortId]);
 
   const fetchData = async () => {
     if (!isSupabaseConfigured()) {
@@ -70,9 +73,9 @@ export default function Bookings() {
     
     try {
       const [bks, cts, rms] = await Promise.all([
-        supabase.from('bookings').select('*').order('created_at', { ascending: false }),
-        supabase.from('cottages').select('*'),
-        supabase.from('rooms').select('*')
+        supabase.from('bookings').select('*').eq('resort_id', activeResortId).order('created_at', { ascending: false }),
+        supabase.from('cottages').select('*').eq('resort_id', activeResortId),
+        supabase.from('rooms').select('*').eq('resort_id', activeResortId)
       ]);
       setBookings(bks.data || []);
       setCottages(cts.data || []);
@@ -86,40 +89,51 @@ export default function Bookings() {
   };
 
   // Helper: check for booking conflicts before allowing a booking
+  // Returns { type: 'hard' | 'soft' | null, message: string, conflictIds: string[] }
   const checkConflict = (checkIn, checkOut, type, cottageId, roomIds) => {
-    const inDate = new Date(checkIn);
-    const outDate = new Date(checkOut);
+    // Standardize dates to YYYY-MM-DD strings for safe comparison
+    const inStr = checkIn.split('T')[0];
+    const outStr = checkOut.split('T')[0];
+    let softConflicts = [];
     
     for (let b of bookings) {
       if (b.status === 'Cancelled') continue;
-      if (b.id === editingBookingId) continue; // Skip self when editing
+      if (b.id === editingBookingId) continue;
       
-      const bIn = new Date(b.check_in_date);
-      const bOut = new Date(b.check_out_date);
+      const bInStr = b.check_in_date.split('T')[0];
+      const bOutStr = b.check_out_date.split('T')[0];
       
-      // Check date overlap
-      if (inDate < bOut && outDate > bIn) {
-        // If Entire Cottage requested, it conflicts if ANY booking exists for this cottage (entire or room)
-        if (type === 'Entire Cottage' && b.cottage_id === cottageId) {
-          return `Conflict: Cottage is already booked (partially or fully) between ${b.check_in_date} and ${b.check_out_date}`;
+      // Strict date comparison (In1 < Out2 AND Out1 > In2)
+      if (inStr < bOutStr && outStr > bInStr) {
+        const isSoft = b.status === 'Pending';
+        
+        if (type === 'Entire Property' && b.cottage_id === cottageId) {
+          if (!isSoft) return { type: 'hard', message: `Conflict: Property is already BOOKED between ${bInStr} and ${bOutStr}` };
+          softConflicts.push(b.id);
         }
         
-        // If Room requested
         if (type === 'Room' && b.cottage_id === cottageId) {
-          if (b.booking_type === 'Entire Cottage') {
-            return `Conflict: Entire Cottage is booked between ${b.check_in_date} and ${b.check_out_date}`;
+          if (b.booking_type === 'Entire Property') {
+            if (!isSoft) return { type: 'hard', message: `Conflict: Entire Property is BOOKED between ${bInStr} and ${bOutStr}` };
+            softConflicts.push(b.id);
           }
           if (b.booking_type === 'Room') {
             const bRooms = b.room_ids || (b.room_id ? [b.room_id] : []);
             const conflictMatch = roomIds.some(id => bRooms.includes(id));
             if (conflictMatch) {
-              return `Conflict: One or more selected rooms are already booked between ${b.check_in_date} and ${b.check_out_date}`;
+              if (!isSoft) return { type: 'hard', message: `Conflict: Selected rooms are BOOKED between ${bInStr} and ${bOutStr}` };
+              softConflicts.push(b.id);
             }
           }
         }
       }
     }
-    return null; // No conflict
+    
+    if (softConflicts.length > 0) {
+      return { type: 'soft', message: 'Contains overlapping PENDING bookings.', conflictIds: softConflicts };
+    }
+    
+    return { type: null };
   };
 
   const calculateBasePrice = () => {
@@ -135,7 +149,7 @@ export default function Bookings() {
     if (end <= start) return; // Invalid dates
 
     let itemPricingArray = [];
-    if (booking_type === 'Entire Cottage') {
+    if (booking_type === 'Entire Property') {
       const c = cottages.find(c => c.id === cottage_id);
       if (c) itemPricingArray.push(c);
     } else {
@@ -180,21 +194,55 @@ export default function Bookings() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!bookingForm.cottage_id) return alert('Select a Cottage');
+    if (!bookingForm.cottage_id) return alert('Select a Property');
     if (bookingForm.booking_type === 'Room' && (!bookingForm.room_ids || bookingForm.room_ids.length === 0)) return alert('Select at least one Room');
     
-    const conflict = checkConflict(bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, bookingForm.room_ids);
-    if (conflict) return alert(conflict);
+    const conflictResult = checkConflict(bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, bookingForm.room_ids);
+    
+    // Hard conflicts ALWAYS block
+    if (conflictResult.type === 'hard') return alert(conflictResult.message);
+    
+    // Soft conflicts block PENDING requests, but CONFIRMED requests can OVERRIDE them
+    if (conflictResult.type === 'soft') {
+      if (bookingForm.status === 'Pending') {
+        return alert("Cannot place a PENDING booking here - there is already another PENDING reservation for these dates.");
+      }
+      
+      // If we are confirming, we override
+      const confirmOverride = window.confirm(`There are overlapping PENDING bookings. If you proceed, they will be automatically CANCELLED. Continue?`);
+      if (!confirmOverride) return;
+
+      try {
+        // Batch cancel and MARK the pending conflicts
+        const { error: cancelError } = await supabase
+          .from('bookings')
+          .update({ 
+            status: 'Cancelled',
+            booking_source: 'Overridden Pending' 
+          })
+          .in('id', conflictResult.conflictIds);
+          
+        if (cancelError) throw cancelError;
+        
+        // Update local state for immediate feedback
+        setBookings(prev => prev.map(b => 
+          conflictResult.conflictIds.includes(b.id) 
+            ? { ...b, status: 'Cancelled', booking_source: 'Overridden Pending' } 
+            : b
+        ));
+      } catch (err) {
+        return alert("Failed to cancel overlapping pending bookings: " + err.message);
+      }
+    }
 
     try {
-      const payload = { ...bookingForm };
+      const payload = { ...bookingForm, tenant_id: session.user.id, resort_id: activeResortId };
       
       // Handle room fields for database compatibility
-      if (payload.booking_type === 'Entire Cottage') {
+      if (payload.booking_type === 'Entire Property') {
         payload.room_id = null;
         payload.room_ids = [];
       } else {
-        // For 'Room' type, set room_id to the first selected room for legacy support
         payload.room_id = payload.room_ids.length > 0 ? payload.room_ids[0] : null;
       }
 
@@ -204,7 +252,7 @@ export default function Bookings() {
       }
       delete payload.custom_booking_source;
       delete payload.is_loading_edit;
-      delete payload.room_id_internal; // in case it was there
+      delete payload.room_id_internal;
 
       if (editingBookingId) {
         const { data, error } = await supabase.from('bookings').update(payload).eq('id', editingBookingId).select();
@@ -222,7 +270,9 @@ export default function Bookings() {
             booking_id: data[0].id,
             amount: payload.advance_paid,
             payment_mode: 'Cash',
-            notes: 'Auto-added from New Booking'
+            notes: 'Auto-added from New Booking',
+            tenant_id: session.user.id,
+            resort_id: activeResortId
           }]);
         }
         alert('Booking Confirmed Successfully!');
@@ -232,6 +282,7 @@ export default function Bookings() {
       setBookingForm({
         ...bookingForm, guest_name: '', phone_number: '', check_in_date: '', check_out_date: '',
         night_count: 0, base_amount: 0, extra_guest_charges: 0, addons_cost: 0, total_amount: 0, advance_paid: 0, balance_amount: 0, custom_booking_source: '', is_loading_edit: false,
+        price_type: 'Calculated',
         reference_number: generateReference()
       });
     } catch (e) {
@@ -261,7 +312,9 @@ export default function Bookings() {
           booking_id: b.id,
           amount: amountToCollect,
           payment_mode: 'Cash',
-          notes: 'Auto-settled from Bookings'
+          notes: 'Auto-settled from Bookings',
+          tenant_id: session.user.id,
+          resort_id: activeResortId
         }]);
       }
       await supabase.from('bookings').update({ status: 'Completed', total_amount: newTotal, balance_amount: 0, advance_paid: newTotal }).eq('id', b.id);
@@ -296,29 +349,44 @@ export default function Bookings() {
           </div>
           
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group"><label className="form-label">Check-in</label><input type="date" required className="form-input" value={bookingForm.check_in_date} onChange={e => setBookingForm({...bookingForm, check_in_date: e.target.value})} /></div>
-            <div className="form-group"><label className="form-label">Check-out</label><input type="date" required className="form-input" value={bookingForm.check_out_date} onChange={e => setBookingForm({...bookingForm, check_out_date: e.target.value})} /></div>
+            <div className="form-group">
+              <label className="form-label">Check-in</label>
+              <input type="date" required className="form-input" value={bookingForm.check_in_date} onChange={e => setBookingForm({...bookingForm, check_in_date: e.target.value})} />
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Standard Check-in: 1:00 PM</small>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Check-out</label>
+              <input type="date" required className="form-input" value={bookingForm.check_out_date} onChange={e => setBookingForm({...bookingForm, check_out_date: e.target.value})} />
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Check-out till: 11:00 AM (Same-day turnaround supported)</small>
+            </div>
           </div>
 
           <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
+              <label className="form-label">Booking Status</label>
+              <select className="form-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Pending">Pending</option>
+              </select>
+            </div>
+            <div className="form-group">
               <label className="form-label">Type</label>
               <select className="form-select" value={bookingForm.booking_type} onChange={e => setBookingForm({...bookingForm, booking_type: e.target.value, room_id: ''})}>
-                <option value="Entire Cottage">Entire Cottage</option>
+                <option value="Entire Property">Entire Property</option>
                 <option value="Room">Room Only</option>
               </select>
             </div>
             <div className="form-group">
-              <label className="form-label">Cottage</label>
+              <label className="form-label">Property</label>
               <select className="form-select" required value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value, room_id: ''})}>
                 <option value="">Select...</option>
                 {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ gridColumn: 'span 3' }}>
               <label className="form-label">Rooms</label>
-              {bookingForm.booking_type === 'Entire Cottage' ? (
-                <div style={{ color: 'var(--text-muted)', padding: '0.5rem' }}>N/A (Entire Cottage Selected)</div>
+              {bookingForm.booking_type === 'Entire Property' ? (
+                <div style={{ color: 'var(--text-muted)', padding: '0.5rem' }}>N/A (Entire Property Selected)</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(0,0,0,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', maxHeight: '150px', overflowY: 'auto' }}>
                   {relevantRooms.length === 0 ? <small>No rooms available</small> : relevantRooms.map(r => (
@@ -398,24 +466,41 @@ export default function Bookings() {
               {bookings.map(b => {
                 const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
                 let rname = '';
-                if (b.booking_type === 'Entire Cottage') { rname = 'Entire Cottage'; }
+                if (b.booking_type === 'Entire Property') { rname = 'Entire Property'; }
                 else {
                   const arr = b.room_ids || (b.room_id ? [b.room_id] : []);
                   rname = arr.map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
                 }
 
                 return (
-                  <tr key={b.id} style={{ opacity: b.status === 'Cancelled' ? 0.5 : 1 }}>
+                  <tr key={b.id} style={{ 
+                    opacity: b.status === 'Cancelled' ? 0.5 : 1,
+                    background: b.status === 'Pending' ? 'rgba(245, 158, 11, 0.05)' : 'inherit'
+                  }}>
                     <td>
                       <small style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{b.reference_number || 'No Ref'}</small><br/>
                       <strong>{b.guest_name}</strong><br/>
                       <small>{b.phone_number}</small><br/>
-                      <small style={{ color: 'var(--text-muted)' }}>Source: {b.booking_source}</small>
+                      <small style={{ 
+                        color: b.booking_source === 'Overridden Pending' ? 'var(--danger)' : 'var(--text-muted)',
+                        fontWeight: b.booking_source === 'Overridden Pending' ? 700 : 400 
+                      }}>
+                        Source: {b.booking_source}
+                      </small>
                     </td>
                     <td>{new Date(b.check_in_date).toLocaleDateString()} <br/>{new Date(b.check_out_date).toLocaleDateString()}</td>
                     <td>{cname} <br/><small className="badge badge-success">{rname}</small></td>
                     <td>
-                      <span className={`badge ${b.status === 'Cancelled' ? 'badge-danger' : 'badge-success'}`}>{b.status}</span>
+                      <span className={`badge ${
+                        b.status === 'Cancelled' ? 'badge-danger' : 
+                        b.status === 'Pending' ? 'badge-warning' : 
+                        'badge-success'
+                      }`} style={{
+                        background: b.status === 'Pending' ? '#f59e0b' : '', // Strict amber for pending
+                        color: b.status === 'Pending' ? 'white' : ''
+                      }}>
+                        {b.status}
+                      </span>
                     </td>
                     <td>
                       <strong style={{ color: b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)' }}>Bal: ₹{b.balance_amount}</strong><br/>

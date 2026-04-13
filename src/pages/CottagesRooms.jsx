@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
+import { useSettingsStore } from '../lib/store';
 
 export default function CottagesRooms() {
+  const { session, activeResortId } = useSettingsStore();
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +44,7 @@ export default function CottagesRooms() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [activeResortId]);
 
   const fetchData = async () => {
     if (!isSupabaseConfigured()) {
@@ -53,8 +55,8 @@ export default function CottagesRooms() {
     
     try {
       const [cottagesRes, roomsRes] = await Promise.all([
-        supabase.from('cottages').select('*').order('created_at', { ascending: true }),
-        supabase.from('rooms').select('*').order('created_at', { ascending: true })
+        supabase.from('cottages').select('*').eq('resort_id', activeResortId).order('created_at', { ascending: true }),
+        supabase.from('rooms').select('*').eq('resort_id', activeResortId).order('created_at', { ascending: true })
       ]);
       
       if (cottagesRes.error) throw cottagesRes.error;
@@ -73,22 +75,24 @@ export default function CottagesRooms() {
   const handleAddCottage = async (e) => {
     e.preventDefault();
     try {
-      const { data, error } = await supabase.from('cottages').insert([newCottage]).select();
+      const payload = { ...newCottage, tenant_id: session.user.id, resort_id: activeResortId };
+      const { data, error } = await supabase.from('cottages').insert([payload]).select();
       if (error) alert(error.message);
       else {
         setCottages([...cottages, data[0]]);
         setNewCottage({ name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Available' });
       }
     } catch (e) {
-      alert("Error adding cottage.");
+      alert("Error adding property.");
     }
   };
 
   const handleAddRoom = async (e) => {
     e.preventDefault();
-    if (!newRoom.cottage_id) return alert('Select a Cottage first');
+    if (!newRoom.cottage_id) return alert('Select a Property first');
     try {
-      const { data, error } = await supabase.from('rooms').insert([newRoom]).select();
+      const payload = { ...newRoom, tenant_id: session.user.id, resort_id: activeResortId };
+      const { data, error } = await supabase.from('rooms').insert([payload]).select();
       if (error) alert(error.message);
       else {
         setRooms([...rooms, data[0]]);
@@ -100,7 +104,7 @@ export default function CottagesRooms() {
   };
 
   const deleteCottage = async (id) => {
-    if (!window.confirm("Delete this cottage? All its rooms will be deleted.")) return;
+    if (!window.confirm("Delete this property? All its rooms will be deleted.")) return;
     await supabase.from('cottages').delete().eq('id', id);
     setCottages(cottages.filter(c => c.id !== id));
     setRooms(rooms.filter(r => r.cottage_id !== id));
@@ -115,14 +119,20 @@ export default function CottagesRooms() {
   if (loading) return <div>Loading setup...</div>;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '2rem' }}>
+        <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Property Management</h1>
+        <p style={{ color: 'var(--text-muted)' }}>Configure your cottages, rooms, and inventory settings</p>
+      </div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
       {/* COTTAGES SECTION */}
       <div className="card">
-        <h2 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Cottages</h2>
+        <h2 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Properties</h2>
         {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
         
         <form onSubmit={handleAddCottage} style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
-          <h4>Add New Cottage</h4>
+          <h4>Add New Property</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Name</label>
@@ -141,7 +151,7 @@ export default function CottagesRooms() {
               <input type="number" className="form-input" required value={newCottage.weekend_price} onChange={e => setNewCottage({...newCottage, weekend_price: e.target.value})} />
             </div>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}><Plus size={16}/> Add Cottage</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}><Plus size={16}/> Add Property</button>
         </form>
 
         <div className="table-container">
@@ -196,9 +206,9 @@ export default function CottagesRooms() {
           <h4>Add New Room</h4>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Link to Cottage</label>
+              <label className="form-label">Link to Property</label>
               <select className="form-select" required value={newRoom.cottage_id} onChange={e => setNewRoom({...newRoom, cottage_id: e.target.value})}>
-                <option value="">-- Select Cottage --</option>
+                <option value="">-- Select Property --</option>
                 {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
@@ -226,7 +236,7 @@ export default function CottagesRooms() {
           <table className="table">
             <thead>
               <tr>
-                <th>Cottage</th>
+                <th>Property</th>
                 <th>Room</th>
                 <th>Prices (W/E)</th>
                 <th>Act</th>
@@ -268,6 +278,7 @@ export default function CottagesRooms() {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
     </div>
   );

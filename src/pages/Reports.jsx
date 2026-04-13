@@ -5,18 +5,19 @@ import html2pdf from 'html2pdf.js';
 import { useSettingsStore } from '../lib/store';
 
 export default function Reports() {
-  const { resortName, logoUrl } = useSettingsStore();
+  const { activeResortId, resorts } = useSettingsStore();
+  const activeResort = resorts.find(r => r.id === activeResortId);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchReports = async () => {
-      if (!isSupabaseConfigured()) { setLoading(false); return; }
+      if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
       try {
         const [inc, exp, bks] = await Promise.all([
-          supabase.from('incomes').select('*'),
-          supabase.from('expenses').select('*'),
-          supabase.from('bookings').select('*')
+          supabase.from('incomes').select('*').eq('resort_id', activeResortId),
+          supabase.from('expenses').select('*').eq('resort_id', activeResortId),
+          supabase.from('bookings').select('*').eq('resort_id', activeResortId)
         ]);
         
         setData({
@@ -29,7 +30,7 @@ export default function Reports() {
       } finally { setLoading(false); }
     };
     fetchReports();
-  }, []);
+  }, [activeResortId]);
 
   const totalRevenue = data?.incomes.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
   const totalExpenses = data?.expenses.reduce((acc, curr) => acc + Number(curr.amount), 0) || 0;
@@ -37,6 +38,7 @@ export default function Reports() {
 
   const handleExportPDF = () => {
     const element = document.getElementById('report-container');
+    const resortName = activeResort?.name || 'Hotel_Manager';
     const opt = {
       margin: 1,
       filename: `${resortName.replace(/\s+/g, '_')}_Report.pdf`,
@@ -58,8 +60,8 @@ export default function Reports() {
 
       <div id="report-container" style={{ padding: '0 1rem' }}>
         <div style={{ textAlign: 'center', marginBottom: '2rem', borderBottom: '2px solid var(--border)', paddingBottom: '1rem' }}>
-          {logoUrl && <img src={logoUrl} alt="Logo" style={{ maxHeight: '60px', marginBottom: '1rem' }} />}
-          <h1 style={{ margin: 0, color: 'var(--text-main)' }}>{resortName}</h1>
+          {activeResort?.logo_url && <img src={activeResort.logo_url} alt="Logo" style={{ maxHeight: '60px', marginBottom: '1rem' }} />}
+          <h1 style={{ margin: 0, color: 'var(--text-main)' }}>{activeResort?.name || 'Hotel Manager'}</h1>
           <p style={{ color: 'var(--text-muted)' }}>Financial Summary Report</p>
         </div>
 

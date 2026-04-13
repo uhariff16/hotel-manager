@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { addDays, format, differenceInDays, isWithinInterval, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSettingsStore } from '../lib/store';
 
 export default function CalendarView() {
+  const { activeResortId } = useSettingsStore();
   const [bookings, setBookings] = useState([]);
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -15,12 +17,12 @@ export default function CalendarView() {
 
   useEffect(() => {
     const fetchData = async () => {
-      if (!isSupabaseConfigured()) { setLoading(false); return; }
+      if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
       try {
         const [bks, cts, rms] = await Promise.all([
-          supabase.from('bookings').select('*').neq('status', 'Cancelled'),
-          supabase.from('cottages').select('*').order('name'),
-          supabase.from('rooms').select('*').order('name')
+          supabase.from('bookings').select('*').eq('resort_id', activeResortId).neq('status', 'Cancelled'),
+          supabase.from('cottages').select('*').eq('resort_id', activeResortId).order('name'),
+          supabase.from('rooms').select('*').eq('resort_id', activeResortId).order('name')
         ]);
         setBookings(bks.data || []);
         setCottages(cts.data || []);
@@ -32,7 +34,7 @@ export default function CalendarView() {
       }
     };
     fetchData();
-  }, []);
+  }, [activeResortId]);
 
   const getCellStatus = (date, type, itemId) => {
     let isBooked = false;
@@ -46,18 +48,18 @@ export default function CalendarView() {
       // If date is within CheckIn <= date < CheckOut
       // CheckOut day is technically free to check in, so we only block if date < CheckOut
       if (date >= bIn && date < bOut) {
-        if (type === 'Cottage') {
-          // If this cottage corresponds
+        if (type === 'Property') {
+          // If this property corresponds
           if (b.cottage_id === itemId) {
             isBooked = true;
-            blockColor = b.booking_type === 'Entire Cottage' ? 'var(--cottage-block)' : 'var(--room-block)';
+            blockColor = b.booking_type === 'Entire Property' ? 'var(--cottage-block)' : 'var(--room-block)';
             label = b.guest_name;
             break; // Highest precedence
           }
         } else if (type === 'Room') {
           const room = rooms.find(r => r.id === itemId);
           if (b.cottage_id === room?.cottage_id) {
-            if (b.booking_type === 'Entire Cottage') {
+            if (b.booking_type === 'Entire Property') {
               isBooked = true;
               blockColor = 'var(--cottage-block)'; // Blocked transitively
               label = b.guest_name;
@@ -93,7 +95,7 @@ export default function CalendarView() {
         <div style={{ display: 'flex', gap: '1rem', fontSize: '0.875rem' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><div style={{ width: 12, height: 12, background: 'var(--available)', borderRadius: '2px' }}/> Available</span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><div style={{ width: 12, height: 12, background: 'var(--room-block)', borderRadius: '2px' }}/> Room Booked</span>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><div style={{ width: 12, height: 12, background: 'var(--cottage-block)', borderRadius: '2px' }}/> Cottage Booked</span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}><div style={{ width: 12, height: 12, background: 'var(--cottage-block)', borderRadius: '2px' }}/> Property Booked</span>
         </div>
       </div>
 
@@ -118,7 +120,7 @@ export default function CalendarView() {
                   {c.name}
                 </div>
                 {dates.map((d, i) => {
-                  const { blockColor, label } = getCellStatus(d, 'Cottage', c.id);
+                  const { blockColor, label } = getCellStatus(d, 'Property', c.id);
                   return (
                     <div key={i} title={label} style={{ width: '50px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '4px' }}>
                       <div style={{ width: '100%', height: '100%', borderRadius: '4px', background: blockColor }}></div>
