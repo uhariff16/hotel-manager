@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, CalendarCheck, CheckCircle2 } from 'lucide-react';
+import { Plus, Trash2, CalendarCheck, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { differenceInDays, eachDayOfInterval, isWeekend } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
@@ -11,6 +11,7 @@ export default function Bookings() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const today = new Date().toISOString().split('T')[0];
 
   const [bookingForm, setBookingForm] = useState({
     guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', number_of_guests: 1,
@@ -20,6 +21,8 @@ export default function Bookings() {
     reference_number: ''
   });
   const [editingBookingId, setEditingBookingId] = useState(null);
+  const [settlingBooking, setSettlingBooking] = useState(null);
+  const [settlementData, setSettlementData] = useState({ discount: 0, allSettled: false });
 
   const loadBookingForEdit = (b) => {
     setEditingBookingId(b.id);
@@ -88,22 +91,18 @@ export default function Bookings() {
     }
   };
 
-  // Helper: check for booking conflicts before allowing a booking
-  // Returns { type: 'hard' | 'soft' | null, message: string, conflictIds: string[] }
-  const checkConflict = (checkIn, checkOut, type, cottageId, roomIds) => {
-    // Standardize dates to YYYY-MM-DD strings for safe comparison
+  const checkConflict = (checkIn, checkOut, type, cottageId, roomIds, ignoreId = null) => {
     const inStr = checkIn.split('T')[0];
     const outStr = checkOut.split('T')[0];
     let softConflicts = [];
     
     for (let b of bookings) {
       if (b.status === 'Cancelled') continue;
-      if (b.id === editingBookingId) continue;
+      if (b.id === (ignoreId || editingBookingId)) continue;
       
       const bInStr = b.check_in_date.split('T')[0];
       const bOutStr = b.check_out_date.split('T')[0];
       
-      // Strict date comparison (In1 < Out2 AND Out1 > In2)
       if (inStr < bOutStr && outStr > bInStr) {
         const isSoft = b.status === 'Pending';
         
@@ -146,7 +145,7 @@ export default function Bookings() {
 
     const start = new Date(check_in_date);
     const end = new Date(check_out_date);
-    if (end <= start) return; // Invalid dates
+    if (end <= start) return;
 
     let itemPricingArray = [];
     if (booking_type === 'Entire Property') {
@@ -158,7 +157,7 @@ export default function Bookings() {
     }
     if (itemPricingArray.length === 0) return;
 
-    const days = eachDayOfInterval({ start, end: new Date(end.getTime() - 24*60*60*1000) }); // Exclude checkout day from nights
+    const days = eachDayOfInterval({ start, end: new Date(end.getTime() - 24*60*60*1000) });
     const nightCount = days.length;
     
     let base = 0;
@@ -197,23 +196,25 @@ export default function Bookings() {
     if (!bookingForm.cottage_id) return alert('Select a Property');
     if (bookingForm.booking_type === 'Room' && (!bookingForm.room_ids || bookingForm.room_ids.length === 0)) return alert('Select at least one Room');
     
-    const conflictResult = checkConflict(bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, bookingForm.room_ids);
+    // Past date validation (Only for NEW bookings)
+    const today = new Date().toISOString().split('T')[0];
+    if (bookingForm.check_in_date < today && !editingBookingId) {
+      return alert('Cannot create a booking for a past date.');
+    }
     
-    // Hard conflicts ALWAYS block
+    const conflictResult = checkConflict(bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, bookingForm.room_ids, editingBookingId);
+    
     if (conflictResult.type === 'hard') return alert(conflictResult.message);
     
-    // Soft conflicts block PENDING requests, but CONFIRMED requests can OVERRIDE them
     if (conflictResult.type === 'soft') {
       if (bookingForm.status === 'Pending') {
         return alert("Cannot place a PENDING booking here - there is already another PENDING reservation for these dates.");
       }
       
-      // If we are confirming, we override
       const confirmOverride = window.confirm(`There are overlapping PENDING bookings. If you proceed, they will be automatically CANCELLED. Continue?`);
       if (!confirmOverride) return;
 
       try {
-        // Batch cancel and MARK the pending conflicts
         const { error: cancelError } = await supabase
           .from('bookings')
           .update({ 
@@ -224,7 +225,6 @@ export default function Bookings() {
           
         if (cancelError) throw cancelError;
         
-        // Update local state for immediate feedback
         setBookings(prev => prev.map(b => 
           conflictResult.conflictIds.includes(b.id) 
             ? { ...b, status: 'Cancelled', booking_source: 'Overridden Pending' } 
@@ -238,21 +238,18 @@ export default function Bookings() {
     try {
       const payload = { ...bookingForm, tenant_id: session.user.id, resort_id: activeResortId };
       
-      // Handle room fields for database compatibility
       if (payload.booking_type === 'Entire Property') {
-        payload.room_id = null;
         payload.room_ids = [];
+        delete payload.room_id; // Ensure legacy room_id is not sent as empty string or at all
       } else {
         payload.room_id = payload.room_ids.length > 0 ? payload.room_ids[0] : null;
       }
 
-      // Cleanup UI-only fields
       if (payload.booking_source === 'Other') {
         payload.booking_source = payload.custom_booking_source || 'Other';
       }
       delete payload.custom_booking_source;
       delete payload.is_loading_edit;
-      delete payload.room_id_internal;
 
       if (editingBookingId) {
         const { data, error } = await supabase.from('bookings').update(payload).eq('id', editingBookingId).select();
@@ -290,21 +287,72 @@ export default function Bookings() {
     }
   };
 
-  const settleBooking = async (b) => {
-    const rawDiscount = window.prompt(`Settle balance of ₹${b.balance_amount}.\nEnter any DISCOUNT amount to apply (leave 0 for no discount):`, "0");
-    if (rawDiscount === null) return; // Cancelled
-    
-    const discount = Number(rawDiscount) || 0;
-    if (discount > b.balance_amount) return alert("Discount cannot be greater than the balance!");
-    if (discount < 0) return alert("Discount cannot be negative!");
-    
-    const newTotal = Number(b.total_amount) - discount;
-    const amountToCollect = Number(b.balance_amount) - discount;
+  const handleCheckIn = async (b) => {
+    if (!window.confirm(`Check-in guest: ${b.guest_name}?`)) return;
+    try {
+      await supabase.from('bookings').update({ status: 'Checked-in' }).eq('id', b.id);
+      setBookings(bookings.map(item => item.id === b.id ? { ...item, status: 'Checked-in' } : item));
+      alert("Guest Checked-in successfully!");
+    } catch(err) {
+      alert("Error during check-in: " + err.message);
+    }
+  };
 
-    const confirmMsg = discount > 0 ? `Apply ₹${discount} discount and collect final ₹${amountToCollect}?` : `Collect balance of ₹${amountToCollect} and complete booking?`;
-    if (!window.confirm(confirmMsg)) return;
+  const handleExtend = async (b) => {
+    const newOutDate = window.prompt(`Currently checking out on ${new Date(b.check_out_date).toLocaleDateString()}.\nEnter NEW Checkout Date (YYYY-MM-DD):`, b.check_out_date.split('T')[0]);
+    if (!newOutDate || newOutDate === b.check_out_date.split('T')[0]) return;
+
+    if (newOutDate <= b.check_in_date.split('T')[0]) return alert("New checkout date must be after check-in date!");
+
+    const extensionFeeRaw = window.prompt(`Enter additional fee for the extended nights (₹):`, "0");
+    if (extensionFeeRaw === null) return;
+    const extensionFee = Number(extensionFeeRaw) || 0;
+
+    const conflictResult = checkConflict(b.check_in_date, newOutDate, b.booking_type, b.cottage_id, b.room_ids, b.id);
+    if (conflictResult.type === 'hard') return alert(conflictResult.message);
+    if (conflictResult.type === 'soft') return alert("Cannot extend: Extended period overlaps with another PENDING booking. Cancel it first.");
 
     try {
+      const newTotal = Number(b.total_amount) + extensionFee;
+      const newBalance = Number(b.balance_amount) + extensionFee;
+      const newNights = differenceInDays(new Date(newOutDate), new Date(b.check_in_date));
+
+      const { data, error } = await supabase.from('bookings')
+        .update({ 
+          check_out_date: newOutDate, 
+          total_amount: newTotal, 
+          balance_amount: newBalance,
+          night_count: newNights 
+        })
+        .eq('id', b.id)
+        .select();
+      
+      if (error) throw error;
+      setBookings(bookings.map(item => item.id === b.id ? data[0] : item));
+      alert(`Booking extended successfully to ${newOutDate}! Added ₹${extensionFee} to total.`);
+    } catch (err) {
+      alert("Error extending booking: " + err.message);
+    }
+  };
+
+  const settleBooking = (b) => {
+    setSettlingBooking(b);
+    setSettlementData({ discount: 0, allSettled: false });
+  };
+
+  const confirmSettlement = async () => {
+    if (!settlingBooking) return;
+    const b = settlingBooking;
+    const { discount, allSettled } = settlementData;
+
+    if (!allSettled) return alert("Please confirm that all items are settled.");
+    if (discount > b.balance_amount) return alert("Discount cannot be greater than the balance!");
+    
+    setLoading(true);
+    try {
+      const newTotal = Number(b.total_amount) - discount;
+      const amountToCollect = Number(b.balance_amount) - discount;
+
       if (amountToCollect > 0) {
         await supabase.from('incomes').insert([{
           date: new Date().toISOString().split('T')[0],
@@ -312,15 +360,27 @@ export default function Bookings() {
           booking_id: b.id,
           amount: amountToCollect,
           payment_mode: 'Cash',
-          notes: 'Auto-settled from Bookings',
+          notes: `Settled during Check-out`,
           tenant_id: session.user.id,
           resort_id: activeResortId
         }]);
       }
-      await supabase.from('bookings').update({ status: 'Completed', total_amount: newTotal, balance_amount: 0, advance_paid: newTotal }).eq('id', b.id);
-      setBookings(bookings.map(item => item.id === b.id ? { ...item, status: 'Completed', total_amount: newTotal, balance_amount: 0, advance_paid: newTotal } : item));
+      
+      const updatePayload = { 
+        status: 'Completed', 
+        total_amount: newTotal, 
+        balance_amount: 0, 
+        advance_paid: newTotal 
+      };
+
+      await supabase.from('bookings').update(updatePayload).eq('id', b.id);
+      setBookings(bookings.map(item => item.id === b.id ? { ...item, ...updatePayload } : item));
+      setSettlingBooking(null);
+      alert(`Check-out successful!`);
     } catch(err) {
-      alert("Error settling booking: " + err.message);
+      alert(`Error during check-out: ` + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -335,196 +395,267 @@ export default function Bookings() {
   const relevantRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id);
 
   return (
-    <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
-      {/* Booking Form */}
-      <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CalendarCheck size={24} /> New Booking</h2>
-        {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
-        
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem' }}>
-            <div className="form-group"><label className="form-label">Guest Name</label><input type="text" required className="form-input" value={bookingForm.guest_name} onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} /></div>
-            <div className="form-group"><label className="form-label">Phone</label><input type="text" required className="form-input" value={bookingForm.phone_number} onChange={e => setBookingForm({...bookingForm, phone_number: e.target.value})} /></div>
-            <div className="form-group"><label className="form-label">Reference #</label><input type="text" required className="form-input" style={{ fontWeight: 'bold', color: 'var(--primary)' }} value={bookingForm.reference_number} onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} /></div>
-          </div>
+    <>
+      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
+        {/* Booking Form */}
+        <div className="card">
+          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CalendarCheck size={24} /> New Booking</h2>
+          {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
           
-          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Check-in</label>
-              <input type="date" required className="form-input" value={bookingForm.check_in_date} onChange={e => setBookingForm({...bookingForm, check_in_date: e.target.value})} />
-              <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Standard Check-in: 1:00 PM</small>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr', gap: '1rem' }}>
+              <div className="form-group"><label className="form-label">Guest Name</label><input type="text" required className="form-input" value={bookingForm.guest_name} onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Phone</label><input type="text" required className="form-input" value={bookingForm.phone_number} onChange={e => setBookingForm({...bookingForm, phone_number: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Reference #</label><input type="text" required className="form-input" style={{ fontWeight: 'bold', color: 'var(--primary)' }} value={bookingForm.reference_number} onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} /></div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Check-out</label>
-              <input type="date" required className="form-input" value={bookingForm.check_out_date} onChange={e => setBookingForm({...bookingForm, check_out_date: e.target.value})} />
-              <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Check-out till: 11:00 AM (Same-day turnaround supported)</small>
-            </div>
-          </div>
-
-          <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Booking Status</label>
-              <select className="form-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
-                <option value="Confirmed">Confirmed</option>
-                <option value="Pending">Pending</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Type</label>
-              <select className="form-select" value={bookingForm.booking_type} onChange={e => setBookingForm({...bookingForm, booking_type: e.target.value, room_id: ''})}>
-                <option value="Entire Property">Entire Property</option>
-                <option value="Room">Room Only</option>
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Property</label>
-              <select className="form-select" required value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value, room_id: ''})}>
-                <option value="">Select...</option>
-                {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="form-group" style={{ gridColumn: 'span 3' }}>
-              <label className="form-label">Rooms</label>
-              {bookingForm.booking_type === 'Entire Property' ? (
-                <div style={{ color: 'var(--text-muted)', padding: '0.5rem' }}>N/A (Entire Property Selected)</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(0,0,0,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', maxHeight: '150px', overflowY: 'auto' }}>
-                  {relevantRooms.length === 0 ? <small>No rooms available</small> : relevantRooms.map(r => (
-                    <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={bookingForm.room_ids.includes(r.id)} onChange={e => {
-                        const newIds = e.target.checked ? [...bookingForm.room_ids, r.id] : bookingForm.room_ids.filter(id => id !== r.id);
-                        setBookingForm({...bookingForm, room_ids: newIds});
-                      }} />
-                      {r.name}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-
-          <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-            <h4 style={{ marginBottom: '1rem', color: 'var(--text-main)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Billing Auto-Calc</h4>
+            
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <span className="form-label">Nights:</span> <strong>{bookingForm.night_count}</strong>
+              <div className="form-group">
+                <label className="form-label">Check-in</label>
+                <input type="date" required className="form-input" value={bookingForm.check_in_date} onChange={e => setBookingForm({...bookingForm, check_in_date: e.target.value})} />
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Standard Check-in: 1:00 PM</small>
               </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">Base Amount (₹)</label>
-                <input type="number" className="form-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: Number(e.target.value)})} />
+              <div className="form-group">
+                <label className="form-label">Check-out</label>
+                <input type="date" required className="form-input" value={bookingForm.check_out_date} onChange={e => setBookingForm({...bookingForm, check_out_date: e.target.value})} />
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Check-out till: 11:00 AM (Same-day turnaround supported)</small>
               </div>
             </div>
-            <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-              <div className="form-group"><label className="form-label">Add-ons (Food)</label><input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: Number(e.target.value)})} /></div>
-              <div className="form-group"><label className="form-label">Advance Paid</label><input type="number" className="form-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: Number(e.target.value)})} /></div>
+
+            <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
-                <label className="form-label">Referred By</label>
-                <select className="form-select" value={bookingForm.booking_source} onChange={e => setBookingForm({...bookingForm, booking_source: e.target.value})}>
-                  <option value="Direct">Direct</option><option value="Airbnb">Airbnb</option><option value="Booking.com">Booking.com</option><option value="Agent">Agent</option><option value="Other">Other...</option>
+                <label className="form-label">Booking Status</label>
+                <select className="form-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
+                  <option value="Confirmed">Confirmed</option>
+                  <option value="Pending">Pending</option>
+                  <option value="Checked-in">Checked-in</option>
+                  <option value="Completed">Completed</option>
+                  <option value="Cancelled">Cancelled</option>
                 </select>
-                {bookingForm.booking_source === 'Other' && (
-                  <input type="text" className="form-input" style={{ marginTop: '0.5rem' }} placeholder="Specify source" value={bookingForm.custom_booking_source || ''} onChange={e => setBookingForm({...bookingForm, custom_booking_source: e.target.value})} required/>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Type</label>
+                <select className="form-select" value={bookingForm.booking_type} onChange={e => setBookingForm({...bookingForm, booking_type: e.target.value})}>
+                  <option value="Entire Property">Entire Property</option>
+                  <option value="Room">Room Only</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Property</label>
+                <select className="form-select" required value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value, room_ids: []})}>
+                  <option value="">Select...</option>
+                  {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+              <div className="form-group" style={{ gridColumn: 'span 3' }}>
+                <label className="form-label">Rooms</label>
+                {bookingForm.booking_type === 'Entire Property' ? (
+                  <div style={{ color: 'var(--text-muted)', padding: '0.5rem' }}>N/A (Entire Property Selected)</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', background: 'rgba(0,0,0,0.02)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)', maxHeight: '150px', overflowY: 'auto' }}>
+                    {relevantRooms.length === 0 ? <small>No rooms available</small> : relevantRooms.map(r => (
+                      <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+                        <input type="checkbox" checked={bookingForm.room_ids.includes(r.id)} onChange={e => {
+                          const newIds = e.target.checked ? [...bookingForm.room_ids, r.id] : bookingForm.room_ids.filter(id => id !== r.id);
+                          setBookingForm({...bookingForm, room_ids: newIds});
+                        }} />
+                        {r.name}
+                      </label>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
-            <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span className="form-label mb-0">Total: <strong style={{ fontSize: '1.25rem', color: 'var(--primary)' }}>₹{bookingForm.total_amount}</strong></span>
-              <span className="form-label mb-0">Balance: <strong style={{ fontSize: '1.25rem', color: 'var(--warning)' }}>₹{bookingForm.balance_amount}</strong></span>
+
+            <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+              <h4 style={{ marginBottom: '1rem', color: 'var(--text-main)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Billing Auto-Calc</h4>
+              <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <span className="form-label">Nights:</span> <strong>{bookingForm.night_count}</strong>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Base Amount (₹)</label>
+                  <input type="number" className="form-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: Number(e.target.value)})} />
+                </div>
+              </div>
+              <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                <div className="form-group"><label className="form-label">Add-ons (Food)</label><input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: Number(e.target.value)})} /></div>
+                <div className="form-group"><label className="form-label">Advance Paid</label><input type="number" className="form-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: Number(e.target.value)})} /></div>
+                <div className="form-group">
+                  <label className="form-label">Referred By</label>
+                  <select className="form-select" value={bookingForm.booking_source} onChange={e => setBookingForm({...bookingForm, booking_source: e.target.value})}>
+                    <option value="Direct">Direct</option><option value="Airbnb">Airbnb</option><option value="Booking.com">Booking.com</option><option value="Agent">Agent</option><option value="Other">Other...</option>
+                  </select>
+                  {bookingForm.booking_source === 'Other' && (
+                    <input type="text" className="form-input" style={{ marginTop: '0.5rem' }} placeholder="Specify source" value={bookingForm.custom_booking_source || ''} onChange={e => setBookingForm({...bookingForm, custom_booking_source: e.target.value})} required/>
+                  )}
+                </div>
+              </div>
+              <div style={{ marginTop: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span className="form-label mb-0">Total: <strong style={{ fontSize: '1.25rem', color: 'var(--primary)' }}>₹{bookingForm.total_amount}</strong></span>
+                <span className="form-label mb-0">Balance: <strong style={{ fontSize: '1.25rem', color: 'var(--warning)' }}>₹{bookingForm.balance_amount}</strong></span>
+              </div>
             </div>
+
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+              <button type="submit" className="btn btn-primary" style={{ flex: 1, fontSize: '1.1rem', padding: '1rem' }}>
+                <CheckCircle2 /> {editingBookingId ? 'Update Booking' : 'Confirm Booking'}
+              </button>
+              {editingBookingId && (
+                <button type="button" className="btn btn-outline" style={{ fontSize: '1.1rem', padding: '1rem' }} onClick={() => {
+                  setEditingBookingId(null);
+                  setBookingForm({ ...bookingForm, guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', night_count: 0, base_amount: 0, addons_cost: 0, advance_paid: 0, total_amount: 0, balance_amount: 0, is_loading_edit: false });
+                }}>Cancel Edit</button>
+              )}
+            </div>
+          </form>
+        </div>
+
+        {/* Bookings List */}
+        <div className="card">
+          <h2 style={{ marginBottom: '1.5rem' }}>Recent Bookings</h2>
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Guest</th>
+                  <th>Dates</th>
+                  <th>Unit</th>
+                  <th>Status</th>
+                  <th>Balance</th>
+                  <th>Act</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bookings.map(b => {
+                  const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
+                  let rname = '';
+                  if (b.booking_type === 'Entire Property') { rname = 'Entire Property'; }
+                  else {
+                    const arr = b.room_ids || (b.room_id ? [b.room_id] : []);
+                    rname = arr.map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+                  }
+
+                  return (
+                    <tr key={b.id} style={{ 
+                      opacity: b.status === 'Cancelled' ? 0.5 : 1,
+                      background: b.status === 'Pending' ? 'rgba(245, 158, 11, 0.05)' : 'inherit'
+                    }}>
+                      <td>
+                        <small style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{b.reference_number || 'No Ref'}</small><br/>
+                        <strong>{b.guest_name}</strong><br/>
+                        <small>{b.phone_number}</small><br/>
+                        <small style={{ 
+                          color: b.booking_source === 'Overridden Pending' ? 'var(--danger)' : 'var(--text-muted)',
+                          fontWeight: b.booking_source === 'Overridden Pending' ? 700 : 400 
+                        }}>
+                          Source: {b.booking_source}
+                        </small>
+                      </td>
+                      <td>{new Date(b.check_in_date).toLocaleDateString()} <br/>{new Date(b.check_out_date).toLocaleDateString()}</td>
+                      <td>{cname} <br/><small className="badge badge-success">{rname}</small></td>
+                      <td>
+                        <span className={`badge ${
+                          b.status === 'Cancelled' ? 'badge-danger' : 
+                          b.status === 'Pending' ? 'badge-warning' : 
+                          b.status === 'Checked-in' ? 'badge-indigo' :
+                          b.status === 'Completed' ? 'badge-success' :
+                          'badge-primary'
+                        }`} style={{
+                          background: b.status === 'Pending' ? '#f59e0b' : b.status === 'Checked-in' ? '#6366f1' : '',
+                          color: (b.status === 'Pending' || b.status === 'Checked-in') ? 'white' : ''
+                        }}>
+                          {b.status}
+                        </span>
+                      </td>
+                      <td>
+                        <strong style={{ color: b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)' }}>Bal: ₹{b.balance_amount}</strong><br/>
+                        Total: ₹{b.total_amount}<br/>
+                        <span style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '0.8rem' }}>Advance: ₹{b.advance_paid || 0}</span>
+                      </td>
+                      <td style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                        {b.status === 'Confirmed' && (
+                          <button className="btn btn-primary" style={{ padding: '0.2rem', fontSize: '0.75rem', background: 'var(--primary)' }} onClick={() => handleCheckIn(b)}>Check-in</button>
+                        )}
+                        {b.status === 'Checked-in' && (
+                          <button className="btn btn-primary" style={{ padding: '0.2rem', fontSize: '0.75rem', background: '#6366f1' }} onClick={() => settleBooking(b)}>Check-out</button>
+                        )}
+                        {(b.status === 'Confirmed' || b.status === 'Checked-in') && (
+                          <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: 'var(--primary)' }} onClick={() => handleExtend(b)}>Extend Stay</button>
+                        )}
+                        
+                        <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }} onClick={() => loadBookingForEdit(b)}>Edit Details</button>
+                        {(b.status === 'Pending' || b.status === 'Confirmed') && (
+                          <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: 'var(--danger)' }} onClick={() => deleteBooking(b.id)}>Cancel</button>
+                        )}
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
           </div>
-
-          <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-            <button type="submit" className="btn btn-primary" style={{ flex: 1, fontSize: '1.1rem', padding: '1rem' }}>
-              <CheckCircle2 /> {editingBookingId ? 'Update Booking' : 'Confirm Booking'}
-            </button>
-            {editingBookingId && (
-              <button type="button" className="btn btn-outline" style={{ fontSize: '1.1rem', padding: '1rem' }} onClick={() => {
-                setEditingBookingId(null);
-                setBookingForm({ ...bookingForm, guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', night_count: 0, base_amount: 0, addons_cost: 0, advance_paid: 0, total_amount: 0, balance_amount: 0, is_loading_edit: false });
-              }}>Cancel Edit</button>
-            )}
-          </div>
-        </form>
-      </div>
-
-      {/* Bookings List */}
-      <div className="card">
-        <h2 style={{ marginBottom: '1.5rem' }}>Recent Bookings</h2>
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Guest</th>
-                <th>Dates</th>
-                <th>Unit</th>
-                <th>Status</th>
-                <th>Balance</th>
-                <th>Act</th>
-              </tr>
-            </thead>
-            <tbody>
-              {bookings.map(b => {
-                const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
-                let rname = '';
-                if (b.booking_type === 'Entire Property') { rname = 'Entire Property'; }
-                else {
-                  const arr = b.room_ids || (b.room_id ? [b.room_id] : []);
-                  rname = arr.map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
-                }
-
-                return (
-                  <tr key={b.id} style={{ 
-                    opacity: b.status === 'Cancelled' ? 0.5 : 1,
-                    background: b.status === 'Pending' ? 'rgba(245, 158, 11, 0.05)' : 'inherit'
-                  }}>
-                    <td>
-                      <small style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{b.reference_number || 'No Ref'}</small><br/>
-                      <strong>{b.guest_name}</strong><br/>
-                      <small>{b.phone_number}</small><br/>
-                      <small style={{ 
-                        color: b.booking_source === 'Overridden Pending' ? 'var(--danger)' : 'var(--text-muted)',
-                        fontWeight: b.booking_source === 'Overridden Pending' ? 700 : 400 
-                      }}>
-                        Source: {b.booking_source}
-                      </small>
-                    </td>
-                    <td>{new Date(b.check_in_date).toLocaleDateString()} <br/>{new Date(b.check_out_date).toLocaleDateString()}</td>
-                    <td>{cname} <br/><small className="badge badge-success">{rname}</small></td>
-                    <td>
-                      <span className={`badge ${
-                        b.status === 'Cancelled' ? 'badge-danger' : 
-                        b.status === 'Pending' ? 'badge-warning' : 
-                        'badge-success'
-                      }`} style={{
-                        background: b.status === 'Pending' ? '#f59e0b' : '', // Strict amber for pending
-                        color: b.status === 'Pending' ? 'white' : ''
-                      }}>
-                        {b.status}
-                      </span>
-                    </td>
-                    <td>
-                      <strong style={{ color: b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)' }}>Bal: ₹{b.balance_amount}</strong><br/>
-                      Total: ₹{b.total_amount}<br/>
-                      <span style={{ color: 'var(--success)', fontWeight: 'bold', fontSize: '0.8rem' }}>Advance: ₹{b.advance_paid || 0}</span>
-                    </td>
-                    <td style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
-                      {(b.status === 'Confirmed' || b.status === 'Checked-in') && b.balance_amount > 0 && (
-                        <button className="btn btn-primary" style={{ padding: '0.2rem', fontSize: '0.75rem' }} onClick={() => settleBooking(b)}>Settle Bal</button>
-                      )}
-                      {b.status !== 'Completed' && b.status !== 'Cancelled' && (
-                        <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: 'var(--primary)' }} onClick={() => loadBookingForEdit(b)}>Edit</button>
-                      )}
-                      {b.status !== 'Cancelled' && b.status !== 'Completed' && (
-                        <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: 'var(--danger)' }} onClick={() => deleteBooking(b.id)}>Cancel</button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
         </div>
       </div>
-    </div>
+        
+      {/* Settlement Modal */}
+      {settlingBooking && (
+        <div className="modal-overlay">
+          <div className="modal-content">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <CheckCircle2 color="var(--success)" /> Final Settlement
+              </h2>
+              <button className="btn-outline" style={{ padding: '0.5rem', borderRadius: '50%' }} onClick={() => setSettlingBooking(null)}>
+                <X size={20} />
+              </button>
+            </div>
+
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>Balance due from <strong>{settlingBooking.guest_name}</strong></p>
+              <div className="balance-due-large pulse-warning">
+                ₹{settlingBooking.balance_amount - settlementData.discount}
+              </div>
+            </div>
+
+            <div className="discount-highlight">
+              <h3><AlertTriangle size={20} /> Any discount!</h3>
+              <div className="form-group" style={{ margin: 0 }}>
+                <input 
+                  type="number" 
+                  className="form-input" 
+                  placeholder="Enter discount amount..."
+                  value={settlementData.discount}
+                  onChange={e => setSettlementData({ ...settlementData, discount: Number(e.target.value) })}
+                  style={{ textAlign: 'center', fontSize: '1.1rem', fontWeight: 'bold' }}
+                />
+              </div>
+            </div>
+
+            <div className="settlement-footer">
+              <label className="checkbox-group">
+                <input 
+                  type="checkbox" 
+                  checked={settlementData.allSettled} 
+                  onChange={e => setSettlementData({ ...settlementData, allSettled: e.target.checked })}
+                />
+                <span style={{ fontWeight: '600' }}>All settled up? (Confirm final payment)</span>
+              </label>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <button className="btn btn-outline" onClick={() => setSettlingBooking(null)}>Cancel</button>
+                <button 
+                  className="btn btn-primary" 
+                  disabled={!settlementData.allSettled || loading}
+                  onClick={confirmSettlement}
+                >
+                  {loading ? 'Processing...' : 'Complete Check-out'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
