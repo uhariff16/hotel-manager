@@ -288,6 +288,10 @@ export default function Bookings() {
   };
 
   const handleCheckIn = async (b) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (b.check_in_date > todayStr) {
+      return alert(`Cannot check-in yet. The scheduled check-in date is ${new Date(b.check_in_date).toLocaleDateString()}.`);
+    }
     if (!window.confirm(`Check-in guest: ${b.guest_name}?`)) return;
     try {
       await supabase.from('bookings').update({ status: 'Checked-in' }).eq('id', b.id);
@@ -388,6 +392,43 @@ export default function Bookings() {
     if (!window.confirm("Cancel this booking?")) return;
     await supabase.from('bookings').update({ status: 'Cancelled' }).eq('id', id);
     setBookings(bookings.map(b => b.id === id ? { ...b, status: 'Cancelled' } : b));
+  };
+
+  const handleRefund = async (b) => {
+    if (!window.confirm(`Refund advance payment of ₹${b.advance_paid} to ${b.guest_name}?`)) return;
+    
+    try {
+      setLoading(true);
+      // 1. Create Expense Record
+      const { error: expError } = await supabase.from('expenses').insert([{
+        date: new Date().toISOString().split('T')[0],
+        category: 'Refund',
+        amount: b.advance_paid,
+        vendor_name: `Guest: ${b.guest_name}`,
+        payment_mode: 'Cash',
+        notes: `Refund for Cancelled Booking Ref: ${b.reference_number}`,
+        tenant_id: session.user.id,
+        resort_id: activeResortId
+      }]);
+      
+      if (expError) throw expError;
+
+      // 2. Update Booking
+      const { error: bError } = await supabase.from('bookings').update({
+        advance_paid: 0,
+        balance_amount: b.total_amount
+      }).eq('id', b.id);
+      
+      if (bError) throw bError;
+
+      // 3. Update Local State
+      setBookings(bookings.map(item => item.id === b.id ? { ...item, advance_paid: 0, balance_amount: item.total_amount } : item));
+      alert("Refund recorded successfully as an expense.");
+    } catch (err) {
+      alert("Error recording refund: " + err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (loading) return <div>Loading...</div>;
@@ -587,6 +628,9 @@ export default function Bookings() {
                         <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: 'var(--text-muted)' }} onClick={() => loadBookingForEdit(b)}>Edit Details</button>
                         {(b.status === 'Pending' || b.status === 'Confirmed') && (
                           <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: 'var(--danger)' }} onClick={() => deleteBooking(b.id)}>Cancel</button>
+                        )}
+                        {b.status === 'Cancelled' && (b.advance_paid || 0) > 0 && (
+                          <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={() => handleRefund(b)}>Refund Advance</button>
                         )}
                       </td>
                     </tr>
