@@ -3,8 +3,11 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, CalendarCheck, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { differenceInDays, eachDayOfInterval, isWeekend } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export default function Bookings() {
+  const location = useLocation();
+  const navigate = useNavigate();
   const { session, activeResortId } = useSettingsStore();
   const [bookings, setBookings] = useState([]);
   const [cottages, setCottages] = useState([]);
@@ -62,6 +65,17 @@ export default function Bookings() {
       setBookingForm(prev => ({ ...prev, reference_number: generateReference() }));
     }
   }, [editingBookingId]);
+
+  useEffect(() => {
+    if (location.state?.prefill && !editingBookingId) {
+      setBookingForm(prev => ({
+        ...prev,
+        ...location.state.prefill
+      }));
+      // Prevent loop on re-renders while allowing normal operation
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, editingBookingId, navigate]);
 
   useEffect(() => {
     fetchData();
@@ -252,8 +266,27 @@ export default function Bookings() {
       delete payload.is_loading_edit;
 
       if (editingBookingId) {
+        const oldBooking = bookings.find(b => b.id === editingBookingId);
+        const oldAdvance = Number(oldBooking?.advance_paid || 0);
+        const newAdvance = Number(payload.advance_paid || 0);
+
         const { data, error } = await supabase.from('bookings').update(payload).eq('id', editingBookingId).select();
         if (error) throw error;
+        
+        if (newAdvance > oldAdvance) {
+          const diff = newAdvance - oldAdvance;
+          await supabase.from('incomes').insert([{
+            date: new Date().toISOString().split('T')[0],
+            source: `Advance Payment (Updated): ${payload.guest_name}`,
+            booking_id: editingBookingId,
+            amount: diff,
+            payment_mode: 'Cash',
+            notes: 'Auto-added from Edit Booking',
+            tenant_id: session.user.id,
+            resort_id: activeResortId
+          }]);
+        }
+
         setBookings(bookings.map(b => b.id === editingBookingId ? data[0] : b));
         alert('Booking Updated Successfully!');
       } else {
@@ -453,7 +486,19 @@ export default function Bookings() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Check-in</label>
-                <input type="date" required className="form-input" value={bookingForm.check_in_date} onChange={e => setBookingForm({...bookingForm, check_in_date: e.target.value})} />
+                <input type="date" required className="form-input" value={bookingForm.check_in_date} onChange={e => {
+                  const newInDate = e.target.value;
+                  if (!newInDate) {
+                    setBookingForm({...bookingForm, check_in_date: ''});
+                    return;
+                  }
+                  const inDate = new Date(newInDate);
+                  const outDate = new Date(inDate);
+                  outDate.setDate(outDate.getDate() + 1);
+                  const newOutDate = outDate.toISOString().split('T')[0];
+                  
+                  setBookingForm({...bookingForm, check_in_date: newInDate, check_out_date: newOutDate});
+                }} />
                 <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Standard Check-in: 1:00 PM</small>
               </div>
               <div className="form-group">

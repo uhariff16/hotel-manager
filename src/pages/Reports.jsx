@@ -7,7 +7,7 @@ import { useSettingsStore } from '../lib/store';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
 export default function Reports() {
-  const { activeResortId, resorts, session } = useSettingsStore();
+  const { activeResortId, resorts, session, profile } = useSettingsStore();
   const activeResort = resorts.find(r => r.id === activeResortId);
   
   const [data, setData] = useState({ incomes: [], expenses: [], bookings: [] });
@@ -121,8 +121,8 @@ export default function Reports() {
           </div>
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn btn-outline" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <TableIcon size={18}/> Export Excel
+          <button className="btn btn-outline" onClick={profile?.plan_type === 'free' ? () => alert('Please upgrade to Pro or Premium to use Excel Export') : handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: profile?.plan_type === 'free' ? 0.5 : 1 }}>
+            <TableIcon size={18}/> {profile?.plan_type === 'free' ? 'Excel (Pro+)' : 'Export Excel'}
           </button>
           <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Download size={18}/> Export PDF
@@ -189,57 +189,64 @@ export default function Reports() {
             </table>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
-            {/* Income Table */}
-            <div>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748' }}>
-                <Wallet size={20} color="#2f855a" /> Incomes
-              </h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Date</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Source</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.incomes.length === 0 ? <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1rem', color: '#a0aec0' }}>None</td></tr> : data.incomes.map(i => (
-                    <tr key={i.id}>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{i.date}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{i.source}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#2f855a', fontWeight: 'bold' }}>+₹{i.amount}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {profile?.plan_type === 'free' ? (
+            <div style={{ padding: '2rem', background: '#fffbeb', border: '1px dashed #d97706', borderRadius: '8px', textAlign: 'center' }}>
+              <h3 style={{ color: '#b45309', marginBottom: '0.5rem' }}>Advanced Analytics Locked</h3>
+              <p style={{ color: '#92400e', fontSize: '0.9rem' }}>Detailed Income and Expense tracking is available on the Pro and Premium plans.</p>
             </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+              {/* Income Table */}
+              <div>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748' }}>
+                  <Wallet size={20} color="#2f855a" /> Incomes
+                </h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Date</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Source</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.incomes.length === 0 ? <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1rem', color: '#a0aec0' }}>None</td></tr> : data.incomes.map(i => (
+                      <tr key={i.id}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{i.date}</td>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{i.source}</td>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#2f855a', fontWeight: 'bold' }}>+₹{i.amount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-            {/* Expense Table */}
-            <div>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748' }}>
-                <TrendingDown size={20} color="#c53030" /> Expenses
-              </h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Date</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Category</th>
-                    <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Amount</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.expenses.length === 0 ? <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1rem', color: '#a0aec0' }}>None</td></tr> : data.expenses.map(e => (
-                    <tr key={e.id}>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{e.date}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{e.category}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#c53030', fontWeight: 'bold' }}>-₹{e.amount}</td>
+              {/* Expense Table */}
+              <div>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748' }}>
+                  <TrendingDown size={20} color="#c53030" /> Expenses
+                </h3>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                  <thead>
+                    <tr style={{ background: '#f8fafc' }}>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Date</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Category</th>
+                      <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Amount</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {data.expenses.length === 0 ? <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1rem', color: '#a0aec0' }}>None</td></tr> : data.expenses.map(e => (
+                      <tr key={e.id}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{e.date}</td>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{e.category}</td>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#c53030', fontWeight: 'bold' }}>-₹{e.amount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-          </div>
+          )}
 
           <div style={{ marginTop: '5rem', borderTop: '1px solid #edf2f7', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#a0aec0' }}>
             <span>Generated By: {session?.user?.email}</span>

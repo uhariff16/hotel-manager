@@ -55,7 +55,7 @@ export default function Resorts() {
         alert("Tenant updated successfully!");
       } else {
         // Plan Gate Check
-        const resortLimit = profile?.plan_type === 'free' ? 1 : (profile?.plan_type === 'pro' ? 3 : 100);
+        const resortLimit = profile?.plan_type === 'free' ? 1 : (profile?.plan_type === 'pro' ? 5 : 100);
         if (resorts.length >= resortLimit) {
           alert(`Limit Reached: Your current ${profile.plan_type} plan allows only ${resortLimit} tenant(s). Please upgrade for more.`);
           return;
@@ -155,8 +155,35 @@ export default function Resorts() {
               </select>
             </div>
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Logo URL (Transparent PNG Recommended)</label>
-              <input type="text" className="form-input" placeholder="https://..." value={resortForm.logo_url} onChange={e => setResortForm({...resortForm, logo_url: e.target.value})} />
+              <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                Resort Logo (Max 2MB)
+                {profile?.plan_type !== 'premium' && (
+                  <span className="badge badge-warning" style={{ fontSize: '0.7rem' }}>Premium Only</span>
+                )}
+              </label>
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="form-input" 
+                disabled={profile?.plan_type !== 'premium'}
+                onChange={e => {
+                  const file = e.target.files[0];
+                  if (!file) return;
+                  if (file.size > 2 * 1024 * 1024) return alert("Logo must be under 2MB");
+                  
+                  const reader = new FileReader();
+                  reader.onload = (event) => {
+                    setResortForm({...resortForm, logo_url: event.target.result});
+                  };
+                  reader.readAsDataURL(file);
+                }} 
+              />
+              {resortForm.logo_url && (
+                <div style={{ marginTop: '0.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                  <img src={resortForm.logo_url} alt="Preview" style={{ height: '40px', objectFit: 'contain' }} />
+                  <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)' }} onClick={() => setResortForm({...resortForm, logo_url: ''})}>Clear</button>
+                </div>
+              )}
             </div>
             <div style={{ gridColumn: 'span 2' }}>
               <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px' }} disabled={loading}>

@@ -17,6 +17,7 @@
 
   --cottage-block: #9b2c2c; /* Dark Red */
   --room-block: #f56565;    /* Light Red */
+  --pending-block: #ed8936; /* Orange */
   --available: #48bb78;     /* Green */
   --maintenance: #ecc94b;   /* Yellow */
   
@@ -239,8 +240,8 @@ a {
 }
 
 .brand-logo {
-  width: 32px;
-  height: 32px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
 }
 
@@ -405,6 +406,26 @@ a {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseOfferBadge {
+  0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(221, 107, 32, 0.4); }
+  50% { transform: scale(1.02); box-shadow: 0 0 12px 2px rgba(221, 107, 32, 0.2); }
+  100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(221, 107, 32, 0); }
+}
+
+.animated-offer-badge {
+  animation: pulseOfferBadge 2s infinite cubic-bezier(0.4, 0, 0.2, 1);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(221, 107, 32, 0.1);
+  color: var(--warning);
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  border: 1px solid rgba(221, 107, 32, 0.3);
 }
 
 .page-content {

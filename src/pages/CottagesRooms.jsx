@@ -4,7 +4,7 @@ import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 
 export default function CottagesRooms() {
-  const { session, activeResortId } = useSettingsStore();
+  const { session, activeResortId, profile } = useSettingsStore();
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -90,6 +90,12 @@ export default function CottagesRooms() {
   const handleAddRoom = async (e) => {
     e.preventDefault();
     if (!newRoom.cottage_id) return alert('Select a Property first');
+    
+    // Free Plan Gate
+    if (profile?.plan_type === 'free' && rooms.length >= 5) {
+      return alert('Free Plan Limit Reached: You can only add up to 5 rooms total. Please upgrade your plan to add more.');
+    }
+
     try {
       const payload = { ...newRoom, tenant_id: session.user.id, resort_id: activeResortId };
       const { data, error } = await supabase.from('rooms').insert([payload]).select();
