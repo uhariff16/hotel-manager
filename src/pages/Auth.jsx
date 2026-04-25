@@ -10,6 +10,7 @@ export default function Auth() {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
+    confirmPassword: '',
     fullName: ''
   });
 
@@ -26,6 +27,9 @@ export default function Auth() {
         });
         if (error) throw error;
       } else {
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error("Passwords do not match");
+        }
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
@@ -156,6 +160,26 @@ export default function Auth() {
               />
             </div>
           </div>
+
+          {!isLogin && (
+            <div className="form-group">
+              <label className="form-label">Confirm Password</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                  <Lock size={18} />
+                </span>
+                <input 
+                  type="password" 
+                  required 
+                  className="form-input" 
+                  style={{ paddingLeft: '3rem' }}
+                  placeholder="••••••••"
+                  value={formData.confirmPassword}
+                  onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
+                />
+              </div>
+            </div>
+          )}
 
           <button 
             type="submit" 
