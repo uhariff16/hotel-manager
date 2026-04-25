@@ -600,9 +600,9 @@ export default function Bookings() {
         {/* Bookings List */}
         <div className="card">
           <h2 style={{ marginBottom: '1.5rem' }}>Recent Bookings</h2>
-          <div className="table-container">
+          <div className="table-container" style={{ maxHeight: '800px', overflowY: 'auto' }}>
             <table className="table">
-              <thead>
+              <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-color)', zIndex: 1 }}>
                 <tr>
                   <th>Guest</th>
                   <th>Dates</th>
