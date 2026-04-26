@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { addDays, format, differenceInDays, isWithinInterval, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
-import { ChevronLeft, ChevronRight, User, Phone, Calendar, Car, IdCard, Users, CheckCircle2, Clock, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, Phone, Calendar, Car, IdCard, Users, CheckCircle2, Clock, MapPin, Globe } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
 
@@ -298,6 +298,11 @@ export default function CalendarView() {
             {selectedBooking.id_proof_number && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <IdCard size={16} color="var(--text-muted)" /> <small>{selectedBooking.id_proof_type}:</small> <strong>{selectedBooking.id_proof_number}</strong>
+              </div>
+            )}
+            {selectedBooking.booking_source && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Globe size={16} color="var(--text-muted)" /> <small>Source:</small> <strong>{selectedBooking.booking_source}</strong>
               </div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
