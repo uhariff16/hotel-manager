@@ -21,7 +21,7 @@ export default function Bookings() {
     booking_type: 'Entire Property', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
-    reference_number: '', vehicle_number: ''
+    reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: ''
   });
   const [editingBookingId, setEditingBookingId] = useState(null);
   const [settlingBooking, setSettlingBooking] = useState(null);
@@ -49,6 +49,8 @@ export default function Bookings() {
       status: b.status,
       reference_number: b.reference_number || '',
       vehicle_number: b.vehicle_number || '',
+      id_proof_type: b.id_proof_type || 'Aadhar',
+      id_proof_number: b.id_proof_number || '',
       price_type: b.price_type || 'Calculated',
       is_loading_edit: true
     });
@@ -76,7 +78,15 @@ export default function Bookings() {
       // Prevent loop on re-renders while allowing normal operation
       navigate(location.pathname, { replace: true });
     }
-  }, [location.state, editingBookingId, navigate]);
+    if (location.state?.editBookingId && bookings.length > 0) {
+      const b = bookings.find(x => x.id === location.state.editBookingId);
+      if (b) {
+        loadBookingForEdit(b);
+        // Clear state so it doesn't re-trigger
+        navigate(location.pathname, { replace: true });
+      }
+    }
+  }, [location.state, editingBookingId, bookings, navigate]);
 
   useEffect(() => {
     fetchData();
@@ -151,16 +161,20 @@ export default function Bookings() {
   };
 
   const calculateBasePrice = () => {
-    if (bookingForm.is_loading_edit) {
-      setBookingForm(prev => ({ ...prev, is_loading_edit: false }));
-      return;
-    }
     const { check_in_date, check_out_date, booking_type, cottage_id, room_ids } = bookingForm;
     if (!check_in_date || !check_out_date || !cottage_id) return;
 
     const start = new Date(check_in_date);
     const end = new Date(check_out_date);
     if (end <= start) return;
+
+    const days = eachDayOfInterval({ start, end: new Date(end.getTime() - 24*60*60*1000) });
+    const nightCount = days.length;
+
+    if (bookingForm.is_loading_edit) {
+      setBookingForm(prev => ({ ...prev, night_count: nightCount, is_loading_edit: false }));
+      return;
+    }
 
     let itemPricingArray = [];
     if (booking_type === 'Entire Property') {
@@ -172,9 +186,6 @@ export default function Bookings() {
     }
     if (itemPricingArray.length === 0) return;
 
-    const days = eachDayOfInterval({ start, end: new Date(end.getTime() - 24*60*60*1000) });
-    const nightCount = days.length;
-    
     let base = 0;
     days.forEach(d => {
       let daily = 0;
@@ -197,6 +208,8 @@ export default function Bookings() {
   }, [bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, JSON.stringify(bookingForm.room_ids)]);
 
   useEffect(() => {
+    if (bookingForm.is_loading_edit) return; // Wait until initial load is done
+
     const total = Number(bookingForm.base_amount) + Number(bookingForm.addons_cost || 0);
     const balance = total - Number(bookingForm.advance_paid || 0);
     setBookingForm(prev => ({
@@ -315,7 +328,7 @@ export default function Bookings() {
         night_count: 0, base_amount: 0, extra_guest_charges: 0, addons_cost: 0, total_amount: 0, advance_paid: 0, balance_amount: 0, custom_booking_source: '', is_loading_edit: false,
         price_type: 'Calculated',
         reference_number: generateReference(),
-        vehicle_number: ''
+        vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '', number_of_guests: 1
       });
     } catch (e) {
       alert("Error saving booking: " + e.message);
@@ -359,6 +372,7 @@ export default function Bookings() {
       const { data, error } = await supabase.from('bookings')
         .update({ 
           check_out_date: newOutDate, 
+          base_amount: Number(b.base_amount) + extensionFee,
           total_amount: newTotal, 
           balance_amount: newBalance,
           night_count: newNights 
@@ -475,14 +489,17 @@ export default function Bookings() {
       <div className="grid-2 bookings-layout" style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '2rem' }}>
         {/* Booking Form */}
         <div className="card">
-          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><CalendarCheck size={24} /> New Booking</h2>
+          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CalendarCheck size={24} /> {editingBookingId ? `Editing: ${bookingForm.reference_number}` : 'New Booking'}
+          </h2>
           {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
           
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
+            <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1rem' }}>
               <div className="form-group"><label className="form-label">Guest Name</label><input type="text" required className="form-input" value={bookingForm.guest_name} onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} /></div>
               <div className="form-group"><label className="form-label">Phone</label><input type="text" required className="form-input" value={bookingForm.phone_number} onChange={e => setBookingForm({...bookingForm, phone_number: e.target.value})} /></div>
               <div className="form-group"><label className="form-label">Reference #</label><input type="text" required className="form-input" style={{ fontWeight: 'bold', color: 'var(--primary)' }} value={bookingForm.reference_number} onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Occupants</label><input type="number" required className="form-input" min="1" value={bookingForm.number_of_guests} onChange={e => setBookingForm({...bookingForm, number_of_guests: Number(e.target.value)})} /></div>
             </div>
             
             <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
@@ -512,6 +529,23 @@ export default function Bookings() {
                 <label className="form-label">Vehicle Number</label>
                 <input type="text" className="form-input" placeholder="e.g. KA-01-AB-1234" value={bookingForm.vehicle_number || ''} onChange={e => setBookingForm({...bookingForm, vehicle_number: e.target.value})} />
                 <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Optional</small>
+              </div>
+            </div>
+
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem' }}>
+              <div className="form-group">
+                <label className="form-label">ID Proof Type</label>
+                <select className="form-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => setBookingForm({...bookingForm, id_proof_type: e.target.value})}>
+                  <option value="Aadhar">Aadhar</option>
+                  <option value="Pan Card">Pan Card</option>
+                  <option value="Driving License">Driving License</option>
+                  <option value="Voter ID">Voter ID</option>
+                  <option value="Passport">Passport</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label className="form-label">ID Proof Number</label>
+                <input type="text" className="form-input" placeholder="Enter ID number" value={bookingForm.id_proof_number || ''} onChange={e => setBookingForm({...bookingForm, id_proof_number: e.target.value})} />
               </div>
             </div>
 
@@ -597,7 +631,7 @@ export default function Bookings() {
               {editingBookingId && (
                 <button type="button" className="btn btn-outline" style={{ fontSize: '1.1rem', padding: '1rem' }} onClick={() => {
                   setEditingBookingId(null);
-                  setBookingForm({ ...bookingForm, guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', night_count: 0, base_amount: 0, addons_cost: 0, advance_paid: 0, total_amount: 0, balance_amount: 0, is_loading_edit: false, vehicle_number: '' });
+                  setBookingForm({ ...bookingForm, guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', night_count: 0, base_amount: 0, addons_cost: 0, advance_paid: 0, total_amount: 0, balance_amount: 0, is_loading_edit: false, vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '', number_of_guests: 1 });
                 }}>Cancel Edit</button>
               )}
             </div>
@@ -632,13 +666,18 @@ export default function Bookings() {
                   return (
                     <tr key={b.id} style={{ 
                       opacity: b.status === 'Cancelled' ? 0.5 : 1,
-                      background: b.status === 'Pending' ? 'rgba(245, 158, 11, 0.05)' : 'inherit'
+                      background: b.id === editingBookingId ? 'rgba(59, 130, 246, 0.1)' : (b.status === 'Pending' ? 'rgba(245, 158, 11, 0.05)' : 'inherit'),
+                      borderLeft: b.id === editingBookingId ? '4px solid var(--primary)' : 'none',
+                      transition: 'all 0.2s ease'
                     }}>
                       <td>
                         <small style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{b.reference_number || 'No Ref'}</small><br/>
-                        <strong>{b.guest_name}</strong><br/>
+                        <strong>{b.guest_name}</strong>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({b.number_of_guests || 1} Pax)</span>
+                        <br/>
                         <small>{b.phone_number}</small>
                         {b.vehicle_number && <><br/><small style={{ color: 'var(--text-main)', fontWeight: 'bold' }}>🚗 {b.vehicle_number}</small></>}
+                        {b.id_proof_number && <><br/><small style={{ color: 'var(--primary)', fontSize: '0.75rem' }}>🪪 {b.id_proof_type}: {b.id_proof_number}</small></>}
                         <br/>
                         <small style={{ 
                           color: b.booking_source === 'Overridden Pending' ? 'var(--danger)' : 'var(--text-muted)',

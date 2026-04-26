@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { addDays, format, differenceInDays, isWithinInterval, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval } from 'date-fns';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, Phone, Calendar, Car, IdCard, Users, CheckCircle2, Clock, MapPin } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
 
@@ -15,6 +15,7 @@ export default function CalendarView() {
 
   const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
   const [dragSelection, setDragSelection] = useState(null);
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   const dates = eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) });
 
@@ -49,17 +50,14 @@ export default function CalendarView() {
       const bIn = startOfDay(new Date(b.check_in_date));
       const bOut = startOfDay(new Date(b.check_out_date));
       
-      // If date is within CheckIn <= date < CheckOut
-      // CheckOut day is technically free to check in, so we only block if date < CheckOut
       if (date >= bIn && date < bOut) {
         if (type === 'Property') {
-          // If this property corresponds
           if (b.cottage_id === itemId) {
             isBooked = true;
             bookingId = b.id;
             blockColor = b.status === 'Pending' ? 'var(--pending-block)' : (b.booking_type === 'Entire Property' ? 'var(--cottage-block)' : 'var(--room-block)');
-            label = `${b.guest_name}\nRef: ${b.reference_number || 'N/A'}\nSource: ${b.booking_source || 'Direct'}\nStatus: ${b.status}\nIn: ${new Date(b.check_in_date).toLocaleDateString()}\nOut: ${new Date(b.check_out_date).toLocaleDateString()}`;
-            break; // Highest precedence
+            label = `${b.guest_name}\nRef: ${b.reference_number || 'N/A'}\nStatus: ${b.status}`;
+            break;
           }
         } else if (type === 'Room') {
           const room = rooms.find(r => r.id === itemId);
@@ -67,15 +65,15 @@ export default function CalendarView() {
             if (b.booking_type === 'Entire Property') {
               isBooked = true;
               bookingId = b.id;
-              blockColor = b.status === 'Pending' ? 'var(--pending-block)' : 'var(--cottage-block)'; // Blocked transitively
-              label = `${b.guest_name}\nRef: ${b.reference_number || 'N/A'}\nSource: ${b.booking_source || 'Direct'}\nStatus: ${b.status}\nIn: ${new Date(b.check_in_date).toLocaleDateString()}\nOut: ${new Date(b.check_out_date).toLocaleDateString()}`;
+              blockColor = b.status === 'Pending' ? 'var(--pending-block)' : 'var(--cottage-block)';
+              label = `${b.guest_name}\nRef: ${b.reference_number || 'N/A'}\nStatus: ${b.status}`;
             } else {
               const bRooms = b.room_ids || (b.room_id ? [b.room_id] : []);
               if (bRooms.includes(itemId)) {
                 isBooked = true;
                 bookingId = b.id;
                 blockColor = b.status === 'Pending' ? 'var(--pending-block)' : 'var(--room-block)';
-                label = `${b.guest_name}\nRef: ${b.reference_number || 'N/A'}\nSource: ${b.booking_source || 'Direct'}\nStatus: ${b.status}\nIn: ${new Date(b.check_in_date).toLocaleDateString()}\nOut: ${new Date(b.check_out_date).toLocaleDateString()}`;
+                label = `${b.guest_name}\nRef: ${b.reference_number || 'N/A'}\nStatus: ${b.status}`;
               }
             }
           }
@@ -88,11 +86,12 @@ export default function CalendarView() {
 
   const handleMouseDown = (date, type, itemId, bookingId, cottageId) => {
     if (bookingId) {
-      navigate('/bookings');
+      const b = bookings.find(x => x.id === bookingId);
+      setSelectedBooking(b);
       return;
     }
+    setSelectedBooking(null);
     if (startOfDay(date) < startOfMonth(new Date())) {
-      // Cannot book dates before current month
       return;
     }
     setDragSelection({ startDate: date, endDate: date, type, cottageId, itemIds: [itemId], startItemId: itemId });
@@ -101,16 +100,14 @@ export default function CalendarView() {
   const handleMouseEnter = (date, type, itemId, bookingId, cottageId) => {
     if (!dragSelection) return;
     if (dragSelection.type !== type || dragSelection.cottageId !== cottageId) return;
-    if (bookingId) return; // Prevent dragging into booked blocks
-    if (startOfDay(date) < startOfMonth(new Date())) return; // Prevent dragging into dates before current month
+    if (bookingId) return;
+    if (startOfDay(date) < startOfMonth(new Date())) return;
     
     let newItemIds = [...dragSelection.itemIds];
-    
     if (type === 'Room') {
       const relevantRooms = rooms.filter(r => r.cottage_id === cottageId);
       const startIdx = relevantRooms.findIndex(r => r.id === dragSelection.startItemId);
       const currentIdx = relevantRooms.findIndex(r => r.id === itemId);
-      
       if (startIdx !== -1 && currentIdx !== -1) {
         const minIdx = Math.min(startIdx, currentIdx);
         const maxIdx = Math.max(startIdx, currentIdx);
@@ -119,22 +116,18 @@ export default function CalendarView() {
     } else {
       newItemIds = [dragSelection.startItemId];
     }
-
     setDragSelection(prev => ({ ...prev, endDate: date, itemIds: newItemIds }));
   };
 
   const handleMouseUpWrapper = () => {
     if (!dragSelection) return;
-    
     const datesArr = [dragSelection.startDate, dragSelection.endDate].sort((a,b) => a - b);
     const inDate = datesArr[0];
     const outDate = addDays(datesArr[1], 1);
-
     let prefill = {
        check_in_date: format(inDate, 'yyyy-MM-dd'),
        check_out_date: format(outDate, 'yyyy-MM-dd')
     };
-
     if (dragSelection.type === 'Property') {
       prefill.booking_type = 'Entire Property';
       prefill.cottage_id = dragSelection.cottageId;
@@ -142,14 +135,12 @@ export default function CalendarView() {
       prefill.booking_type = 'Room';
       prefill.cottage_id = dragSelection.cottageId;
       prefill.room_ids = dragSelection.itemIds;
-
       const propertyRooms = rooms.filter(r => r.cottage_id === dragSelection.cottageId);
       if (dragSelection.itemIds.length === propertyRooms.length && propertyRooms.length > 0) {
         prefill.booking_type = 'Entire Property';
         delete prefill.room_ids;
       }
     }
-    
     setDragSelection(null);
     navigate('/bookings', { state: { prefill } });
   };
@@ -177,7 +168,6 @@ export default function CalendarView() {
 
       <div style={{ overflowX: 'auto', flex: 1, position: 'relative' }} onMouseUp={handleMouseUpWrapper} onMouseLeave={() => setDragSelection(null)}>
         <div style={{ display: 'inline-block', minWidth: '100%', userSelect: 'none' }}>
-          {/* Header Row */}
           <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', background: 'var(--bg-color)', position: 'sticky', top: 0, zIndex: 10 }}>
             <div style={{ width: '200px', flexShrink: 0, padding: '1rem', fontWeight: 'bold', borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'inherit' }}>Unit</div>
             {dates.map((d, i) => (
@@ -187,10 +177,8 @@ export default function CalendarView() {
             ))}
           </div>
 
-          {/* Rows */}
           {cottages.map(c => (
             <React.Fragment key={c.id}>
-              {/* Cottage Row */}
               <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'rgba(0,0,0,0.02)' }}>
                 <div style={{ width: '200px', flexShrink: 0, padding: '0.75rem 1rem', fontWeight: '600', borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 5 }}>
                   {c.name}
@@ -205,9 +193,10 @@ export default function CalendarView() {
                   return (
                     <div 
                       key={i} 
-                      title={isPast ? 'Past Date' : (label || 'Available - Drag to empty range to book')} 
+                      title={isPast ? 'Past Date' : (label || 'Available')} 
                       onMouseDown={() => handleMouseDown(d, 'Property', c.id, bookingId, c.id)}
                       onMouseEnter={() => handleMouseEnter(d, 'Property', c.id, bookingId, c.id)}
+                      onDoubleClick={() => { if(bookingId) navigate('/bookings', { state: { editBookingId: bookingId } }); }}
                       style={{ 
                         width: '50px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '4px', cursor: isPast ? 'not-allowed' : (bookingId ? 'pointer' : 'crosshair')
                       }}
@@ -215,18 +204,16 @@ export default function CalendarView() {
                       <div style={{ 
                         width: '100%', height: '100%', borderRadius: '4px', 
                         background: isSelected ? 'var(--primary)' : blockColor,
-                        boxShadow: isSelected ? '0 0 8px var(--primary)' : 'none',
-                        transform: isSelected ? 'scale(1.05)' : 'none',
                         opacity: (isPast && !bookingId) ? 0.4 : 1,
                         filter: (isPast && !bookingId) ? 'grayscale(0.6)' : 'none',
-                        transition: 'all 0.1s ease'
+                        transition: 'all 0.1s ease',
+                        transform: isSelected ? 'scale(1.05)' : 'none'
                       }}></div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Its Rooms Rows */}
               {rooms.filter(r => r.cottage_id === c.id).map(r => (
                 <div key={r.id} style={{ display: 'flex', borderBottom: '1px solid var(--border)' }}>
                   <div style={{ width: '200px', flexShrink: 0, padding: '0.5rem 1rem 0.5rem 2.5rem', fontSize: '0.875rem', borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 5 }}>
@@ -242,9 +229,10 @@ export default function CalendarView() {
                     return (
                       <div 
                         key={i} 
-                        title={isPast ? 'Past Date' : (label || 'Available - Drag to empty range to book')} 
+                        title={isPast ? 'Past Date' : (label || 'Available')} 
                         onMouseDown={() => handleMouseDown(d, 'Room', r.id, bookingId, r.cottage_id)}
                         onMouseEnter={() => handleMouseEnter(d, 'Room', r.id, bookingId, r.cottage_id)}
+                        onDoubleClick={() => { if(bookingId) navigate('/bookings', { state: { editBookingId: bookingId } }); }}
                         style={{ 
                           width: '50px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '6px', cursor: isPast ? 'not-allowed' : (bookingId ? 'pointer' : 'crosshair')
                         }}
@@ -252,11 +240,10 @@ export default function CalendarView() {
                         <div style={{ 
                           width: '100%', height: '100%', borderRadius: '4px', 
                           background: isSelected ? 'var(--primary)' : blockColor,
-                          boxShadow: isSelected ? '0 0 8px var(--primary)' : 'none',
-                          transform: isSelected ? 'scale(1.05)' : 'none',
                           opacity: (isPast && !bookingId) ? 0.4 : 1,
                           filter: (isPast && !bookingId) ? 'grayscale(0.6)' : 'none',
-                          transition: 'all 0.1s ease'
+                          transition: 'all 0.1s ease',
+                          transform: isSelected ? 'scale(1.05)' : 'none'
                         }}></div>
                       </div>
                     );
@@ -267,6 +254,65 @@ export default function CalendarView() {
           ))}
         </div>
       </div>
+
+      {/* Booking Details Panel */}
+      {selectedBooking && (
+        <div style={{ padding: '1.5rem', borderTop: '2px solid var(--border)', background: 'var(--bg-secondary)', animation: 'slideUp 0.3s ease' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+            <div>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <User size={20} color="var(--primary)" /> {selectedBooking.guest_name}
+              </h3>
+              <small style={{ color: 'var(--text-muted)' }}>Ref: {selectedBooking.reference_number}</small>
+            </div>
+            <div className={`badge ${selectedBooking.status === 'Confirmed' ? 'badge-primary' : 'badge-warning'}`} style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}>
+              {selectedBooking.status}
+            </div>
+          </div>
+
+          <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '0.5rem', borderRadius: '8px' }}><Phone size={18} color="var(--primary)" /></div>
+              <div><small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.7rem' }}>Phone</small><strong>{selectedBooking.phone_number}</strong></div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.1)', padding: '0.5rem', borderRadius: '8px' }}><Calendar size={18} color="var(--success)" /></div>
+              <div><small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.7rem' }}>Stay Period</small><strong>{new Date(selectedBooking.check_in_date).toLocaleDateString()} - {new Date(selectedBooking.check_out_date).toLocaleDateString()}</strong></div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '0.5rem', borderRadius: '8px' }}><Users size={18} color="var(--warning)" /></div>
+              <div><small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.7rem' }}>Occupants</small><strong>{selectedBooking.number_of_guests || 1} Pax</strong></div>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: 'rgba(139, 92, 246, 0.1)', padding: '0.5rem', borderRadius: '8px' }}><MapPin size={18} color="var(--indigo)" /></div>
+              <div><small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.7rem' }}>Property</small><strong>{cottages.find(c => c.id === selectedBooking.cottage_id)?.name || 'N/A'}</strong></div>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '2rem', marginTop: '1rem', padding: '1rem', background: 'rgba(0,0,0,0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+            {selectedBooking.vehicle_number && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Car size={16} color="var(--text-muted)" /> <small>Vehicle:</small> <strong>{selectedBooking.vehicle_number}</strong>
+              </div>
+            )}
+            {selectedBooking.id_proof_number && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <IdCard size={16} color="var(--text-muted)" /> <small>{selectedBooking.id_proof_type}:</small> <strong>{selectedBooking.id_proof_number}</strong>
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+              <span style={{ fontSize: '0.875rem' }}>Total Amount: <strong style={{ color: 'var(--primary)' }}>₹{selectedBooking.total_amount}</strong></span>
+              <button 
+                className="btn btn-outline" 
+                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', marginLeft: '1rem' }}
+                onClick={() => navigate('/bookings', { state: { editBookingId: selectedBooking.id } })}
+              >
+                View Full Details
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
