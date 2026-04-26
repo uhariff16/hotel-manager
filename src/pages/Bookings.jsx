@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, CalendarCheck, CheckCircle2, AlertTriangle, X } from 'lucide-react';
-import { differenceInDays, eachDayOfInterval, isWeekend } from 'date-fns';
+import { differenceInDays, eachDayOfInterval, isWeekend, startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useLocation, useNavigate } from 'react-router-dom';
 
@@ -21,7 +21,7 @@ export default function Bookings() {
     booking_type: 'Entire Property', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
-    reference_number: ''
+    reference_number: '', vehicle_number: ''
   });
   const [editingBookingId, setEditingBookingId] = useState(null);
   const [settlingBooking, setSettlingBooking] = useState(null);
@@ -48,6 +48,7 @@ export default function Bookings() {
       booking_source: b.booking_source || 'Direct',
       status: b.status,
       reference_number: b.reference_number || '',
+      vehicle_number: b.vehicle_number || '',
       price_type: b.price_type || 'Calculated',
       is_loading_edit: true
     });
@@ -211,9 +212,9 @@ export default function Bookings() {
     if (bookingForm.booking_type === 'Room' && (!bookingForm.room_ids || bookingForm.room_ids.length === 0)) return alert('Select at least one Room');
     
     // Past date validation (Only for NEW bookings)
-    const today = new Date().toISOString().split('T')[0];
-    if (bookingForm.check_in_date < today && !editingBookingId) {
-      return alert('Cannot create a booking for a past date.');
+    const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
+    if (bookingForm.check_in_date < monthStart && !editingBookingId) {
+      return alert('Cannot create a booking for a date before the current month.');
     }
     
     const conflictResult = checkConflict(bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, bookingForm.room_ids, editingBookingId);
@@ -313,7 +314,8 @@ export default function Bookings() {
         ...bookingForm, guest_name: '', phone_number: '', check_in_date: '', check_out_date: '',
         night_count: 0, base_amount: 0, extra_guest_charges: 0, addons_cost: 0, total_amount: 0, advance_paid: 0, balance_amount: 0, custom_booking_source: '', is_loading_edit: false,
         price_type: 'Calculated',
-        reference_number: generateReference()
+        reference_number: generateReference(),
+        vehicle_number: ''
       });
     } catch (e) {
       alert("Error saving booking: " + e.message);
@@ -483,7 +485,7 @@ export default function Bookings() {
               <div className="form-group"><label className="form-label">Reference #</label><input type="text" required className="form-input" style={{ fontWeight: 'bold', color: 'var(--primary)' }} value={bookingForm.reference_number} onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} /></div>
             </div>
             
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Check-in</label>
                 <input type="date" required className="form-input" value={bookingForm.check_in_date} onChange={e => {
@@ -504,7 +506,12 @@ export default function Bookings() {
               <div className="form-group">
                 <label className="form-label">Check-out</label>
                 <input type="date" required className="form-input" value={bookingForm.check_out_date} onChange={e => setBookingForm({...bookingForm, check_out_date: e.target.value})} />
-                <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Check-out till: 11:00 AM (Same-day turnaround supported)</small>
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Check-out till: 11:00 AM</small>
+              </div>
+              <div className="form-group">
+                <label className="form-label">Vehicle Number</label>
+                <input type="text" className="form-input" placeholder="e.g. KA-01-AB-1234" value={bookingForm.vehicle_number || ''} onChange={e => setBookingForm({...bookingForm, vehicle_number: e.target.value})} />
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Optional</small>
               </div>
             </div>
 
@@ -590,7 +597,7 @@ export default function Bookings() {
               {editingBookingId && (
                 <button type="button" className="btn btn-outline" style={{ fontSize: '1.1rem', padding: '1rem' }} onClick={() => {
                   setEditingBookingId(null);
-                  setBookingForm({ ...bookingForm, guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', night_count: 0, base_amount: 0, addons_cost: 0, advance_paid: 0, total_amount: 0, balance_amount: 0, is_loading_edit: false });
+                  setBookingForm({ ...bookingForm, guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', night_count: 0, base_amount: 0, addons_cost: 0, advance_paid: 0, total_amount: 0, balance_amount: 0, is_loading_edit: false, vehicle_number: '' });
                 }}>Cancel Edit</button>
               )}
             </div>
@@ -630,7 +637,9 @@ export default function Bookings() {
                       <td>
                         <small style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{b.reference_number || 'No Ref'}</small><br/>
                         <strong>{b.guest_name}</strong><br/>
-                        <small>{b.phone_number}</small><br/>
+                        <small>{b.phone_number}</small>
+                        {b.vehicle_number && <><br/><small style={{ color: 'var(--text-main)', fontWeight: 'bold' }}>🚗 {b.vehicle_number}</small></>}
+                        <br/>
                         <small style={{ 
                           color: b.booking_source === 'Overridden Pending' ? 'var(--danger)' : 'var(--text-muted)',
                           fontWeight: b.booking_source === 'Overridden Pending' ? 700 : 400 

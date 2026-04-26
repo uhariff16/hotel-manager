@@ -91,8 +91,8 @@ export default function CalendarView() {
       navigate('/bookings');
       return;
     }
-    if (startOfDay(date) < startOfDay(new Date())) {
-      // Cannot book past dates
+    if (startOfDay(date) < startOfMonth(new Date())) {
+      // Cannot book dates before current month
       return;
     }
     setDragSelection({ startDate: date, endDate: date, type, cottageId, itemIds: [itemId], startItemId: itemId });
@@ -102,7 +102,7 @@ export default function CalendarView() {
     if (!dragSelection) return;
     if (dragSelection.type !== type || dragSelection.cottageId !== cottageId) return;
     if (bookingId) return; // Prevent dragging into booked blocks
-    if (startOfDay(date) < startOfDay(new Date())) return; // Prevent dragging into past dates
+    if (startOfDay(date) < startOfMonth(new Date())) return; // Prevent dragging into dates before current month
     
     let newItemIds = [...dragSelection.itemIds];
     
@@ -197,7 +197,7 @@ export default function CalendarView() {
                 </div>
                 {dates.map((d, i) => {
                   const { blockColor, label, bookingId } = getCellStatus(d, 'Property', c.id);
-                  const isPast = startOfDay(d) < startOfDay(new Date());
+                  const isPast = startOfDay(d) < startOfMonth(new Date());
                   const isSelected = dragSelection && dragSelection.type === 'Property' && dragSelection.itemIds.includes(c.id) 
                     && d >= Math.min(dragSelection.startDate, dragSelection.endDate) 
                     && d <= Math.max(dragSelection.startDate, dragSelection.endDate);
@@ -234,7 +234,7 @@ export default function CalendarView() {
                   </div>
                   {dates.map((d, i) => {
                     const { blockColor, label, bookingId } = getCellStatus(d, 'Room', r.id);
-                    const isPast = startOfDay(d) < startOfDay(new Date());
+                    const isPast = startOfDay(d) < startOfMonth(new Date());
                     const isSelected = dragSelection && dragSelection.type === 'Room' && dragSelection.itemIds.includes(r.id) 
                       && d >= Math.min(dragSelection.startDate, dragSelection.endDate) 
                       && d <= Math.max(dragSelection.startDate, dragSelection.endDate);
