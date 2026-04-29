@@ -98,7 +98,8 @@ export default function SuperAdmin() {
         .from('profiles')
         .update({ 
           plan_type: editingUser.plan_type,
-          subscription_status: editingUser.subscription_status
+          subscription_status: editingUser.subscription_status,
+          feature_investment_enabled: editingUser.feature_investment_enabled
         })
         .eq('id', editingUser.id);
         
@@ -363,6 +364,17 @@ export default function SuperAdmin() {
                   <option value="active">Active</option>
                   <option value="suspended">Suspended</option>
                 </select>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.8rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px' }}>
+                <input 
+                  type="checkbox" 
+                  id="feat_inv" 
+                  checked={editingUser.feature_investment_enabled} 
+                  onChange={e => setEditingUser({...editingUser, feature_investment_enabled: e.target.checked})} 
+                  style={{ width: '20px', height: '20px' }}
+                />
+                <label htmlFor="feat_inv" style={{ fontWeight: 600, cursor: 'pointer' }}>Enable Investment Analysis</label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>

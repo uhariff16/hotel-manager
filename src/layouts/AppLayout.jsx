@@ -1,6 +1,6 @@
 import React from 'react';
 import { Outlet, NavLink } from 'react-router-dom';
-import { LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users } from 'lucide-react';
+import { LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
@@ -41,6 +41,10 @@ export default function AppLayout() {
 
   // Settings is shared but will be simplified in its own page logic
   navLinks.push({ to: '/settings', label: 'Settings', icon: <SettingsIcon size={20} /> });
+
+  if (profile?.feature_investment_enabled) {
+    navLinks.push({ to: '/price-analysis', label: 'Price Analysis', icon: <TrendingUp size={20} /> });
+  }
 
   // Add Super Admin link if user has the role
   if (isSuper) {
