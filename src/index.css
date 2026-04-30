@@ -291,6 +291,12 @@ a {
 }
 
 .badge-success { background: rgba(56, 161, 105, 0.1); color: var(--success); }
+.badge-danger { background: rgba(229, 62, 62, 0.1); color: var(--danger); }
+.badge-warning { background: rgba(221, 107, 32, 0.1); color: var(--warning); }
+.badge-primary { background: rgba(47, 133, 90, 0.1); color: var(--primary); }
+.badge-indigo { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+.badge-info { background: rgba(49, 130, 206, 0.1); color: #3182ce; }
+
 /* Responsive Design */
 @media (max-width: 768px) {
   :root {

@@ -14,10 +14,21 @@ export default function Bookings() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState({
+    Confirmed: true,
+    Pending: true,
+    'Checked-in': true,
+    Completed: true,
+    Cancelled: true
+  });
+  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'descending' });
   const today = new Date().toISOString().split('T')[0];
 
+
+
   const [bookingForm, setBookingForm] = useState({
-    guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', number_of_guests: 1,
+    guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
     booking_type: 'Entire Property', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
@@ -34,7 +45,8 @@ export default function Bookings() {
       phone_number: b.phone_number,
       check_in_date: b.check_in_date.split('T')[0],
       check_out_date: b.check_out_date.split('T')[0],
-      number_of_guests: b.number_of_guests || 1,
+      adults_count: b.adults_count || b.number_of_guests || 1,
+      kids_count: b.kids_count || 0,
       booking_type: b.booking_type,
       cottage_id: b.cottage_id,
       room_ids: b.room_ids || (b.room_id ? [b.room_id] : []),
@@ -219,29 +231,36 @@ export default function Bookings() {
     }));
   }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid]);
 
+  const displayError = (msg) => {
+    setError(msg);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => setError(null), 5000);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!bookingForm.cottage_id) return alert('Select a Property');
-    if (bookingForm.booking_type === 'Room' && (!bookingForm.room_ids || bookingForm.room_ids.length === 0)) return alert('Select at least one Room');
+    if (!bookingForm.cottage_id) return displayError('Select a Property');
+    if (bookingForm.booking_type === 'Room' && (!bookingForm.room_ids || bookingForm.room_ids.length === 0)) return displayError('Select at least one Room');
     
     // Past date validation (Only for NEW bookings)
     const monthStart = format(startOfMonth(new Date()), 'yyyy-MM-dd');
     if (bookingForm.check_in_date < monthStart && !editingBookingId) {
-      return alert('Cannot create a booking for a date before the current month.');
+      return displayError('Cannot create a booking for a date before the current month.');
     }
     
     const conflictResult = checkConflict(bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, bookingForm.room_ids, editingBookingId);
     
-    if (conflictResult.type === 'hard') return alert(conflictResult.message);
+    if (conflictResult.type === 'hard') return displayError(conflictResult.message);
     
     if (conflictResult.type === 'soft') {
       if (bookingForm.status === 'Pending') {
-        return alert("Cannot place a PENDING booking here - there is already another PENDING reservation for these dates.");
+        return displayError("Cannot place a PENDING booking here - there is already another PENDING reservation for these dates.");
       }
       
       const confirmOverride = window.confirm(`There are overlapping PENDING bookings. If you proceed, they will be automatically CANCELLED. Continue?`);
       if (!confirmOverride) return;
 
+      setIsSubmitting(true);
       try {
         const { error: cancelError } = await supabase
           .from('bookings')
@@ -259,12 +278,16 @@ export default function Bookings() {
             : b
         ));
       } catch (err) {
-        return alert("Failed to cancel overlapping pending bookings: " + err.message);
+        setIsSubmitting(false);
+        return displayError("Failed to cancel overlapping pending bookings: " + err.message);
       }
+    } else {
+      setIsSubmitting(true);
     }
 
     try {
       const payload = { ...bookingForm, tenant_id: session.user.id, resort_id: activeResortId };
+      payload.number_of_guests = (bookingForm.adults_count || 1) + (bookingForm.kids_count || 0);
       
       if (payload.booking_type === 'Entire Property') {
         payload.room_ids = [];
@@ -328,10 +351,12 @@ export default function Bookings() {
         night_count: 0, base_amount: 0, extra_guest_charges: 0, addons_cost: 0, total_amount: 0, advance_paid: 0, balance_amount: 0, custom_booking_source: '', is_loading_edit: false,
         price_type: 'Calculated',
         reference_number: generateReference(),
-        vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '', number_of_guests: 1
+        vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '', adults_count: 1, kids_count: 0
       });
     } catch (e) {
-      alert("Error saving booking: " + e.message);
+      displayError("Error saving booking: " + e.message);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -480,9 +505,36 @@ export default function Bookings() {
     }
   };
 
+  const sortedAndFilteredBookings = React.useMemo(() => {
+    let sortableItems = [...bookings.filter(b => statusFilter[b.status])];
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        let valA = a[sortConfig.key];
+        let valB = b[sortConfig.key];
+        
+        if (typeof valA === 'string' && typeof valB === 'string') {
+          valA = valA.toLowerCase(); valB = valB.toLowerCase();
+        }
+        
+        if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
+        if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [bookings, statusFilter, sortConfig]);
+
   if (loading) return <div>Loading...</div>;
 
   const relevantRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id);
+
+  const requestSort = (key) => {
+    let direction = 'ascending';
+    if (sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
 
   return (
     <>
@@ -499,7 +551,13 @@ export default function Bookings() {
               <div className="form-group"><label className="form-label">Guest Name</label><input type="text" required className="form-input" value={bookingForm.guest_name} onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} /></div>
               <div className="form-group"><label className="form-label">Phone</label><input type="text" required className="form-input" value={bookingForm.phone_number} onChange={e => setBookingForm({...bookingForm, phone_number: e.target.value})} /></div>
               <div className="form-group"><label className="form-label">Reference #</label><input type="text" required className="form-input" style={{ fontWeight: 'bold', color: 'var(--primary)' }} value={bookingForm.reference_number} onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} /></div>
-              <div className="form-group"><label className="form-label">Occupants</label><input type="number" required className="form-input" min="1" value={bookingForm.number_of_guests} onChange={e => setBookingForm({...bookingForm, number_of_guests: Number(e.target.value)})} /></div>
+              <div className="form-group">
+                <label className="form-label">Occupants (Adults / Kids)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <input type="number" min="1" placeholder="Adults" className="form-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: Number(e.target.value) || 1})} title="Adults" />
+                  <input type="number" min="0" placeholder="Kids" className="form-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: Number(e.target.value) || 0})} title="Kids" />
+                </div>
+              </div>
             </div>
             
             <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
@@ -625,8 +683,8 @@ export default function Bookings() {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1, fontSize: '1.1rem', padding: '1rem' }}>
-                <CheckCircle2 /> {editingBookingId ? 'Update Booking' : 'Confirm Booking'}
+              <button type="submit" className="btn btn-primary" disabled={isSubmitting} style={{ flex: 1, fontSize: '1.1rem', padding: '1rem' }}>
+                <CheckCircle2 /> {isSubmitting ? 'Processing...' : (editingBookingId ? 'Update Booking' : 'Confirm Booking')}
               </button>
               {editingBookingId && (
                 <button type="button" className="btn btn-outline" style={{ fontSize: '1.1rem', padding: '1rem' }} onClick={() => {
@@ -640,21 +698,54 @@ export default function Bookings() {
 
         {/* Bookings List */}
         <div className="card">
-          <h2 style={{ marginBottom: '1.5rem' }}>Recent Bookings</h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <h2 style={{ margin: 0 }}>Recent Bookings</h2>
+            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', background: 'var(--bg-color)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: '0.85rem', alignItems: 'center' }}>
+              <span style={{ fontWeight: '600', color: 'var(--text-muted)', marginRight: '0.2rem' }}>Filter:</span>
+              
+              <button 
+                type="button" 
+                style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0, textDecoration: 'underline' }}
+                onClick={() => setStatusFilter({ Confirmed: true, Pending: true, 'Checked-in': true, Completed: true, Cancelled: true })}
+              >All</button>
+              <span style={{ color: 'var(--border)' }}>|</span>
+              <button 
+                type="button" 
+                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: 0, textDecoration: 'underline' }}
+                onClick={() => setStatusFilter({ Confirmed: false, Pending: false, 'Checked-in': false, Completed: false, Cancelled: false })}
+              >None</button>
+
+              <div style={{ width: '1px', height: '1rem', background: 'var(--border)', margin: '0 0.5rem' }}></div>
+
+              {Object.keys(statusFilter).map(status => (
+                <label key={status} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
+                  <input 
+                    type="checkbox" 
+                    checked={statusFilter[status]} 
+                    onChange={e => setStatusFilter({ ...statusFilter, [status]: e.target.checked })} 
+                  />
+                  {status}
+                </label>
+              ))}
+            </div>
+          </div>
+          
           <div className="table-container" style={{ maxHeight: '800px', overflowY: 'auto' }}>
             <table className="table">
               <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-color)', zIndex: 1 }}>
                 <tr>
-                  <th>Guest</th>
-                  <th>Dates</th>
-                  <th>Unit</th>
-                  <th>Status</th>
-                  <th>Balance</th>
+                  <th onClick={() => requestSort('guest_name')} style={{ cursor: 'pointer', userSelect: 'none' }}>Guest {sortConfig.key === 'guest_name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</th>
+                  <th onClick={() => requestSort('check_in_date')} style={{ cursor: 'pointer', userSelect: 'none' }}>Dates {sortConfig.key === 'check_in_date' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</th>
+                  <th onClick={() => requestSort('booking_type')} style={{ cursor: 'pointer', userSelect: 'none' }}>Unit {sortConfig.key === 'booking_type' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</th>
+                  <th onClick={() => requestSort('status')} style={{ cursor: 'pointer', userSelect: 'none' }}>Status {sortConfig.key === 'status' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</th>
+                  <th onClick={() => requestSort('balance_amount')} style={{ cursor: 'pointer', userSelect: 'none' }}>Balance {sortConfig.key === 'balance_amount' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</th>
                   <th>Act</th>
                 </tr>
               </thead>
               <tbody>
-                {bookings.map(b => {
+                {sortedAndFilteredBookings.length === 0 ? (
+                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found for the selected filters.</td></tr>
+                ) : sortedAndFilteredBookings.map(b => {
                   const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
                   let rname = '';
                   if (b.booking_type === 'Entire Property') { rname = 'Entire Property'; }
@@ -673,7 +764,9 @@ export default function Bookings() {
                       <td>
                         <small style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{b.reference_number || 'No Ref'}</small><br/>
                         <strong>{b.guest_name}</strong>
-                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>({b.number_of_guests || 1} Pax)</span>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginLeft: '0.5rem' }}>
+                          ({b.adults_count || b.number_of_guests || 1} Adult{(b.adults_count || b.number_of_guests || 1) > 1 ? 's' : ''}{b.kids_count ? `, ${b.kids_count} Kid${b.kids_count > 1 ? 's' : ''}` : ''})
+                        </span>
                         <br/>
                         <small>{b.phone_number}</small>
                         {b.vehicle_number && <><br/><small style={{ color: 'var(--text-main)', fontWeight: 'bold' }}>🚗 {b.vehicle_number}</small></>}
@@ -694,11 +787,8 @@ export default function Bookings() {
                           b.status === 'Pending' ? 'badge-warning' : 
                           b.status === 'Checked-in' ? 'badge-indigo' :
                           b.status === 'Completed' ? 'badge-success' :
-                          'badge-primary'
-                        }`} style={{
-                          background: b.status === 'Pending' ? '#f59e0b' : b.status === 'Checked-in' ? '#6366f1' : '',
-                          color: (b.status === 'Pending' || b.status === 'Checked-in') ? 'white' : ''
-                        }}>
+                          'badge-info'
+                        }`}>
                           {b.status}
                         </span>
                       </td>
