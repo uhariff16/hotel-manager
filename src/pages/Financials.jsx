@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { Plus, Trash2, ArrowUpRight, ArrowDownRight, Edit2 } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 
 export default function Financials() {
@@ -9,8 +9,10 @@ export default function Financials() {
   const [expenses, setExpenses] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [newIncome, setNewIncome] = useState({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '' });
+  const [newIncome, setNewIncome] = useState({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '' });
   const [newExpense, setNewExpense] = useState({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '' });
+  const [editingExpenseId, setEditingExpenseId] = useState(null);
+  const [editingIncomeId, setEditingIncomeId] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -35,12 +37,56 @@ export default function Financials() {
     try {
       const payload = { ...newIncome, tenant_id: session.user.id, resort_id: activeResortId };
       if (payload.source === 'Other') payload.source = payload.custom_source || 'Other';
+      
+      let refNum = payload.reference_number?.trim();
       delete payload.custom_source;
-      const { data, error } = await supabase.from('incomes').insert([payload]).select();
-      if (error) throw error;
-      setIncomes([data[0], ...incomes]);
-      setNewIncome({ ...newIncome, amount: 0, notes: '', custom_source: '' });
+      delete payload.reference_number;
+      
+      if (refNum) {
+        const { data: bData } = await supabase.from('bookings').select('id, reference_number').eq('reference_number', refNum).eq('resort_id', activeResortId).single();
+        if (bData) {
+          payload.booking_id = bData.id;
+        } else {
+          payload.notes = `Ref: ${refNum}` + (payload.notes ? ` - ${payload.notes}` : '');
+          payload.booking_id = null;
+        }
+      } else {
+        payload.booking_id = null;
+      }
+
+      if (editingIncomeId) {
+        const { data, error } = await supabase.from('incomes').update(payload).eq('id', editingIncomeId).select('*, bookings(reference_number)');
+        if (error) throw error;
+        setIncomes(incomes.map(inc => inc.id === editingIncomeId ? data[0] : inc));
+        setEditingIncomeId(null);
+      } else {
+        const { data, error } = await supabase.from('incomes').insert([payload]).select('*, bookings(reference_number)');
+        if (error) throw error;
+        setIncomes([data[0], ...incomes]);
+      }
+
+      setNewIncome({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', custom_source: '' });
     } catch(err) { alert(err.message); }
+  };
+
+  const loadIncomeForEdit = (inc) => {
+    setEditingIncomeId(inc.id);
+    let refNum = '';
+    if (inc.booking_id && inc.bookings?.reference_number) {
+        refNum = inc.bookings.reference_number;
+    } else if (inc.notes?.startsWith('Ref: ')) {
+        refNum = inc.notes.split(' ')[1];
+    }
+
+    setNewIncome({
+      date: inc.date,
+      source: inc.source,
+      amount: inc.amount,
+      payment_mode: inc.payment_mode || 'UPI',
+      notes: inc.notes || '',
+      reference_number: refNum,
+      custom_source: ''
+    });
   };
 
   const handleExpenseSubmit = async (e) => {
@@ -49,11 +95,33 @@ export default function Financials() {
       const payload = { ...newExpense, tenant_id: session.user.id, resort_id: activeResortId };
       if (payload.category === 'Other') payload.category = payload.custom_category || 'Other';
       delete payload.custom_category;
-      const { data, error } = await supabase.from('expenses').insert([payload]).select();
-      if (error) throw error;
-      setExpenses([data[0], ...expenses]);
-      setNewExpense({ ...newExpense, amount: 0, vendor_name: '', notes: '', custom_category: '' });
+      
+      if (editingExpenseId) {
+        const { data, error } = await supabase.from('expenses').update(payload).eq('id', editingExpenseId).select();
+        if (error) throw error;
+        setExpenses(expenses.map(exp => exp.id === editingExpenseId ? data[0] : exp));
+        setEditingExpenseId(null);
+      } else {
+        const { data, error } = await supabase.from('expenses').insert([payload]).select();
+        if (error) throw error;
+        setExpenses([data[0], ...expenses]);
+      }
+      
+      setNewExpense({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', custom_category: '' });
     } catch(err) { alert(err.message); }
+  };
+
+  const loadExpenseForEdit = (exp) => {
+    setEditingExpenseId(exp.id);
+    setNewExpense({
+      date: exp.date,
+      category: exp.category,
+      amount: exp.amount,
+      vendor_name: exp.vendor_name || '',
+      payment_mode: exp.payment_mode || 'Cash',
+      notes: exp.notes || '',
+      custom_category: ''
+    });
   };
 
   const deleteRecord = async (table, id) => {
@@ -107,15 +175,31 @@ export default function Financials() {
                 <option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option>
               </select>
             </div>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">Booking Reference (Optional)</label>
+              <input type="text" className="form-input" placeholder="e.g. BK-260425-9469" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} />
+            </div>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>Add Income</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+            {editingIncomeId ? 'Update Income' : 'Add Income'}
+          </button>
+          {editingIncomeId && (
+            <button type="button" className="btn btn-outline" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => {
+              setEditingIncomeId(null);
+              setNewIncome({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '' });
+            }}>
+              Cancel Edit
+            </button>
+          )}
         </form>
 
         <div className="table-container">
           <table className="table">
             <thead><tr><th>Date</th><th>Details</th><th>Amount</th><th>Act</th></tr></thead>
             <tbody>
-              {incomes.map(i => (
+              {incomes.map(i => {
+                const isAutoGenerated = i.booking_id && (i.notes?.includes('Auto-added') || i.notes?.includes('Settled') || i.notes?.includes('Refund'));
+                return (
                 <tr key={i.id}>
                   <td>{i.date}</td>
                   <td>
@@ -128,9 +212,18 @@ export default function Financials() {
                     <br/><small>{i.payment_mode}</small>
                   </td>
                   <td style={{ color: 'var(--success)', fontWeight: 'bold' }}>+₹{i.amount}</td>
-                  <td><button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem' }} onClick={() => deleteRecord('incomes', i.id)}><Trash2 size={16}/></button></td>
+                  <td>
+                    {isAutoGenerated ? (
+                      <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }} title="Manage from Bookings page">Auto-generated</span>
+                    ) : (
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--primary)' }} onClick={() => loadIncomeForEdit(i)}><Edit2 size={16}/></button>
+                        <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem' }} onClick={() => deleteRecord('incomes', i.id)}><Trash2 size={16}/></button>
+                      </div>
+                    )}
+                  </td>
                 </tr>
-              ))}
+              )})}
             </tbody>
           </table>
         </div>
@@ -162,7 +255,17 @@ export default function Financials() {
               </select>
             </div>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', background: 'var(--danger)', borderColor: 'var(--danger)' }}>Add Expense</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem', background: 'var(--danger)', borderColor: 'var(--danger)' }}>
+            {editingExpenseId ? 'Update Expense' : 'Add Expense'}
+          </button>
+          {editingExpenseId && (
+            <button type="button" className="btn btn-outline" style={{ width: '100%', marginTop: '0.5rem' }} onClick={() => {
+              setEditingExpenseId(null);
+              setNewExpense({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '' });
+            }}>
+              Cancel Edit
+            </button>
+          )}
         </form>
 
         <div className="table-container">
@@ -174,7 +277,10 @@ export default function Financials() {
                   <td>{e.date}</td>
                   <td><strong>{e.category}</strong><br/><small>{e.vendor_name}</small></td>
                   <td style={{ color: 'var(--danger)', fontWeight: 'bold' }}>-₹{e.amount}</td>
-                  <td><button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem' }} onClick={() => deleteRecord('expenses', e.id)}><Trash2 size={16}/></button></td>
+                  <td style={{ display: 'flex', gap: '0.5rem' }}>
+                    <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--primary)' }} onClick={() => loadExpenseForEdit(e)}><Edit2 size={16}/></button>
+                    <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem' }} onClick={() => deleteRecord('expenses', e.id)}><Trash2 size={16}/></button>
+                  </td>
                 </tr>
               ))}
             </tbody>

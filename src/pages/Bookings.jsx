@@ -32,7 +32,8 @@ export default function Bookings() {
     booking_type: 'Entire Property', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
-    reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: ''
+    reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '',
+    addon_selections: [], addon_others: ''
   });
   const [editingBookingId, setEditingBookingId] = useState(null);
   const [settlingBooking, setSettlingBooking] = useState(null);
@@ -40,6 +41,17 @@ export default function Bookings() {
 
   const loadBookingForEdit = (b) => {
     setEditingBookingId(b.id);
+    let selections = [];
+    let othersText = [];
+    if (b.addon_details) {
+      const parts = b.addon_details.split(',').map(s => s.trim());
+      parts.forEach(p => {
+        if (['Food', 'Fire camp', 'BBQ'].includes(p)) selections.push(p);
+        else if (p) othersText.push(p);
+      });
+    }
+    if (othersText.length > 0) selections.push('Others');
+
     setBookingForm({
       guest_name: b.guest_name,
       phone_number: b.phone_number,
@@ -64,6 +76,8 @@ export default function Bookings() {
       id_proof_type: b.id_proof_type || 'Aadhar',
       id_proof_number: b.id_proof_number || '',
       price_type: b.price_type || 'Calculated',
+      addon_selections: selections,
+      addon_others: othersText.join(', '),
       is_loading_edit: true
     });
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -288,6 +302,14 @@ export default function Bookings() {
     try {
       const payload = { ...bookingForm, tenant_id: session.user.id, resort_id: activeResortId };
       payload.number_of_guests = (bookingForm.adults_count || 1) + (bookingForm.kids_count || 0);
+
+      let addonDetailsStr = (payload.addon_selections || []).filter(a => a !== 'Others').join(', ');
+      if (payload.addon_selections?.includes('Others') && payload.addon_others?.trim()) {
+        addonDetailsStr += addonDetailsStr ? `, ${payload.addon_others.trim()}` : payload.addon_others.trim();
+      }
+      payload.addon_details = addonDetailsStr;
+      delete payload.addon_selections;
+      delete payload.addon_others;
       
       if (payload.booking_type === 'Entire Property') {
         payload.room_ids = [];
@@ -351,7 +373,8 @@ export default function Bookings() {
         night_count: 0, base_amount: 0, extra_guest_charges: 0, addons_cost: 0, total_amount: 0, advance_paid: 0, balance_amount: 0, custom_booking_source: '', is_loading_edit: false,
         price_type: 'Calculated',
         reference_number: generateReference(),
-        vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '', adults_count: 1, kids_count: 0
+        vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '', adults_count: 1, kids_count: 0,
+        addon_selections: [], addon_others: ''
       });
     } catch (e) {
       displayError("Error saving booking: " + e.message);
@@ -664,7 +687,35 @@ export default function Bookings() {
                 </div>
               </div>
               <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
-                <div className="form-group"><label className="form-label">Add-ons (Food)</label><input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: Number(e.target.value)})} /></div>
+                <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                  <label className="form-label">Add-ons Selection</label>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {['Food', 'Fire camp', 'BBQ'].map(addon => (
+                      <label key={addon} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                        <input type="checkbox" checked={bookingForm.addon_selections?.includes(addon)} onChange={e => {
+                          const newSels = e.target.checked 
+                            ? [...(bookingForm.addon_selections || []), addon] 
+                            : (bookingForm.addon_selections || []).filter(a => a !== addon);
+                          setBookingForm({...bookingForm, addon_selections: newSels});
+                        }} />
+                        {addon}
+                      </label>
+                    ))}
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <input type="checkbox" checked={bookingForm.addon_selections?.includes('Others')} onChange={e => {
+                        const newSels = e.target.checked 
+                          ? [...(bookingForm.addon_selections || []), 'Others'] 
+                          : (bookingForm.addon_selections || []).filter(a => a !== 'Others');
+                        setBookingForm({...bookingForm, addon_selections: newSels});
+                      }} />
+                      Others
+                    </label>
+                    {bookingForm.addon_selections?.includes('Others') && (
+                      <input type="text" className="form-input" style={{ width: '200px', padding: '0.3rem' }} placeholder="Specify others..." value={bookingForm.addon_others || ''} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
+                    )}
+                  </div>
+                </div>
+                <div className="form-group"><label className="form-label">Add-ons Cost (₹)</label><input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: Number(e.target.value)})} /></div>
                 <div className="form-group"><label className="form-label">Advance Paid</label><input type="number" className="form-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: Number(e.target.value)})} /></div>
                 <div className="form-group">
                   <label className="form-label">Referred By</label>
@@ -778,6 +829,11 @@ export default function Bookings() {
                         }}>
                           Source: {b.booking_source}
                         </small>
+                        {b.addon_details && (
+                          <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-main)', background: 'rgba(0,0,0,0.03)', padding: '0.2rem 0.4rem', borderRadius: '4px', display: 'inline-block' }}>
+                            <span style={{ fontWeight: '600' }}>Add-ons:</span> {b.addon_details}
+                          </div>
+                        )}
                       </td>
                       <td>{new Date(b.check_in_date).toLocaleDateString()} <br/>{new Date(b.check_out_date).toLocaleDateString()}</td>
                       <td>{cname} <br/><small className="badge badge-success">{rname}</small></td>
