@@ -28,7 +28,7 @@ export default function Reports() {
     try {
       setLoading(true);
       const [inc, exp, bks, cts, rms] = await Promise.all([
-        supabase.from('incomes').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
+        supabase.from('incomes').select('*, bookings(reference_number)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
         supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
         supabase.from('bookings').select('*').eq('resort_id', activeResortId).gte('check_in_date', range.start).lte('check_in_date', range.end),
         supabase.from('cottages').select('*').eq('resort_id', activeResortId),
@@ -147,8 +147,8 @@ export default function Reports() {
 
     // 3. Financials Sheet (Combined Incomes & Expenses)
     const financialRows = [
-      ...data.incomes.map(i => ({ Type: 'Income', Date: i.date, Details: i.source, Mode: i.payment_mode, Amount: i.amount })),
-      ...data.expenses.map(e => ({ Type: 'Expense', Date: e.date, Details: e.category, Mode: e.payment_mode, Amount: -e.amount }))
+      ...data.incomes.map(i => ({ Type: 'Income', Date: i.date, "Ref #": i.bookings?.reference_number || 'N/A', Details: i.source, Mode: i.payment_mode, Amount: i.amount })),
+      ...data.expenses.map(e => ({ Type: 'Expense', Date: e.date, "Ref #": 'N/A', Details: e.category, Mode: e.payment_mode, Amount: -e.amount }))
     ].sort((a,b) => new Date(a.Date) - new Date(b.Date));
     
     const financialSheet = XLSX.utils.json_to_sheet(financialRows);
@@ -191,24 +191,29 @@ export default function Reports() {
             <p style={{ color: '#a0aec0', fontSize: '0.9rem' }}>Period: {range.start} to {range.end}</p>
           </div>
 
-          <div className="grid-4" style={{ marginBottom: '3rem' }}>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center', background: '#fff' }}>
-              <div style={{ color: '#4a5568', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Total Revenue</div>
-              <h2 style={{ color: '#2f855a', margin: 0, fontSize: '1.75rem' }}>₹{totalRevenue.toLocaleString()}</h2>
+          <div className="grid-4" style={{ marginBottom: '3rem', gap: '1.5rem' }}>
+            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '16px', textAlign: 'center', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}><Wallet color="#2f855a" size={24}/></div>
+              <div style={{ color: '#718096', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Total Revenue</div>
+              <h2 style={{ color: '#2d3748', margin: 0, fontSize: '1.75rem', fontWeight: '800' }}>₹{totalRevenue.toLocaleString()}</h2>
             </div>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center', background: '#fff' }}>
-              <div style={{ color: '#4a5568', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Total Expenses</div>
-              <h2 style={{ color: '#c53030', margin: 0, fontSize: '1.75rem' }}>₹{totalExpenses.toLocaleString()}</h2>
+            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '16px', textAlign: 'center', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}><TrendingDown color="#e53e3e" size={24}/></div>
+              <div style={{ color: '#718096', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Total Expenses</div>
+              <h2 style={{ color: '#2d3748', margin: 0, fontSize: '1.75rem', fontWeight: '800' }}>₹{totalExpenses.toLocaleString()}</h2>
             </div>
-            <div style={{ padding: '1.5rem', background: '#f7fafc', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
-              <div style={{ color: '#4a5568', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Net Profit</div>
-              <h2 style={{ color: '#3182ce', margin: 0, fontSize: '1.75rem' }}>₹{netProfit.toLocaleString()}</h2>
+            <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #ebf8ff 0%, #fff 100%)', border: '1px solid #bee3f8', borderRadius: '16px', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}><CreditCard color="#3182ce" size={24}/></div>
+              <div style={{ color: '#718096', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Net Profit</div>
+              <h2 style={{ color: netProfit >= 0 ? '#2b6cb0' : '#c53030', margin: 0, fontSize: '1.75rem', fontWeight: '800' }}>₹{netProfit.toLocaleString()}</h2>
             </div>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center', background: '#fff' }}>
-              <div style={{ color: '#4a5568', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Units Booked</div>
-              <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.25rem' }}>
-                <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2d3748' }}>{entirePropertyCount} <span style={{fontSize: '0.8rem', fontWeight: 'normal', color: '#718096'}}>Properties</span></div>
-                <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2d3748' }}>{roomsCount} <span style={{fontSize: '0.8rem', fontWeight: 'normal', color: '#718096'}}>Rooms</span></div>
+            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '16px', textAlign: 'center', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}><CalendarCheck color="#805ad5" size={24}/></div>
+              <div style={{ color: '#718096', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Units Occupied</div>
+              <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
+                <div><span style={{ fontSize: '1.25rem', fontWeight: '800' }}>{entirePropertyCount}</span> <span style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 'bold' }}>PROP</span></div>
+                <div style={{ width: '1px', height: '20px', background: '#e2e8f0' }}></div>
+                <div><span style={{ fontSize: '1.25rem', fontWeight: '800' }}>{roomsCount}</span> <span style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 'bold' }}>ROOMS</span></div>
               </div>
             </div>
           </div>
@@ -292,14 +297,16 @@ export default function Reports() {
                     <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#f8fafc' }}>
                       <tr style={{ background: '#f8fafc' }}>
                         <th onClick={() => requestSort('income', 'date')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Date {incomeSort.key === 'date' && (incomeSort.direction === 'ascending' ? '▲' : '▼')}</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Ref #</th>
                         <th onClick={() => requestSort('income', 'source')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Source {incomeSort.key === 'source' && (incomeSort.direction === 'ascending' ? '▲' : '▼')}</th>
                         <th onClick={() => requestSort('income', 'amount')} style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Amount {incomeSort.key === 'amount' && (incomeSort.direction === 'ascending' ? '▲' : '▼')}</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedIncomes.length === 0 ? <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1rem', color: '#a0aec0' }}>None</td></tr> : sortedIncomes.map(i => (
+                      {sortedIncomes.length === 0 ? <tr><td colSpan="4" style={{ textAlign: 'center', padding: '1rem', color: '#a0aec0' }}>None</td></tr> : sortedIncomes.map(i => (
                         <tr key={i.id}>
                           <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{i.date}</td>
+                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', fontWeight: 'bold', color: '#3182ce' }}>{i.bookings?.reference_number || 'N/A'}</td>
                           <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{i.source}</td>
                           <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#2f855a', fontWeight: 'bold' }}>+₹{i.amount}</td>
                         </tr>
