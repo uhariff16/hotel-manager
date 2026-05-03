@@ -140,12 +140,12 @@ export default function PriceAnalysis() {
         </div>
       </div>
 
-      <div className="analysis-layout" style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '2rem', alignItems: 'start' }}>
+      <div className="analysis-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '2rem', alignItems: 'start' }}>
         {/* Left Column: Input sidebar */}
         <aside style={{ position: 'sticky', top: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <section className="card">
+          <section className="card" style={{ height: '100%' }}>
             <h3 style={{ fontSize: '1.1rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-              <Calculator size={18} color="var(--primary)" /> Parameters
+              <Calculator size={18} color="var(--primary)" /> Input Parameters
             </h3>
 
             <div className="form-group" style={{ marginBottom: '1.5rem' }}>
