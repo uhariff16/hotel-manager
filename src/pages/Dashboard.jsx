@@ -19,7 +19,7 @@ export default function Dashboard() {
       try {
         const [inc, exp, bks] = await Promise.all([
           supabase.from('incomes').select('amount, date').eq('resort_id', activeResortId),
-          supabase.from('expenses').select('amount').eq('resort_id', activeResortId),
+          supabase.from('expenses').select('amount, date').eq('resort_id', activeResortId),
           supabase.from('bookings').select('*').eq('resort_id', activeResortId).order('check_in_date', { ascending: true })
         ]);
         
@@ -33,19 +33,31 @@ export default function Dashboard() {
           totalBookings: (bks.data || []).length
         });
 
-        // Chart Data (Group income by date)
-        const dailyIncome = {};
+        // Chart Data (Group income & expenses by date)
+        const dailyData = {};
         (inc.data || []).forEach(item => {
           const d = item.date;
-          dailyIncome[d] = (dailyIncome[d] || 0) + Number(item.amount);
+          if (!dailyData[d]) dailyData[d] = { Revenue: 0, Expenses: 0 };
+          dailyData[d].Revenue += Number(item.amount);
+        });
+        (exp.data || []).forEach(item => {
+          const d = item.date;
+          if (!dailyData[d]) dailyData[d] = { Revenue: 0, Expenses: 0 };
+          dailyData[d].Expenses += Number(item.amount);
         });
 
-        const sortedDates = Object.keys(dailyIncome).sort();
-        setChartData(sortedDates.slice(-7).map(d => ({ name: format(new Date(d), 'MMM dd'), Revenue: dailyIncome[d] })));
+        const sortedDates = Object.keys(dailyData).sort();
+        setChartData(sortedDates.slice(-7).map(d => ({ 
+          name: format(new Date(d), 'MMM dd'), 
+          Revenue: dailyData[d].Revenue,
+          Expenses: dailyData[d].Expenses
+        })));
 
-        // Today/upcoming checkins
+        // Active check-ins + Upcoming arrivals
         const todayStr = new Date().toISOString().split('T')[0];
-        setRecentCheckins((bks.data || []).filter(b => b.check_in_date >= todayStr).slice(0, 5));
+        const active = (bks.data || []).filter(b => b.status === 'Checked-in');
+        const upcoming = (bks.data || []).filter(b => b.status === 'Confirmed' && b.check_in_date >= todayStr);
+        setRecentCheckins([...active, ...upcoming].slice(0, 5));
 
       } catch (err) {
         console.error(err);
@@ -95,7 +107,17 @@ export default function Dashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <div>
               <h3 style={{ margin: 0 }}>Revenue Breakdown</h3>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Visualized performance for the last week</p>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Revenue vs Expenses performance for the last week</p>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div style={{ width: '12px', height: '12px', background: 'var(--primary)', borderRadius: '3px' }}></div>
+                <span>Revenue</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                <div style={{ width: '12px', height: '12px', background: 'var(--danger)', borderRadius: '3px' }}></div>
+                <span>Expenses</span>
+              </div>
             </div>
           </div>
           <div style={{ width: '100%', height: 320 }}>
@@ -107,15 +129,20 @@ export default function Dashboard() {
                       <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
                       <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
                     </linearGradient>
+                    <linearGradient id="colorExp" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="var(--danger)" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="var(--danger)" stopOpacity={0}/>
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} scale="point" padding={{ left: 10, right: 10 }} stroke="var(--text-muted)" fontSize={12} />
                   <YAxis axisLine={false} tickLine={false} stroke="var(--text-muted)" fontSize={12} />
                   <Tooltip 
                     contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px rgba(0,0,0,0.1)', background: 'var(--bg-secondary)' }}
-                    itemStyle={{ color: 'var(--primary)', fontWeight: 'bold' }}
+                    itemStyle={{ fontWeight: 'bold' }}
                   />
                   <Area type="monotone" dataKey="Revenue" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorRev)" />
+                  <Area type="monotone" dataKey="Expenses" stroke="var(--danger)" strokeWidth={3} fillOpacity={1} fill="url(#colorExp)" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
@@ -129,13 +156,13 @@ export default function Dashboard() {
         {/* Activity Feed */}
         <div className="card" style={{ padding: '1.5rem' }}>
           <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <BedDouble size={20} color="var(--primary)"/> Active Check-ins
+            <BedDouble size={20} color="var(--primary)"/> Active & Upcoming
           </h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {recentCheckins.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem 0', opacity: 0.5 }}>
                 <CalendarCheck size={48} style={{ marginBottom: '1rem' }} />
-                <p>No arrivals scheduled</p>
+                <p>No active or upcoming guests</p>
               </div>
             ) : null}
             {recentCheckins.map(b => (
@@ -147,16 +174,30 @@ export default function Dashboard() {
                 background: 'var(--bg-color)', 
                 borderRadius: '12px', 
                 border: '1px solid var(--border)',
-                transition: 'transform 0.2s ease'
+                transition: 'transform 0.2s ease',
+                position: 'relative'
               }}>
                 <div style={{ 
                   width: '10px', 
                   height: '40px', 
-                  background: b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)',
+                  background: b.status === 'Checked-in' ? 'var(--success)' : 'var(--primary)',
                   borderRadius: '10px'
                 }}></div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{b.guest_name}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{b.guest_name}</div>
+                    <span style={{ 
+                      fontSize: '0.65rem', 
+                      padding: '2px 6px', 
+                      borderRadius: '4px', 
+                      background: b.status === 'Checked-in' ? 'rgba(72, 187, 120, 0.1)' : 'rgba(49, 130, 206, 0.1)',
+                      color: b.status === 'Checked-in' ? 'var(--success)' : 'var(--primary)',
+                      fontWeight: '700',
+                      textTransform: 'uppercase'
+                    }}>
+                      {b.status === 'Checked-in' ? 'Active' : 'Upcoming'}
+                    </span>
+                  </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>In: {format(new Date(b.check_in_date), 'MMM dd')}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
