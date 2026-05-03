@@ -49,7 +49,11 @@ export default function Auth() {
           password: formData.password 
         });
         if (error) throw error;
-        setMessage("Password updated successfully! You can now sign in.");
+        
+        // Force sign out so user has to log in with new password
+        await supabase.auth.signOut();
+        
+        setMessage("Password updated successfully! Please sign in with your new password.");
         setIsRecovering(false);
         setIsLogin(true);
         setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
