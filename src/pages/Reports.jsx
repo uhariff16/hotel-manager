@@ -156,7 +156,9 @@ export default function Reports() {
 
     const fileName = `${(activeResort?.name || 'Hotel').replace(/\s+/g, '_')}_Report.xlsx`;
     XLSX.writeFile(workbook, fileName);
-  };  return (
+  };
+
+  return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Page Header */}
       <div className="card" style={{ padding: '1rem 1.5rem' }}>
@@ -285,7 +287,8 @@ export default function Reports() {
                         <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '2px solid #edf2f7', fontSize: '1rem' }}>₹{validBookings.reduce((acc, b) => acc + Number(b.total_amount), 0).toLocaleString()}</td>
                       </tr>
                     </tfoot>
-                               </div>
+                  </table>
+                </div>
               </div>
 
               <div className="grid-2" style={{ gap: '2rem' }}>
@@ -352,6 +355,7 @@ export default function Reports() {
                         </tr>
                       </tfoot>
                     </table>
+                  </div>
                 </div>
               </div>
 
