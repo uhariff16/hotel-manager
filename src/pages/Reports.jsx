@@ -156,15 +156,12 @@ export default function Reports() {
 
     const fileName = `${(activeResort?.name || 'Hotel').replace(/\s+/g, '_')}_Report.xlsx`;
     XLSX.writeFile(workbook, fileName);
-  };
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* Controls Card */}
-      {/* Controls Card */}
-      <div className="card" style={{ marginBottom: '1rem' }}>
+  };  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      {/* Page Header */}
+      <div className="card" style={{ padding: '1rem 1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText /> Reports</h2>
+          <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.5rem' }}><FileText size={28} color="var(--primary)" /> Reports & Analytics</h2>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button className="btn btn-outline" onClick={profile?.plan_type === 'free' ? () => alert('Please upgrade to Pro or Premium to use Excel Export') : handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: profile?.plan_type === 'free' ? 0.5 : 1 }}>
               <TableIcon size={18}/> <span className="desktop-only">{profile?.plan_type === 'free' ? 'Excel (Pro+)' : 'Export Excel'}</span>
@@ -174,141 +171,111 @@ export default function Reports() {
             </button>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginTop: '1rem' }}>
-           <Filter size={16} color="var(--primary)" />
-           <input type="date" className="form-input" style={{ border: 'none', padding: 0, background: 'transparent', flex: 1 }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
-           <span style={{ color: 'var(--text-muted)' }}>to</span>
-           <input type="date" className="form-input" style={{ border: 'none', padding: 0, background: 'transparent', flex: 1 }} value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
-        </div>
       </div>
 
-      {loading ? <div className="card" style={{ textAlign: 'center', padding: '3rem' }}>Loading report data...</div> : (
-        <div id="report-container" style={{ padding: '1.5rem', background: 'white', borderRadius: '12px' }}>
-          <div style={{ textAlign: 'center', marginBottom: '2.5rem', borderBottom: '2px solid #eee', paddingBottom: '1.5rem' }}>
-            {activeResort?.logo_url && <img src={activeResort.logo_url} alt="Logo" style={{ maxHeight: '70px', marginBottom: '1rem' }} />}
-            <h1 style={{ margin: 0, color: '#1a202c', fontSize: '2.2rem' }}>{activeResort?.name || 'Hotel Manager'}</h1>
-            <p style={{ color: '#718096', marginTop: '0.5rem', fontSize: '1.1rem' }}>Financial Performance Report</p>
-            <p style={{ color: '#a0aec0', fontSize: '0.9rem' }}>Period: {range.start} to {range.end}</p>
-          </div>
-
-          <div className="grid-4" style={{ marginBottom: '3rem', gap: '1.5rem' }}>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '16px', textAlign: 'center', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}><Wallet color="#2f855a" size={24}/></div>
-              <div style={{ color: '#718096', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Total Revenue</div>
-              <h2 style={{ color: '#2d3748', margin: 0, fontSize: '1.75rem', fontWeight: '800' }}>₹{totalRevenue.toLocaleString()}</h2>
-            </div>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '16px', textAlign: 'center', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}><TrendingDown color="#e53e3e" size={24}/></div>
-              <div style={{ color: '#718096', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Total Expenses</div>
-              <h2 style={{ color: '#2d3748', margin: 0, fontSize: '1.75rem', fontWeight: '800' }}>₹{totalExpenses.toLocaleString()}</h2>
-            </div>
-            <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, #ebf8ff 0%, #fff 100%)', border: '1px solid #bee3f8', borderRadius: '16px', textAlign: 'center', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}><CreditCard color="#3182ce" size={24}/></div>
-              <div style={{ color: '#718096', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Net Profit</div>
-              <h2 style={{ color: netProfit >= 0 ? '#2b6cb0' : '#c53030', margin: 0, fontSize: '1.75rem', fontWeight: '800' }}>₹{netProfit.toLocaleString()}</h2>
-            </div>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '16px', textAlign: 'center', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.75rem' }}><CalendarCheck color="#805ad5" size={24}/></div>
-              <div style={{ color: '#718096', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>Units Occupied</div>
-              <div style={{ display: 'flex', justifyContent: 'center', gap: '1rem', alignItems: 'center' }}>
-                <div><span style={{ fontSize: '1.25rem', fontWeight: '800' }}>{entirePropertyCount}</span> <span style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 'bold' }}>PROP</span></div>
-                <div style={{ width: '1px', height: '20px', background: '#e2e8f0' }}></div>
-                <div><span style={{ fontSize: '1.25rem', fontWeight: '800' }}>{roomsCount}</span> <span style={{ fontSize: '0.7rem', color: '#718096', fontWeight: 'bold' }}>ROOMS</span></div>
+      <div className="reports-layout" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', alignItems: 'start' }}>
+        {/* Sidebar: Controls & Summary */}
+        <aside style={{ position: 'sticky', top: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Filters */}
+          <div className="card">
+            <h3 style={{ fontSize: '1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Filter size={18}/> Date Filter</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>Start Date</label>
+                <input type="date" className="form-input" value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.75rem' }}>End Date</label>
+                <input type="date" className="form-input" value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
               </div>
             </div>
           </div>
 
-          {/* Bookings Table */}
-          <div style={{ marginBottom: '3rem' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748' }}>
-              <CalendarCheck size={20} /> Booking Details
-            </h3>
-            <div style={{ maxHeight: '420px', overflowY: 'auto', border: '1px solid #edf2f7', borderRadius: '8px' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#f8fafc' }}>
-                  <tr style={{ background: '#f8fafc' }}>
-                    <th onClick={() => requestSort('booking', 'reference_number')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Ref # {bookingSort.key === 'reference_number' && (bookingSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                    <th onClick={() => requestSort('booking', 'guest_name')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Guest {bookingSort.key === 'guest_name' && (bookingSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                    <th onClick={() => requestSort('booking', 'check_in_date')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Dates {bookingSort.key === 'check_in_date' && (bookingSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                    <th onClick={() => requestSort('booking', 'booking_type')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Type & Details {bookingSort.key === 'booking_type' && (bookingSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                    <th onClick={() => requestSort('booking', 'status')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Status {bookingSort.key === 'status' && (bookingSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                    <th onClick={() => requestSort('booking', 'total_amount')} style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Total {bookingSort.key === 'total_amount' && (bookingSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                    <th onClick={() => requestSort('booking', 'advance_paid')} style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Advance {bookingSort.key === 'advance_paid' && (bookingSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                    <th onClick={() => requestSort('booking', 'balance_amount')} style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Balance {bookingSort.key === 'balance_amount' && (bookingSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedBookings.length === 0 ? <tr><td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: '#a0aec0' }}>No bookings in this range</td></tr> : sortedBookings.map(b => {
-                    const cname = data.cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
-                    let rname = '';
-                    if (b.booking_type === 'Entire Property') { rname = 'Entire Property'; }
-                    else {
-                      const arr = b.room_ids || (b.room_id ? [b.room_id] : []);
-                      rname = arr.map(id => data.rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
-                    }
-                    
-                    return (
-                    <tr key={b.id}>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', fontWeight: 'bold', color: '#3182ce' }}>{b.reference_number || 'N/A'}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{b.guest_name}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>
-                        <div style={{ fontSize: '0.85rem' }}>{new Date(b.check_in_date).toLocaleDateString()}</div>
-                        <div style={{ fontSize: '0.75rem', color: '#718096' }}>to {new Date(b.check_out_date).toLocaleDateString()}</div>
-                      </td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>
-                         <div style={{ fontSize: '0.85rem', fontWeight: '500' }}>{b.booking_type}</div>
-                         <div style={{ fontSize: '0.75rem', color: '#718096' }}>{cname} {rname !== 'Entire Property' ? `- ${rname}` : ''}</div>
-                      </td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>
-                        <span className={`badge ${
-                          b.status === 'Cancelled' ? 'badge-danger' : 
-                          b.status === 'Pending' ? 'badge-warning' : 
-                          b.status === 'Checked-in' ? 'badge-indigo' :
-                          b.status === 'Completed' ? 'badge-success' :
-                          'badge-info'
-                        }`} style={{ fontSize: '0.7rem', padding: '0.2rem 0.5rem' }}>
-                          {b.status}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right' }}>₹{b.total_amount}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#2f855a' }}>₹{b.advance_paid}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', fontWeight: 'bold' }}>₹{b.balance_amount}</td>
-                    </tr>
-                  )})}
-                </tbody>
-              </table>
+          {/* Summary Vertical Stack */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ padding: '1.25rem', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <Wallet color="#2f855a" size={20}/>
+                <span style={{ color: '#718096', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em' }}>Revenue</span>
+              </div>
+              <h2 style={{ color: '#2d3748', margin: 0, fontSize: '1.5rem', fontWeight: '800' }}>₹{totalRevenue.toLocaleString()}</h2>
+            </div>
+
+            <div style={{ padding: '1.25rem', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <TrendingDown color="#e53e3e" size={20}/>
+                <span style={{ color: '#718096', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em' }}>Expenses</span>
+              </div>
+              <h2 style={{ color: '#2d3748', margin: 0, fontSize: '1.5rem', fontWeight: '800' }}>₹{totalExpenses.toLocaleString()}</h2>
+            </div>
+
+            <div style={{ padding: '1.25rem', background: 'linear-gradient(135deg, #ebf8ff 0%, #fff 100%)', border: '1px solid #bee3f8', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <CreditCard color="#3182ce" size={20}/>
+                <span style={{ color: '#718096', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em' }}>Net Profit</span>
+              </div>
+              <h2 style={{ color: netProfit >= 0 ? '#2b6cb0' : '#c53030', margin: 0, fontSize: '1.5rem', fontWeight: '800' }}>₹{netProfit.toLocaleString()}</h2>
+            </div>
+
+            <div style={{ padding: '1.25rem', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#fff', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <CalendarCheck color="#805ad5" size={20}/>
+                <span style={{ color: '#718096', fontSize: '0.75rem', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '0.05em' }}>Occupancy</span>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                <div><span style={{ fontSize: '1.1rem', fontWeight: '800' }}>{entirePropertyCount}</span> <span style={{ fontSize: '0.65rem', color: '#718096', fontWeight: 'bold' }}>PROP</span></div>
+                <div style={{ width: '1px', height: '15px', background: '#e2e8f0' }}></div>
+                <div><span style={{ fontSize: '1.1rem', fontWeight: '800' }}>{roomsCount}</span> <span style={{ fontSize: '0.65rem', color: '#718096', fontWeight: 'bold' }}>ROOMS</span></div>
+              </div>
             </div>
           </div>
+        </aside>
 
-          {profile?.plan_type === 'free' ? (
-            <div style={{ padding: '2rem', background: '#fffbeb', border: '1px dashed #d97706', borderRadius: '8px', textAlign: 'center' }}>
-              <h3 style={{ color: '#b45309', marginBottom: '0.5rem' }}>Advanced Analytics Locked</h3>
-              <p style={{ color: '#92400e', fontSize: '0.9rem' }}>Detailed Income and Expense tracking is available on the Pro and Premium plans.</p>
+        {/* Main Content: Tables */}
+        <main>
+          {loading ? (
+            <div className="card" style={{ textAlign: 'center', padding: '5rem' }}>
+              <div className="spinner" style={{ marginBottom: '1rem' }}></div>
+              <p style={{ color: 'var(--text-muted)' }}>Preparing your report...</p>
             </div>
           ) : (
-            <div className="grid-2" style={{ gap: '2rem' }}>
-              {/* Income Table */}
-              <div>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748' }}>
-                  <Wallet size={20} color="#2f855a" /> Incomes
+            <div id="report-container" className="card" style={{ padding: '2rem', background: 'white' }}>
+              {/* Report Branding (Visible in PDF) */}
+              <div style={{ textAlign: 'center', marginBottom: '2.5rem', borderBottom: '2px solid #eee', paddingBottom: '1.5rem' }}>
+                {activeResort?.logo_url && <img src={activeResort.logo_url} alt="Logo" style={{ maxHeight: '60px', marginBottom: '1rem' }} />}
+                <h1 style={{ margin: 0, color: '#1a202c', fontSize: '1.75rem' }}>{activeResort?.name || 'Hotel Manager'}</h1>
+                <p style={{ color: '#718096', marginTop: '0.25rem', fontSize: '1rem', fontWeight: '500' }}>Financial Performance Report</p>
+                <p style={{ color: '#a0aec0', fontSize: '0.85rem' }}>Period: {range.start} to {range.end}</p>
+              </div>
+
+              {/* Bookings Table */}
+              <div style={{ marginBottom: '3rem' }}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748', fontSize: '1.1rem' }}>
+                  <CalendarCheck size={20} color="var(--primary)" /> Booking Details
                 </h3>
-                <div style={{ maxHeight: '420px', overflowY: 'auto', border: '1px solid #edf2f7', borderRadius: '8px' }}>
+                <div className="table-container" style={{ border: '1px solid #edf2f7', borderRadius: '8px' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#f8fafc' }}>
+                    <thead>
                       <tr style={{ background: '#f8fafc' }}>
-                        <th onClick={() => requestSort('income', 'date')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Date {incomeSort.key === 'date' && (incomeSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Ref #</th>
-                        <th onClick={() => requestSort('income', 'source')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Source {incomeSort.key === 'source' && (incomeSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                        <th onClick={() => requestSort('income', 'amount')} style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Amount {incomeSort.key === 'amount' && (incomeSort.direction === 'ascending' ? '▲' : '▼')}</th>
+                        <th onClick={() => requestSort('booking', 'reference_number')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer' }}>Ref #</th>
+                        <th onClick={() => requestSort('booking', 'guest_name')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer' }}>Guest</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Dates</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Unit</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0' }}>Status</th>
+                        <th style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0' }}>Total</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedIncomes.length === 0 ? <tr><td colSpan="4" style={{ textAlign: 'center', padding: '1rem', color: '#a0aec0' }}>None</td></tr> : sortedIncomes.map(i => (
-                        <tr key={i.id}>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{i.date}</td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', fontWeight: 'bold', color: '#3182ce' }}>{i.bookings?.reference_number || 'N/A'}</td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{i.source}</td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#2f855a', fontWeight: 'bold' }}>+₹{i.amount}</td>
+                      {sortedBookings.length === 0 ? <tr><td colSpan="6" style={{ textAlign: 'center', padding: '2rem', color: '#a0aec0' }}>No bookings found</td></tr> : sortedBookings.map(b => (
+                        <tr key={b.id}>
+                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', fontWeight: 'bold', color: '#3182ce' }}>{b.reference_number || 'N/A'}</td>
+                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{b.guest_name}</td>
+                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', fontSize: '0.75rem' }}>{b.check_in_date} to {b.check_out_date}</td>
+                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', fontSize: '0.75rem' }}>{b.booking_type}</td>
+                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>
+                            <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
+                          </td>
+                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', fontWeight: 'bold' }}>₹{b.total_amount}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -316,41 +283,71 @@ export default function Reports() {
                 </div>
               </div>
 
-              {/* Expense Table */}
-              <div>
-                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748' }}>
-                  <TrendingDown size={20} color="#c53030" /> Expenses
-                </h3>
-                <div style={{ maxHeight: '420px', overflowY: 'auto', border: '1px solid #edf2f7', borderRadius: '8px' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                    <thead style={{ position: 'sticky', top: 0, zIndex: 1, background: '#f8fafc' }}>
-                      <tr style={{ background: '#f8fafc' }}>
-                        <th onClick={() => requestSort('expense', 'date')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Date {expenseSort.key === 'date' && (expenseSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                        <th onClick={() => requestSort('expense', 'category')} style={{ padding: '0.75rem', textAlign: 'left', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Category {expenseSort.key === 'category' && (expenseSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                        <th onClick={() => requestSort('expense', 'amount')} style={{ padding: '0.75rem', textAlign: 'right', borderBottom: '1px solid #e2e8f0', cursor: 'pointer', userSelect: 'none' }}>Amount {expenseSort.key === 'amount' && (expenseSort.direction === 'ascending' ? '▲' : '▼')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {sortedExpenses.length === 0 ? <tr><td colSpan="3" style={{ textAlign: 'center', padding: '1rem', color: '#a0aec0' }}>None</td></tr> : sortedExpenses.map(e => (
-                        <tr key={e.id}>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{e.date}</td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7' }}>{e.category}</td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#c53030', fontWeight: 'bold' }}>-₹{e.amount}</td>
+              <div className="grid-2" style={{ gap: '2rem' }}>
+                {/* Income Table */}
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748', fontSize: '1.1rem' }}>
+                    <Wallet size={20} color="#2f855a" /> Incomes
+                  </h3>
+                  <div className="table-container" style={{ border: '1px solid #edf2f7', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                      <thead style={{ background: '#f8fafc' }}>
+                        <tr>
+                          <th style={{ padding: '0.6rem', textAlign: 'left' }}>Date</th>
+                          <th style={{ padding: '0.6rem', textAlign: 'left' }}>Ref #</th>
+                          <th style={{ padding: '0.6rem', textAlign: 'right' }}>Amount</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {sortedIncomes.map(i => (
+                          <tr key={i.id}>
+                            <td style={{ padding: '0.6rem', borderBottom: '1px solid #edf2f7' }}>{i.date}</td>
+                            <td style={{ padding: '0.6rem', borderBottom: '1px solid #edf2f7', fontWeight: '600', color: '#3182ce' }}>{i.bookings?.reference_number || 'N/A'}</td>
+                            <td style={{ padding: '0.6rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#2f855a', fontWeight: 'bold' }}>+₹{i.amount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
+
+                {/* Expense Table */}
+                <div>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748', fontSize: '1.1rem' }}>
+                    <TrendingDown size={20} color="#c53030" /> Expenses
+                  </h3>
+                  <div className="table-container" style={{ border: '1px solid #edf2f7', borderRadius: '8px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
+                      <thead style={{ background: '#f8fafc' }}>
+                        <tr>
+                          <th style={{ padding: '0.6rem', textAlign: 'left' }}>Date</th>
+                          <th style={{ padding: '0.6rem', textAlign: 'left' }}>Category</th>
+                          <th style={{ padding: '0.6rem', textAlign: 'right' }}>Amount</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sortedExpenses.map(e => (
+                          <tr key={e.id}>
+                            <td style={{ padding: '0.6rem', borderBottom: '1px solid #edf2f7' }}>{e.date}</td>
+                            <td style={{ padding: '0.6rem', borderBottom: '1px solid #edf2f7' }}>{e.category}</td>
+                            <td style={{ padding: '0.6rem', borderBottom: '1px solid #edf2f7', textAlign: 'right', color: '#c53030', fontWeight: 'bold' }}>-₹{e.amount}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ marginTop: '4rem', borderTop: '1px solid #edf2f7', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#a0aec0' }}>
+                <span>Report Generated By: {session?.user?.email}</span>
+                <span>Timestamp: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</span>
               </div>
             </div>
           )}
-
-          <div style={{ marginTop: '5rem', borderTop: '1px solid #edf2f7', paddingTop: '1rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.7rem', color: '#a0aec0' }}>
-            <span>Generated By: {session?.user?.email}</span>
-            <span>Ref: {format(new Date(), 'yyyy-MM-dd HH:mm:ss')}</span>
-          </div>
-        </div>
-      )}
+        </main>
+      </div>
     </div>
   );
 }
