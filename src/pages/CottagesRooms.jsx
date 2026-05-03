@@ -131,7 +131,7 @@ export default function CottagesRooms() {
         <p style={{ color: 'var(--text-muted)' }}>Configure your cottages, rooms, and inventory settings</p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+      <div className="grid-2" style={{ gap: '2rem' }}>
       {/* COTTAGES SECTION */}
       <div className="card">
         <h2 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Properties</h2>
@@ -139,7 +139,7 @@ export default function CottagesRooms() {
         
         <form onSubmit={handleAddCottage} style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
           <h4>Add New Property</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+          <div className="grid-2" style={{ gap: '1rem', marginTop: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Name</label>
               <input type="text" className="form-input" required value={newCottage.name} onChange={e => setNewCottage({...newCottage, name: e.target.value})} />
@@ -210,7 +210,7 @@ export default function CottagesRooms() {
         <h2 style={{ marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Rooms</h2>
         <form onSubmit={handleAddRoom} style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
           <h4>Add New Room</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+          <div className="grid-2" style={{ gap: '1rem', marginTop: '1rem' }}>
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Link to Property</label>
               <select className="form-select" required value={newRoom.cottage_id} onChange={e => setNewRoom({...newRoom, cottage_id: e.target.value})}>

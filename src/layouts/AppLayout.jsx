@@ -66,20 +66,22 @@ export default function AppLayout() {
 
       {/* Sidebar */}
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
-        <div className="brand" style={{ position: 'relative' }}>
-          {activeResort?.logo_url || logoUrl ? (
-            <img src={activeResort?.logo_url || logoUrl} alt="Logo" className="brand-logo" />
-          ) : (
-            <div className="brand-logo" style={{ background: 'var(--primary)', borderRadius: '4px' }}></div>
-          )}
-          <span className="brand-text">{activeResort?.name || resortName}</span>
+        <div className="brand" style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            {activeResort?.logo_url || logoUrl ? (
+              <img src={activeResort?.logo_url || logoUrl} alt="Logo" className="brand-logo" style={{ height: '32px' }} />
+            ) : (
+              <div className="brand-logo" style={{ background: 'var(--primary)', borderRadius: '4px', width: '32px', height: '32px' }}></div>
+            )}
+            <span className="brand-text" style={{ fontWeight: 700, fontSize: '1rem' }}>{activeResort?.name || resortName}</span>
+          </div>
           
           <button 
             className="menu-toggle" 
-            style={{ position: 'absolute', right: '1rem' }}
             onClick={() => setIsSidebarOpen(false)}
+            style={{ padding: '0.5rem' }}
           >
-            <X size={24} />
+            <X size={20} />
           </button>
         </div>
 
@@ -96,7 +98,7 @@ export default function AppLayout() {
           </div>
         )}
 
-        <nav className="nav-links">
+        <nav className="nav-links" style={{ flex: 1 }}>
           {navLinks.map((link) => (
             <NavLink
               key={link.to}
@@ -108,6 +110,17 @@ export default function AppLayout() {
             </NavLink>
           ))}
         </nav>
+
+        <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border)' }}>
+          <button 
+            className="nav-item" 
+            style={{ width: '100%', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)' }}
+            onClick={() => { if(window.confirm('Logout?')) { supabase.auth.signOut(); logout(); } }}
+          >
+            <LogOut size={20} />
+            <span style={{ fontWeight: 600 }}>Logout</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -138,6 +151,38 @@ export default function AppLayout() {
         <div className="page-content">
           <Outlet />
         </div>
+
+        {/* Mobile Bottom Navigation */}
+        <nav className="mobile-bottom-nav">
+          {!isStaff && (
+            <NavLink to="/dashboard" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+              <LayoutDashboard size={24} />
+              <span>Dashboard</span>
+            </NavLink>
+          )}
+          <NavLink to="/bookings" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+            <BookOpenCheck size={24} />
+            <span>Bookings</span>
+          </NavLink>
+          <NavLink to="/calendar" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+            <CalendarDays size={24} />
+            <span>Calendar</span>
+          </NavLink>
+          {!isStaff && (
+            <NavLink to="/financials" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+              <Wallet size={24} />
+              <span>Finance</span>
+            </NavLink>
+          )}
+          <button 
+            className="mobile-nav-item" 
+            style={{ background: 'none', border: 'none', padding: 0 }}
+            onClick={() => setIsSidebarOpen(true)}
+          >
+            <Menu size={24} />
+            <span>Menu</span>
+          </button>
+        </nav>
       </main>
     </div>
   );

@@ -16,6 +16,7 @@ export const useSettingsStore = create(
       profile: null,
       resorts: [],
       activeResortId: null,
+      isRecovering: false,
       
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
@@ -24,7 +25,8 @@ export const useSettingsStore = create(
       setProfile: (profile) => set({ profile }),
       setResorts: (resorts) => set({ resorts }),
       setActiveResortId: (id) => set({ activeResortId: id }),
-      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null })
+      setIsRecovering: (isRecovering) => set({ isRecovering }),
+      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false })
     }),
     {
       name: 'hotel-manager-settings',

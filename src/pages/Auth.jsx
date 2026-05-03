@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User } from 'lucide-react';
+import { useSettingsStore } from '../lib/store';
+import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound } from 'lucide-react';
 
 export default function Auth() {
+  const { isRecovering, setIsRecovering } = useSettingsStore();
   const [isLogin, setIsLogin] = useState(true);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -16,6 +18,22 @@ export default function Auth() {
     fullName: ''
   });
 
+  useEffect(() => {
+    // 1. Check for errors in URL hash (e.g., expired links)
+    const hash = window.location.hash;
+    if (hash) {
+      const params = new URLSearchParams(hash.substring(1));
+      const error_description = params.get('error_description');
+      const error_code = params.get('error_code');
+      
+      if (error_description) {
+        setError(error_description.replace(/\+/g, ' '));
+        // Clear hash so error doesn't persist on refresh
+        window.history.replaceState(null, null, window.location.pathname);
+      }
+    }
+  }, []);
+
   const handleAuth = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -23,7 +41,19 @@ export default function Auth() {
     setMessage(null);
 
     try {
-      if (isForgotPassword) {
+      if (isRecovering) {
+        if (formData.password !== formData.confirmPassword) {
+          throw new Error("Passwords do not match");
+        }
+        const { error } = await supabase.auth.updateUser({ 
+          password: formData.password 
+        });
+        if (error) throw error;
+        setMessage("Password updated successfully! You can now sign in.");
+        setIsRecovering(false);
+        setIsLogin(true);
+        setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
+      } else if (isForgotPassword) {
         const { error } = await supabase.auth.resetPasswordForEmail(formData.email, {
           redirectTo: `${window.location.origin}/auth`,
         });
@@ -89,15 +119,17 @@ export default function Auth() {
             color: 'white',
             boxShadow: '0 0 20px rgba(214, 158, 46, 0.3)'
           }}>
-            <ShieldCheck size={32} />
+            {isRecovering ? <KeyRound size={32} /> : <ShieldCheck size={32} />}
           </div>
           <h1 style={{ fontSize: '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-            {isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome Back' : 'Sign up as Tenant')}
+            {isRecovering ? 'Set New Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome Back' : 'Sign up as Tenant'))}
           </h1>
           <p style={{ color: 'var(--text-muted)' }}>
-            {isForgotPassword 
-              ? 'Enter your email to receive a reset link' 
-              : (isLogin ? 'Sign in to manage your luxury resorts' : 'Register your hotel owner account to get started')}
+            {isRecovering 
+              ? 'Enter your new secure password below'
+              : (isForgotPassword 
+                ? 'Enter your email to receive a reset link' 
+                : (isLogin ? 'Sign in to manage your luxury resorts' : 'Register your hotel owner account to get started'))}
           </p>
         </div>
 
@@ -130,7 +162,7 @@ export default function Auth() {
         )}
 
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-          {!isLogin && !isForgotPassword && (
+          {!isLogin && !isForgotPassword && !isRecovering && (
             <div className="form-group">
               <label className="form-label">Full Name</label>
               <div style={{ position: 'relative' }}>
@@ -150,28 +182,32 @@ export default function Auth() {
             </div>
           )}
 
-          <div className="form-group">
-            <label className="form-label">Email Address</label>
-            <div style={{ position: 'relative' }}>
-              <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
-                <Mail size={18} />
-              </span>
-              <input 
-                type="email" 
-                required 
-                className="form-input" 
-                style={{ paddingLeft: '3rem' }}
-                placeholder="name@company.com"
-                value={formData.email}
-                onChange={e => setFormData({...formData, email: e.target.value})}
-              />
+          {!isRecovering && (
+            <div className="form-group">
+              <label className="form-label">Email Address</label>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                  <Mail size={18} />
+                </span>
+                <input 
+                  type="email" 
+                  required 
+                  className="form-input" 
+                  style={{ paddingLeft: '3rem' }}
+                  placeholder="name@company.com"
+                  value={formData.email}
+                  onChange={e => setFormData({...formData, email: e.target.value})}
+                />
+              </div>
             </div>
-          </div>
+          )}
 
           {!isForgotPassword && (
             <div className="form-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <label className="form-label" style={{ marginBottom: 0 }}>Password</label>
+                <label className="form-label" style={{ marginBottom: 0 }}>
+                  {isRecovering ? 'New Password' : 'Password'}
+                </label>
                 {isLogin && (
                   <button 
                     type="button"
@@ -199,7 +235,7 @@ export default function Auth() {
             </div>
           )}
 
-          {!isLogin && !isForgotPassword && (
+          {(isRecovering || (!isLogin && !isForgotPassword)) && (
             <div className="form-group">
               <label className="form-label">Confirm Password</label>
               <div style={{ position: 'relative' }}>
@@ -225,14 +261,18 @@ export default function Auth() {
             style={{ width: '100%', height: '50px', fontSize: '1rem', marginTop: '1rem' }}
             disabled={loading}
           >
-            {loading ? 'Processing...' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account</>))}
+            {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account</>)))}
           </button>
         </form>
 
         <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem' }}>
-          {isForgotPassword ? (
+          {isForgotPassword || isRecovering ? (
             <button 
-              onClick={() => setIsForgotPassword(false)}
+              onClick={() => {
+                setIsForgotPassword(false);
+                setIsRecovering(false);
+                setIsLogin(true);
+              }}
               style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', padding: '0' }}
             >
               Back to Login

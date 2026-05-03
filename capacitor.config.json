@@ -1,0 +1,5 @@
+{
+  "appId": "com.hotelmanager.myapp",
+  "appName": "hotel-manager",
+  "webDir": "dist"
+}

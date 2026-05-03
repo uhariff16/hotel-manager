@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, CalendarCheck, CheckCircle2, AlertTriangle, X } from 'lucide-react';
+import { Plus, Trash2, CalendarCheck, CheckCircle2, AlertTriangle, X, Search, Filter, ChevronDown, ChevronUp, MoreVertical, Phone, Calendar, Home, CreditCard } from 'lucide-react';
 import { differenceInDays, eachDayOfInterval, isWeekend, startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -23,6 +23,8 @@ export default function Bookings() {
     Cancelled: true
   });
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'descending' });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showMobileForm, setShowMobileForm] = useState(false);
   const today = new Date().toISOString().split('T')[0];
 
 
@@ -80,6 +82,7 @@ export default function Bookings() {
       addon_others: othersText.join(', '),
       is_loading_edit: true
     });
+    setShowMobileForm(true); // Open form on mobile when editing
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -529,7 +532,14 @@ export default function Bookings() {
   };
 
   const sortedAndFilteredBookings = React.useMemo(() => {
-    let sortableItems = [...bookings.filter(b => statusFilter[b.status])];
+    let sortableItems = bookings.filter(b => {
+      const matchesStatus = statusFilter[b.status];
+      const matchesSearch = b.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            (b.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            (b.phone_number || '').includes(searchTerm);
+      return matchesStatus && matchesSearch;
+    });
+
     if (sortConfig !== null) {
       sortableItems.sort((a, b) => {
         let valA = a[sortConfig.key];
@@ -545,7 +555,7 @@ export default function Bookings() {
       });
     }
     return sortableItems;
-  }, [bookings, statusFilter, sortConfig]);
+  }, [bookings, statusFilter, sortConfig, searchTerm]);
 
   if (loading) return <div>Loading...</div>;
 
@@ -562,14 +572,26 @@ export default function Bookings() {
   return (
     <>
       <div className="grid-2 bookings-layout" style={{ display: 'grid', gridTemplateColumns: '1.2fr 2fr', gap: '2rem' }}>
-        {/* Booking Form */}
-        <div className="card">
-          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <CalendarCheck size={24} /> {editingBookingId ? `Editing: ${bookingForm.reference_number}` : 'New Booking'}
-          </h2>
-          {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
-          
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {/* Booking Form - Mobile Collapsible */}
+        <div className={`card form-section ${showMobileForm ? 'form-expanded' : ''}`}>
+          <div 
+            className="mobile-form-header" 
+            style={{ display: 'none', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: showMobileForm ? '1.5rem' : 0 }}
+            onClick={() => setShowMobileForm(!showMobileForm)}
+          >
+            <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Plus size={20} /> {editingBookingId ? 'Edit Booking' : 'New Booking'}
+            </h2>
+            {showMobileForm ? <ChevronUp size={24} /> : <ChevronDown size={24} />}
+          </div>
+
+          <div className="form-content-wrapper" style={{ display: showMobileForm ? 'flex' : 'none', flexDirection: 'column', gap: '1rem' }}>
+            <h2 className="desktop-only" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <CalendarCheck size={24} /> {editingBookingId ? `Editing: ${bookingForm.reference_number}` : 'New Booking'}
+            </h2>
+            {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
+            
+            <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1rem' }}>
               <div className="form-group"><label className="form-label">Guest Name</label><input type="text" required className="form-input" value={bookingForm.guest_name} onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} /></div>
               <div className="form-group"><label className="form-label">Phone</label><input type="text" required className="form-input" value={bookingForm.phone_number} onChange={e => setBookingForm({...bookingForm, phone_number: e.target.value})} /></div>
@@ -685,8 +707,13 @@ export default function Bookings() {
                   <label className="form-label">Base Amount (₹)</label>
                   <input type="number" className="form-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: Number(e.target.value)})} />
                 </div>
+                <div></div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Advance Paid</label>
+                  <input type="number" className="form-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: Number(e.target.value)})} />
+                </div>
               </div>
-              <div className="grid-3" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
+              <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                 <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                   <label className="form-label">Add-ons Selection</label>
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
@@ -716,7 +743,6 @@ export default function Bookings() {
                   </div>
                 </div>
                 <div className="form-group"><label className="form-label">Add-ons Cost (₹)</label><input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: Number(e.target.value)})} /></div>
-                <div className="form-group"><label className="form-label">Advance Paid</label><input type="number" className="form-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: Number(e.target.value)})} /></div>
                 <div className="form-group">
                   <label className="form-label">Referred By</label>
                   <select className="form-select" value={bookingForm.booking_source} onChange={e => setBookingForm({...bookingForm, booking_source: e.target.value})}>
@@ -746,42 +772,113 @@ export default function Bookings() {
             </div>
           </form>
         </div>
+      </div>
 
-        {/* Bookings List */}
-        <div className="card">
+      {/* Bookings List */}
+      <div className="card list-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <h2 style={{ margin: 0 }}>Recent Bookings</h2>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', background: 'var(--bg-color)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', fontSize: '0.85rem', alignItems: 'center' }}>
-              <span style={{ fontWeight: '600', color: 'var(--text-muted)', marginRight: '0.2rem' }}>Filter:</span>
-              
-              <button 
-                type="button" 
-                style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.8rem', padding: 0, textDecoration: 'underline' }}
-                onClick={() => setStatusFilter({ Confirmed: true, Pending: true, 'Checked-in': true, Completed: true, Cancelled: true })}
-              >All</button>
-              <span style={{ color: 'var(--border)' }}>|</span>
-              <button 
-                type="button" 
-                style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.8rem', padding: 0, textDecoration: 'underline' }}
-                onClick={() => setStatusFilter({ Confirmed: false, Pending: false, 'Checked-in': false, Completed: false, Cancelled: false })}
-              >None</button>
+            <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Recent Bookings</h2>
+            
+            <div className="search-bar" style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
+              <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="Search guest or ref..." 
+                style={{ paddingLeft: '2.5rem', height: '44px' }}
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
 
-              <div style={{ width: '1px', height: '1rem', background: 'var(--border)', margin: '0 0.5rem' }}></div>
-
+            <div className="filter-chips" style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.85rem' }}>
               {Object.keys(statusFilter).map(status => (
-                <label key={status} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', cursor: 'pointer' }}>
-                  <input 
-                    type="checkbox" 
-                    checked={statusFilter[status]} 
-                    onChange={e => setStatusFilter({ ...statusFilter, [status]: e.target.checked })} 
-                  />
+                <button 
+                  key={status}
+                  onClick={() => setStatusFilter({ ...statusFilter, [status]: !statusFilter[status] })}
+                  style={{ 
+                    padding: '0.4rem 0.8rem', 
+                    borderRadius: '20px', 
+                    border: '1px solid var(--border)',
+                    background: statusFilter[status] ? 'var(--primary)' : 'var(--bg-secondary)',
+                    color: statusFilter[status] ? 'white' : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    fontWeight: 600
+                  }}
+                >
                   {status}
-                </label>
+                </button>
               ))}
             </div>
           </div>
           
-          <div className="table-container" style={{ maxHeight: '800px', overflowY: 'auto' }}>
+          <div className="mobile-only cards-container" style={{ display: 'none' }}>
+            {sortedAndFilteredBookings.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found.</div>
+            ) : sortedAndFilteredBookings.map(b => {
+              const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
+              return (
+                <div key={b.id} className="card" style={{ marginBottom: '1rem', padding: '1rem', borderLeft: `6px solid ${
+                  b.status === 'Cancelled' ? 'var(--danger)' : 
+                  b.status === 'Pending' ? 'var(--warning)' : 
+                  b.status === 'Checked-in' ? '#6366f1' :
+                  b.status === 'Completed' ? 'var(--success)' :
+                  'var(--primary)'
+                }` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                    <div>
+                      <small style={{ color: 'var(--primary)', fontWeight: 700 }}>{b.reference_number}</small>
+                      <h3 style={{ margin: '0.2rem 0', fontSize: '1.1rem' }}>{b.guest_name}</h3>
+                    </div>
+                    <span className={`badge ${
+                      b.status === 'Cancelled' ? 'badge-danger' : 
+                      b.status === 'Pending' ? 'badge-warning' : 
+                      b.status === 'Checked-in' ? 'badge-indigo' :
+                      b.status === 'Completed' ? 'badge-success' :
+                      'badge-info'
+                    }`}>
+                      {b.status}
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1rem', fontSize: '0.85rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+                      <Calendar size={16} />
+                      <span>{new Date(b.check_in_date).toLocaleDateString()} - {new Date(b.check_out_date).toLocaleDateString()}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+                      <Home size={16} />
+                      <span>{cname}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <CreditCard size={16} color="var(--warning)" />
+                      <strong style={{ color: b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)' }}>₹{b.balance_amount} Due</strong>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
+                      <Phone size={16} />
+                      <span>{b.phone_number}</span>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.25rem', flexWrap: 'wrap' }}>
+                    {b.status === 'Confirmed' && (
+                      <button className="btn btn-primary" style={{ flex: 1, height: '40px' }} onClick={() => handleCheckIn(b)}>Check-in</button>
+                    )}
+                    {b.status === 'Checked-in' && (
+                      <button className="btn btn-primary" style={{ flex: 1, height: '40px', background: '#6366f1' }} onClick={() => settleBooking(b)}>Check-out</button>
+                    )}
+                    <button className="btn btn-outline" style={{ flex: 1, height: '40px' }} onClick={() => loadBookingForEdit(b)}>Edit</button>
+                    <button className="btn btn-outline" style={{ width: '40px', height: '40px', padding: 0 }} onClick={() => deleteBooking(b.id)}>
+                      <Trash2 size={18} color="var(--danger)" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          <div className="desktop-only table-container" style={{ maxHeight: '800px', overflowY: 'auto' }}>
             <table className="table">
               <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-color)', zIndex: 1 }}>
                 <tr>

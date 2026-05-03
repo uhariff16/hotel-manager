@@ -122,17 +122,17 @@ export default function PriceAnalysis() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 style={{ marginBottom: '0.25rem' }}>Investment & Pricing Analysis</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Financial projection based on {data.rental_model === 'property' ? 'Full Property' : `${totalUnits} Room(s)`} with {data.expected_occupancy_rate}% occupancy goal.</p>
+          <h1 style={{ marginBottom: '0.25rem', fontSize: '1.75rem' }}>Investment & Pricing</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Based on {data.rental_model === 'property' ? 'Property' : `${totalUnits} Rooms`} ({data.expected_occupancy_rate}% goal).</p>
         </div>
-        <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
+        <button className="btn btn-primary" onClick={handleSave} disabled={saving} style={{ flex: '1 1 auto' }}>
           <Save size={18} /> {saving ? 'Saving...' : 'Save Configuration'}
         </button>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '2rem' }}>
+      <div className="grid-2" style={{ gridTemplateColumns: '1fr 1.5fr', gap: '2rem' }}>
         {/* Left Col: Inputs */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <section className="card">
@@ -142,7 +142,7 @@ export default function PriceAnalysis() {
 
             <div className="form-group" style={{ marginBottom: '1.5rem' }}>
               <label className="form-label">Rental Model</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'rgba(0,0,0,0.03)', padding: '0.25rem', borderRadius: '8px' }}>
+              <div className="grid-2" style={{ gap: '0.5rem', background: 'rgba(0,0,0,0.03)', padding: '0.25rem', borderRadius: '8px' }}>
                 <button 
                   className={`btn ${data.rental_model === 'room' ? 'btn-primary' : 'btn-link'}`} 
                   style={{ fontSize: '0.8rem', padding: '0.5rem' }}
@@ -190,7 +190,7 @@ export default function PriceAnalysis() {
               <small style={{ color: 'var(--text-muted)' }}>Manual entry override for room count</small>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid-2" style={{ gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Monthly Operating (₹)</label>
                 <input 
@@ -213,7 +213,7 @@ export default function PriceAnalysis() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+            <div className="grid-2" style={{ gap: '1rem', marginTop: '1rem' }}>
               <div className="form-group">
                 <label className="form-label">Target Annual ROI (%)</label>
                 <input 
@@ -250,7 +250,7 @@ export default function PriceAnalysis() {
               <TrendingUp size={20} color="var(--success)" /> Financial Projections
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div className="grid-2" style={{ gap: '1.5rem' }}>
               <div style={{ padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', marginBottom: '0.5rem' }}>Break-even Rate ({data.rental_model === 'property' ? 'Full Property' : 'Per Room'})</p>
                 <h2 style={{ color: 'var(--warning)', margin: 0 }}>₹{Math.ceil(breakEvenDailyRatePerRoom).toLocaleString()}</h2>
@@ -263,7 +263,7 @@ export default function PriceAnalysis() {
               </div>
             </div>
 
-            <div style={{ marginTop: '1.5rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="grid-2" style={{ marginTop: '1.5rem', gap: '1rem' }}>
               <div style={{ padding: '1rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
                 <p style={{ color: 'var(--primary)', fontSize: '0.75rem', margin: '0 0 0.5rem 0', fontWeight: 600, textTransform: 'uppercase' }}>Yearly Average Goal</p>
                 <h3 style={{ margin: 0 }}>₹{Math.ceil(requiredGrossAnnualRevenue / 365).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 400 }}>/day</span></h3>
@@ -306,7 +306,7 @@ export default function PriceAnalysis() {
               </div>
               <div style={{ flex: 1 }}>
                 <h4 style={{ margin: '0 0 1rem 0' }}>Efficiency Metrics</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                <div className="grid-2" style={{ gap: '1rem' }}>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block' }}>Annual {data.rental_model === 'property' ? 'Property' : 'Room'} Nights Available</small>
                     <span style={{ fontWeight: 600 }}>{totalAvailableNights} nights</span>

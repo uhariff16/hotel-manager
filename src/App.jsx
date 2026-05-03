@@ -20,7 +20,7 @@ const Staff = React.lazy(() => import('./pages/Staff'));
 const Auth = React.lazy(() => import('./pages/Auth'));
 
 function App() {
-  const { theme, session, profile, setSession, setProfile, setResorts, setActiveResortId } = useSettingsStore();
+  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering } = useSettingsStore();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -32,7 +32,10 @@ function App() {
       handleAuthChange(session);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || window.location.hash.includes('type=recovery')) {
+        setIsRecovering(true);
+      }
       handleAuthChange(session);
     });
 
@@ -69,6 +72,7 @@ function App() {
       setProfile(null);
       setResorts([]);
       setActiveResortId(null);
+      setIsRecovering(false);
     }
   };
 
@@ -105,7 +109,10 @@ function App() {
     <BrowserRouter>
       <React.Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
         <Routes>
-          <Route path="/auth" element={session ? <Navigate to="/dashboard" replace /> : <Auth />} />
+          <Route 
+            path="/auth" 
+            element={session && !isRecovering && !window.location.hash.includes('type=recovery') ? <Navigate to="/dashboard" replace /> : <Auth />} 
+          />
           
           <Route path="/" element={session ? <AppLayout /> : <Navigate to="/auth" replace />}>
             <Route index element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />} />

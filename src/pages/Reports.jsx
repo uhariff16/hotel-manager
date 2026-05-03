@@ -161,23 +161,24 @@ export default function Reports() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* Controls Card */}
-      <div className="card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+      {/* Controls Card */}
+      <div className="card" style={{ marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText /> Reports</h2>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.5rem 1rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
-             <Filter size={16} color="var(--primary)" />
-             <input type="date" className="form-input" style={{ border: 'none', padding: 0, background: 'transparent' }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
-             <span>to</span>
-             <input type="date" className="form-input" style={{ border: 'none', padding: 0, background: 'transparent' }} value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
+          <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <button className="btn btn-outline" onClick={profile?.plan_type === 'free' ? () => alert('Please upgrade to Pro or Premium to use Excel Export') : handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: profile?.plan_type === 'free' ? 0.5 : 1 }}>
+              <TableIcon size={18}/> <span className="desktop-only">{profile?.plan_type === 'free' ? 'Excel (Pro+)' : 'Export Excel'}</span>
+            </button>
+            <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Download size={18}/> <span className="desktop-only">Export PDF</span>
+            </button>
           </div>
         </div>
-        <div style={{ display: 'flex', gap: '0.75rem' }}>
-          <button className="btn btn-outline" onClick={profile?.plan_type === 'free' ? () => alert('Please upgrade to Pro or Premium to use Excel Export') : handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: profile?.plan_type === 'free' ? 0.5 : 1 }}>
-            <TableIcon size={18}/> {profile?.plan_type === 'free' ? 'Excel (Pro+)' : 'Export Excel'}
-          </button>
-          <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <Download size={18}/> Export PDF
-          </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', marginTop: '1rem' }}>
+           <Filter size={16} color="var(--primary)" />
+           <input type="date" className="form-input" style={{ border: 'none', padding: 0, background: 'transparent', flex: 1 }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
+           <span style={{ color: 'var(--text-muted)' }}>to</span>
+           <input type="date" className="form-input" style={{ border: 'none', padding: 0, background: 'transparent', flex: 1 }} value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
         </div>
       </div>
 
@@ -190,20 +191,20 @@ export default function Reports() {
             <p style={{ color: '#a0aec0', fontSize: '0.9rem' }}>Period: {range.start} to {range.end}</p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '3rem' }}>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
+          <div className="grid-4" style={{ marginBottom: '3rem' }}>
+            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center', background: '#fff' }}>
               <div style={{ color: '#4a5568', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Total Revenue</div>
-              <h2 style={{ color: '#2f855a', margin: 0, fontSize: '2rem' }}>₹{totalRevenue.toLocaleString()}</h2>
+              <h2 style={{ color: '#2f855a', margin: 0, fontSize: '1.75rem' }}>₹{totalRevenue.toLocaleString()}</h2>
             </div>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
+            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center', background: '#fff' }}>
               <div style={{ color: '#4a5568', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Total Expenses</div>
-              <h2 style={{ color: '#c53030', margin: 0, fontSize: '2rem' }}>₹{totalExpenses.toLocaleString()}</h2>
+              <h2 style={{ color: '#c53030', margin: 0, fontSize: '1.75rem' }}>₹{totalExpenses.toLocaleString()}</h2>
             </div>
             <div style={{ padding: '1.5rem', background: '#f7fafc', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
               <div style={{ color: '#4a5568', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Net Profit</div>
-              <h2 style={{ color: '#3182ce', margin: 0, fontSize: '2rem' }}>₹{netProfit.toLocaleString()}</h2>
+              <h2 style={{ color: '#3182ce', margin: 0, fontSize: '1.75rem' }}>₹{netProfit.toLocaleString()}</h2>
             </div>
-            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center' }}>
+            <div style={{ padding: '1.5rem', border: '1px solid #e2e8f0', borderRadius: '12px', textAlign: 'center', background: '#fff' }}>
               <div style={{ color: '#4a5568', fontSize: '0.9rem', textTransform: 'uppercase', fontWeight: 'bold', marginBottom: '0.5rem' }}>Units Booked</div>
               <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '0.25rem' }}>
                 <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: '#2d3748' }}>{entirePropertyCount} <span style={{fontSize: '0.8rem', fontWeight: 'normal', color: '#718096'}}>Properties</span></div>
@@ -280,7 +281,7 @@ export default function Reports() {
               <p style={{ color: '#92400e', fontSize: '0.9rem' }}>Detailed Income and Expense tracking is available on the Pro and Premium plans.</p>
             </div>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+            <div className="grid-2" style={{ gap: '2rem' }}>
               {/* Income Table */}
               <div>
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid #edf2f7', paddingBottom: '0.75rem', marginBottom: '1rem', color: '#2d3748' }}>
