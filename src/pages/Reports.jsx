@@ -279,8 +279,13 @@ export default function Reports() {
                         </tr>
                       ))}
                     </tbody>
-                  </table>
-                </div>
+                    <tfoot>
+                      <tr style={{ background: '#f8fafc', fontWeight: 'bold' }}>
+                        <td colSpan="5" style={{ padding: '0.75rem', borderTop: '2px solid #edf2f7' }}>TOTAL BOOKINGS VALUE</td>
+                        <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '2px solid #edf2f7', fontSize: '1rem' }}>₹{validBookings.reduce((acc, b) => acc + Number(b.total_amount), 0).toLocaleString()}</td>
+                      </tr>
+                    </tfoot>
+                               </div>
               </div>
 
               <div className="grid-2" style={{ gap: '2rem' }}>
@@ -307,6 +312,12 @@ export default function Reports() {
                           </tr>
                         ))}
                       </tbody>
+                      <tfoot>
+                        <tr style={{ background: '#f8fafc', fontWeight: 'bold' }}>
+                          <td colSpan="2" style={{ padding: '0.75rem', borderTop: '2px solid #edf2f7' }}>TOTAL INCOME</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '2px solid #edf2f7', color: '#2f855a', fontSize: '1rem' }}>₹{totalRevenue.toLocaleString()}</td>
+                        </tr>
+                      </tfoot>
                     </table>
                   </div>
                 </div>
@@ -334,8 +345,13 @@ export default function Reports() {
                           </tr>
                         ))}
                       </tbody>
+                      <tfoot>
+                        <tr style={{ background: '#f8fafc', fontWeight: 'bold' }}>
+                          <td colSpan="2" style={{ padding: '0.75rem', borderTop: '2px solid #edf2f7' }}>TOTAL EXPENSES</td>
+                          <td style={{ padding: '0.75rem', textAlign: 'right', borderTop: '2px solid #edf2f7', color: '#c53030', fontSize: '1rem' }}>₹{totalExpenses.toLocaleString()}</td>
+                        </tr>
+                      </tfoot>
                     </table>
-                  </div>
                 </div>
               </div>
 
