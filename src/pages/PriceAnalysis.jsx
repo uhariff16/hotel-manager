@@ -322,7 +322,3 @@ export default function PriceAnalysis() {
     </div>
   );
 }
->
-    </div>
-  );
-}
