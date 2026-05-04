@@ -30,7 +30,7 @@ export default function Bookings() {
 
 
   const [bookingForm, setBookingForm] = useState({
-    guest_name: '', phone_number: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
+    guest_name: '', guest_email: '', phone_number: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
     booking_type: 'Entire Property', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
@@ -56,6 +56,7 @@ export default function Bookings() {
 
     setBookingForm({
       guest_name: b.guest_name,
+      guest_email: b.guest_email || '',
       phone_number: b.phone_number,
       check_in_date: b.check_in_date.split('T')[0],
       check_out_date: b.check_out_date.split('T')[0],
@@ -594,14 +595,16 @@ export default function Bookings() {
             <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             <div className="grid-4" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))', gap: '1rem' }}>
               <div className="form-group"><label className="form-label">Guest Name</label><input type="text" required className="form-input" value={bookingForm.guest_name} onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} /></div>
+              <div className="form-group"><label className="form-label">Email Address</label><input type="email" className="form-input" placeholder="guest@email.com" value={bookingForm.guest_email} onChange={e => setBookingForm({...bookingForm, guest_email: e.target.value})} /></div>
               <div className="form-group"><label className="form-label">Phone</label><input type="text" required className="form-input" value={bookingForm.phone_number} onChange={e => setBookingForm({...bookingForm, phone_number: e.target.value})} /></div>
               <div className="form-group"><label className="form-label">Reference #</label><input type="text" required className="form-input" style={{ fontWeight: 'bold', color: 'var(--primary)' }} value={bookingForm.reference_number} onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} /></div>
-              <div className="form-group">
-                <label className="form-label">Occupants (Adults / Kids)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input type="number" min="1" placeholder="Adults" className="form-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: Number(e.target.value) || 1})} title="Adults" />
-                  <input type="number" min="0" placeholder="Kids" className="form-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: Number(e.target.value) || 0})} title="Kids" />
-                </div>
+            </div>
+
+            <div className="form-group">
+              <label className="form-label">Occupants (Adults / Kids)</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <input type="number" min="1" placeholder="Adults" className="form-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: Number(e.target.value) || 1})} title="Adults" />
+                <input type="number" min="0" placeholder="Kids" className="form-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: Number(e.target.value) || 0})} title="Kids" />
               </div>
             </div>
             
