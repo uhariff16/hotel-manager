@@ -8,7 +8,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 export default function Bookings() {
   const location = useLocation();
   const navigate = useNavigate();
-  const { session, activeResortId } = useSettingsStore();
+  const { session, activeResortId, profile } = useSettingsStore();
   const [bookings, setBookings] = useState([]);
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -22,6 +22,7 @@ export default function Bookings() {
     Completed: true,
     Cancelled: true
   });
+  const [selectedBookings, setSelectedBookings] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'descending' });
   const [searchTerm, setSearchTerm] = useState('');
   const [showMobileForm, setShowMobileForm] = useState(false);
@@ -368,6 +369,21 @@ export default function Bookings() {
             resort_id: activeResortId
           }]);
         }
+        // Trigger automated notification BEFORE the alert
+        console.log("Triggering auto-notification for booking:", data[0].id);
+        try {
+          const { error: funcError } = await supabase.functions.invoke('send-notification', {
+            body: { 
+              type: 'confirmation', 
+              booking_id: data[0].id,
+              resort_id: activeResortId
+            }
+          });
+          if (funcError) console.error("Notification Service Error:", funcError);
+        } catch (funcErr) {
+          console.error("Auto-notification invocation failed:", funcErr);
+        }
+
         alert('Booking Confirmed Successfully!');
       }
 
@@ -481,6 +497,23 @@ export default function Bookings() {
       await supabase.from('bookings').update(updatePayload).eq('id', b.id);
       setBookings(bookings.map(item => item.id === b.id ? { ...item, ...updatePayload } : item));
       setSettlingBooking(null);
+      
+      // Trigger automated receipt notification BEFORE alert
+      console.log("Triggering auto-receipt for booking:", b.id);
+      try {
+        const { error: funcError } = await supabase.functions.invoke('send-notification', {
+          body: { 
+            type: 'receipt', 
+            booking_id: b.id,
+            resort_id: activeResortId,
+            custom_payload: { amount: amountToCollect }
+          }
+        });
+        if (funcError) console.error("Receipt Service Error:", funcError);
+      } catch (funcErr) {
+        console.error("Auto-receipt invocation failed:", funcErr);
+      }
+
       alert(`Check-out successful!`);
     } catch(err) {
       alert(`Error during check-out: ` + err.message);
@@ -530,6 +563,64 @@ export default function Bookings() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const sendReminder = async (b) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-notification', {
+        body: { 
+          type: 'reminder', 
+          booking_id: b.id,
+          resort_id: activeResortId
+        }
+      });
+      if (error) throw error;
+      alert(`Reminder sent successfully to ${b.guest_name}!`);
+    } catch (err) {
+      alert("Failed to send reminder: " + err.message);
+    }
+  };
+
+  const bulkDeleteSelected = async () => {
+    const isAdmin = profile?.role === 'tenant_admin' || profile?.role === 'super_admin';
+    if (!isAdmin) return alert("Only admins can perform bulk deletion.");
+
+    if (selectedBookings.length === 0) return;
+
+    if (!window.confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ${selectedBookings.length} selected bookings and all their associated payments? \n\nThis action cannot be undone.`)) return;
+
+    setLoading(true);
+    try {
+      // 1. Delete linked incomes
+      await supabase.from('incomes').delete().in('booking_id', selectedBookings);
+      
+      // 2. Delete bookings
+      const { error } = await supabase.from('bookings').delete().in('id', selectedBookings);
+      if (error) throw error;
+
+      setBookings(prev => prev.filter(b => !selectedBookings.includes(b.id)));
+      setSelectedBookings([]);
+      alert(`Successfully deleted ${selectedBookings.length} bookings.`);
+    } catch (err) {
+      alert("Error during bulk delete: " + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allIds = sortedAndFilteredBookings.map(b => b.id);
+      setSelectedBookings(allIds);
+    } else {
+      setSelectedBookings([]);
+    }
+  };
+
+  const toggleSelectBooking = (id) => {
+    setSelectedBookings(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
   };
 
   const sortedAndFilteredBookings = React.useMemo(() => {
@@ -780,7 +871,18 @@ export default function Bookings() {
       {/* Bookings List */}
       <div className="card list-section">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Recent Bookings</h2>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Recent Bookings</h2>
+              {selectedBookings.length > 0 && (profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+                <button 
+                  className="btn btn-primary" 
+                  onClick={bulkDeleteSelected}
+                  style={{ background: 'var(--danger)', borderColor: 'var(--danger)', padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                >
+                  <Trash2 size={14} /> Delete Selected ({selectedBookings.length})
+                </button>
+              )}
+            </div>
             
             <div className="search-bar" style={{ position: 'relative', flex: 1, minWidth: '200px' }}>
               <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -829,20 +931,30 @@ export default function Bookings() {
                   b.status === 'Completed' ? 'var(--success)' :
                   'var(--primary)'
                 }` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                    <div>
-                      <small style={{ color: 'var(--primary)', fontWeight: 700 }}>{b.reference_number}</small>
-                      <h3 style={{ margin: '0.2rem 0', fontSize: '1.1rem' }}>{b.guest_name}</h3>
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'flex-start' }}>
+                    <input 
+                      type="checkbox" 
+                      style={{ marginTop: '0.5rem' }}
+                      checked={selectedBookings.includes(b.id)}
+                      onChange={() => toggleSelectBooking(b.id)}
+                    />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <small style={{ color: 'var(--primary)', fontWeight: 700 }}>{b.reference_number}</small>
+                          <h3 style={{ margin: '0.2rem 0', fontSize: '1.1rem' }}>{b.guest_name}</h3>
+                        </div>
+                        <span className={`badge ${
+                          b.status === 'Cancelled' ? 'badge-danger' : 
+                          b.status === 'Pending' ? 'badge-warning' : 
+                          b.status === 'Checked-in' ? 'badge-indigo' :
+                          b.status === 'Completed' ? 'badge-success' :
+                          'badge-info'
+                        }`}>
+                          {b.status}
+                        </span>
+                      </div>
                     </div>
-                    <span className={`badge ${
-                      b.status === 'Cancelled' ? 'badge-danger' : 
-                      b.status === 'Pending' ? 'badge-warning' : 
-                      b.status === 'Checked-in' ? 'badge-indigo' :
-                      b.status === 'Completed' ? 'badge-success' :
-                      'badge-info'
-                    }`}>
-                      {b.status}
-                    </span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1rem', fontSize: '0.85rem' }}>
@@ -872,9 +984,11 @@ export default function Bookings() {
                       <button className="btn btn-primary" style={{ flex: 1, height: '40px', background: '#6366f1' }} onClick={() => settleBooking(b)}>Check-out</button>
                     )}
                     <button className="btn btn-outline" style={{ flex: 1, height: '40px' }} onClick={() => loadBookingForEdit(b)}>Edit</button>
-                    <button className="btn btn-outline" style={{ width: '40px', height: '40px', padding: 0 }} onClick={() => deleteBooking(b.id)}>
-                      <Trash2 size={18} color="var(--danger)" />
-                    </button>
+                    {(b.status === 'Pending' || b.status === 'Confirmed') && (
+                      <button className="btn btn-outline" style={{ width: '40px', height: '40px', padding: 0 }} onClick={() => deleteBooking(b.id)}>
+                        <X size={18} color="var(--danger)" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -885,6 +999,13 @@ export default function Bookings() {
             <table className="table">
               <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-color)', zIndex: 1 }}>
                 <tr>
+                  <th style={{ width: '40px' }}>
+                    <input 
+                      type="checkbox" 
+                      onChange={toggleSelectAll} 
+                      checked={sortedAndFilteredBookings.length > 0 && selectedBookings.length === sortedAndFilteredBookings.length}
+                    />
+                  </th>
                   <th onClick={() => requestSort('guest_name')} style={{ cursor: 'pointer', userSelect: 'none' }}>Guest {sortConfig.key === 'guest_name' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</th>
                   <th onClick={() => requestSort('check_in_date')} style={{ cursor: 'pointer', userSelect: 'none' }}>Dates {sortConfig.key === 'check_in_date' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</th>
                   <th onClick={() => requestSort('booking_type')} style={{ cursor: 'pointer', userSelect: 'none' }}>Unit {sortConfig.key === 'booking_type' && (sortConfig.direction === 'ascending' ? '▲' : '▼')}</th>
@@ -895,7 +1016,7 @@ export default function Bookings() {
               </thead>
               <tbody>
                 {sortedAndFilteredBookings.length === 0 ? (
-                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found for the selected filters.</td></tr>
+                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found for the selected filters.</td></tr>
                 ) : sortedAndFilteredBookings.map(b => {
                   const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
                   let rname = '';
@@ -912,6 +1033,13 @@ export default function Bookings() {
                       borderLeft: b.id === editingBookingId ? '4px solid var(--primary)' : 'none',
                       transition: 'all 0.2s ease'
                     }}>
+                      <td>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedBookings.includes(b.id)}
+                          onChange={() => toggleSelectBooking(b.id)}
+                        />
+                      </td>
                       <td>
                         <small style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{b.reference_number || 'No Ref'}</small><br/>
                         <strong>{b.guest_name}</strong>
@@ -955,7 +1083,10 @@ export default function Bookings() {
                       </td>
                       <td style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
                         {b.status === 'Confirmed' && (
-                          <button className="btn btn-primary" style={{ padding: '0.2rem', fontSize: '0.75rem', background: 'var(--primary)' }} onClick={() => handleCheckIn(b)}>Check-in</button>
+                          <>
+                            <button className="btn btn-primary" style={{ padding: '0.2rem', fontSize: '0.75rem', background: 'var(--primary)' }} onClick={() => handleCheckIn(b)}>Check-in</button>
+                            <button className="btn btn-outline" style={{ padding: '0.2rem', fontSize: '0.75rem', color: '#0ea5e9', borderColor: '#0ea5e9' }} onClick={() => sendReminder(b)}>Send Reminder</button>
+                          </>
                         )}
                         {b.status === 'Checked-in' && (
                           <button className="btn btn-primary" style={{ padding: '0.2rem', fontSize: '0.75rem', background: '#6366f1' }} onClick={() => settleBooking(b)}>Check-out</button>

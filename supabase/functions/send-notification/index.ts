@@ -15,8 +15,9 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     )
 
-    const { type, booking_id, resort_id, custom_payload } = await req.json()
+    const { type, booking_id, resort_id, custom_payload, test_recipient } = await req.json()
 
+    // 1. Fetch Integration Settings
     const { data: settings, error: settingsError } = await supabaseClient
       .from("tenant_integrations")
       .select("*")
@@ -25,32 +26,56 @@ serve(async (req) => {
 
     if (settingsError || !settings) throw new Error("Integration settings not found.")
 
-    const { data: booking, error: bookingError } = await supabaseClient
-      .from("bookings")
-      .select("*, guests(full_name, phone, email), resorts(name)")
-      .eq("id", booking_id)
-      .single()
+    // 2. Fetch Booking Info (if provided)
+    let booking = null
+    if (booking_id) {
+      const { data, error } = await supabaseClient
+        .from("bookings")
+        .select("*, resorts(name)")
+        .eq("id", booking_id)
+        .single()
+      if (!error) booking = data
+    }
 
-    const guestName = booking?.guests?.full_name || "Valued Guest"
-    const guestEmail = booking?.guests?.email
-    const guestPhone = booking?.guests?.phone
-    const resortName = booking?.resorts?.name || settings.email_from_name
+    const guestName = booking?.guest_name || "Valued Guest"
+    const resortName = booking?.resorts?.name || settings.email_from_name || "Our Resort"
+    
+    // Determine recipients
+    let guestEmail = booking?.guest_email || (type === "test_email" ? test_recipient : null)
+    let guestPhone = booking?.phone_number || (type === "test_whatsapp" ? test_recipient : null)
+
+    console.log(`Notification Request: Type=${type}, Resort=${resort_id}, Recipient=${guestEmail || guestPhone}`)
 
     let results = { email: null, whatsapp: null }
 
-    if (settings.email_enabled && guestEmail) {
+    // 3. Handle Email
+    const canSendEmail = settings.email_enabled && (
+      (type === "confirmation" && settings.auto_booking_confirmation) ||
+      (type === "receipt" && settings.auto_payment_receipt) ||
+      (type === "reminder" && settings.auto_checkin_reminder) ||
+      type === "test_email"
+    )
+
+    if (guestEmail && canSendEmail) {
       let subject = ""
       let html = ""
 
       if (type === "confirmation") {
         subject = `Booking Confirmed: ${resortName}`
-        html = `<h1>Hello ${guestName}!</h1><p>Your booking for ${booking.check_in} is confirmed.</p>`
+        html = `<h1>Hello ${guestName}!</h1><p>Your booking for ${booking?.check_in_date || 'your upcoming stay'} is confirmed.</p>`
       } else if (type === "receipt") {
         subject = `Payment Receipt: ${resortName}`
         html = `<h1>Payment Received</h1><p>Thank you ${guestName}. We received ₹${custom_payload?.amount}.</p>`
+      } else if (type === "reminder") {
+        subject = `See you soon at ${resortName}!`
+        html = `<h1>Hello ${guestName}!</h1><p>We are excited to welcome you tomorrow, ${booking?.check_in_date}.</p><p>Standard Check-in time is 1:00 PM.</p>`
+      } else if (type === "test_email") {
+        subject = `Test Email from ${resortName}`
+        html = `<h1>Connection Test Successful!</h1><p>Your Resend integration is now working correctly with Cheerful Chalet.</p>`
       }
 
       if (subject) {
+        console.log(`Attempting to send email via Resend to: ${guestEmail}`)
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
@@ -64,33 +89,66 @@ serve(async (req) => {
             html: html,
           }),
         })
-        results.email = await res.json()
+        const emailResult = await res.json()
+        console.log("Resend API Response:", emailResult)
+        results.email = emailResult
       }
     }
 
-    if (settings.whatsapp_enabled && guestPhone) {
-      let templateName = ""
-      if (type === "confirmation") templateName = "booking_confirmation"
-      else if (type === "receipt") templateName = "payment_receipt"
+    // 4. Handle WhatsApp
+    const canSendWhatsApp = settings.whatsapp_enabled && (
+      (type === "confirmation" && settings.auto_booking_confirmation) ||
+      (type === "receipt" && settings.auto_payment_receipt) ||
+      (type === "reminder" && settings.auto_checkin_reminder) ||
+      type === "test_whatsapp"
+    )
 
-      if (templateName) {
+    if (guestPhone && canSendWhatsApp) {
+      let payload = null
+
+      if (type === "confirmation") {
+        payload = {
+          messaging_product: "whatsapp",
+          to: guestPhone.replace(/\D/g, ""),
+          type: "template",
+          template: { name: "booking_confirmation", language: { code: "en_US" } }
+        }
+      } else if (type === "receipt") {
+        payload = {
+          messaging_product: "whatsapp",
+          to: guestPhone.replace(/\D/g, ""),
+          type: "template",
+          template: { name: "payment_receipt", language: { code: "en_US" } }
+        }
+      } else if (type === "reminder") {
+        payload = {
+          messaging_product: "whatsapp",
+          to: guestPhone.replace(/\D/g, ""),
+          type: "template",
+          template: { name: "checkin_reminder", language: { code: "en_US" } }
+        }
+      } else if (type === "test_whatsapp") {
+        payload = {
+          messaging_product: "whatsapp",
+          to: guestPhone.replace(/\D/g, ""),
+          type: "text",
+          text: { body: `Hello! This is a test message from your resort management system. Your WhatsApp integration is active.` }
+        }
+      }
+
+      if (payload) {
+        console.log(`Attempting to send WhatsApp to: ${guestPhone}`)
         const res = await fetch(`https://graph.facebook.com/v17.0/${settings.whatsapp_phone_number_id}/messages`, {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${settings.whatsapp_access_token}`,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            messaging_product: "whatsapp",
-            to: guestPhone.replace(/\D/g, ""),
-            type: "template",
-            template: {
-              name: templateName,
-              language: { code: "en_US" },
-            }
-          }),
+          body: JSON.stringify(payload),
         })
-        results.whatsapp = await res.json()
+        const waResult = await res.json()
+        console.log("WhatsApp API Response:", waResult)
+        results.whatsapp = waResult
       }
     }
 
