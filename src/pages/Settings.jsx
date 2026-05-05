@@ -1,13 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
 export default function Settings() {
   const { profile, setProfile, theme, toggleTheme, session, activeResortId } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
   const [loading, setLoading] = useState(false);
   const [savingComm, setSavingComm] = useState(false);
+  const [testStatus, setTestStatus] = useState({
+    email: { loading: false, success: null, message: '' },
+    whatsapp: { loading: false, success: null, message: '' }
+  });
   
   // Integration Settings State
   const [commSettings, setCommSettings] = useState({
@@ -119,34 +123,36 @@ export default function Settings() {
     }
   };
 
+  const [testEmail, setTestEmail] = useState('');
+  const [testPhone, setTestPhone] = useState('');
+
   const testConnection = async (type) => {
     if (!activeResortId) return;
+    if (type === 'email' && !testEmail) return alert('Please enter a test recipient email');
+    if (type === 'whatsapp' && !testPhone) return alert('Please enter a test recipient phone number');
     
-    setLoading(true);
+    setTestStatus(prev => ({ ...prev, [type]: { loading: true, success: null, message: 'Sending test...' } }));
+    
     try {
-      // In a real scenario, this would call your Supabase Edge Function
-      // For now, we'll simulate the logic or provide a placeholder alert
-      const { data, error } = await supabase.functions.invoke('send-test-notification', {
+      const { data, error } = await supabase.functions.invoke('send-notification', {
         body: { 
-          type, 
+          type: 'test_' + type, 
           resort_id: activeResortId,
-          settings: commSettings 
+          test_recipient: type === 'email' ? testEmail : testPhone
         }
       });
 
       if (error) {
-        if (error.message.includes('Function not found')) {
-          alert(`To test ${type}, you first need to deploy the 'send-test-notification' Edge Function to your Supabase project.`);
-        } else {
-          throw error;
+        let msg = error.message;
+        if (msg.includes('Function not found')) {
+          msg = `Edge Function 'send-notification' not deployed.`;
         }
+        setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: false, message: msg } }));
       } else {
-        alert(`${type.toUpperCase()} test initiated successfully! Check your inbox/phone.`);
+        setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: true, message: `${type === 'email' ? 'Email' : 'WhatsApp'} test successful!` } }));
       }
     } catch (err) {
-      alert(`Error testing ${type}: ` + err.message);
-    } finally {
-      setLoading(false);
+      setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: false, message: err.message } }));
     }
   };
 
@@ -215,14 +221,52 @@ export default function Settings() {
                       </div>
                       <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Email Integration (Resend)</h3>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <button type="button" onClick={() => testConnection('email')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem' }} disabled={!commSettings.email_api_key}>
-                        Send Test Email
-                      </button>
-                      <label className="switch">
-                        <input type="checkbox" checked={commSettings.email_enabled} onChange={e => setCommSettings({...commSettings, email_enabled: e.target.checked})} />
-                        <span className="slider round"></span>
-                      </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input 
+                          type="email" 
+                          placeholder="Test Email..." 
+                          className="form-input" 
+                          style={{ height: '32px', width: '160px', fontSize: '0.75rem' }} 
+                          value={testEmail} 
+                          onChange={e => setTestEmail(e.target.value)} 
+                        />
+                        <button type="button" onClick={() => testConnection('email')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={!commSettings.email_api_key || testStatus.email.loading}>
+                          {testStatus.email.loading ? <Loader2 size={14} className="animate-spin" /> : 'Send Test'}
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setCommSettings({...commSettings, email_enabled: !commSettings.email_enabled})}
+                          className={`btn ${commSettings.email_enabled ? 'btn-primary' : 'btn-outline'}`}
+                          style={{ 
+                            height: '32px', 
+                            fontSize: '0.75rem', 
+                            padding: '0 0.75rem', 
+                            minWidth: '80px',
+                            background: commSettings.email_enabled ? 'var(--primary)' : 'transparent',
+                            color: commSettings.email_enabled ? 'white' : 'var(--text-main)',
+                            border: commSettings.email_enabled ? 'none' : '1px solid var(--border)'
+                          }}
+                        >
+                          {commSettings.email_enabled ? 'Active' : 'Inactive'}
+                        </button>
+                      </div>
+                      {testStatus.email.message && (
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '0.5rem',
+                          color: testStatus.email.success === null ? 'var(--text-muted)' : (testStatus.email.success ? '#10b981' : '#ef4444'),
+                          background: testStatus.email.success === null ? 'rgba(0,0,0,0.05)' : (testStatus.email.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          width: 'fit-content'
+                        }}>
+                          {testStatus.email.loading ? <Loader2 size={12} className="animate-spin" /> : (testStatus.email.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />)}
+                          {testStatus.email.message}
+                        </div>
+                      )}
                     </div>
                   </div>
                   
@@ -251,14 +295,52 @@ export default function Settings() {
                       </div>
                       <h3 style={{ margin: 0, fontSize: '1.1rem' }}>WhatsApp Integration (Meta Cloud)</h3>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <button type="button" onClick={() => testConnection('whatsapp')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem' }} disabled={!commSettings.whatsapp_access_token}>
-                        Send Test WhatsApp
-                      </button>
-                      <label className="switch">
-                        <input type="checkbox" checked={commSettings.whatsapp_enabled} onChange={e => setCommSettings({...commSettings, whatsapp_enabled: e.target.checked})} />
-                        <span className="slider round"></span>
-                      </label>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input 
+                          type="text" 
+                          placeholder="Test Phone..." 
+                          className="form-input" 
+                          style={{ height: '32px', width: '150px', fontSize: '0.75rem' }} 
+                          value={testPhone} 
+                          onChange={e => setTestPhone(e.target.value)} 
+                        />
+                        <button type="button" onClick={() => testConnection('whatsapp')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={!commSettings.whatsapp_access_token || testStatus.whatsapp.loading}>
+                          {testStatus.whatsapp.loading ? <Loader2 size={14} className="animate-spin" /> : 'Send Test'}
+                        </button>
+                        <button 
+                          type="button" 
+                          onClick={() => setCommSettings({...commSettings, whatsapp_enabled: !commSettings.whatsapp_enabled})}
+                          className={`btn ${commSettings.whatsapp_enabled ? 'btn-primary' : 'btn-outline'}`}
+                          style={{ 
+                            height: '32px', 
+                            fontSize: '0.75rem', 
+                            padding: '0 0.75rem', 
+                            minWidth: '80px',
+                            background: commSettings.whatsapp_enabled ? '#22c55e' : 'transparent',
+                            color: commSettings.whatsapp_enabled ? 'white' : 'var(--text-main)',
+                            border: commSettings.whatsapp_enabled ? 'none' : '1px solid var(--border)'
+                          }}
+                        >
+                          {commSettings.whatsapp_enabled ? 'Active' : 'Inactive'}
+                        </button>
+                      </div>
+                      {testStatus.whatsapp.message && (
+                        <div style={{ 
+                          fontSize: '0.75rem', 
+                          display: 'flex', 
+                          alignItems: 'center', 
+                          gap: '0.5rem',
+                          color: testStatus.whatsapp.success === null ? 'var(--text-muted)' : (testStatus.whatsapp.success ? '#10b981' : '#ef4444'),
+                          background: testStatus.whatsapp.success === null ? 'rgba(0,0,0,0.05)' : (testStatus.whatsapp.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
+                          padding: '6px 10px',
+                          borderRadius: '6px',
+                          width: 'fit-content'
+                        }}>
+                          {testStatus.whatsapp.loading ? <Loader2 size={12} className="animate-spin" /> : (testStatus.whatsapp.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />)}
+                          {testStatus.whatsapp.message}
+                        </div>
+                      )}
                     </div>
                   </div>
                   
