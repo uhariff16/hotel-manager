@@ -142,7 +142,7 @@ export default function CalendarView() {
       }
     }
     setDragSelection(null);
-    navigate('/bookings', { state: { prefill } });
+    navigate('/bookings/new', { state: { prefill } });
   };
 
   if (loading) return <div>Loading...</div>;
@@ -196,7 +196,7 @@ export default function CalendarView() {
                       title={isPast ? 'Past Date' : (label || 'Available')} 
                       onMouseDown={() => handleMouseDown(d, 'Property', c.id, bookingId, c.id)}
                       onMouseEnter={() => handleMouseEnter(d, 'Property', c.id, bookingId, c.id)}
-                      onDoubleClick={() => { if(bookingId) navigate('/bookings', { state: { editBookingId: bookingId } }); }}
+                      onDoubleClick={() => { if(bookingId) navigate(`/bookings/edit/${bookingId}`); }}
                       style={{ 
                         width: '50px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '4px', cursor: isPast ? 'not-allowed' : (bookingId ? 'pointer' : 'crosshair')
                       }}
@@ -232,7 +232,7 @@ export default function CalendarView() {
                         title={isPast ? 'Past Date' : (label || 'Available')} 
                         onMouseDown={() => handleMouseDown(d, 'Room', r.id, bookingId, r.cottage_id)}
                         onMouseEnter={() => handleMouseEnter(d, 'Room', r.id, bookingId, r.cottage_id)}
-                        onDoubleClick={() => { if(bookingId) navigate('/bookings', { state: { editBookingId: bookingId } }); }}
+                        onDoubleClick={() => { if(bookingId) navigate(`/bookings/edit/${bookingId}`); }}
                         style={{ 
                           width: '50px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '6px', cursor: isPast ? 'not-allowed' : (bookingId ? 'pointer' : 'crosshair')
                         }}
@@ -307,13 +307,13 @@ export default function CalendarView() {
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
               <span style={{ fontSize: '0.875rem' }}>Total Amount: <strong style={{ color: 'var(--primary)' }}>₹{selectedBooking.total_amount}</strong></span>
-              <button 
-                className="btn btn-outline" 
-                style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', marginLeft: '1rem' }}
-                onClick={() => navigate('/bookings', { state: { editBookingId: selectedBooking.id } })}
-              >
-                View Full Details
-              </button>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem', marginLeft: '1rem' }}
+                  onClick={() => navigate(`/bookings/edit/${selectedBooking.id}`)}
+                >
+                  Edit Full Details
+                </button>
             </div>
           </div>
         </div>

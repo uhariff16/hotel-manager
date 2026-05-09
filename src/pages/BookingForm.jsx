@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { CalendarCheck, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { eachDayOfInterval, isWeekend } from 'date-fns';
@@ -8,6 +8,7 @@ import { useSettingsStore } from '../lib/store';
 export default function BookingForm() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { activeResortId, profile } = useSettingsStore();
   
   const [loading, setLoading] = useState(true);
@@ -29,6 +30,17 @@ export default function BookingForm() {
   useEffect(() => {
     fetchData();
   }, [activeResortId]);
+
+  useEffect(() => {
+    if (location.state?.prefill && !id) {
+      setBookingForm(prev => ({
+        ...prev,
+        ...location.state.prefill
+      }));
+      // Clear state to prevent re-prefilling if they refresh or navigate back
+      navigate(location.pathname, { replace: true });
+    }
+  }, [location.state, id, navigate]);
 
   const fetchData = async () => {
     if (!activeResortId) return;
@@ -191,6 +203,7 @@ export default function BookingForm() {
     try {
       const bookingData = {
         resort_id: activeResortId,
+        tenant_id: profile.tenant_id,
         guest_name: bookingForm.guest_name,
         guest_email: bookingForm.guest_email || null,
         phone_number: bookingForm.phone_number,
@@ -208,13 +221,13 @@ export default function BookingForm() {
         total_amount: bookingForm.total_amount,
         advance_paid: bookingForm.advance_paid,
         balance_amount: bookingForm.balance_amount,
-        booking_source: bookingForm.booking_source,
         status: bookingForm.status,
         reference_number: bookingForm.reference_number,
         vehicle_number: bookingForm.vehicle_number,
         id_proof_type: bookingForm.id_proof_type,
         id_proof_number: bookingForm.id_proof_number,
         addon_details: bookingForm.addon_selections.map(s => s === 'Others' ? bookingForm.addon_others : s).filter(Boolean).join(', '),
+        booking_source: bookingForm.booking_source === 'Other' ? bookingForm.custom_booking_source : bookingForm.booking_source,
         price_type: bookingForm.price_type
       };
 
@@ -406,6 +419,17 @@ export default function BookingForm() {
                 <option value="Agent">Agent</option>
                 <option value="Other">Other...</option>
               </select>
+              {bookingForm.booking_source === 'Other' && (
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  style={{ marginTop: '0.5rem' }} 
+                  placeholder="Specify source" 
+                  value={bookingForm.custom_booking_source || ''} 
+                  onChange={e => setBookingForm({...bookingForm, custom_booking_source: e.target.value})} 
+                  required
+                />
+              )}
             </div>
           </div>
 
