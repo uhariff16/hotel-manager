@@ -211,6 +211,7 @@ export default function BookingForm() {
         check_out_date: bookingForm.check_out_date,
         adults_count: bookingForm.adults_count,
         kids_count: bookingForm.kids_count,
+        number_of_guests: Number(bookingForm.adults_count || 0) + Number(bookingForm.kids_count || 0),
         booking_type: bookingForm.booking_type,
         cottage_id: bookingForm.cottage_id,
         room_ids: bookingForm.booking_type === 'Room' ? bookingForm.room_ids : null,
