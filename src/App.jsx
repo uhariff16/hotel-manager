@@ -8,6 +8,7 @@ import AppLayout from './layouts/AppLayout';
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const CottagesRooms = React.lazy(() => import('./pages/CottagesRooms'));
 const Bookings = React.lazy(() => import('./pages/Bookings'));
+const BookingForm = React.lazy(() => import('./pages/BookingForm'));
 const CalendarView = React.lazy(() => import('./pages/CalendarView'));
 const Financials = React.lazy(() => import('./pages/Financials'));
 const Settings = React.lazy(() => import('./pages/Settings'));
@@ -119,6 +120,8 @@ function App() {
             <Route path="dashboard" element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Dashboard />} />
             <Route path="setup" element={<CottagesRooms />} />
             <Route path="bookings" element={<Bookings />} />
+            <Route path="bookings/new" element={<BookingForm />} />
+            <Route path="bookings/edit/:id" element={<BookingForm />} />
             <Route path="calendar" element={<CalendarView />} />
             <Route path="financials" element={<Financials />} />
             <Route path="reports" element={<Reports />} />
