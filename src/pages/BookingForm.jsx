@@ -292,6 +292,23 @@ export default function BookingForm() {
             </div>
           </div>
 
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
+            <div className="form-group">
+              <label className="form-label">ID Proof Type</label>
+              <select className="form-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => setBookingForm({...bookingForm, id_proof_type: e.target.value})}>
+                <option value="Aadhar">Aadhar</option>
+                <option value="Pan Card">Pan Card</option>
+                <option value="Driving License">Driving License</option>
+                <option value="Voter ID">Voter ID</option>
+                <option value="Passport">Passport</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label">ID Proof Number</label>
+              <input type="text" className="form-input" placeholder="Enter ID number" value={bookingForm.id_proof_number || ''} onChange={e => setBookingForm({...bookingForm, id_proof_number: e.target.value})} />
+            </div>
+          </div>
+
           {/* Dates */}
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div className="form-group">
@@ -350,6 +367,48 @@ export default function BookingForm() {
             </div>
           )}
 
+          {/* Add-ons and Source */}
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div className="form-group">
+              <label className="form-label">Add-ons Selection</label>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '0.5rem', background: 'rgba(0,0,0,0.02)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                {['Food', 'Fire camp', 'BBQ'].map(addon => (
+                  <label key={addon} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem' }}>
+                    <input type="checkbox" checked={bookingForm.addon_selections?.includes(addon)} onChange={e => {
+                      const newSels = e.target.checked 
+                        ? [...(bookingForm.addon_selections || []), addon] 
+                        : (bookingForm.addon_selections || []).filter(a => a !== addon);
+                      setBookingForm({...bookingForm, addon_selections: newSels});
+                    }} />
+                    {addon}
+                  </label>
+                ))}
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  <input type="checkbox" checked={bookingForm.addon_selections?.includes('Others')} onChange={e => {
+                    const newSels = e.target.checked 
+                      ? [...(bookingForm.addon_selections || []), 'Others'] 
+                      : (bookingForm.addon_selections || []).filter(a => a !== 'Others');
+                    setBookingForm({...bookingForm, addon_selections: newSels});
+                  }} />
+                  Others
+                </label>
+                {bookingForm.addon_selections?.includes('Others') && (
+                  <input type="text" className="form-input" style={{ width: '100%', marginTop: '0.5rem' }} placeholder="Specify others..." value={bookingForm.addon_others || ''} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
+                )}
+              </div>
+            </div>
+            <div className="form-group">
+              <label className="form-label">Booking Source</label>
+              <select className="form-select" value={bookingForm.booking_source} onChange={e => setBookingForm({...bookingForm, booking_source: e.target.value})}>
+                <option value="Direct">Direct</option>
+                <option value="Airbnb">Airbnb</option>
+                <option value="Booking.com">Booking.com</option>
+                <option value="Agent">Agent</option>
+                <option value="Other">Other...</option>
+              </select>
+            </div>
+          </div>
+
           {/* Billing */}
           <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
             <h4 style={{ marginBottom: '1rem', color: 'var(--text-main)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Billing Auto-Calc</h4>
@@ -374,6 +433,10 @@ export default function BookingForm() {
                   <option value="Completed">Completed</option>
                   <option value="Cancelled">Cancelled</option>
                 </select>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Add-ons Cost (₹)</label>
+                <input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: Number(e.target.value)})} />
               </div>
             </div>
 
