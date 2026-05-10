@@ -13,13 +13,7 @@ export default function Bookings() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [statusFilter, setStatusFilter] = useState({
-    Confirmed: true,
-    Pending: true,
-    'Checked-in': true,
-    Completed: true,
-    Cancelled: true
-  });
+
   const [selectedBookings, setSelectedBookings] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'descending' });
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,6 +47,22 @@ export default function Bookings() {
       setLoading(false);
     }
   };
+
+  const getStatusCount = (status) => {
+    if (status === 'All') return bookings.length;
+    return bookings.filter(b => b.status === status).length;
+  };
+
+  const statusOptions = [
+    { label: 'All', color: 'var(--text-main)', bg: 'var(--bg-secondary)' },
+    { label: 'Pending', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
+    { label: 'Confirmed', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
+    { label: 'Checked-in', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' },
+    { label: 'Completed', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
+    { label: 'Cancelled', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
+  ];
+
+  const [activeTab, setActiveTab] = useState('All');
 
   const handleCheckIn = async (b) => {
     try {
@@ -184,7 +194,7 @@ export default function Bookings() {
 
   const sortedAndFilteredBookings = React.useMemo(() => {
     let items = bookings.filter(b => {
-      const matchesStatus = statusFilter[b.status];
+      const matchesStatus = activeTab === 'All' || b.status === activeTab;
       const matchesSearch = b.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             (b.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (b.phone_number || '').includes(searchTerm);
@@ -204,7 +214,7 @@ export default function Bookings() {
       });
     }
     return items;
-  }, [bookings, statusFilter, sortConfig, searchTerm]);
+  }, [bookings, activeTab, sortConfig, searchTerm]);
 
   const requestSort = (key) => {
     let direction = 'ascending';
@@ -227,53 +237,74 @@ export default function Bookings() {
 
       {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{error}</div>}
 
-      <div className="card" style={{ padding: '1.5rem' }}>
-        {/* Filters & Search */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Recent Bookings</h2>
+      <div className="card" style={{ padding: '1.5rem', overflow: 'visible' }}>
+        {/* Modern Filter Header */}
+        <div style={{ marginBottom: '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: '1.5rem', flexWrap: 'wrap' }}>
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <div className="search-bar" style={{ position: 'relative' }}>
+                <Search size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Search bookings..." 
+                  value={searchTerm} 
+                  onChange={e => setSearchTerm(e.target.value)}
+                  style={{ padding: '0.8rem 1rem 0.8rem 3rem', fontSize: '1rem', background: 'var(--bg-secondary)', border: 'none', borderRadius: 'var(--radius-md)' }}
+                />
+              </div>
+            </div>
+            
             {selectedBookings.length > 0 && (profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
               <button 
                 className="btn btn-primary" 
                 onClick={bulkDeleteSelected}
-                style={{ background: 'var(--danger)', borderColor: 'var(--danger)', padding: '0.4rem 0.8rem', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                style={{ background: 'var(--danger)', borderColor: 'var(--danger)', padding: '0.6rem 1.2rem' }}
               >
-                <Trash2 size={14} /> Delete Selected ({selectedBookings.length})
+                <Trash2 size={16} /> Delete {selectedBookings.length} Selected
               </button>
             )}
           </div>
-          
-          <div className="search-bar" style={{ position: 'relative', flex: 1, minWidth: '200px', maxWidth: '400px' }}>
-            <Search size={18} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Search by name, reference or phone..." 
-              value={searchTerm} 
-              onChange={e => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '2.5rem' }}
-            />
-          </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {Object.keys(statusFilter).map(status => (
-              <button
-                key={status}
-                onClick={() => setStatusFilter({ ...statusFilter, [status]: !statusFilter[status] })}
-                style={{
-                  padding: '0.3rem 0.8rem',
-                  borderRadius: '20px',
-                  fontSize: '0.75rem',
-                  border: 'none',
-                  background: statusFilter[status] ? 'var(--primary)' : 'var(--bg-secondary)',
-                  color: statusFilter[status] ? 'white' : 'var(--text-muted)',
-                  cursor: 'pointer',
-                  fontWeight: 600
-                }}
-              >
-                {status}
-              </button>
-            ))}
+          {/* Status Tabs */}
+          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1.5rem', overflowX: 'auto', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)' }}>
+            {statusOptions.map(opt => {
+              const isActive = activeTab === opt.label;
+              const count = getStatusCount(opt.label);
+              return (
+                <button
+                  key={opt.label}
+                  onClick={() => setActiveTab(opt.label)}
+                  style={{
+                    padding: '0.6rem 1.2rem',
+                    borderRadius: 'var(--radius-md) var(--radius-md) 0 0',
+                    fontSize: '0.9rem',
+                    fontWeight: 600,
+                    border: 'none',
+                    background: isActive ? opt.bg : 'transparent',
+                    color: isActive ? opt.color : 'var(--text-muted)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.6rem',
+                    transition: 'all 0.2s',
+                    borderBottom: isActive ? `3px solid ${opt.color}` : '3px solid transparent',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {opt.label}
+                  <span style={{ 
+                    fontSize: '0.75rem', 
+                    background: isActive ? 'white' : 'var(--bg-secondary)', 
+                    padding: '0.1rem 0.5rem', 
+                    borderRadius: '10px',
+                    opacity: count === 0 && !isActive ? 0.5 : 1
+                  }}>
+                    {count}
+                  </span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
