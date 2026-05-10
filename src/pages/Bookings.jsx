@@ -15,7 +15,7 @@ export default function Bookings() {
   const [error, setError] = useState(null);
 
   const [selectedBookings, setSelectedBookings] = useState([]);
-  const [sortConfig, setSortConfig] = useState({ key: 'created_at', direction: 'descending' });
+  const [sortConfig, setSortConfig] = useState({ key: 'check_in_date', direction: 'ascending' });
   const [searchTerm, setSearchTerm] = useState('');
 
   const [settlingBooking, setSettlingBooking] = useState(null);
@@ -201,7 +201,16 @@ export default function Bookings() {
       return matchesStatus && matchesSearch;
     });
 
-    if (sortConfig !== null) {
+    if (sortConfig.key === 'check_in_date' && sortConfig.direction === 'ascending') {
+      // Default Priority-based sort
+      const priority = { 'Checked-in': 1, 'Confirmed': 2, 'Pending': 3, 'Completed': 4, 'Cancelled': 5 };
+      items.sort((a, b) => {
+        const pA = priority[a.status] || 99;
+        const pB = priority[b.status] || 99;
+        if (pA !== pB) return pA - pB;
+        return new Date(a.check_in_date) - new Date(b.check_in_date);
+      });
+    } else if (sortConfig !== null) {
       items.sort((a, b) => {
         let valA = a[sortConfig.key];
         let valB = b[sortConfig.key];
@@ -331,12 +340,19 @@ export default function Bookings() {
             <tbody>
               {sortedAndFilteredBookings.length === 0 ? (
                 <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found.</td></tr>
-              ) : sortedAndFilteredBookings.map(b => {
+              ) : sortedAndFilteredBookings.map((b, idx) => {
                 const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
                 let rname = b.booking_type === 'Entire Property' ? 'Entire Property' : (b.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+                const opt = statusOptions.find(o => o.label === b.status) || statusOptions[1];
 
                 return (
-                  <tr key={b.id} style={{ opacity: b.status === 'Cancelled' ? 0.5 : 1 }}>
+                  <tr key={b.id} style={{ 
+                    opacity: b.status === 'Cancelled' ? 0.6 : 1,
+                    background: opt.bg,
+                    borderLeft: `4px solid ${opt.color}`,
+                    transition: 'all 0.2s',
+                    marginBottom: '0.5rem'
+                  }}>
                     <td>
                       <input 
                         type="checkbox" 
@@ -362,15 +378,25 @@ export default function Bookings() {
                       <small style={{ color: 'var(--text-muted)' }}>{rname}</small>
                     </td>
                     <td>
-                      <span className={`badge ${
-                        b.status === 'Cancelled' ? 'badge-danger' : 
-                        b.status === 'Pending' ? 'badge-warning' : 
-                        b.status === 'Checked-in' ? 'badge-indigo' :
-                        b.status === 'Completed' ? 'badge-success' :
-                        'badge-info'
-                      }`}>
-                        {b.status}
-                      </span>
+                      {(() => {
+                        const opt = statusOptions.find(o => o.label === b.status) || statusOptions[1];
+                        return (
+                          <span style={{ 
+                            padding: '0.4rem 0.8rem', 
+                            borderRadius: '20px', 
+                            fontSize: '0.75rem', 
+                            fontWeight: '600',
+                            background: opt.bg,
+                            color: opt.color,
+                            border: `1px solid ${opt.color}44`,
+                            display: 'inline-block',
+                            minWidth: '85px',
+                            textAlign: 'center'
+                          }}>
+                            {b.status}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
