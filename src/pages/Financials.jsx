@@ -17,6 +17,7 @@ export default function Financials() {
   const [activeMobileTab, setActiveMobileTab] = useState('income');
   const [showIncomeForm, setShowIncomeForm] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   const stats = React.useMemo(() => {
     const totalInc = incomes.reduce((sum, i) => sum + Number(i.amount), 0);
@@ -26,6 +27,9 @@ export default function Financials() {
 
   useEffect(() => {
     fetchData();
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, [activeResortId]);
 
   const fetchData = async () => {
@@ -163,7 +167,7 @@ export default function Financials() {
 
   const formatDateShort = (dateStr) => {
     const d = new Date(dateStr);
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    return isMobile ? d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
   };
 
   if(loading) return <div>Loading...</div>;
@@ -171,18 +175,18 @@ export default function Financials() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       {/* GLOBAL SUMMARY DASHBOARD */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-        <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--success)', padding: '0.75rem' }}>
-          <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: '0.65rem' }}>Total Income</small>
-          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--success)' }}>₹{stats.totalInc.toLocaleString()}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+        <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--success)', padding: isMobile ? '0.75rem' : '1.25rem' }}>
+          <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: isMobile ? '0.65rem' : '0.8rem' }}>Total Income</small>
+          <div style={{ fontSize: isMobile ? '1.5rem' : '2rem', fontWeight: 800, color: 'var(--success)', marginTop: '0.5rem' }}>₹{stats.totalInc.toLocaleString()}</div>
         </div>
-        <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--danger)', padding: '0.75rem' }}>
-          <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: '0.65rem' }}>Total Expenses</small>
-          <div style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--danger)' }}>₹{stats.totalExp.toLocaleString()}</div>
+        <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--danger)', padding: isMobile ? '0.75rem' : '1.25rem' }}>
+          <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: isMobile ? '0.65rem' : '0.8rem' }}>Total Expenses</small>
+          <div style={{ fontSize: isMobile ? '1.5rem' : '2rem', fontWeight: 800, color: 'var(--danger)', marginTop: '0.5rem' }}>₹{stats.totalExp.toLocaleString()}</div>
         </div>
-        <div className="card" style={{ background: stats.net >= 0 ? 'var(--success)' : 'var(--danger)', color: 'white', padding: '0.75rem' }}>
-          <small style={{ opacity: 0.8, textTransform: 'uppercase', fontWeight: 700, fontSize: '0.65rem' }}>Net Profit/Loss</small>
-          <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{stats.net.toLocaleString()}</div>
+        <div className="card" style={{ background: stats.net >= 0 ? 'var(--success)' : 'var(--danger)', color: 'white', padding: isMobile ? '0.75rem' : '1.25rem' }}>
+          <small style={{ opacity: 0.8, textTransform: 'uppercase', fontWeight: 700, fontSize: isMobile ? '0.65rem' : '0.8rem' }}>Net Profit/Loss</small>
+          <div style={{ fontSize: isMobile ? '1.5rem' : '2rem', fontWeight: 800, marginTop: '0.5rem' }}>₹{stats.net.toLocaleString()}</div>
         </div>
       </div>
 
@@ -192,71 +196,76 @@ export default function Financials() {
         <button onClick={() => setActiveMobileTab('expense')} style={{ flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'expense' ? 'var(--danger)' : 'transparent', color: activeMobileTab === 'expense' ? 'white' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>Expenses</button>
       </div>
 
-      <div className="financials-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+      <div className="financials-main-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(500px, 1fr))', gap: '2rem' }}>
         
         {/* INCOMES SECTION */}
-        <div style={{ display: (activeMobileTab === 'income' || window.innerWidth > 768) ? 'block' : 'none' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success)', fontSize: '1.15rem' }}><ArrowUpRight size={20} /> Incomes</h2>
+        <div style={{ display: (activeMobileTab === 'income' || !isMobile) ? 'block' : 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--success)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowUpRight size={isMobile ? 20 : 28} /> Incomes</h2>
             <button className="mobile-only btn btn-outline" style={{ height: '32px', padding: '0 0.75rem', fontSize: '0.75rem' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
-              {showIncomeForm ? 'Close' : '+ Add'}
+              {showIncomeForm ? 'Close Form' : '+ Add New'}
             </button>
           </div>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className={`card ${!showIncomeForm ? 'desktop-only' : ''}`} style={{ padding: '1rem' }}>
-              <form onSubmit={handleIncomeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
-                  <div className="form-group"><label className="form-label" style={{ fontSize: '0.75rem' }}>Date</label><input type="date" required className="form-input" style={{ padding: '0.5rem' }} value={newIncome.date} onChange={e => setNewIncome({...newIncome, date: e.target.value})} /></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className={`card ${!showIncomeForm && isMobile ? 'desktop-only' : ''}`} style={{ padding: '1.5rem' }}>
+              <form onSubmit={handleIncomeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group"><label className="form-label">Date</label><input type="date" required className="form-input" value={newIncome.date} onChange={e => setNewIncome({...newIncome, date: e.target.value})} /></div>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Amount</label>
-                    <input type="number" required className="form-input" style={{ padding: '0.5rem' }} placeholder="₹" value={newIncome.amount} onChange={e => setNewIncome({...newIncome, amount: e.target.value})} />
+                    <label className="form-label">Amount</label>
+                    <input type="number" required className="form-input" placeholder="₹" value={newIncome.amount} onChange={e => setNewIncome({...newIncome, amount: e.target.value})} />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Source</label>
-                  <select className="form-select" style={{ padding: '0.5rem' }} value={newIncome.source} onChange={e => setNewIncome({...newIncome, source: e.target.value})}>
+                  <label className="form-label">Source</label>
+                  <select className="form-select" value={newIncome.source} onChange={e => setNewIncome({...newIncome, source: e.target.value})}>
                     <option>Room Rent</option><option>Food</option><option>Activities</option><option>Other</option>
                   </select>
                 </div>
-                <div className="form-group"><label className="form-label" style={{ fontSize: '0.75rem' }}>Ref #</label><input type="text" className="form-input" style={{ padding: '0.5rem' }} placeholder="Booking Ref" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} /></div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '0.6rem' }}>{editingIncomeId ? 'Update' : 'Save Income'}</button>
+                <div className="form-group"><label className="form-label">Ref #</label><input type="text" className="form-input" placeholder="Booking Ref" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} /></div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{editingIncomeId ? 'Update' : 'Save Income'}</button>
               </form>
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div className="table-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+              <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto' }}>
                 <table className="table" style={{ margin: 0, width: '100%', tableLayout: 'fixed' }}>
                   <colgroup>
-                    <col style={{ width: '60px' }} />
+                    <col style={{ width: isMobile ? '45px' : '110px' }} />
                     <col style={{ width: 'auto' }} />
-                    <col style={{ width: '85px' }} />
-                    <col style={{ width: '60px' }} />
+                    <col style={{ width: isMobile ? '70px' : '120px' }} />
+                    <col style={{ width: isMobile ? '45px' : '100px' }} />
                   </colgroup>
-                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
-                    <tr style={{ fontSize: '0.7rem' }}><th>Date</th><th>Details</th><th>Amount</th><th style={{ textAlign: 'center' }}>Act</th></tr>
+                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
+                    <tr style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>
+                        <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Date</th>
+                        <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Details</th>
+                        <th style={{ textAlign: 'right', padding: isMobile ? '0.4rem' : '1rem' }}>Amount</th>
+                        <th style={{ textAlign: 'center', padding: isMobile ? '0.4rem' : '1rem' }}>Act</th>
+                    </tr>
                   </thead>
                   <tbody>
                     <tr style={{ background: 'rgba(16, 185, 129, 0.05)', fontWeight: 'bold' }}>
-                      <td colSpan="2" style={{ color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', padding: '0.4rem' }}>Total Income</td>
-                      <td style={{ color: 'var(--success)', fontSize: '0.85rem', padding: '0.4rem' }}>₹{stats.totalInc.toLocaleString()}</td>
+                      <td colSpan="2" style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.65rem' : '0.85rem', textTransform: 'uppercase', padding: isMobile ? '0.4rem' : '1rem' }}>Total Section</td>
+                      <td style={{ color: 'var(--success)', fontSize: isMobile ? '0.85rem' : '1.15rem', padding: isMobile ? '0.4rem' : '1rem', textAlign: 'right' }}>₹{stats.totalInc.toLocaleString()}</td>
                       <td></td>
                     </tr>
                     {incomes.map(i => {
                       const isAutoGenerated = i.booking_id && (i.notes?.includes('Auto-added') || i.notes?.includes('Settled') || i.notes?.includes('Refund'));
                       return (
-                      <tr key={i.id}>
-                        <td style={{ fontSize: '0.65rem', padding: '0.5rem 0.2rem', verticalAlign: 'top' }}>{formatDateShort(i.date)}</td>
-                        <td style={{ padding: '0.5rem 0.2rem', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: '700', fontSize: '0.8rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{i.source}</div>
-                          {i.bookings?.reference_number && <small style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '0.6rem', display: 'block' }}>#{i.bookings.reference_number.slice(-4)}</small>}
+                      <tr key={i.id} className="table-row-hover">
+                        <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(i.date)}</td>
+                        <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
+                          <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{i.source}</div>
+                          {i.bookings?.reference_number && <small style={{ color: 'var(--primary)', fontWeight: '800', fontSize: isMobile ? '0.55rem' : '0.75rem', display: 'block' }}>REF: {i.bookings.reference_number}</small>}
                         </td>
-                        <td style={{ color: 'var(--success)', fontWeight: '800', fontSize: '0.85rem', padding: '0.5rem 0.2rem', verticalAlign: 'top' }}>+₹{i.amount}</td>
-                        <td style={{ textAlign: 'center', padding: '0.5rem 0.2rem', verticalAlign: 'top' }}>
+                        <td style={{ color: 'var(--success)', fontWeight: '800', fontSize: isMobile ? '0.8rem' : '1.1rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', textAlign: 'right' }}>₹{i.amount.toLocaleString()}</td>
+                        <td style={{ textAlign: 'center', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
                           {!isAutoGenerated && (
-                            <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'center' }}>
-                              <button onClick={() => loadIncomeForEdit(i)} style={{ border: 'none', background: 'transparent', color: 'var(--primary)', padding: '0.1rem' }}><Edit2 size={12}/></button>
-                              <button onClick={() => deleteRecord('incomes', i.id)} style={{ border: 'none', background: 'transparent', color: 'var(--danger)', padding: '0.1rem' }}><Trash2 size={12}/></button>
+                            <div style={{ display: 'flex', gap: isMobile ? '0.1rem' : '0.5rem', justifyContent: 'center' }}>
+                              <button onClick={() => loadIncomeForEdit(i)} className="btn-icon" style={{ color: 'var(--primary)' }}><Edit2 size={isMobile ? 10 : 16}/></button>
+                              <button onClick={() => deleteRecord('incomes', i.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={isMobile ? 10 : 16}/></button>
                             </div>
                           )}
                         </td>
@@ -270,65 +279,70 @@ export default function Financials() {
         </div>
 
         {/* EXPENSES SECTION */}
-        <div style={{ display: (activeMobileTab === 'expense' || window.innerWidth > 768) ? 'block' : 'none' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)', fontSize: '1.15rem' }}><ArrowDownRight size={20} /> Expenses</h2>
+        <div style={{ display: (activeMobileTab === 'expense' || !isMobile) ? 'block' : 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--danger)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowDownRight size={isMobile ? 20 : 28} /> Expenses</h2>
             <button className="mobile-only btn btn-outline" style={{ height: '32px', padding: '0 0.75rem', fontSize: '0.75rem' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
-              {showExpenseForm ? 'Close' : '+ Add'}
+              {showExpenseForm ? 'Close Form' : '+ Add New'}
             </button>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className={`card ${!showExpenseForm ? 'desktop-only' : ''}`} style={{ padding: '1rem' }}>
-              <form onSubmit={handleExpenseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
-                  <div className="form-group"><label className="form-label" style={{ fontSize: '0.75rem' }}>Date</label><input type="date" required className="form-input" style={{ padding: '0.5rem' }} value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} /></div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className={`card ${!showExpenseForm && isMobile ? 'desktop-only' : ''}`} style={{ padding: '1.5rem' }}>
+              <form onSubmit={handleExpenseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group"><label className="form-label">Date</label><input type="date" required className="form-input" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} /></div>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Amount</label>
-                    <input type="number" required className="form-input" style={{ padding: '0.5rem' }} placeholder="₹" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} />
+                    <label className="form-label">Amount</label>
+                    <input type="number" required className="form-input" placeholder="₹" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label" style={{ fontSize: '0.75rem' }}>Category</label>
-                  <select className="form-select" style={{ padding: '0.5rem' }} value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})}>
+                  <label className="form-label">Category</label>
+                  <select className="form-select" value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})}>
                     <option>Maintenance</option><option>Salary</option><option>Utilities</option><option>Supplies</option><option>Other</option>
                   </select>
                 </div>
-                <div className="form-group"><label className="form-label" style={{ fontSize: '0.75rem' }}>Vendor</label><input type="text" className="form-input" style={{ padding: '0.5rem' }} placeholder="Name" value={newExpense.vendor_name} onChange={e => setNewExpense({...newExpense, vendor_name: e.target.value})} /></div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)', padding: '0.6rem' }}>{editingExpenseId ? 'Update' : 'Save Expense'}</button>
+                <div className="form-group"><label className="form-label">Vendor</label><input type="text" className="form-input" placeholder="Name" value={newExpense.vendor_name} onChange={e => setNewExpense({...newExpense, vendor_name: e.target.value})} /></div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)' }}>{editingExpenseId ? 'Update' : 'Save Expense'}</button>
               </form>
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div className="table-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+              <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto' }}>
                 <table className="table" style={{ margin: 0, width: '100%', tableLayout: 'fixed' }}>
                   <colgroup>
-                    <col style={{ width: '60px' }} />
+                    <col style={{ width: isMobile ? '45px' : '110px' }} />
                     <col style={{ width: 'auto' }} />
-                    <col style={{ width: '85px' }} />
-                    <col style={{ width: '60px' }} />
+                    <col style={{ width: isMobile ? '70px' : '120px' }} />
+                    <col style={{ width: isMobile ? '45px' : '100px' }} />
                   </colgroup>
-                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
-                    <tr style={{ fontSize: '0.7rem' }}><th>Date</th><th>Details</th><th>Amount</th><th style={{ textAlign: 'center' }}>Act</th></tr>
+                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
+                    <tr style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>
+                        <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Date</th>
+                        <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Details</th>
+                        <th style={{ textAlign: 'right', padding: isMobile ? '0.4rem' : '1rem' }}>Amount</th>
+                        <th style={{ textAlign: 'center', padding: isMobile ? '0.4rem' : '1rem' }}>Act</th>
+                    </tr>
                   </thead>
                   <tbody>
                     <tr style={{ background: 'rgba(239, 68, 68, 0.05)', fontWeight: 'bold' }}>
-                      <td colSpan="2" style={{ color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', padding: '0.4rem' }}>Total Expenses</td>
-                      <td style={{ color: 'var(--danger)', fontSize: '0.85rem', padding: '0.4rem' }}>₹{stats.totalExp.toLocaleString()}</td>
+                      <td colSpan="2" style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.65rem' : '0.85rem', textTransform: 'uppercase', padding: isMobile ? '0.4rem' : '1rem' }}>Total Section</td>
+                      <td style={{ color: 'var(--danger)', fontSize: isMobile ? '0.85rem' : '1.15rem', padding: isMobile ? '0.4rem' : '1rem', textAlign: 'right' }}>₹{stats.totalExp.toLocaleString()}</td>
                       <td></td>
                     </tr>
                     {expenses.map(e => (
-                      <tr key={e.id}>
-                        <td style={{ fontSize: '0.65rem', padding: '0.5rem 0.2rem', verticalAlign: 'top' }}>{formatDateShort(e.date)}</td>
-                        <td style={{ padding: '0.5rem 0.2rem', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: '700', fontSize: '0.8rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{e.category}</div>
-                          <small style={{ color: 'var(--text-muted)', fontSize: '0.6rem', display: 'block' }}>{e.vendor_name || 'General'}</small>
+                      <tr key={e.id} className="table-row-hover">
+                        <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(e.date)}</td>
+                        <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
+                          <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{e.category}</div>
+                          <small style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.55rem' : '0.8rem', display: 'block' }}>{e.vendor_name || 'General'}</small>
                         </td>
-                        <td style={{ color: 'var(--danger)', fontWeight: '800', fontSize: '0.85rem', padding: '0.5rem 0.2rem', verticalAlign: 'top' }}>-₹{e.amount}</td>
-                        <td style={{ textAlign: 'center', padding: '0.5rem 0.2rem', verticalAlign: 'top' }}>
-                          <div style={{ display: 'flex', gap: '0.2rem', justifyContent: 'center' }}>
-                            <button onClick={() => loadExpenseForEdit(e)} style={{ border: 'none', background: 'transparent', color: 'var(--primary)', padding: '0.1rem' }}><Edit2 size={12}/></button>
-                            <button onClick={() => deleteRecord('expenses', e.id)} style={{ border: 'none', background: 'transparent', color: 'var(--danger)', padding: '0.1rem' }}><Trash2 size={12}/></button>
+                        <td style={{ color: 'var(--danger)', fontWeight: '800', fontSize: isMobile ? '0.8rem' : '1.1rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', textAlign: 'right' }}>₹{e.amount.toLocaleString()}</td>
+                        <td style={{ textAlign: 'center', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
+                          <div style={{ display: 'flex', gap: isMobile ? '0.1rem' : '0.5rem', justifyContent: 'center' }}>
+                            <button onClick={() => loadExpenseForEdit(e)} className="btn-icon" style={{ color: 'var(--primary)' }}><Edit2 size={isMobile ? 10 : 16}/></button>
+                            <button onClick={() => deleteRecord('expenses', e.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={10}/></button>
                           </div>
                         </td>
                       </tr>

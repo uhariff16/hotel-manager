@@ -204,6 +204,24 @@ a {
   border-color: var(--primary);
 }
 
+.btn-icon {
+  background: transparent;
+  border: none;
+  padding: 0.5rem;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  color: var(--text-muted);
+}
+
+.btn-icon:hover {
+  background-color: var(--bg-color);
+  transform: translateY(-1px);
+}
+
 /* Sidebar Nav */
 .nav-links {
   list-style: none;
