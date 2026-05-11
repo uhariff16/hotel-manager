@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, ArrowUpRight, ArrowDownRight, Edit2 } from 'lucide-react';
+import { Trash2, ArrowUpRight, ArrowDownRight, Edit2 } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 
 export default function Financials() {
@@ -165,7 +165,7 @@ export default function Financials() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      {/* SUMMARY DASHBOARD */}
+      {/* GLOBAL SUMMARY DASHBOARD */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
         <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--success)' }}>
           <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: '0.7rem' }}>Total Income</small>
@@ -182,7 +182,7 @@ export default function Financials() {
       </div>
 
       {/* MOBILE TAB SWITCHER */}
-      <div className="mobile-only" style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0.3rem', border: '1px solid var(--border)' }}>
+      <div className="mobile-only" style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0.3rem', border: '1px solid var(--border)', marginBottom: '1rem' }}>
         <button onClick={() => setActiveMobileTab('income')} style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'income' ? 'var(--success)' : 'transparent', color: activeMobileTab === 'income' ? 'white' : 'var(--text-muted)', fontWeight: 700 }}>Income</button>
         <button onClick={() => setActiveMobileTab('expense')} style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'expense' ? 'var(--danger)' : 'transparent', color: activeMobileTab === 'expense' ? 'white' : 'var(--text-muted)', fontWeight: 700 }}>Expenses</button>
       </div>
@@ -199,6 +199,7 @@ export default function Financials() {
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Entry Form */}
             <div className={`card ${!showIncomeForm ? 'desktop-only' : ''}`} style={{ padding: '1.25rem' }}>
               <form onSubmit={handleIncomeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
@@ -219,24 +220,38 @@ export default function Financials() {
               </form>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {incomes.map(i => (
-                <div key={i.id} className="card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>{i.date}</div>
-                    <div style={{ fontWeight: 800 }}>{i.source}</div>
-                    {i.bookings?.reference_number && <small style={{ color: 'var(--primary)', fontWeight: 700 }}>#{i.bookings.reference_number}</small>}
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ color: 'var(--success)', fontWeight: 800, fontSize: '1.1rem' }}>+₹{i.amount}</div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.3rem' }}>
-                      <button onClick={() => loadIncomeForEdit(i)} style={{ border: 'none', background: 'transparent', color: 'var(--primary)', cursor: 'pointer' }}><Edit2 size={14}/></button>
-                      <button onClick={() => deleteRecord('incomes', i.id)} style={{ border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer' }}><Trash2 size={14}/></button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {incomes.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found</div>}
+            {/* UNIFIED TABLE VIEW */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="table-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                <table className="table" style={{ margin: 0, minWidth: '500px' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
+                    <tr><th>Date</th><th>Details</th><th>Amount</th><th style={{ textAlign: 'center' }}>Action</th></tr>
+                  </thead>
+                  <tbody>
+                    {incomes.map(i => {
+                      const isAutoGenerated = i.booking_id && (i.notes?.includes('Auto-added') || i.notes?.includes('Settled') || i.notes?.includes('Refund'));
+                      return (
+                      <tr key={i.id}>
+                        <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{i.date}</td>
+                        <td>
+                          <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{i.source}</div>
+                          {i.bookings?.reference_number && <small style={{ color: 'var(--primary)', fontWeight: '800' }}>#{i.bookings.reference_number}</small>}
+                        </td>
+                        <td style={{ color: 'var(--success)', fontWeight: '800' }}>+₹{i.amount.toLocaleString()}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          {!isAutoGenerated && (
+                            <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                              <button className="btn btn-outline" style={{ padding: '0.3rem', color: 'var(--primary)', height: '32px', width: '32px' }} onClick={() => loadIncomeForEdit(i)}><Edit2 size={12}/></button>
+                              <button className="btn btn-outline" style={{ padding: '0.3rem', color: 'var(--danger)', height: '32px', width: '32px' }} onClick={() => deleteRecord('incomes', i.id)}><Trash2 size={12}/></button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    )})}
+                    {incomes.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -251,6 +266,7 @@ export default function Financials() {
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Entry Form */}
             <div className={`card ${!showExpenseForm ? 'desktop-only' : ''}`} style={{ padding: '1.25rem' }}>
               <form onSubmit={handleExpenseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
@@ -271,24 +287,34 @@ export default function Financials() {
               </form>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {expenses.map(e => (
-                <div key={e.id} className="card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>{e.date}</div>
-                    <div style={{ fontWeight: 800 }}>{e.category}</div>
-                    <small style={{ color: 'var(--text-muted)' }}>{e.vendor_name || 'General'}</small>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ color: 'var(--danger)', fontWeight: 800, fontSize: '1.1rem' }}>-₹{e.amount}</div>
-                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.3rem' }}>
-                      <button onClick={() => loadExpenseForEdit(e)} style={{ border: 'none', background: 'transparent', color: 'var(--primary)', cursor: 'pointer' }}><Edit2 size={14}/></button>
-                      <button onClick={() => deleteRecord('expenses', e.id)} style={{ border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer' }}><Trash2 size={14}/></button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {expenses.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found</div>}
+            {/* UNIFIED TABLE VIEW */}
+            <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+              <div className="table-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
+                <table className="table" style={{ margin: 0, minWidth: '500px' }}>
+                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
+                    <tr><th>Date</th><th>Details</th><th>Amount</th><th style={{ textAlign: 'center' }}>Action</th></tr>
+                  </thead>
+                  <tbody>
+                    {expenses.map(e => (
+                      <tr key={e.id}>
+                        <td style={{ whiteSpace: 'nowrap', fontSize: '0.85rem' }}>{e.date}</td>
+                        <td>
+                          <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>{e.category}</div>
+                          <small style={{ color: 'var(--text-muted)' }}>{e.vendor_name || 'General'}</small>
+                        </td>
+                        <td style={{ color: 'var(--danger)', fontWeight: '800' }}>-₹{e.amount.toLocaleString()}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                            <button className="btn btn-outline" style={{ padding: '0.3rem', color: 'var(--primary)', height: '32px', width: '32px' }} onClick={() => loadExpenseForEdit(e)}><Edit2 size={12}/></button>
+                            <button className="btn btn-outline" style={{ padding: '0.3rem', color: 'var(--danger)', height: '32px', width: '32px' }} onClick={() => deleteRecord('expenses', e.id)}><Trash2 size={12}/></button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {expenses.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found</td></tr>}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
