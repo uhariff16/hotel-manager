@@ -13,6 +13,16 @@ export default function Financials() {
   const [newExpense, setNewExpense] = useState({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '' });
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editingIncomeId, setEditingIncomeId] = useState(null);
+  
+  const [activeMobileTab, setActiveMobileTab] = useState('income');
+  const [showIncomeForm, setShowIncomeForm] = useState(false);
+  const [showExpenseForm, setShowExpenseForm] = useState(false);
+
+  const stats = React.useMemo(() => {
+    const totalInc = incomes.reduce((sum, i) => sum + Number(i.amount), 0);
+    const totalExp = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    return { totalInc, totalExp, net: totalInc - totalExp };
+  }, [incomes, expenses]);
 
   useEffect(() => {
     fetchData();
@@ -66,6 +76,7 @@ export default function Financials() {
       }
 
       setNewIncome({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', custom_source: '' });
+      setShowIncomeForm(false);
     } catch(err) { alert(err.message); }
   };
 
@@ -87,6 +98,7 @@ export default function Financials() {
       reference_number: refNum,
       custom_source: ''
     });
+    setShowIncomeForm(true);
   };
 
   const handleExpenseSubmit = async (e) => {
@@ -108,6 +120,7 @@ export default function Financials() {
       }
       
       setNewExpense({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', custom_category: '' });
+      setShowExpenseForm(false);
     } catch(err) { alert(err.message); }
   };
 
@@ -122,6 +135,7 @@ export default function Financials() {
       notes: exp.notes || '',
       custom_category: ''
     });
+    setShowExpenseForm(true);
   };
 
   const deleteRecord = async (table, id) => {
@@ -150,171 +164,135 @@ export default function Financials() {
   if(loading) return <div>Loading...</div>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '3rem' }}>
-      {/* INCOMES SECTION */}
-      <div>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--success)', marginBottom: '1.5rem', fontSize: '1.75rem' }}>
-          <ArrowUpRight size={28} /> Income Management
-        </h2>
-        
-        <div className="financials-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
-          {/* Income Form */}
-          <div className="card" style={{ height: 'fit-content', position: 'sticky', top: '2rem' }}>
-            <h3 style={{ marginBottom: '1.25rem', fontSize: '1.1rem' }}>{editingIncomeId ? 'Edit Income' : 'Add New Entry'}</h3>
-            <form onSubmit={handleIncomeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group"><label className="form-label">Date</label><input type="date" required className="form-input" value={newIncome.date} onChange={e => setNewIncome({...newIncome, date: e.target.value})} /></div>
-              <div className="form-group">
-                <label className="form-label">Source</label>
-                <select className="form-select" value={newIncome.source} onChange={e => setNewIncome({...newIncome, source: e.target.value})}>
-                  <option>Room Rent</option><option>Food</option><option>Activities</option><option>Other</option>
-                </select>
-                {newIncome.source === 'Other' && (
-                  <input type="text" className="form-input" style={{ marginTop: '0.5rem' }} placeholder="Specify custom income" value={newIncome.custom_source || ''} onChange={e => setNewIncome({...newIncome, custom_source: e.target.value})} required/>
-                )}
-              </div>
-              <div className="form-group"><label className="form-label">Amount (₹)</label><input type="number" required className="form-input" value={newIncome.amount} onChange={e => setNewIncome({...newIncome, amount: e.target.value})} /></div>
-              <div className="form-group">
-                <label className="form-label">Payment Mode</label>
-                <select className="form-select" value={newIncome.payment_mode} onChange={e => setNewIncome({...newIncome, payment_mode: e.target.value})}>
-                  <option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option>
-                </select>
-              </div>
-              <div className="form-group">
-                <label className="form-label">Booking Reference (Optional)</label>
-                <input type="text" className="form-input" placeholder="e.g. BK-260425-9469" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} />
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', padding: '0.8rem' }}>
-                {editingIncomeId ? 'Update Income' : 'Save Income'}
-              </button>
-              {editingIncomeId && (
-                <button type="button" className="btn btn-outline" style={{ width: '100%' }} onClick={() => {
-                  setEditingIncomeId(null);
-                  setNewIncome({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '' });
-                }}>
-                  Cancel Edit
-                </button>
-              )}
-            </form>
-          </div>
-
-          {/* Income Table */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="table-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-              <table className="table" style={{ margin: 0 }}>
-                <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
-                  <tr><th>Date</th><th>Details</th><th>Amount</th><th style={{ textAlign: 'center' }}>Action</th></tr>
-                </thead>
-                <tbody>
-                  {incomes.map(i => {
-                    const isAutoGenerated = i.booking_id && (i.notes?.includes('Auto-added') || i.notes?.includes('Settled') || i.notes?.includes('Refund'));
-                    return (
-                    <tr key={i.id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{i.date}</td>
-                      <td>
-                        <div style={{ fontWeight: '700' }}>{i.source}</div>
-                        {i.bookings?.reference_number && (
-                          <div style={{ fontSize: '0.75rem', color: 'var(--primary)', fontWeight: '800', marginTop: '2px' }}>
-                            REF: {i.bookings.reference_number}
-                          </div>
-                        )}
-                        <small style={{ color: 'var(--text-muted)' }}>{i.payment_mode}</small>
-                      </td>
-                      <td style={{ color: 'var(--success)', fontWeight: '800' }}>+₹{i.amount.toLocaleString()}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          {isAutoGenerated ? (
-                            <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700' }}>Auto</span>
-                          ) : (
-                            <>
-                              <button className="btn btn-outline" style={{ padding: '0.3rem', color: 'var(--primary)' }} onClick={() => loadIncomeForEdit(i)} title="Edit"><Edit2 size={14}/></button>
-                              <button className="btn btn-outline" style={{ padding: '0.3rem', color: 'var(--danger)' }} onClick={() => deleteRecord('incomes', i.id)} title="Delete"><Trash2 size={14}/></button>
-                            </>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )})}
-                  {incomes.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No income records found.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-          </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      {/* SUMMARY DASHBOARD */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
+        <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--success)' }}>
+          <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: '0.7rem' }}>Total Income</small>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--success)', marginTop: '0.5rem' }}>₹{stats.totalInc.toLocaleString()}</div>
+        </div>
+        <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--danger)' }}>
+          <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: '0.7rem' }}>Total Expenses</small>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--danger)', marginTop: '0.5rem' }}>₹{stats.totalExp.toLocaleString()}</div>
+        </div>
+        <div className="card" style={{ background: stats.net >= 0 ? 'var(--success)' : 'var(--danger)', color: 'white' }}>
+          <small style={{ opacity: 0.8, textTransform: 'uppercase', fontWeight: 700, fontSize: '0.7rem' }}>Net Profit/Loss</small>
+          <div style={{ fontSize: '1.75rem', fontWeight: 800, marginTop: '0.5rem' }}>₹{stats.net.toLocaleString()}</div>
         </div>
       </div>
 
-      {/* EXPENSES SECTION */}
-      <div>
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--danger)', marginBottom: '1.5rem', fontSize: '1.75rem' }}>
-          <ArrowDownRight size={28} /> Expense Management
-        </h2>
+      {/* MOBILE TAB SWITCHER */}
+      <div className="mobile-only" style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0.3rem', border: '1px solid var(--border)' }}>
+        <button onClick={() => setActiveMobileTab('income')} style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'income' ? 'var(--success)' : 'transparent', color: activeMobileTab === 'income' ? 'white' : 'var(--text-muted)', fontWeight: 700 }}>Income</button>
+        <button onClick={() => setActiveMobileTab('expense')} style={{ flex: 1, padding: '0.75rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'expense' ? 'var(--danger)' : 'transparent', color: activeMobileTab === 'expense' ? 'white' : 'var(--text-muted)', fontWeight: 700 }}>Expenses</button>
+      </div>
 
-        <div className="financials-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
-          {/* Expense Form */}
-          <div className="card" style={{ height: 'fit-content', position: 'sticky', top: '2rem' }}>
-            <h3 style={{ marginBottom: '1.25rem', fontSize: '1.1rem' }}>{editingExpenseId ? 'Edit Expense' : 'Add New Entry'}</h3>
-            <form onSubmit={handleExpenseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div className="form-group"><label className="form-label">Date</label><input type="date" required className="form-input" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} /></div>
-              <div className="form-group">
-                <label className="form-label">Category</label>
-                <select className="form-select" value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})}>
-                  <option>Maintenance</option><option>Salary</option><option>Utilities</option><option>Supplies</option><option>Marketing</option><option>Other</option>
-                </select>
-                {newExpense.category === 'Other' && (
-                  <input type="text" className="form-input" style={{ marginTop: '0.5rem' }} placeholder="Specify custom expense" value={newExpense.custom_category || ''} onChange={e => setNewExpense({...newExpense, custom_category: e.target.value})} required/>
-                )}
-              </div>
-              <div className="form-group"><label className="form-label">Vendor</label><input type="text" className="form-input" placeholder="Vendor/Payee name" value={newExpense.vendor_name} onChange={e => setNewExpense({...newExpense, vendor_name: e.target.value})} /></div>
-              <div className="form-group"><label className="form-label">Amount (₹)</label><input type="number" required className="form-input" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} /></div>
-              <div className="form-group">
-                <label className="form-label">Payment Mode</label>
-                <select className="form-select" value={newExpense.payment_mode} onChange={e => setNewExpense({...newExpense, payment_mode: e.target.value})}>
-                  <option>Cash</option><option>UPI</option><option>Card</option><option>Bank Transfer</option>
-                </select>
-              </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '0.5rem', padding: '0.8rem', background: 'var(--danger)', borderColor: 'var(--danger)' }}>
-                {editingExpenseId ? 'Update Expense' : 'Save Expense'}
-              </button>
-              {editingExpenseId && (
-                <button type="button" className="btn btn-outline" style={{ width: '100%' }} onClick={() => {
-                  setEditingExpenseId(null);
-                  setNewExpense({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '' });
-                }}>
-                  Cancel Edit
-                </button>
-              )}
-            </form>
+      <div className="financials-main-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+        
+        {/* INCOMES SECTION */}
+        <div style={{ display: (activeMobileTab === 'income' || window.innerWidth > 768) ? 'block' : 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success)', fontSize: '1.25rem' }}><ArrowUpRight size={24} /> Incomes</h2>
+            <button className="mobile-only btn btn-outline" style={{ height: '36px', padding: '0 1rem', fontSize: '0.8rem' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
+              {showIncomeForm ? 'Close Form' : '+ Add New'}
+            </button>
           </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className={`card ${!showIncomeForm ? 'desktop-only' : ''}`} style={{ padding: '1.25rem' }}>
+              <form onSubmit={handleIncomeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                  <div className="form-group"><label className="form-label">Date</label><input type="date" required className="form-input" value={newIncome.date} onChange={e => setNewIncome({...newIncome, date: e.target.value})} /></div>
+                  <div className="form-group">
+                    <label className="form-label">Amount</label>
+                    <input type="number" required className="form-input" placeholder="₹" value={newIncome.amount} onChange={e => setNewIncome({...newIncome, amount: e.target.value})} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Source</label>
+                  <select className="form-select" value={newIncome.source} onChange={e => setNewIncome({...newIncome, source: e.target.value})}>
+                    <option>Room Rent</option><option>Food</option><option>Activities</option><option>Other</option>
+                  </select>
+                </div>
+                <div className="form-group"><label className="form-label">Ref #</label><input type="text" className="form-input" placeholder="Booking Ref" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} /></div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{editingIncomeId ? 'Update' : 'Save Income'}</button>
+              </form>
+            </div>
 
-          {/* Expense Table */}
-          <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-            <div className="table-container" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-              <table className="table" style={{ margin: 0 }}>
-                <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1 }}>
-                  <tr><th>Date</th><th>Details</th><th>Amount</th><th style={{ textAlign: 'center' }}>Action</th></tr>
-                </thead>
-                <tbody>
-                  {expenses.map(e => (
-                    <tr key={e.id}>
-                      <td style={{ whiteSpace: 'nowrap' }}>{e.date}</td>
-                      <td>
-                        <div style={{ fontWeight: '700' }}>{e.category}</div>
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{e.vendor_name || 'General'} • {e.payment_mode}</div>
-                      </td>
-                      <td style={{ color: 'var(--danger)', fontWeight: '800' }}>-₹{e.amount.toLocaleString()}</td>
-                      <td>
-                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          <button className="btn btn-outline" style={{ padding: '0.3rem', color: 'var(--primary)' }} onClick={() => loadExpenseForEdit(e)} title="Edit"><Edit2 size={14}/></button>
-                          <button className="btn btn-outline" style={{ padding: '0.3rem', color: 'var(--danger)' }} onClick={() => deleteRecord('expenses', e.id)} title="Delete"><Trash2 size={14}/></button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {expenses.length === 0 && <tr><td colSpan="4" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No expense records found.</td></tr>}
-                </tbody>
-              </table>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {incomes.map(i => (
+                <div key={i.id} className="card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>{i.date}</div>
+                    <div style={{ fontWeight: 800 }}>{i.source}</div>
+                    {i.bookings?.reference_number && <small style={{ color: 'var(--primary)', fontWeight: 700 }}>#{i.bookings.reference_number}</small>}
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ color: 'var(--success)', fontWeight: 800, fontSize: '1.1rem' }}>+₹{i.amount}</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.3rem' }}>
+                      <button onClick={() => loadIncomeForEdit(i)} style={{ border: 'none', background: 'transparent', color: 'var(--primary)', cursor: 'pointer' }}><Edit2 size={14}/></button>
+                      <button onClick={() => deleteRecord('incomes', i.id)} style={{ border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer' }}><Trash2 size={14}/></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {incomes.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found</div>}
             </div>
           </div>
         </div>
+
+        {/* EXPENSES SECTION */}
+        <div style={{ display: (activeMobileTab === 'expense' || window.innerWidth > 768) ? 'block' : 'none' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)', fontSize: '1.25rem' }}><ArrowDownRight size={24} /> Expenses</h2>
+            <button className="mobile-only btn btn-outline" style={{ height: '36px', padding: '0 1rem', fontSize: '0.8rem' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
+              {showExpenseForm ? 'Close Form' : '+ Add New'}
+            </button>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            <div className={`card ${!showExpenseForm ? 'desktop-only' : ''}`} style={{ padding: '1.25rem' }}>
+              <form onSubmit={handleExpenseSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem' }}>
+                  <div className="form-group"><label className="form-label">Date</label><input type="date" required className="form-input" value={newExpense.date} onChange={e => setNewExpense({...newExpense, date: e.target.value})} /></div>
+                  <div className="form-group">
+                    <label className="form-label">Amount</label>
+                    <input type="number" required className="form-input" placeholder="₹" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Category</label>
+                  <select className="form-select" value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})}>
+                    <option>Maintenance</option><option>Salary</option><option>Utilities</option><option>Supplies</option><option>Other</option>
+                  </select>
+                </div>
+                <div className="form-group"><label className="form-label">Vendor</label><input type="text" className="form-input" placeholder="Name" value={newExpense.vendor_name} onChange={e => setNewExpense({...newExpense, vendor_name: e.target.value})} /></div>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)' }}>{editingExpenseId ? 'Update' : 'Save Expense'}</button>
+              </form>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {expenses.map(e => (
+                <div key={e.id} className="card" style={{ padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: 700 }}>{e.date}</div>
+                    <div style={{ fontWeight: 800 }}>{e.category}</div>
+                    <small style={{ color: 'var(--text-muted)' }}>{e.vendor_name || 'General'}</small>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ color: 'var(--danger)', fontWeight: 800, fontSize: '1.1rem' }}>-₹{e.amount}</div>
+                    <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.3rem' }}>
+                      <button onClick={() => loadExpenseForEdit(e)} style={{ border: 'none', background: 'transparent', color: 'var(--primary)', cursor: 'pointer' }}><Edit2 size={14}/></button>
+                      <button onClick={() => deleteRecord('expenses', e.id)} style={{ border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer' }}><Trash2 size={14}/></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {expenses.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>No records found</div>}
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );
