@@ -8,10 +8,27 @@ import { useSettingsStore } from '../lib/store';
 
 export default function Dashboard() {
   const { activeResortId } = useSettingsStore();
-  const [stats, setStats] = useState({ revenue: 0, collections: 0, expenses: 0, profit: 0, totalBookings: 0, occupancy: 0 });
+  const [stats, setStats] = useState({ 
+    monthlyCollections: 0, 
+    monthlyExpenses: 0,
+    monthlyProfit: 0,
+    monthlyBookings: 0,
+    collections: 0, 
+    expenses: 0, 
+    profit: 0, 
+    totalBookings: 0, 
+    occupancy: 0 
+  });
   const [chartData, setChartData] = useState([]);
   const [recentCheckins, setRecentCheckins] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -31,13 +48,15 @@ export default function Dashboard() {
         // Yearly stats for KPIs
         const now = new Date();
         const startOfYearStr = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+        const endOfYearStr = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
+        const startOfMonthStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
+        const endOfMonthStr = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
         
-        // Collection = Actual payments received
-        const yearlyCollections = (inc.data || []).filter(i => i.date >= startOfYearStr).reduce((sum, item) => sum + Number(item.amount), 0);
-        const yearlyExpr = (exp.data || []).filter(e => e.date >= startOfYearStr).reduce((sum, item) => sum + Number(item.amount), 0);
+        const yearlyCollections = (inc.data || []).filter(i => i.date >= startOfYearStr && i.date <= endOfYearStr).reduce((sum, item) => sum + Number(item.amount), 0);
+        const monthlyCollections = (inc.data || []).filter(i => i.date >= startOfMonthStr && i.date <= endOfMonthStr).reduce((sum, item) => sum + Number(item.amount), 0);
         
-        // Booking Revenue = Total value of valid bookings
-        const yearlyBookingRevenue = (bks.data || []).filter(b => b.status !== 'Cancelled' && b.check_in_date >= startOfYearStr).reduce((sum, item) => sum + Number(item.total_amount), 0);
+        const yearlyExpr = (exp.data || []).filter(e => e.date >= startOfYearStr && e.date <= endOfYearStr).reduce((sum, item) => sum + Number(item.amount), 0);
+        const monthlyExpr = (exp.data || []).filter(e => e.date >= startOfMonthStr && e.date <= endOfMonthStr).reduce((sum, item) => sum + Number(item.amount), 0);
 
         // Calculate Today's Occupancy % correctly
         const today = new Date();
@@ -65,11 +84,14 @@ export default function Dashboard() {
         }, 0);
 
         setStats({
-          revenue: yearlyBookingRevenue,
+          monthlyCollections,
+          monthlyExpenses: monthlyExpr,
+          monthlyProfit: monthlyCollections - monthlyExpr,
+          monthlyBookings: (bks.data || []).filter(b => b.check_in_date >= startOfMonthStr && b.check_in_date <= endOfMonthStr).length,
           collections: yearlyCollections,
           expenses: yearlyExpr,
           profit: yearlyCollections - yearlyExpr,
-          totalBookings: (bks.data || []).filter(b => b.check_in_date >= startOfYearStr).length,
+          totalBookings: (bks.data || []).filter(b => b.check_in_date >= startOfYearStr && b.check_in_date <= endOfYearStr).length,
           occupancy: totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0
         });
 
@@ -109,18 +131,26 @@ export default function Dashboard() {
 
   if(loading) return <div>Loading...</div>;
 
-  const kpis = [
-    { title: 'Yearly Revenue', value: `₹${stats.revenue.toLocaleString()}`, icon: <Wallet size={24}/>, color: 'linear-gradient(135deg, #2f855a 0%, #48bb78 100%)' },
-    { title: 'Yearly Collections', value: `₹${stats.collections.toLocaleString()}`, icon: <CreditCard size={24}/>, color: 'linear-gradient(135deg, #3182ce 0%, #63b3ed 100%)' },
-    { title: 'Yearly Expenses', value: `₹${stats.expenses.toLocaleString()}`, icon: <TrendingUp size={24}/>, color: 'linear-gradient(135deg, #e53e3e 0%, #fc8181 100%)' },
-    { title: 'Yearly Profit', value: `₹${stats.profit.toLocaleString()}`, icon: <TrendingUp size={24} style={{ rotate: '45deg' }}/>, color: 'linear-gradient(135deg, #d69e2e 0%, #ecc94b 100%)' },
-    { title: 'Yearly Bookings', value: stats.totalBookings, icon: <CalendarCheck size={24}/>, color: 'linear-gradient(135deg, #3182ce 0%, #63b3ed 100%)' },
+  const monthlyKpis = [
+    { title: 'Collections', subtitle: format(new Date(), 'MMM yyyy'), value: `₹${stats.monthlyCollections.toLocaleString()}`, icon: <Wallet size={20}/>, color: 'linear-gradient(135deg, #059669 0%, #10b981 100%)' },
+    { title: 'Expenses', subtitle: format(new Date(), 'MMM yyyy'), value: `₹${stats.monthlyExpenses.toLocaleString()}`, icon: <TrendingUp size={20}/>, color: 'linear-gradient(135deg, #e53e3e 0%, #f87171 100%)' },
+    { title: 'Profit', subtitle: format(new Date(), 'MMM yyyy'), value: `₹${stats.monthlyProfit.toLocaleString()}`, icon: <TrendingUp size={20} style={{ rotate: '45deg' }}/>, color: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)' },
+    { title: 'Bookings', subtitle: format(new Date(), 'MMM yyyy'), value: stats.monthlyBookings, icon: <CalendarCheck size={20}/>, color: 'linear-gradient(135deg, #4b5563 0%, #9ca3af 100%)' },
   ];
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-      {/* KPI Section */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
+  const yearlyKpis = [
+    { title: 'Collections', subtitle: `${new Date().getFullYear()} Year`, value: `₹${stats.collections.toLocaleString()}`, icon: <CreditCard size={20}/>, color: 'linear-gradient(135deg, #3182ce 0%, #63b3ed 100%)' },
+    { title: 'Expenses', subtitle: `${new Date().getFullYear()} Year`, value: `₹${stats.expenses.toLocaleString()}`, icon: <TrendingUp size={20}/>, color: 'linear-gradient(135deg, #b91c1c 0%, #ef4444 100%)' },
+    { title: 'Profit', subtitle: `${new Date().getFullYear()} Year`, value: `₹${stats.profit.toLocaleString()}`, icon: <TrendingUp size={20} style={{ rotate: '45deg' }}/>, color: 'linear-gradient(135deg, #d97706 0%, #fbbf24 100%)' },
+    { title: 'Bookings', subtitle: `${new Date().getFullYear()} Year`, value: stats.totalBookings, icon: <CalendarCheck size={20}/>, color: 'linear-gradient(135deg, #4b5563 0%, #9ca3af 100%)' },
+  ];
+
+  const renderKpiGrid = (kpis) => (
+    <div style={{ 
+      display: 'grid', 
+      gridTemplateColumns: isMobile ? 'repeat(2, 1fr)' : 'repeat(auto-fit, minmax(200px, 1fr))', 
+      gap: isMobile ? '0.75rem' : '1rem' 
+    }}>
         {kpis.map((k, i) => (
           <div key={i} className="card" style={{ 
             background: k.color, 
@@ -129,20 +159,65 @@ export default function Dashboard() {
             display: 'flex', 
             flexDirection: 'column',
             justifyContent: 'space-between',
-            padding: '1.5rem',
-            height: '140px',
-            boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
+            padding: isMobile ? '0.75rem' : '1.25rem',
+            height: isMobile ? '100px' : '130px',
+            boxShadow: '0 8px 15px rgba(0,0,0,0.08)',
+            overflow: 'hidden'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: '500', opacity: 0.9 }}>{k.title}</span>
-              <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.5rem', borderRadius: '10px' }}>{k.icon}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.25rem' }}>
+              <div style={{ minWidth: 0 }}>
+                <span style={{ 
+                  fontSize: isMobile ? '0.6rem' : '0.75rem', 
+                  fontWeight: '700', 
+                  opacity: 0.9, 
+                  textTransform: 'uppercase', 
+                  letterSpacing: '0.02em', 
+                  display: 'block',
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
+                }}>{k.title}</span>
+                <span style={{ fontSize: isMobile ? '0.55rem' : '0.65rem', opacity: 0.7, fontWeight: '600' }}>{k.subtitle}</span>
+              </div>
+              <div style={{ background: 'rgba(255,255,255,0.2)', padding: isMobile ? '0.25rem' : '0.4rem', borderRadius: '6px' }}>
+                {React.cloneElement(k.icon, { size: isMobile ? 16 : 20 })}
+              </div>
             </div>
-            <div style={{ fontSize: '2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>{k.value}</div>
+            <div style={{ 
+              fontSize: isMobile ? '1.1rem' : '1.4rem', 
+              fontWeight: '900', 
+              letterSpacing: '-0.5px',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>{k.value}</div>
           </div>
         ))}
       </div>
+  );
 
-      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1.5rem' : '2.5rem' }}>
+      
+      {/* Monthly Section */}
+      <section>
+        <h2 style={{ fontSize: isMobile ? '0.9rem' : '1.1rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '4px', height: isMobile ? '14px' : '18px', background: 'var(--primary)', borderRadius: '4px' }}></div>
+            Monthly Performance
+        </h2>
+        {renderKpiGrid(monthlyKpis)}
+      </section>
+
+      {/* Yearly Section */}
+      <section>
+        <h2 style={{ fontSize: isMobile ? '0.9rem' : '1.1rem', fontWeight: '800', marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '4px', height: isMobile ? '14px' : '18px', background: '#3182ce', borderRadius: '4px' }}></div>
+            Yearly Performance
+        </h2>
+        {renderKpiGrid(yearlyKpis)}
+      </section>
+
+      <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: isMobile ? '1.5rem' : '2rem' }}>
         {/* Sales Analytic Chart */}
         <div className="card" style={{ padding: '2rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>

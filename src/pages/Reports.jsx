@@ -14,8 +14,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   
   const [range, setRange] = useState({
-    start: format(startOfMonth(new Date()), 'yyyy-MM-dd'),
-    end: format(endOfMonth(new Date()), 'yyyy-MM-dd')
+    start: `${new Date().getFullYear()}-01-01`,
+    end: `${new Date().getFullYear()}-12-31`
   });
 
   useEffect(() => {
@@ -94,6 +94,34 @@ export default function Reports() {
   const sortedBookings = useMemo(() => genericSort(filteredBookings, bookingSort), [filteredBookings, bookingSort]);
   const sortedIncomes = useMemo(() => genericSort(data.incomes, incomeSort), [data.incomes, incomeSort]);
   const sortedExpenses = useMemo(() => genericSort(data.expenses, expenseSort), [data.expenses, expenseSort]);
+
+  const setMonthRange = (monthIdx) => {
+    const year = new Date().getFullYear();
+    const start = format(new Date(year, monthIdx, 1), 'yyyy-MM-dd');
+    const end = format(endOfMonth(new Date(year, monthIdx, 1)), 'yyyy-MM-dd');
+    setRange({ start, end });
+  };
+
+  const setYearRange = () => {
+    const year = new Date().getFullYear();
+    setRange({ start: `${year}-01-01`, end: `${year}-12-31` });
+  };
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentMonthIdx = useMemo(() => {
+    const d = new Date(range.start);
+    const dEnd = new Date(range.end);
+    // Only highlight month if it's a single month range
+    if (d.getMonth() === dEnd.getMonth() && d.getFullYear() === dEnd.getFullYear()) {
+        return d.getMonth();
+    }
+    return -1;
+  }, [range.start, range.end]);
+
+  const isFullYear = useMemo(() => {
+    const year = new Date().getFullYear();
+    return range.start === `${year}-01-01` && range.end === `${year}-12-31`;
+  }, [range.start, range.end]);
 
   const SortIcon = ({ column }) => {
     if (bookingSort.key !== column) return <span style={{ opacity: 0.2, marginLeft: '4px' }}>↕</span>;
@@ -175,7 +203,54 @@ export default function Reports() {
             <h3 style={{ fontSize: '1rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
               <Filter size={18} color="var(--primary)"/> Report Range
             </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              <button 
+                onClick={setYearRange}
+                style={{ 
+                  width: '100%',
+                  padding: '0.6rem', 
+                  fontSize: '0.8rem', 
+                  fontWeight: 800, 
+                  borderRadius: '8px',
+                  border: isFullYear ? '1px solid var(--primary)' : '1px solid var(--border)',
+                  background: isFullYear ? 'var(--primary)' : 'var(--bg-secondary)',
+                  color: isFullYear ? 'white' : 'var(--text-main)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <CalendarCheck size={16} /> Full Year {new Date().getFullYear()}
+              </button>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.5rem' }}>
+                {months.map((m, i) => (
+                  <button 
+                    key={m} 
+                    onClick={() => setMonthRange(i)}
+                    style={{ 
+                      padding: '0.4rem 0.2rem', 
+                      fontSize: '0.7rem', 
+                      fontWeight: 700, 
+                      borderRadius: '6px',
+                      border: currentMonthIdx === i ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      background: currentMonthIdx === i ? 'var(--primary)' : 'white',
+                      color: currentMonthIdx === i ? 'white' : 'var(--text-main)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
               <div className="form-group">
                 <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>START DATE</label>
                 <input type="date" className="form-input" value={range.start} onChange={e => setRange({...range, start: e.target.value})} />

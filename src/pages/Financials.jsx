@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Trash2, ArrowUpRight, ArrowDownRight, Edit2 } from 'lucide-react';
+import { Trash2, ArrowUpRight, ArrowDownRight, Edit2, Filter, CalendarCheck } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import { startOfMonth, endOfMonth, format } from 'date-fns';
 
 export default function Financials() {
   const { session, activeResortId } = useSettingsStore();
@@ -18,6 +19,11 @@ export default function Financials() {
   const [showIncomeForm, setShowIncomeForm] = useState(false);
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  
+  const [range, setRange] = useState({
+    start: `${new Date().getFullYear()}-01-01`,
+    end: `${new Date().getFullYear()}-12-31`
+  });
 
   const stats = React.useMemo(() => {
     const totalInc = incomes.reduce((sum, i) => sum + Number(i.amount), 0);
@@ -25,19 +31,47 @@ export default function Financials() {
     return { totalInc, totalExp, net: totalInc - totalExp };
   }, [incomes, expenses]);
 
+  const setMonthRange = (monthIdx) => {
+    const year = new Date().getFullYear();
+    const start = format(new Date(year, monthIdx, 1), 'yyyy-MM-dd');
+    const end = format(endOfMonth(new Date(year, monthIdx, 1)), 'yyyy-MM-dd');
+    setRange({ start, end });
+  };
+
+  const setYearRange = () => {
+    const year = new Date().getFullYear();
+    setRange({ start: `${year}-01-01`, end: `${year}-12-31` });
+  };
+
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  
+  const currentMonthIdx = React.useMemo(() => {
+    const d = new Date(range.start);
+    const dEnd = new Date(range.end);
+    if (d.getMonth() === dEnd.getMonth() && d.getFullYear() === dEnd.getFullYear()) {
+        return d.getMonth();
+    }
+    return -1;
+  }, [range.start, range.end]);
+
+  const isFullYear = React.useMemo(() => {
+    const year = new Date().getFullYear();
+    return range.start === `${year}-01-01` && range.end === `${year}-12-31`;
+  }, [range.start, range.end]);
+
   useEffect(() => {
     fetchData();
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [activeResortId]);
+  }, [activeResortId, range]);
 
   const fetchData = async () => {
-    if (!isSupabaseConfigured()) { setLoading(false); return; }
+    if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
     try {
       const [inc, exp] = await Promise.all([
-        supabase.from('incomes').select('*, bookings(reference_number, guest_name)').eq('resort_id', activeResortId).order('date', { ascending: false }),
-        supabase.from('expenses').select('*').eq('resort_id', activeResortId).order('date', { ascending: false })
+        supabase.from('incomes').select('*, bookings(reference_number, guest_name)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end).order('date', { ascending: false }),
+        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end).order('date', { ascending: false })
       ]);
       setIncomes(inc.data || []);
       setExpenses(exp.data || []);
@@ -174,6 +208,53 @@ export default function Financials() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      
+      {/* FILTER SECTION */}
+      <div className="card" style={{ padding: '1rem 1.5rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '300px' }}>
+            <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+              <Filter size={18} color="var(--primary)"/> Period:
+            </h3>
+            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
+                <button 
+                  onClick={setYearRange}
+                  style={{ 
+                    padding: '0.4rem 0.75rem', fontSize: '0.75rem', fontWeight: 800, borderRadius: '6px', cursor: 'pointer',
+                    border: isFullYear ? '1px solid var(--primary)' : '1px solid var(--border)',
+                    background: isFullYear ? 'var(--primary)' : 'white',
+                    color: isFullYear ? 'white' : 'var(--text-main)'
+                  }}
+                >
+                  Full Year
+                </button>
+                {months.map((m, i) => (
+                  <button 
+                    key={m} onClick={() => setMonthRange(i)}
+                    style={{ 
+                      padding: '0.4rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px', cursor: 'pointer',
+                      border: currentMonthIdx === i ? '1px solid var(--primary)' : '1px solid var(--border)',
+                      background: currentMonthIdx === i ? 'var(--primary)' : 'white',
+                      color: currentMonthIdx === i ? 'white' : 'var(--text-main)'
+                    }}
+                  >
+                    {m}
+                  </button>
+                ))}
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <small style={{ fontWeight: 700, opacity: 0.6 }}>FROM</small>
+              <input type="date" className="form-input" style={{ width: '130px', height: '32px', fontSize: '0.8rem' }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <small style={{ fontWeight: 700, opacity: 0.6 }}>TO</small>
+              <input type="date" className="form-input" style={{ width: '130px', height: '32px', fontSize: '0.8rem' }} value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
+            </div>
+          </div>
+        </div>
+      </div>
       {/* GLOBAL SUMMARY DASHBOARD */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
         <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--success)', padding: isMobile ? '0.75rem' : '1.25rem' }}>
