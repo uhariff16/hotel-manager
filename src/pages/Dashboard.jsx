@@ -20,7 +20,7 @@ export default function Dashboard() {
     occupancy: 0 
   });
   const [chartData, setChartData] = useState([]);
-  const [recentCheckins, setRecentCheckins] = useState([]);
+  const [recentCheckins, setRecentCheckins] = useState({ active: [], upcoming: [] });
   const [loading, setLoading] = useState(true);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   
@@ -119,7 +119,7 @@ export default function Dashboard() {
         const todayStr = new Date().toISOString().split('T')[0];
         const active = (bks.data || []).filter(b => b.status === 'Checked-in');
         const upcoming = (bks.data || []).filter(b => b.status === 'Confirmed' && b.check_in_date >= todayStr);
-        setRecentCheckins([...active, ...upcoming].slice(0, 5));
+        setRecentCheckins({ active, upcoming: upcoming.slice(0, 10) });
 
       } catch (err) {
         console.error(err);
@@ -292,59 +292,78 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            {recentCheckins.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '2rem 0', opacity: 0.5 }}>
-                <CalendarCheck size={48} style={{ marginBottom: '1rem' }} />
-                <p>No active or upcoming guests</p>
-              </div>
-            ) : null}
-            {recentCheckins.map(b => (
-              <div key={b.id} style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                gap: isMobile ? '0.75rem' : '1rem',
-                padding: isMobile ? '0.75rem' : '1rem', 
-                background: 'var(--bg-color)', 
-                borderRadius: '12px', 
-                border: '1px solid var(--border)',
-                transition: 'transform 0.2s ease',
-                position: 'relative'
-              }}>
-                <div style={{ 
-                  width: isMobile ? '4px' : '10px', 
-                  height: '40px', 
-                  background: b.status === 'Checked-in' ? 'var(--success)' : 'var(--primary)',
-                  borderRadius: '10px'
-                }}></div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '2px' : '0.5rem' }}>
-                    <div style={{ fontWeight: '700', fontSize: isMobile ? '0.85rem' : '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{b.guest_name}</div>
-                    <div style={{ display: 'flex', gap: '0.3rem' }}>
-                        <span style={{ 
-                        fontSize: isMobile ? '0.55rem' : '0.65rem', 
-                        padding: '1px 4px', 
-                        borderRadius: '4px', 
-                        background: b.status === 'Checked-in' ? 'rgba(72, 187, 120, 0.1)' : 'rgba(49, 130, 206, 0.1)',
-                        color: b.status === 'Checked-in' ? 'var(--success)' : 'var(--primary)',
-                        fontWeight: '700',
-                        textTransform: 'uppercase'
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {/* Active Section */}
+            {recentCheckins.active.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--success)', textTransform: 'uppercase', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div style={{ width: '8px', height: '8px', background: 'var(--success)', borderRadius: '50%' }}></div>
+                    Staying Now ({recentCheckins.active.length})
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {recentCheckins.active.map(b => (
+                        <div key={b.id} style={{ 
+                            display: 'flex', 
+                            alignItems: 'center',
+                            gap: isMobile ? '0.75rem' : '1rem',
+                            padding: isMobile ? '0.75rem' : '1rem', 
+                            background: 'rgba(72, 187, 120, 0.05)', 
+                            borderRadius: '12px', 
+                            border: '1px solid var(--success)',
+                            position: 'relative'
                         }}>
-                        {b.status === 'Checked-in' ? 'Active' : 'Upcoming'}
-                        </span>
-                        <span style={{ fontSize: isMobile ? '0.55rem' : '0.65rem', padding: '1px 4px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800 }}>{b.booking_source || 'Direct'}</span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', color: 'var(--text-muted)', marginTop: isMobile ? '2px' : 0 }}>In: {format(new Date(b.check_in_date), 'MMM dd')}</div>
-                </div>
-                <div style={{ textAlign: 'right', minWidth: 'fit-content' }}>
-                   <div style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold', color: b.balance_amount > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                    ₹{b.balance_amount.toLocaleString()}
-                  </div>
-                  <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: '700', opacity: 0.6 }}>Bal</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: '800', fontSize: isMobile ? '0.9rem' : '1rem', color: 'var(--text-main)' }}>{b.guest_name}</div>
+                                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
+                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'var(--success)', color: 'white', fontWeight: '800' }}>ACTIVE</span>
+                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'white', border: '1px solid #ddd', color: 'var(--text-muted)', fontWeight: 800 }}>{b.booking_source || 'Direct'}</span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>Out: {format(new Date(b.check_out_date), 'MMM dd')}</div>
+                            </div>
+                            <div style={{ textAlign: 'right' }}>
+                                <div style={{ fontSize: '0.85rem', fontWeight: '900', color: b.balance_amount > 0 ? 'var(--danger)' : 'var(--success)' }}>₹{b.balance_amount.toLocaleString()}</div>
+                                <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: '800', opacity: 0.6 }}>Balance</span>
+                            </div>
+                        </div>
+                    ))}
                 </div>
               </div>
-            ))}
+            )}
+
+            {/* Upcoming Section */}
+            <div>
+              <h4 style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ width: '8px', height: '8px', background: 'var(--primary)', borderRadius: '50%' }}></div>
+                  Upcoming Arrivals ({recentCheckins.upcoming.length})
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {recentCheckins.upcoming.length === 0 ? (
+                      <div style={{ textAlign: 'center', padding: '1rem', opacity: 0.5, fontSize: '0.85rem' }}>No upcoming arrivals</div>
+                  ) : recentCheckins.upcoming.map(b => (
+                    <div key={b.id} style={{ 
+                        display: 'flex', 
+                        alignItems: 'center',
+                        gap: isMobile ? '0.75rem' : '1rem',
+                        padding: isMobile ? '0.75rem' : '1rem', 
+                        background: 'var(--bg-color)', 
+                        borderRadius: '12px', 
+                        border: '1px solid var(--border)',
+                        position: 'relative'
+                    }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: '700', fontSize: isMobile ? '0.85rem' : '0.95rem' }}>{b.guest_name}</div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '4px' }}>
+                                <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(49, 130, 206, 0.1)', color: 'var(--primary)', fontWeight: '800' }}>NEXT: {format(new Date(b.check_in_date), 'MMM dd')}</span>
+                            </div>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>₹{b.total_amount.toLocaleString()}</div>
+                            <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: '700', opacity: 0.6 }}>Total</span>
+                        </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
           </div>
         </div>
       </div>
