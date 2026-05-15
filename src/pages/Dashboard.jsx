@@ -219,19 +219,19 @@ export default function Dashboard() {
 
       <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: isMobile ? '1.5rem' : '2rem' }}>
         {/* Sales Analytic Chart */}
-        <div className="card" style={{ padding: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <div className="card" style={{ padding: isMobile ? '1rem' : '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div>
-              <h3 style={{ margin: 0 }}>Revenue Breakdown</h3>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Revenue vs Expenses performance for the last week</p>
+              <h3 style={{ margin: 0, fontSize: isMobile ? '1rem' : '1.25rem' }}>Revenue Breakdown</h3>
+              <p style={{ margin: 0, fontSize: isMobile ? '0.75rem' : '0.85rem', color: 'var(--text-muted)' }}>Revenue vs Expenses performance</p>
             </div>
-            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.8rem' }}>
+            <div style={{ display: 'flex', gap: '0.75rem', fontSize: isMobile ? '0.7rem' : '0.8rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <div style={{ width: '12px', height: '12px', background: 'var(--primary)', borderRadius: '3px' }}></div>
+                <div style={{ width: '10px', height: '10px', background: 'var(--primary)', borderRadius: '3px' }}></div>
                 <span>Revenue</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <div style={{ width: '12px', height: '12px', background: 'var(--danger)', borderRadius: '3px' }}></div>
+                <div style={{ width: '10px', height: '10px', background: 'var(--danger)', borderRadius: '3px' }}></div>
                 <span>Expenses</span>
               </div>
             </div>
@@ -270,9 +270,9 @@ export default function Dashboard() {
         </div>
 
         {/* Activity Feed */}
-        <div className="card" style={{ padding: '1.5rem' }}>
-          <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <BedDouble size={20} color="var(--primary)"/> Active & Upcoming
+        <div className="card" style={{ padding: isMobile ? '1.25rem' : '1.5rem' }}>
+          <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: isMobile ? '1rem' : '1.25rem' }}>
+            <BedDouble size={isMobile ? 18 : 20} color="var(--primary)"/> Active & Upcoming
           </h3>
           
           {/* Occupancy Progress Bar */}
@@ -303,8 +303,8 @@ export default function Dashboard() {
               <div key={b.id} style={{ 
                 display: 'flex', 
                 alignItems: 'center',
-                gap: '1rem',
-                padding: '1rem', 
+                gap: isMobile ? '0.75rem' : '1rem',
+                padding: isMobile ? '0.75rem' : '1rem', 
                 background: 'var(--bg-color)', 
                 borderRadius: '12px', 
                 border: '1px solid var(--border)',
@@ -312,18 +312,18 @@ export default function Dashboard() {
                 position: 'relative'
               }}>
                 <div style={{ 
-                  width: '10px', 
+                  width: isMobile ? '4px' : '10px', 
                   height: '40px', 
                   background: b.status === 'Checked-in' ? 'var(--success)' : 'var(--primary)',
                   borderRadius: '10px'
                 }}></div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{b.guest_name}</div>
-                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.2rem' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '2px' : '0.5rem' }}>
+                    <div style={{ fontWeight: '700', fontSize: isMobile ? '0.85rem' : '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>{b.guest_name}</div>
+                    <div style={{ display: 'flex', gap: '0.3rem' }}>
                         <span style={{ 
-                        fontSize: '0.65rem', 
-                        padding: '2px 6px', 
+                        fontSize: isMobile ? '0.55rem' : '0.65rem', 
+                        padding: '1px 4px', 
                         borderRadius: '4px', 
                         background: b.status === 'Checked-in' ? 'rgba(72, 187, 120, 0.1)' : 'rgba(49, 130, 206, 0.1)',
                         color: b.status === 'Checked-in' ? 'var(--success)' : 'var(--primary)',
@@ -332,16 +332,16 @@ export default function Dashboard() {
                         }}>
                         {b.status === 'Checked-in' ? 'Active' : 'Upcoming'}
                         </span>
-                        <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800 }}>{b.booking_source || 'Direct'}</span>
+                        <span style={{ fontSize: isMobile ? '0.55rem' : '0.65rem', padding: '1px 4px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800 }}>{b.booking_source || 'Direct'}</span>
                     </div>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>In: {format(new Date(b.check_in_date), 'MMM dd')}</div>
+                  <div style={{ fontSize: isMobile ? '0.7rem' : '0.8rem', color: 'var(--text-muted)', marginTop: isMobile ? '2px' : 0 }}>In: {format(new Date(b.check_in_date), 'MMM dd')}</div>
                 </div>
-                <div style={{ textAlign: 'right' }}>
-                   <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: b.balance_amount > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                <div style={{ textAlign: 'right', minWidth: 'fit-content' }}>
+                   <div style={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold', color: b.balance_amount > 0 ? 'var(--danger)' : 'var(--success)' }}>
                     ₹{b.balance_amount.toLocaleString()}
                   </div>
-                  <span style={{ fontSize: '0.7rem', textTransform: 'uppercase', fontWeight: '700', opacity: 0.6 }}>Balance</span>
+                  <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: '700', opacity: 0.6 }}>Bal</span>
                 </div>
               </div>
             ))}
