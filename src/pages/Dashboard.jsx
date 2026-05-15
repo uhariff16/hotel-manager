@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, AreaChart, Area } from 'recharts';
-import { Wallet, BedDouble, CalendarCheck, TrendingUp } from 'lucide-react';
+import { Wallet, BedDouble, CalendarCheck, TrendingUp, CreditCard } from 'lucide-react';
 import { format, differenceInDays } from 'date-fns';
 
 import { useSettingsStore } from '../lib/store';
 
 export default function Dashboard() {
   const { activeResortId } = useSettingsStore();
-  const [stats, setStats] = useState({ revenue: 0, expenses: 0, profit: 0, totalBookings: 0 });
+  const [stats, setStats] = useState({ revenue: 0, collections: 0, expenses: 0, profit: 0, totalBookings: 0, occupancy: 0 });
   const [chartData, setChartData] = useState([]);
   const [recentCheckins, setRecentCheckins] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,20 +17,60 @@ export default function Dashboard() {
     const fetchData = async () => {
       if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
       try {
-        const [inc, exp, bks] = await Promise.all([
+        const [inc, exp, bks, cts, rms] = await Promise.all([
           supabase.from('incomes').select('amount, date').eq('resort_id', activeResortId),
           supabase.from('expenses').select('amount, date').eq('resort_id', activeResortId),
-          supabase.from('bookings').select('*').eq('resort_id', activeResortId).order('check_in_date', { ascending: true })
+          supabase.from('bookings').select('*').eq('resort_id', activeResortId).order('check_in_date', { ascending: true }),
+          supabase.from('cottages').select('id').eq('resort_id', activeResortId),
+          supabase.from('rooms').select('id, cottage_id').eq('resort_id', activeResortId)
         ]);
         
         const rev = (inc.data || []).reduce((sum, item) => sum + Number(item.amount), 0);
         const expr = (exp.data || []).reduce((sum, item) => sum + Number(item.amount), 0);
         
+        // Yearly stats for KPIs
+        const now = new Date();
+        const startOfYearStr = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
+        
+        // Collection = Actual payments received
+        const yearlyCollections = (inc.data || []).filter(i => i.date >= startOfYearStr).reduce((sum, item) => sum + Number(item.amount), 0);
+        const yearlyExpr = (exp.data || []).filter(e => e.date >= startOfYearStr).reduce((sum, item) => sum + Number(item.amount), 0);
+        
+        // Booking Revenue = Total value of valid bookings
+        const yearlyBookingRevenue = (bks.data || []).filter(b => b.status !== 'Cancelled' && b.check_in_date >= startOfYearStr).reduce((sum, item) => sum + Number(item.total_amount), 0);
+
+        // Calculate Today's Occupancy % correctly
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        
+        const totalUnits = (cts.data?.length || 0) + (rms.data?.length || 0);
+        
+        // Filter bookings that span TODAY and are not cancelled
+        const todayBookings = (bks.data || []).filter(b => {
+            if (b.status === 'Cancelled') return false;
+            const start = new Date(b.check_in_date);
+            const end = new Date(b.check_out_date);
+            start.setHours(0,0,0,0);
+            end.setHours(0,0,0,0);
+            return today >= start && today < end; 
+        });
+
+        const occupiedUnits = todayBookings.reduce((acc, b) => {
+            if (b.booking_type === 'Entire Property') {
+                const cottageRooms = (rms.data || []).filter(r => r.cottage_id === b.cottage_id).length;
+                return acc + 1 + cottageRooms; 
+            } else {
+                return acc + (b.room_ids?.length || 1);
+            }
+        }, 0);
+
         setStats({
-          revenue: rev,
-          expenses: expr,
-          profit: rev - expr,
-          totalBookings: (bks.data || []).length
+          revenue: yearlyBookingRevenue,
+          collections: yearlyCollections,
+          expenses: yearlyExpr,
+          profit: yearlyCollections - yearlyExpr,
+          totalBookings: (bks.data || []).filter(b => b.check_in_date >= startOfYearStr).length,
+          occupancy: totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0
         });
 
         // Chart Data (Group income & expenses by date)
@@ -70,10 +110,11 @@ export default function Dashboard() {
   if(loading) return <div>Loading...</div>;
 
   const kpis = [
-    { title: 'Total Revenue', value: `₹${stats.revenue.toLocaleString()}`, icon: <Wallet size={24}/>, color: 'linear-gradient(135deg, #2f855a 0%, #48bb78 100%)' },
-    { title: 'Total Expenses', value: `₹${stats.expenses.toLocaleString()}`, icon: <TrendingUp size={24}/>, color: 'linear-gradient(135deg, #e53e3e 0%, #fc8181 100%)' },
-    { title: 'Net Profit', value: `₹${stats.profit.toLocaleString()}`, icon: <TrendingUp size={24} style={{ rotate: '45deg' }}/>, color: 'linear-gradient(135deg, #d69e2e 0%, #ecc94b 100%)' },
-    { title: 'Total Bookings', value: stats.totalBookings, icon: <CalendarCheck size={24}/>, color: 'linear-gradient(135deg, #3182ce 0%, #63b3ed 100%)' },
+    { title: 'Yearly Revenue', value: `₹${stats.revenue.toLocaleString()}`, icon: <Wallet size={24}/>, color: 'linear-gradient(135deg, #2f855a 0%, #48bb78 100%)' },
+    { title: 'Yearly Collections', value: `₹${stats.collections.toLocaleString()}`, icon: <CreditCard size={24}/>, color: 'linear-gradient(135deg, #3182ce 0%, #63b3ed 100%)' },
+    { title: 'Yearly Expenses', value: `₹${stats.expenses.toLocaleString()}`, icon: <TrendingUp size={24}/>, color: 'linear-gradient(135deg, #e53e3e 0%, #fc8181 100%)' },
+    { title: 'Yearly Profit', value: `₹${stats.profit.toLocaleString()}`, icon: <TrendingUp size={24} style={{ rotate: '45deg' }}/>, color: 'linear-gradient(135deg, #d69e2e 0%, #ecc94b 100%)' },
+    { title: 'Yearly Bookings', value: stats.totalBookings, icon: <CalendarCheck size={24}/>, color: 'linear-gradient(135deg, #3182ce 0%, #63b3ed 100%)' },
   ];
 
   return (
@@ -158,6 +199,24 @@ export default function Dashboard() {
           <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <BedDouble size={20} color="var(--primary)"/> Active & Upcoming
           </h3>
+          
+          {/* Occupancy Progress Bar */}
+          <div style={{ marginBottom: '2rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', fontWeight: 700 }}>
+                <span>Today's Occupancy</span>
+                <span style={{ color: 'var(--primary)' }}>{stats.occupancy}%</span>
+            </div>
+            <div style={{ width: '100%', height: '8px', background: 'var(--bg-color)', borderRadius: '10px', overflow: 'hidden' }}>
+                <div style={{ 
+                    width: `${stats.occupancy}%`, 
+                    height: '100%', 
+                    background: 'var(--primary)',
+                    borderRadius: '10px',
+                    transition: 'width 0.5s ease-out'
+                }}></div>
+            </div>
+          </div>
+
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             {recentCheckins.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '2rem 0', opacity: 0.5 }}>
@@ -186,17 +245,20 @@ export default function Dashboard() {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <div style={{ fontWeight: '700', fontSize: '0.95rem' }}>{b.guest_name}</div>
-                    <span style={{ 
-                      fontSize: '0.65rem', 
-                      padding: '2px 6px', 
-                      borderRadius: '4px', 
-                      background: b.status === 'Checked-in' ? 'rgba(72, 187, 120, 0.1)' : 'rgba(49, 130, 206, 0.1)',
-                      color: b.status === 'Checked-in' ? 'var(--success)' : 'var(--primary)',
-                      fontWeight: '700',
-                      textTransform: 'uppercase'
-                    }}>
-                      {b.status === 'Checked-in' ? 'Active' : 'Upcoming'}
-                    </span>
+                    <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.2rem' }}>
+                        <span style={{ 
+                        fontSize: '0.65rem', 
+                        padding: '2px 6px', 
+                        borderRadius: '4px', 
+                        background: b.status === 'Checked-in' ? 'rgba(72, 187, 120, 0.1)' : 'rgba(49, 130, 206, 0.1)',
+                        color: b.status === 'Checked-in' ? 'var(--success)' : 'var(--primary)',
+                        fontWeight: '700',
+                        textTransform: 'uppercase'
+                        }}>
+                        {b.status === 'Checked-in' ? 'Active' : 'Upcoming'}
+                        </span>
+                        <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800 }}>{b.booking_source || 'Direct'}</span>
+                    </div>
                   </div>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>In: {format(new Date(b.check_in_date), 'MMM dd')}</div>
                 </div>

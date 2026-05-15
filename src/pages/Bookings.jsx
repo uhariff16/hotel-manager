@@ -102,11 +102,13 @@ export default function Bookings() {
       if (finalBalance > 0) {
         await supabase.from('incomes').insert([{
           resort_id: activeResortId,
+          tenant_id: profile?.id || session?.user?.id,
           booking_id: settlingBooking.id,
           amount: finalBalance,
-          category: 'Stay Settlement',
-          description: `Final settlement for ${settlingBooking.guest_name}`,
-          date: new Date().toISOString()
+          source: 'Room Rent',
+          notes: `Settlement: ${settlingBooking.guest_name} (${settlingBooking.reference_number})`,
+          date: new Date().toISOString().split('T')[0],
+          payment_mode: 'UPI'
         }]);
       }
 
@@ -329,13 +331,20 @@ export default function Bookings() {
                     <div>
                       <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem' }}>{b.reference_number}</small>
                       <h3 style={{ margin: '0.1rem 0 0.25rem 0', fontSize: '1.1rem' }}>{b.guest_name}</h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                        <Phone size={14} /> {b.phone_number}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.25rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                            <Phone size={14} /> {b.phone_number}
+                        </div>
                       </div>
                     </div>
-                    <span style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44` }}>
-                      {b.status}
-                    </span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
+                      <span style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44`, width: 'fit-content' }}>
+                        {b.status}
+                      </span>
+                      <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800, border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                        {b.booking_source || 'Direct'}
+                      </span>
+                    </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '0.75rem 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', marginBottom: '0.75rem' }}>
@@ -398,6 +407,7 @@ export default function Bookings() {
                   <th onClick={() => requestSort('guest_name')} style={{ cursor: 'pointer' }}>Guest</th>
                   <th onClick={() => requestSort('check_in_date')} style={{ cursor: 'pointer' }}>Stay Dates</th>
                   <th onClick={() => requestSort('cottage_id')} style={{ cursor: 'pointer' }}>Unit / Room</th>
+                  <th onClick={() => requestSort('booking_source')} style={{ cursor: 'pointer' }}>Source</th>
                   <th onClick={() => requestSort('status')} style={{ cursor: 'pointer' }}>Status</th>
                   <th onClick={() => requestSort('balance_amount')} style={{ cursor: 'pointer', textAlign: 'right' }}>Balance Due</th>
                   <th style={{ textAlign: 'center' }}>Actions</th>
@@ -428,6 +438,9 @@ export default function Bookings() {
                       <td>
                         <div style={{ fontWeight: 600 }}><Home size={14} /> {cname}</div>
                         <small style={{ color: 'var(--primary)' }}>{rname}</small>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.3rem 0.6rem', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{b.booking_source || 'Direct'}</span>
                       </td>
                       <td>
                         <span style={{ padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44` }}>

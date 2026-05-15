@@ -184,15 +184,14 @@ export default function BookingForm() {
   }, [bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, JSON.stringify(bookingForm.room_ids), cottages, rooms]);
 
   useEffect(() => {
-    if (bookingForm.is_loading_edit) return;
-    const total = Number(bookingForm.base_amount) + Number(bookingForm.addons_cost || 0);
+    const total = Number(bookingForm.base_amount || 0) + Number(bookingForm.addons_cost || 0) + Number(bookingForm.extra_guest_charges || 0);
     const balance = total - Number(bookingForm.advance_paid || 0);
     setBookingForm(prev => ({
       ...prev,
       total_amount: total,
       balance_amount: balance
     }));
-  }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid]);
+  }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid, bookingForm.extra_guest_charges]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -462,6 +461,10 @@ export default function BookingForm() {
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Add-ons Cost (₹)</label>
                 <input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: Number(e.target.value)})} />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Extra Guest Charges (₹)</label>
+                <input type="number" className="form-input" value={bookingForm.extra_guest_charges} onChange={e => setBookingForm({...bookingForm, extra_guest_charges: Number(e.target.value)})} />
               </div>
             </div>
 
