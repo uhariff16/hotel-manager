@@ -228,6 +228,14 @@ export default function Bookings() {
     return items;
   }, [bookings, activeTab, sortConfig, searchTerm]);
 
+  const bookingStats = React.useMemo(() => {
+    const visible = sortedAndFilteredBookings;
+    const totalValue = visible.reduce((sum, b) => sum + Number(b.total_amount || 0), 0);
+    const totalBalance = visible.reduce((sum, b) => sum + Number(b.balance_amount || 0), 0);
+    const totalPaid = totalValue - totalBalance;
+    return { totalValue, totalPaid, totalBalance };
+  }, [sortedAndFilteredBookings]);
+
   const requestSort = (key) => {
     let direction = 'ascending';
     if (sortConfig.key === key && sortConfig.direction === 'ascending') {
@@ -271,6 +279,21 @@ export default function Bookings() {
               <Trash2 size={16} /> Delete {selectedBookings.length}
             </button>
           )}
+
+          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+            <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+              <small style={{ display: 'block', color: 'var(--success)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Paid</small>
+              <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalPaid.toLocaleString()}</span>
+            </div>
+            <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+              <small style={{ display: 'block', color: 'var(--warning)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Balance</small>
+              <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalBalance.toLocaleString()}</span>
+            </div>
+            <div style={{ background: 'var(--bg-secondary)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Total Value</small>
+              <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalValue.toLocaleString()}</span>
+            </div>
+          </div>
         </div>
 
         {/* Status Tabs */}
@@ -366,12 +389,18 @@ export default function Bookings() {
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <CreditCard size={16} color={b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)'} />
-                      <div style={{ lineHeight: 1 }}>
-                        <small style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Balance</small>
-                        <div style={{ fontSize: '1rem', fontWeight: 800, color: b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)' }}>₹{b.balance_amount}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '12px', marginTop: '0.5rem' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <small style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Paid</small>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--success)' }}>₹{b.total_amount - b.balance_amount}</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <small style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Balance</small>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 900, color: b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)' }}>₹{b.balance_amount}</div>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <small style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Total</small>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700 }}>₹{b.total_amount}</div>
                       </div>
                     </div>
                     
@@ -386,8 +415,7 @@ export default function Bookings() {
                     </div>
                   </div>
                 </div>
-              </div>
-            );
+              );
           })}
         </div>
       ) : (
@@ -408,8 +436,9 @@ export default function Bookings() {
                   <th onClick={() => requestSort('check_in_date')} style={{ cursor: 'pointer' }}>Stay Dates</th>
                   <th onClick={() => requestSort('cottage_id')} style={{ cursor: 'pointer' }}>Unit / Room</th>
                   <th onClick={() => requestSort('booking_source')} style={{ cursor: 'pointer' }}>Source</th>
-                  <th onClick={() => requestSort('status')} style={{ cursor: 'pointer' }}>Status</th>
-                  <th onClick={() => requestSort('balance_amount')} style={{ cursor: 'pointer', textAlign: 'right' }}>Balance Due</th>
+                  <th onClick={() => requestSort('advance_paid')} style={{ cursor: 'pointer', textAlign: 'right' }}>Paid</th>
+                  <th onClick={() => requestSort('balance_amount')} style={{ cursor: 'pointer', textAlign: 'right' }}>Balance</th>
+                  <th onClick={() => requestSort('total_amount')} style={{ cursor: 'pointer', textAlign: 'right' }}>Total</th>
                   <th style={{ textAlign: 'center' }}>Actions</th>
                 </tr>
               </thead>
@@ -442,13 +471,14 @@ export default function Bookings() {
                       <td>
                         <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.3rem 0.6rem', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{b.booking_source || 'Direct'}</span>
                       </td>
-                      <td>
-                        <span style={{ padding: '0.4rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44` }}>
-                          {b.status}
-                        </span>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--success)' }}>₹{(b.total_amount - b.balance_amount).toLocaleString()}</div>
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '1.1rem', fontWeight: 800, color: b.balance_amount > 0 ? 'var(--warning)' : 'var(--success)' }}>₹{b.balance_amount.toLocaleString()}</div>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '1rem', fontWeight: 700 }}>₹{b.total_amount.toLocaleString()}</div>
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
