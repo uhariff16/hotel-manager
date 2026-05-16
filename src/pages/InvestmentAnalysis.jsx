@@ -1,3 +1,4 @@
+// Updated: 2026-05-16 - Added suggested rate details
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
