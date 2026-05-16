@@ -83,44 +83,39 @@ export default function Bookings() {
     if (!window.confirm(`Are you sure you want to revert ${b.guest_name} to 'Checked-in'? This will DELETE the settlement record from Financials.`)) return;
     
     try {
-      // 1. Find the settlement income record first to know how much to subtract
-      const { data: incomeData } = await supabase
+      // 1. Delete the settlement income record first
+      await supabase
         .from('incomes')
-        .select('id, amount')
+        .delete()
         .eq('booking_id', b.id)
-        .ilike('notes', '%Settlement%')
-        .single();
+        .ilike('notes', '%Settlement%');
 
-      if (incomeData) {
-        // 2. Calculate the restored balance (Total - original Advance)
-        const restoredBalance = Number(b.total_amount) - Number(b.advance_paid || 0);
+      // 2. Fetch ALL remaining income records for this booking to get the REAL paid amount
+      const { data: allIncomes } = await supabase
+        .from('incomes')
+        .select('amount')
+        .eq('booking_id', b.id);
 
-        // 3. Update the booking
-        const { error: bookingErr } = await supabase.from('bookings').update({ 
-            status: 'Checked-in',
-            balance_amount: restoredBalance
-        }).eq('id', b.id);
-        
-        if (bookingErr) throw bookingErr;
+      const totalRealPaid = (allIncomes || []).reduce((sum, inc) => sum + Number(inc.amount), 0);
+      const restoredBalance = Number(b.total_amount) - totalRealPaid;
 
-        // 4. Delete the income record
-        await supabase.from('incomes').delete().eq('id', incomeData.id);
+      // 3. Update the booking with the true recalculated values
+      const { error: bookingErr } = await supabase.from('bookings').update({ 
+          status: 'Checked-in',
+          advance_paid: totalRealPaid,
+          balance_amount: restoredBalance
+      }).eq('id', b.id);
+      
+      if (bookingErr) throw bookingErr;
 
-        setBookings(prev => prev.map(x => x.id === b.id ? { 
-            ...x, 
-            status: 'Checked-in', 
-            balance_amount: restoredBalance 
-        } : x));
-      } else {
-        // If no settlement record found, just change status back
-        const { error: bookingErr } = await supabase.from('bookings').update({ 
-            status: 'Checked-in'
-        }).eq('id', b.id);
-        if (bookingErr) throw bookingErr;
-        setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'Checked-in' } : x));
-      }
+      setBookings(prev => prev.map(x => x.id === b.id ? { 
+          ...x, 
+          status: 'Checked-in', 
+          advance_paid: totalRealPaid,
+          balance_amount: restoredBalance 
+      } : x));
 
-      alert("Booking reverted and settlement record removed.");
+      alert("Booking reverted. Financials and Balance have been synchronized.");
     } catch (err) {
       alert("Error reverting status: " + err.message);
     }
