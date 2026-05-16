@@ -14,6 +14,7 @@ export default function BookingForm() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [originalStatus, setOriginalStatus] = useState(null);
   
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -102,6 +103,7 @@ export default function BookingForm() {
             addon_others: othersText.join(', '),
             is_loading_edit: true
           });
+          setOriginalStatus(b.status);
         }
       } else {
         // Generate new reference if not editing
@@ -230,6 +232,27 @@ export default function BookingForm() {
         booking_source: bookingForm.booking_source === 'Other' ? bookingForm.custom_booking_source : bookingForm.booking_source,
         price_type: bookingForm.price_type
       };
+      
+      // If status was Completed and now it's NOT, delete the auto-settled income record and roll back advance_paid
+      if (id && originalStatus === 'Completed' && bookingForm.status !== 'Completed') {
+          // 1. Find the settlement record to know how much to roll back
+          const { data: incomeData } = await supabase
+            .from('incomes')
+            .select('amount')
+            .eq('booking_id', id)
+            .ilike('notes', '%Settlement%')
+            .single();
+
+          if (incomeData) {
+            // Subtract from advance_paid and update bookingData before saving
+            const rolledBackAdvance = Number(bookingData.advance_paid) - Number(incomeData.amount);
+            bookingData.advance_paid = rolledBackAdvance;
+            bookingData.balance_amount = Number(bookingData.total_amount) - rolledBackAdvance;
+
+            // Delete the income record
+            await supabase.from('incomes').delete().eq('booking_id', id).ilike('notes', '%Settlement%');
+          }
+      }
 
       let result;
       if (id) {
