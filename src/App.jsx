@@ -17,6 +17,7 @@ const Resorts = React.lazy(() => import('./pages/Resorts'));
 const Subscription = React.lazy(() => import('./pages/Subscription'));
 const SuperAdmin = React.lazy(() => import('./pages/SuperAdmin'));
 const PriceAnalysis = React.lazy(() => import('./pages/PriceAnalysis'));
+const ROIAnalysis = React.lazy(() => import('./pages/ROIAnalysis'));
 const Staff = React.lazy(() => import('./pages/Staff'));
 const Auth = React.lazy(() => import('./pages/Auth'));
 
@@ -130,6 +131,7 @@ function App() {
             <Route path="subscription" element={<Subscription />} />
             <Route path="admin" element={<SuperAdmin />} />
             <Route path="price-analysis" element={<PriceAnalysis />} />
+            <Route path="roi-analysis" element={<ROIAnalysis />} />
             <Route path="settings" element={<Settings />} />
           </Route>
 
