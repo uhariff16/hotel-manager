@@ -128,11 +128,16 @@ serve(async (req) => {
           template: { name: "checkin_reminder", language: { code: "en_US" } }
         }
       } else if (type === "test_whatsapp") {
+        // IMPORTANT: Meta often blocks raw text for first-time outreach. 
+        // We use a template for the test to ensure delivery.
         payload = {
           messaging_product: "whatsapp",
           to: guestPhone.replace(/\D/g, ""),
-          type: "text",
-          text: { body: `Hello! This is a test message from your resort management system. Your WhatsApp integration is active.` }
+          type: "template",
+          template: { 
+            name: "booking_confirmation", // Using your existing approved template
+            language: { code: "en_US" } 
+          }
         }
       }
 
