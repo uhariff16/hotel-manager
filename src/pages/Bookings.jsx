@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw } from 'lucide-react';
 import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
@@ -79,6 +79,33 @@ export default function Bookings() {
     }
   };
 
+  const handleRevertToCheckIn = async (b) => {
+    if (!window.confirm(`Are you sure you want to revert ${b.guest_name} to 'Checked-in'? This will DELETE the settlement record from Financials.`)) return;
+    
+    try {
+      // 1. Calculate restored balance (Total - Advance)
+      // Note: We might need to fetch all incomes for this booking to be super accurate, 
+      // but usually balance = total - advance_paid (which stores all previous payments).
+      const restoredBalance = b.total_amount - b.advance_paid;
+
+      // 2. Delete the settlement income
+      await supabase.from('incomes').delete().eq('booking_id', b.id).ilike('notes', '%Settlement%');
+
+      // 3. Update booking status and balance
+      const { error } = await supabase.from('bookings').update({ 
+          status: 'Checked-in',
+          balance_amount: restoredBalance
+      }).eq('id', b.id);
+      
+      if (error) throw error;
+
+      setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'Checked-in', balance_amount: restoredBalance } : x));
+      alert("Booking reverted and settlement record removed.");
+    } catch (err) {
+      alert("Error reverting status: " + err.message);
+    }
+  };
+
   const settleBooking = (b) => {
     setSettlingBooking(b);
     setSettlementData({ discount: 0, allSettled: false });
@@ -102,7 +129,7 @@ export default function Bookings() {
       if (finalBalance > 0) {
         await supabase.from('incomes').insert([{
           resort_id: activeResortId,
-          tenant_id: profile?.id || session?.user?.id,
+          tenant_id: profile?.tenant_id,
           booking_id: settlingBooking.id,
           amount: finalBalance,
           source: 'Room Rent',
@@ -412,6 +439,9 @@ export default function Bookings() {
                       {b.status === 'Checked-in' && (
                         <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#6366f1' }}>Checkout</button>
                       )}
+                      {b.status === 'Completed' && (
+                        <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}><RotateCcw size={18} /></button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -487,6 +517,9 @@ export default function Bookings() {
                           )}
                           {b.status === 'Checked-in' && (
                             <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#6366f1' }}>Checkout</button>
+                          )}
+                          {b.status === 'Completed' && (
+                            <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ color: '#6366f1' }}><RotateCcw size={16} /></button>
                           )}
                           <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon"><Edit2 size={16} /></button>
                           {(b.status === 'Pending' || b.status === 'Confirmed') && (
