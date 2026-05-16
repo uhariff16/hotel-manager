@@ -128,12 +128,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     const monthlyAverageProfit = netProfit / monthsElapsed;
     const yearsToPayback = monthlyAverageProfit > 0 ? (capitalOutlay / (monthlyAverageProfit * 12)) : 0;
 
-    const start = new Date(range.start);
-    const end = new Date(range.end);
     const today = new Date();
-    
-    // Total months in the selected range
-    const totalMonthsInRange = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
     
     // Actual months elapsed from start of range to today (capped at range end)
     const effectiveToday = today > end ? end : (today < start ? start : today);
@@ -148,11 +143,23 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     // Revenue Goal = Recovery + ROI + Current Run Rate Expenses
     const totalMonthlyRevenueTarget = monthlyCapitalRecoveryGoal + monthlyROIGoal + averageMonthlyExpense;
 
+    // Calculate the suggested rate for sales targeting
+    const annualOperatingExpense = Number(investmentData?.monthly_operating_expenses || 0) * 12;
+    const annualTotalFixed = Number(investmentData?.annual_fixed_expenses || 0);
+    const leaseInvestment = Number(investmentData?.total_investment || 0);
+    const totalAnnualCost = annualOperatingExpense + annualTotalFixed + leaseInvestment;
+    const targetAnnualNetProfit = leaseInvestment * (targetROIPercent / 100);
+    const requiredGrossAnnualRevenue = totalAnnualCost + targetAnnualNetProfit;
+    const totalUnits = investmentData?.rental_model === 'property' ? 1 : (investmentData?.total_rooms || 1); 
+    const sellableRoomNights = (totalUnits * 365) * (Number(investmentData?.expected_occupancy_rate || 60) / 100);
+    const suggestedRate = sellableRoomNights > 0 ? requiredGrossAnnualRevenue / sellableRoomNights : 0;
+
     return {
       totalIncome, totalOperatingExpenses, netProfit, actualROI, capitalOutlay, 
       targetROIPercent, targetPeriodProfit, monthlyAverageProfit, yearsToPayback,
       monthlyCapitalRecoveryGoal, monthlyROIGoal, 
       averageMonthlyExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
+      suggestedRate,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
   }, [financials, investmentData, range]);
@@ -221,9 +228,9 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
               <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: 'var(--bg-color)', borderRadius: '8px', fontSize: '0.75rem', textAlign: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Required Sales: </span>
                 <strong style={{ color: 'var(--primary)' }}>
-                  {Math.ceil(stats.totalMonthlyRevenueTarget / (stats.capitalOutlay > 0 ? (stats.targetPeriodProfit / 12 || 5000) : 5000))} Bookings
+                  {Math.ceil(stats.totalMonthlyRevenueTarget / (stats.suggestedRate || 1))} Bookings
                 </strong>
-                <span style={{ color: 'var(--text-muted)' }}> @ avg rate</span>
+                <span style={{ color: 'var(--text-muted)' }}> @ ₹{Math.ceil(stats.suggestedRate).toLocaleString()} avg rate</span>
               </div>
             </div>
           </div>
