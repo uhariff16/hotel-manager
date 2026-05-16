@@ -24,8 +24,8 @@ export default function ROIAnalysis() {
   const [financials, setFinancials] = useState({ incomes: [], expenses: [] });
   
   const [range, setRange] = useState({
-    start: `${new Date().getFullYear()}-01-01`,
-    end: `${new Date().getFullYear()}-12-31`
+    start: '2026-04-01',
+    end: '2027-03-31'
   });
 
   useEffect(() => {
@@ -73,10 +73,10 @@ export default function ROIAnalysis() {
     // Calculate period duration in months to pro-rate annual fixed costs
     const start = new Date(range.start);
     const end = new Date(range.end);
-    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-    const proRatedFixed = (annualFixed / 12) * months;
+    const monthsElapsed = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
     
-    const totalExpenses = totalOperatingExpenses + proRatedFixed;
+    // Use ONLY actual recorded expenses as requested
+    const totalExpenses = totalOperatingExpenses;
     const netProfit = totalIncome - totalExpenses;
     
     const actualROI = capitalOutlay > 0 ? (netProfit / capitalOutlay) * 100 : 0;
@@ -84,10 +84,19 @@ export default function ROIAnalysis() {
     
     // Projected ROI from PriceAnalysis
     const targetAnnualProfit = capitalOutlay * (targetROIPercent / 100);
-    const targetPeriodProfit = (targetAnnualProfit / 12) * months;
+    
+    const targetPeriodProfit = (targetAnnualProfit / 12) * monthsElapsed;
+    
+    const monthlyAverageProfit = netProfit / monthsElapsed;
+    const yearsToPayback = monthlyAverageProfit > 0 ? (capitalOutlay / (monthlyAverageProfit * 12)) : 0;
+    
+    const monthlyCapitalRecoveryGoal = capitalOutlay / 12;
+    const monthlyROIGoal = (capitalOutlay * (targetROIPercent / 100)) / 12;
+    const totalMonthlyNetTarget = monthlyCapitalRecoveryGoal + monthlyROIGoal;
     
     return {
       totalIncome,
+      totalOperatingExpenses,
       totalExpenses,
       netProfit,
       actualROI,
@@ -95,6 +104,11 @@ export default function ROIAnalysis() {
       capitalOutlay,
       targetROIPercent,
       targetPeriodProfit,
+      monthlyAverageProfit,
+      yearsToPayback,
+      monthlyCapitalRecoveryGoal,
+      monthlyROIGoal,
+      totalMonthlyNetTarget,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
   }, [financials, investmentData, range]);
@@ -180,6 +194,35 @@ export default function ROIAnalysis() {
         </div>
       </div>
 
+      {/* Strategic Targets Card */}
+      <div className="card" style={{ borderLeft: '4px solid var(--primary)', background: 'rgba(59, 130, 246, 0.02)' }}>
+        <h3 style={{ margin: '0 0 1.5rem 0', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.1rem' }}>
+          <Target size={20} color="var(--primary)" /> Monthly Strategic Targets
+        </h3>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem' }}>
+          <div>
+            <small style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 700, textTransform: 'uppercase' }}>Min. Capital Recovery</small>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{Math.ceil(stats.monthlyCapitalRecoveryGoal).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 400 }}>/mo</span></div>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Required for full payback in 12 months</p>
+          </div>
+          <div>
+            <small style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem', fontWeight: 700, textTransform: 'uppercase' }}>Target ROI Profit</small>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{Math.ceil(stats.monthlyROIGoal).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 400 }}>/mo</span></div>
+            <p style={{ margin: '0.5rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Based on your {stats.targetROIPercent}% ROI goal</p>
+          </div>
+          <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
+            <small style={{ color: 'var(--primary)', display: 'block', marginBottom: '0.5rem', fontWeight: 800, textTransform: 'uppercase' }}>Total Net Profit Goal</small>
+            <div style={{ fontSize: '1.75rem', fontWeight: 900, color: 'var(--primary)' }}>₹{Math.ceil(stats.totalMonthlyNetTarget).toLocaleString()} <span style={{ fontSize: '0.8rem', fontWeight: 400 }}>/mo</span></div>
+            <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>Actual Avg: <strong>₹{Math.ceil(stats.monthlyAverageProfit).toLocaleString()}</strong></span>
+              <span style={{ color: stats.monthlyAverageProfit >= stats.totalMonthlyNetTarget ? 'var(--success)' : 'var(--danger)', fontWeight: 800 }}>
+                {stats.monthlyAverageProfit >= stats.totalMonthlyNetTarget ? 'EXCEEDING' : 'BEHIND'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Analysis Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
         
@@ -206,7 +249,7 @@ export default function ROIAnalysis() {
                 <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '12px' }}><ArrowDownRight color="var(--danger)" /></div>
                 <div>
                   <div style={{ fontWeight: 700 }}>Total Expenses</div>
-                  <small style={{ color: 'var(--text-muted)' }}>Operating + Pro-rated Fixed Costs</small>
+                  <small style={{ color: 'var(--text-muted)' }}>Recorded in Financials</small>
                 </div>
               </div>
               <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--danger)' }}>- ₹{stats.totalExpenses.toLocaleString()}</div>
@@ -246,7 +289,7 @@ export default function ROIAnalysis() {
                 <Zap size={16} color="var(--primary)" style={{ marginTop: '2px', flexShrink: 0 }} />
                 <p style={{ margin: 0 }}>
                   At this current rate, you will achieve full capital recovery in 
-                  <strong> {stats.netProfit > 0 ? (stats.capitalOutlay / (stats.netProfit / 12)).toFixed(1) : "???"} months</strong>.
+                  <strong> {stats.yearsToPayback > 0 ? stats.yearsToPayback.toFixed(1) : "???"} years</strong>.
                 </p>
               </div>
             </div>
