@@ -92,14 +92,12 @@ export default function Bookings() {
         .single();
 
       if (incomeData) {
-        // 2. Subtract the amount from advance_paid and restore balance
-        const restoredAdvance = Number(b.advance_paid || 0) - Number(incomeData.amount);
-        const restoredBalance = Number(b.total_amount) - restoredAdvance;
+        // 2. Calculate the restored balance (Total - original Advance)
+        const restoredBalance = Number(b.total_amount) - Number(b.advance_paid || 0);
 
         // 3. Update the booking
         const { error: bookingErr } = await supabase.from('bookings').update({ 
             status: 'Checked-in',
-            advance_paid: restoredAdvance,
             balance_amount: restoredBalance
         }).eq('id', b.id);
         
@@ -111,7 +109,6 @@ export default function Bookings() {
         setBookings(prev => prev.map(x => x.id === b.id ? { 
             ...x, 
             status: 'Checked-in', 
-            advance_paid: restoredAdvance,
             balance_amount: restoredBalance 
         } : x));
       } else {

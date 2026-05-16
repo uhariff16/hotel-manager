@@ -233,25 +233,10 @@ export default function BookingForm() {
         price_type: bookingForm.price_type
       };
       
-      // If status was Completed and now it's NOT, delete the auto-settled income record and roll back advance_paid
+      // If status was Completed and now it's NOT, delete the auto-settled income record
       if (id && originalStatus === 'Completed' && bookingForm.status !== 'Completed') {
-          // 1. Find the settlement record to know how much to roll back
-          const { data: incomeData } = await supabase
-            .from('incomes')
-            .select('amount')
-            .eq('booking_id', id)
-            .ilike('notes', '%Settlement%')
-            .single();
-
-          if (incomeData) {
-            // Subtract from advance_paid and update bookingData before saving
-            const rolledBackAdvance = Number(bookingData.advance_paid) - Number(incomeData.amount);
-            bookingData.advance_paid = rolledBackAdvance;
-            bookingData.balance_amount = Number(bookingData.total_amount) - rolledBackAdvance;
-
-            // Delete the income record
-            await supabase.from('incomes').delete().eq('booking_id', id).ilike('notes', '%Settlement%');
-          }
+          // Delete any income record that was created as a settlement for this booking
+          await supabase.from('incomes').delete().eq('booking_id', id).ilike('notes', '%Settlement%');
       }
 
       let result;
