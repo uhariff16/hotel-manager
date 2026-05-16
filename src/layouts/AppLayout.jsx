@@ -43,8 +43,7 @@ export default function AppLayout() {
   navLinks.push({ to: '/settings', label: 'Settings', icon: <SettingsIcon size={20} /> });
 
   if (profile?.feature_investment_enabled) {
-    navLinks.push({ to: '/price-analysis', label: 'Price Analysis', icon: <TrendingUp size={20} /> });
-    navLinks.push({ to: '/roi-analysis', label: 'ROI Analysis', icon: <Activity size={20} /> });
+    navLinks.push({ to: '/investment-analysis', label: 'Investment Analysis', icon: <TrendingUp size={20} /> });
   }
 
   // Add Super Admin link if user has the role

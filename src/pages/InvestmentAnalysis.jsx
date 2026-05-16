@@ -118,31 +118,31 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     
     const start = new Date(range.start);
     const end = new Date(range.end);
-    const monthsElapsed = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
-    
-    const totalExpenses = totalOperatingExpenses;
-    const netProfit = totalIncome - totalExpenses;
-    const actualROI = capitalOutlay > 0 ? (netProfit / capitalOutlay) * 100 : 0;
-    
-    const targetAnnualProfit = capitalOutlay * (targetROIPercent / 100);
-    const targetPeriodProfit = (targetAnnualProfit / 12) * monthsElapsed;
-    const monthlyAverageProfit = netProfit / monthsElapsed;
-    const yearsToPayback = monthlyAverageProfit > 0 ? (capitalOutlay / (monthlyAverageProfit * 12)) : 0;
-
     const today = new Date();
     
     // Actual months elapsed from start of range to today (capped at range end)
     const effectiveToday = today > end ? end : (today < start ? start : today);
     const actualMonthsElapsed = (effectiveToday.getFullYear() - start.getFullYear()) * 12 + (effectiveToday.getMonth() - start.getMonth()) + 1;
 
+    const totalExpenses = totalOperatingExpenses;
+    const netProfit = totalIncome - totalExpenses;
+    const actualROI = capitalOutlay > 0 ? (netProfit / capitalOutlay) * 100 : 0;
+    
+    const targetAnnualProfit = capitalOutlay * (targetROIPercent / 100);
+    const targetPeriodProfit = (targetAnnualProfit / 12) * actualMonthsElapsed;
+    
+    // Average Monthly Performance
+    const monthlyAverageRevenue = totalIncome / actualMonthsElapsed;
+    const monthlyAverageExpense = totalOperatingExpenses / actualMonthsElapsed;
+    const monthlyAverageProfit = netProfit / actualMonthsElapsed;
+    
+    const yearsToPayback = monthlyAverageProfit > 0 ? (capitalOutlay / (monthlyAverageProfit * 12)) : 0;
+
     const monthlyCapitalRecoveryGoal = capitalOutlay / 12;
     const monthlyROIGoal = (capitalOutlay * (targetROIPercent / 100)) / 12;
     
-    // Use actual elapsed months for average expense to show true "Run Rate"
-    const averageMonthlyExpense = totalOperatingExpenses / actualMonthsElapsed;
-    
     // Revenue Goal = Recovery + ROI + Current Run Rate Expenses
-    const totalMonthlyRevenueTarget = monthlyCapitalRecoveryGoal + monthlyROIGoal + averageMonthlyExpense;
+    const totalMonthlyRevenueTarget = monthlyCapitalRecoveryGoal + monthlyROIGoal + monthlyAverageExpense;
 
     // Calculate the suggested rate for sales targeting
     const annualOperatingExpense = Number(investmentData?.monthly_operating_expenses || 0) * 12;
@@ -159,7 +159,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       totalIncome, totalOperatingExpenses, netProfit, actualROI, capitalOutlay, 
       targetROIPercent, targetPeriodProfit, monthlyAverageProfit, yearsToPayback,
       monthlyCapitalRecoveryGoal, monthlyROIGoal, 
-      averageMonthlyExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
+      monthlyAverageRevenue, monthlyAverageExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
       suggestedRate,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
@@ -216,7 +216,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid rgba(59, 130, 246, 0.1)', paddingTop: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Avg. Monthly Expenses <small>(over {stats.actualMonthsElapsed} mos)</small></span>
-                <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.averageMonthlyExpense).toLocaleString()}</span>
+                <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.monthlyAverageExpense).toLocaleString()}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Min. Capital Recovery</span>
