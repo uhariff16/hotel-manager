@@ -110,7 +110,20 @@ export default function Financials() {
       } else {
         const { data, error } = await supabase.from('incomes').insert([payload]).select('*, bookings(reference_number, guest_name)');
         if (error) throw error;
-        setIncomes([data[0], ...incomes]);
+        const savedIncome = data[0];
+        setIncomes([savedIncome, ...incomes]);
+        
+        // Trigger notification if linked to a booking
+        if (savedIncome.booking_id) {
+          supabase.functions.invoke('send-notification', {
+            body: { 
+              type: 'receipt', 
+              booking_id: savedIncome.booking_id, 
+              resort_id: activeResortId,
+              custom_payload: { amount: savedIncome.amount }
+            }
+          }).catch(err => console.error("Receipt Notification Error:", err));
+        }
       }
 
       setNewIncome({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', custom_source: '' });

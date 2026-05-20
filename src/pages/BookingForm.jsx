@@ -249,19 +249,14 @@ export default function BookingForm() {
       if (result.error) throw result.error;
 
       // Trigger notification
-      const triggerType = id ? 'booking_updated' : 'booking_confirmed';
       const targetId = id || result.data.id;
       
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          bookingId: targetId,
-          type: triggerType
-        })
+      supabase.functions.invoke('send-notification', {
+        body: { 
+          booking_id: targetId, 
+          type: 'confirmation',
+          resort_id: activeResortId
+        }
       }).catch(err => console.error("Notification Trigger Error:", err));
 
       navigate('/bookings');

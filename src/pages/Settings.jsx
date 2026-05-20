@@ -149,7 +149,17 @@ export default function Settings() {
         }
         setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: false, message: msg } }));
       } else {
-        setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: true, message: `${type === 'email' ? 'Email' : 'WhatsApp'} test successful!` } }));
+        // Check for specific API errors (Meta/Resend)
+        const waError = data?.results?.whatsapp?.error;
+        const emailError = data?.results?.email?.errors?.[0];
+
+        if (waError) {
+          setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: false, message: `WhatsApp Error: ${waError.message}` } }));
+        } else if (emailError) {
+          setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: false, message: `Email Error: ${emailError.message}` } }));
+        } else {
+          setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: true, message: `${type === 'email' ? 'Email' : 'WhatsApp'} test successful!` } }));
+        }
       }
     } catch (err) {
       setTestStatus(prev => ({ ...prev, [type]: { loading: false, success: false, message: err.message } }));

@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { addDays, format, differenceInDays, isWithinInterval, startOfDay, startOfMonth, endOfMonth, addMonths, subMonths, eachDayOfInterval, isSameDay, startOfWeek, endOfWeek, isToday } from 'date-fns';
-import { ChevronLeft, ChevronRight, User, Phone, Calendar, Car, IdCard, Users, CheckCircle2, Clock, MapPin, Globe, LayoutGrid, List, Columns, Info, Search, X, Home, Navigation, Map, Edit2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, Phone, Calendar, Car, IdCard, Users, CheckCircle2, Clock, MapPin, Globe, LayoutGrid, List, Columns, Info, Search, X, Home, Navigation, Map, Edit2, Maximize2, Minimize2, Send, Copy, Save, RotateCcw, Eye } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
 import CalendarTooltip from '../components/CalendarTooltip';
 import * as XLSX from 'xlsx';
+import html2canvas from 'html2canvas';
 
 export default function CalendarView() {
   const navigate = useNavigate();
@@ -25,8 +26,39 @@ export default function CalendarView() {
   const [tooltipPos, setTooltipPos] = useState({ x: 0, y: 0 });
   
   const timelineRef = useRef(null);
+  const calendarCardRef = useRef(null);
+
+  // WhatsApp Share and Fullscreen States
+  const [isFullScreen, setIsFullScreen] = useState(false);
+  const [showSharePanel, setShowSharePanel] = useState(false);
+  const [shareDateRange, setShareDateRange] = useState('14days'); // '7days', '14days', 'thisMonth', 'nextMonth', 'custom'
+  const [shareStartDate, setShareStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [shareEndDate, setShareEndDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
+  const [selectedCottages, setSelectedCottages] = useState([]);
+  const [selectedRooms, setSelectedRooms] = useState([]);
+  const [shareTemplate, setShareTemplate] = useState('');
+  const [whatsappNumber, setWhatsappNumber] = useState('');
+  const [isCopied, setIsCopied] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  const DEFAULT_TEMPLATE = `🏡 *Cheerful Chalet - Live Availability Update* 🏡
+
+Hello agents & guests! Here are our unoccupied days. Feel free to reach out to book these slots:
+
+{slots}
+
+Let us know if you have any guests looking for a beautiful getaway! 😊`;
 
   const dates = useMemo(() => eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }), [currentDate]);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cheerful_chalet_whatsapp_template');
+    if (saved) {
+      setShareTemplate(saved);
+    } else {
+      setShareTemplate(DEFAULT_TEMPLATE);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -40,6 +72,8 @@ export default function CalendarView() {
         setBookings(bks.data || []);
         setCottages(cts.data || []);
         setRooms(rms.data || []);
+        setSelectedCottages((cts.data || []).map(c => c.id));
+        setSelectedRooms((rms.data || []).map(r => r.id));
       } catch (err) {
         console.error(err);
       } finally {
@@ -48,6 +82,230 @@ export default function CalendarView() {
     };
     fetchData();
   }, [activeResortId]);
+
+  const handleSaveTemplate = () => {
+    localStorage.setItem('cheerful_chalet_whatsapp_template', shareTemplate);
+    setIsSaved(true);
+    setTimeout(() => setIsSaved(false), 2000);
+  };
+
+  const handleResetTemplate = () => {
+    if (window.confirm('Reset template to default?')) {
+      setShareTemplate(DEFAULT_TEMPLATE);
+    }
+  };
+
+  const handleCopyMessage = (text) => {
+    navigator.clipboard.writeText(text);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
+  };
+
+  const handleWhatsAppShare = (text) => {
+    const phoneClean = whatsappNumber.replace(/[^\d+]/g, '');
+    let url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+    if (phoneClean) {
+      url += `&phone=${phoneClean}`;
+    }
+    window.open(url, '_blank');
+  };
+
+  const handleShareScreenshot = async () => {
+    if (!calendarCardRef.current) return;
+    try {
+      // Temporarily hide panel if we want to ensure it doesn't overlap (though it's fixed and might not be captured if we capture calendarCardRef, but just in case)
+      setShowSharePanel(false);
+      
+      // Wait a moment for panel to disappear
+      await new Promise(res => setTimeout(res, 300));
+      
+      const canvas = await html2canvas(calendarCardRef.current, { scale: 2, useCORS: true });
+      
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const file = new File([blob], 'calendar_availability.png', { type: 'image/png' });
+        
+        if (isMobile && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+             await navigator.share({
+               title: 'Availability Calendar',
+               files: [file]
+             });
+          } catch (e) {
+             console.log("Error sharing:", e);
+          }
+        } else {
+          try {
+            const item = new ClipboardItem({ 'image/png': blob });
+            await navigator.clipboard.write([item]);
+            alert('Screenshot copied to clipboard! You can now paste it directly into WhatsApp.');
+          } catch (clipboardError) {
+            console.error("Clipboard copy failed:", clipboardError);
+            // Fallback: download the image
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'calendar_availability.png';
+            a.click();
+            URL.revokeObjectURL(url);
+            alert('Screenshot downloaded! Please attach the file in WhatsApp.');
+          }
+        }
+      }, 'image/png');
+    } catch (err) {
+      console.error('Failed to capture screenshot', err);
+      alert('Failed to capture screenshot.');
+    }
+  };
+
+  const getUnoccupiedSlots = () => {
+    let start = new Date();
+    let end = addDays(new Date(), 14);
+
+    if (shareDateRange === '7days') {
+      start = new Date();
+      end = addDays(new Date(), 7);
+    } else if (shareDateRange === '14days') {
+      start = new Date();
+      end = addDays(new Date(), 14);
+    } else if (shareDateRange === 'thisMonth') {
+      start = startOfMonth(currentDate);
+      end = endOfMonth(currentDate);
+    } else if (shareDateRange === 'nextMonth') {
+      const nextMon = addMonths(currentDate, 1);
+      start = startOfMonth(nextMon);
+      end = endOfMonth(nextMon);
+    } else if (shareDateRange === 'custom') {
+      start = new Date(shareStartDate + "T00:00:00");
+      end = new Date(shareEndDate + "T23:59:59");
+    }
+
+    const today = startOfDay(new Date());
+    if (startOfDay(start) < today) {
+      start = today;
+    }
+    if (startOfDay(end) < today) {
+      end = today;
+    }
+
+    if (start > end) return [];
+
+    const intervalDates = eachDayOfInterval({ start, end });
+    const result = [];
+
+    // Process selected Cottages
+    cottages.forEach(c => {
+      if (!selectedCottages.includes(c.id)) return;
+      
+      const slots = [];
+      let currentBlock = null;
+
+      intervalDates.forEach((d, idx) => {
+        const { isBooked } = getCellStatus(d, 'Property', c.id);
+        const isLast = idx === intervalDates.length - 1;
+
+        if (!isBooked) {
+          if (!currentBlock) {
+            currentBlock = { start: d, end: d };
+          } else {
+            currentBlock.end = d;
+          }
+        }
+
+        if (isBooked || isLast) {
+          if (currentBlock) {
+            const checkOut = addDays(currentBlock.end, 1);
+            const nights = differenceInDays(checkOut, currentBlock.start);
+            if (nights >= 1) {
+              slots.push({
+                checkIn: currentBlock.start,
+                checkOut,
+                nights
+              });
+            }
+            currentBlock = null;
+          }
+        }
+      });
+
+      if (slots.length > 0) {
+        result.push({
+          id: c.id,
+          name: c.name,
+          type: 'Property',
+          slots
+        });
+      }
+    });
+
+    // Process selected Rooms
+    rooms.forEach(r => {
+      if (!selectedRooms.includes(r.id)) return;
+
+      const slots = [];
+      let currentBlock = null;
+
+      intervalDates.forEach((d, idx) => {
+        const { isBooked } = getCellStatus(d, 'Room', r.id);
+        const isLast = idx === intervalDates.length - 1;
+
+        if (!isBooked) {
+          if (!currentBlock) {
+            currentBlock = { start: d, end: d };
+          } else {
+            currentBlock.end = d;
+          }
+        }
+
+        if (isBooked || isLast) {
+          if (currentBlock) {
+            const checkOut = addDays(currentBlock.end, 1);
+            const nights = differenceInDays(checkOut, currentBlock.start);
+            if (nights >= 1) {
+              slots.push({
+                checkIn: currentBlock.start,
+                checkOut,
+                nights
+              });
+            }
+            currentBlock = null;
+          }
+        }
+      });
+
+      if (slots.length > 0) {
+        const cottageName = cottages.find(c => c.id === r.cottage_id)?.name || 'Property';
+        result.push({
+          id: r.id,
+          name: `${cottageName} - ${r.name}`,
+          type: 'Room',
+          slots
+        });
+      }
+    });
+
+    return result;
+  };
+
+  const generateMessageText = (slotsData) => {
+    if (slotsData.length === 0) {
+      return shareTemplate.replace('{slots}', 'No unoccupied slots found for the selected dates.');
+    }
+
+    let slotsText = '';
+    slotsData.forEach(item => {
+      slotsText += `\n*${item.name} (${item.type === 'Property' ? 'Entire Cottage' : 'Room'}):*\n`;
+      item.slots.forEach(slot => {
+        const startStr = format(slot.checkIn, 'dd MMM (EEE)');
+        const endStr = format(slot.checkOut, 'dd MMM (EEE)');
+        slotsText += `  • ${startStr} to ${endStr} (${slot.nights} night${slot.nights > 1 ? 's' : ''})\n`;
+      });
+    });
+
+    return shareTemplate.replace('{slots}', slotsText.trim());
+  };
 
   const getCellStatus = (date, type, itemId) => {
     let isBooked = false;
@@ -233,7 +491,25 @@ export default function CalendarView() {
   ];
 
   return (
-    <div className="calendar-page" style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className={`calendar-page ${isFullScreen ? 'expanded' : ''}`} style={isFullScreen ? {
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      width: '100vw',
+      height: '100vh',
+      zIndex: 99999,
+      background: 'var(--bg-color)',
+      padding: '1.5rem',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1.5rem',
+      overflow: 'auto'
+    } : {
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '1.5rem'
+    }}>
       
       {/* HEADER SECTION */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem' }}>
@@ -279,13 +555,47 @@ export default function CalendarView() {
         </div>
       </div>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: '70vh', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}>
+      <div className="card" ref={calendarCardRef} style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', flex: 1, minHeight: '70vh', border: '1px solid var(--border)', boxShadow: 'var(--shadow-lg)' }}>
         
         {/* CONTROL BAR */}
         <div style={{ padding: '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
              <button className="btn btn-outline" onClick={handleExport} style={{ height: '38px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Globe size={16} /> Export Excel
+             </button>
+             
+             <button 
+                className="btn btn-outline" 
+                onClick={() => setIsFullScreen(!isFullScreen)} 
+                style={{ height: '38px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: isFullScreen ? 'rgba(5, 150, 105, 0.05)' : 'transparent' }}
+                title="Toggle Full Calendar Mode"
+             >
+                {isFullScreen ? (
+                  <>
+                    <Minimize2 size={16} color="var(--primary)" /> Collapse
+                  </>
+                ) : (
+                  <>
+                    <Maximize2 size={16} /> Seen Fully
+                  </>
+                )}
+             </button>
+
+             <button 
+                className="btn" 
+                onClick={handleShareScreenshot} 
+                style={{ 
+                  height: '38px', 
+                  fontSize: '0.85rem', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '0.5rem', 
+                  background: 'rgba(5, 150, 105, 0.1)', 
+                  color: 'var(--primary)', 
+                  border: '1px solid rgba(5, 150, 105, 0.2)' 
+                }}
+             >
+                <Copy size={16} /> Screenshot Calendar
              </button>
              <div className="view-switcher" style={{ display: 'flex', background: 'var(--bg-color)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
                 <button onClick={() => setViewType('timeline')} style={{ padding: '0.5rem 1rem', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'timeline' ? 'var(--primary)' : 'transparent', color: viewType === 'timeline' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.85rem', transition: 'all 0.2s' }}>
@@ -588,10 +898,370 @@ export default function CalendarView() {
         />
       )}
 
+      {showSharePanel && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          right: 0,
+          width: '460px',
+          maxWidth: '100%',
+          height: '100vh',
+          background: 'var(--bg-secondary)',
+          boxShadow: '-10px 0 30px rgba(0,0,0,0.15)',
+          zIndex: 100000,
+          display: 'flex',
+          flexDirection: 'column',
+          animation: 'slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
+          borderLeft: '1px solid var(--border)'
+        }}>
+          {/* Header */}
+          <div style={{
+            padding: '1.5rem',
+            borderBottom: '1px solid var(--border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            background: 'var(--bg-secondary)'
+          }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
+                <Send size={20} color="var(--primary)" /> Share Availability
+              </h3>
+              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.8rem', fontWeight: 500 }}>Format and share unoccupied days with agents</p>
+            </div>
+            <button 
+              className="btn-icon" 
+              onClick={() => setShowSharePanel(false)}
+              style={{ background: 'var(--bg-color)', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Scrollable Content */}
+          <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            
+            {/* 1. Select Date Range */}
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.75rem' }}>1. Select Scan Date Range</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                {[
+                  { id: '7days', label: 'Next 7 Days' },
+                  { id: '14days', label: 'Next 14 Days' },
+                  { id: 'thisMonth', label: 'This Month' },
+                  { id: 'nextMonth', label: 'Next Month' },
+                  { id: 'custom', label: 'Custom Range' }
+                ].map(opt => (
+                  <button
+                    key={opt.id}
+                    onClick={() => setShareDateRange(opt.id)}
+                    className="btn"
+                    style={{
+                      height: '38px',
+                      padding: '0 0.5rem',
+                      fontSize: '0.8rem',
+                      background: shareDateRange === opt.id ? 'var(--primary)' : 'var(--bg-color)',
+                      color: shareDateRange === opt.id ? 'white' : 'var(--text-main)',
+                      border: `1px solid ${shareDateRange === opt.id ? 'var(--primary)' : 'var(--border)'}`,
+                      borderRadius: '8px',
+                      fontWeight: 700,
+                      gridColumn: opt.id === 'custom' ? 'span 2' : 'auto',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {shareDateRange === 'custom' && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)' }}>START DATE</span>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      style={{ height: '36px', fontSize: '0.8rem', marginTop: '0.25rem', padding: '0 0.5rem' }} 
+                      value={shareStartDate}
+                      onChange={e => setShareStartDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: 'var(--text-muted)' }}>END DATE</span>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      style={{ height: '36px', fontSize: '0.8rem', marginTop: '0.25rem', padding: '0 0.5rem' }} 
+                      value={shareEndDate}
+                      onChange={e => setShareEndDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 2. Select Units */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>2. Select Cottages & Rooms</label>
+                <button 
+                  style={{ border: 'none', background: 'none', color: 'var(--primary)', fontWeight: 700, fontSize: '0.75rem', cursor: 'pointer' }}
+                  onClick={() => {
+                    const allCottagesSelected = selectedCottages.length === cottages.length;
+                    if (allCottagesSelected) {
+                      setSelectedCottages([]);
+                      setSelectedRooms([]);
+                    } else {
+                      setSelectedCottages(cottages.map(c => c.id));
+                      setSelectedRooms(rooms.map(r => r.id));
+                    }
+                  }}
+                >
+                  {selectedCottages.length === cottages.length ? 'Deselect All' : 'Select All'}
+                </button>
+              </div>
+              
+              <div style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '12px', padding: '0.75rem', maxHeight: '180px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {cottages.map(c => {
+                  const isCottageChecked = selectedCottages.includes(c.id);
+                  const cottageRooms = rooms.filter(r => r.cottage_id === c.id);
+                  
+                  return (
+                    <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', marginBottom: '0.25rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, fontSize: '0.85rem', cursor: 'pointer', color: 'var(--text-main)' }}>
+                        <input
+                          type="checkbox"
+                          checked={isCottageChecked}
+                          onChange={() => {
+                            if (isCottageChecked) {
+                              setSelectedCottages(prev => prev.filter(id => id !== c.id));
+                              setSelectedRooms(prev => prev.filter(rid => !cottageRooms.map(rm => rm.id).includes(rid)));
+                            } else {
+                              setSelectedCottages(prev => [...prev, c.id]);
+                              setSelectedRooms(prev => [...new Set([...prev, ...cottageRooms.map(rm => rm.id)])]);
+                            }
+                          }}
+                          style={{ accentColor: 'var(--primary)', width: '16px', height: '16px', cursor: 'pointer' }}
+                        />
+                        <Home size={14} color="var(--primary)" /> {c.name} (Entire Property)
+                      </label>
+                      
+                      {cottageRooms.map(r => {
+                        const isRoomChecked = selectedRooms.includes(r.id);
+                        return (
+                          <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, fontSize: '0.75rem', paddingLeft: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                            <input
+                              type="checkbox"
+                              checked={isRoomChecked}
+                              onChange={() => {
+                                if (isRoomChecked) {
+                                  setSelectedRooms(prev => prev.filter(id => id !== r.id));
+                                } else {
+                                  setSelectedRooms(prev => [...prev, r.id]);
+                                }
+                              }}
+                              style={{ accentColor: 'var(--primary)', width: '14px', height: '14px', cursor: 'pointer' }}
+                            />
+                            {r.name}
+                          </label>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 3. WhatsApp Direct Number */}
+            <div>
+              <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', marginBottom: '0.5rem' }}>3. Target WhatsApp Number (Optional)</label>
+              <div style={{ position: 'relative' }}>
+                <Phone size={16} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="e.g. +919876543210" 
+                  value={whatsappNumber}
+                  onChange={e => setWhatsappNumber(e.target.value)}
+                  style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.85rem' }}
+                />
+              </div>
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem', display: 'block', marginTop: '0.25rem', fontWeight: 500 }}>Enter agent or guest phone number to share directly with them</small>
+            </div>
+
+            {/* 4. Customize & Save Message */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <label className="form-label" style={{ fontWeight: 700, color: 'var(--text-main)', margin: 0 }}>4. Edit Message Template</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button 
+                    className="btn btn-icon"
+                    title="Reset to default template"
+                    onClick={handleResetTemplate}
+                    style={{ padding: '2px', background: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <RotateCcw size={14} />
+                  </button>
+                  <button 
+                    onClick={handleSaveTemplate}
+                    className="btn"
+                    style={{
+                      height: '24px',
+                      padding: '0 0.5rem',
+                      fontSize: '0.7rem',
+                      background: isSaved ? 'var(--success)' : 'var(--primary)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      fontWeight: 700,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <Save size={12} /> {isSaved ? 'Saved!' : 'Save Template'}
+                  </button>
+                </div>
+              </div>
+              
+              <textarea
+                className="form-input"
+                value={shareTemplate}
+                onChange={e => setShareTemplate(e.target.value)}
+                style={{ height: '120px', fontSize: '0.8rem', padding: '0.75rem', fontFamily: 'monospace', resize: 'vertical', lineHeight: '1.4' }}
+                placeholder="Use {slots} where unoccupied slots should appear"
+              />
+              <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem', display: 'block', marginTop: '0.25rem', fontWeight: 500 }}>Must include <code>{'{slots}'}</code> placeholder to insert availability data automatically.</small>
+            </div>
+
+            {/* 5. Preview Message */}
+            <div style={{ background: 'rgba(5, 150, 105, 0.04)', border: '1px solid rgba(5, 150, 105, 0.15)', borderRadius: '12px', padding: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}><Eye size={12} /> Message Preview</span>
+                <button
+                  onClick={() => handleCopyMessage(generateMessageText(getUnoccupiedSlots()))}
+                  className="btn"
+                  style={{
+                    height: '28px',
+                    padding: '0 0.75rem',
+                    fontSize: '0.75rem',
+                    background: isCopied ? 'var(--primary)' : 'white',
+                    color: isCopied ? 'white' : 'var(--primary)',
+                    border: '1px solid var(--primary)',
+                    borderRadius: '6px',
+                    fontWeight: 700,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {isCopied ? 'Copied!' : <><Copy size={12} /> Copy</>}
+                </button>
+              </div>
+              <div style={{ 
+                fontSize: '0.8rem', 
+                color: 'var(--text-main)', 
+                whiteSpace: 'pre-wrap', 
+                maxHeight: '160px', 
+                overflowY: 'auto',
+                padding: '0.5rem',
+                background: 'var(--bg-secondary)',
+                borderRadius: '8px',
+                border: '1px solid var(--border)',
+                fontFamily: 'sans-serif',
+                fontWeight: 500
+              }}>
+                {generateMessageText(getUnoccupiedSlots())}
+              </div>
+            </div>
+
+          </div>
+
+          {/* Footer action buttons */}
+          <div style={{ padding: '1.25rem 1.5rem', borderTop: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <button 
+              className="btn btn-outline" 
+              onClick={() => setShowSharePanel(false)}
+              style={{ flex: 1, height: '44px', fontSize: '0.9rem', fontWeight: 700, minWidth: '80px' }}
+            >
+              Close
+            </button>
+            <button 
+              className="btn"
+              onClick={handleShareScreenshot}
+              style={{ 
+                flex: 1, 
+                height: '44px', 
+                fontSize: '0.85rem', 
+                fontWeight: 700,
+                background: 'var(--primary)', 
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                cursor: 'pointer',
+                minWidth: '140px'
+              }}
+            >
+              <Copy size={16} /> Screenshot
+            </button>
+            <button 
+              className="btn"
+              onClick={() => handleWhatsAppShare(generateMessageText(getUnoccupiedSlots()))}
+              style={{ 
+                flex: 1, 
+                height: '44px', 
+                fontSize: '0.85rem', 
+                fontWeight: 700,
+                background: '#25D366', 
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)',
+                cursor: 'pointer',
+                minWidth: '140px'
+              }}
+            >
+              <Send size={16} /> Share Text
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showSharePanel && (
+        <div 
+          onClick={() => setShowSharePanel(false)}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            background: 'rgba(0,0,0,0.3)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 99999,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+        />
+      )}
+
       <style>{`
         @keyframes slideUp {
           from { transform: translateY(100%); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes slideIn {
+          from { transform: translateX(100%); }
+          to { transform: translateX(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
         }
         .timeline-cell:hover {
             transform: scale(1.05);

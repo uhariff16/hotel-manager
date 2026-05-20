@@ -135,7 +135,7 @@ serve(async (req) => {
           to: guestPhone.replace(/\D/g, ""),
           type: "template",
           template: { 
-            name: "booking_confirmation", // Using your existing approved template
+            name: "hello_world", // Using the default Meta approved template to ensure delivery
             language: { code: "en_US" } 
           }
         }
