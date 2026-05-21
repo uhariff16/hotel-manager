@@ -413,15 +413,12 @@ export default function Bookings() {
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '0.75rem 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', marginBottom: '0.75rem' }}>
-                    <div>
-                      <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Check-in</small>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Stay Dates ({b.night_count} Nights)</small>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', fontWeight: 600 }}>
-                        <Calendar size={14} className="text-primary" /> {formatDateShort(b.check_in_date)}
+                        <Calendar size={14} className="text-primary" /> 
+                        {formatDateShort(b.check_in_date)} <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>→</span> {formatDateShort(b.check_out_date)}
                       </div>
-                    </div>
-                    <div>
-                      <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Stay</small>
-                      <div style={{ fontSize: '0.9rem', fontWeight: 600 }}>{b.night_count} Nights</div>
                     </div>
                     <div style={{ gridColumn: 'span 2' }}>
                       <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Unit / Room</small>
@@ -506,8 +503,13 @@ export default function Bookings() {
                         <small style={{ color: 'var(--text-muted)' }}><Phone size={12} style={{ verticalAlign: 'middle' }} /> {b.phone_number}</small>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 600 }}><Calendar size={14} /> {new Date(b.check_in_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</div>
-                        <small style={{ color: 'var(--text-muted)' }}>{b.night_count} nights stay</small>
+                        <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                           <Calendar size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+                           {new Date(b.check_in_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} 
+                           <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>→</span> 
+                           {new Date(b.check_out_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </div>
+                        <small style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{b.night_count} nights stay</small>
                       </td>
                       <td>
                         <div style={{ fontWeight: 600 }}><Home size={14} /> {cname}</div>

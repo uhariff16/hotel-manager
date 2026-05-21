@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Download, FileText, Filter, Table as TableIcon, CreditCard, Wallet, TrendingDown, CalendarCheck, CheckCircle2, UserCheck } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx-js-style';
 import { useSettingsStore } from '../lib/store';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
@@ -26,9 +26,10 @@ export default function Reports() {
     if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
     try {
       setLoading(true);
+      const endOfDay = `${range.end} 23:59:59`;
       const [inc, exp, bks, cts, rms] = await Promise.all([
-        supabase.from('incomes').select('*, bookings(reference_number)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
-        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
+        supabase.from('incomes').select('*, bookings(reference_number, guest_name)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', endOfDay),
+        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', endOfDay),
         supabase.from('bookings').select('*').eq('resort_id', activeResortId).gte('check_in_date', range.start).lte('check_in_date', range.end),
         supabase.from('cottages').select('*').eq('resort_id', activeResortId),
         supabase.from('rooms').select('*').eq('resort_id', activeResortId)
@@ -143,10 +144,59 @@ export default function Reports() {
 
   const handleExportExcel = () => {
     const workbook = XLSX.utils.book_new();
+
+    const createStyledSheet = (dataAOA, colWidths, hasTotalRow = false) => {
+      const sheet = XLSX.utils.aoa_to_sheet(dataAOA);
+      const range = XLSX.utils.decode_range(sheet['!ref']);
+      
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cellAddress = XLSX.utils.encode_cell({ r: 0, c: C });
+        if (!sheet[cellAddress]) continue;
+        sheet[cellAddress].s = {
+          font: { bold: true, color: { rgb: "FFFFFF" } },
+          fill: { fgColor: { rgb: "059669" } },
+          alignment: { horizontal: "center", vertical: "center" },
+          border: {
+            top: { style: "thin", color: { rgb: "CCCCCC" } },
+            bottom: { style: "thin", color: { rgb: "CCCCCC" } },
+            left: { style: "thin", color: { rgb: "CCCCCC" } },
+            right: { style: "thin", color: { rgb: "CCCCCC" } }
+          }
+        };
+      }
+      
+      for (let R = 1; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+          if (!sheet[cellAddress]) continue;
+          
+          let s = {
+             border: {
+               top: { style: "thin", color: { rgb: "EEEEEE" } },
+               bottom: { style: "thin", color: { rgb: "EEEEEE" } },
+               left: { style: "thin", color: { rgb: "EEEEEE" } },
+               right: { style: "thin", color: { rgb: "EEEEEE" } }
+             }
+          };
+
+          if (hasTotalRow && R === range.e.r) {
+            s.font = { bold: true };
+            s.fill = { fgColor: { rgb: "F8F9FA" } };
+            s.border.top = { style: "medium", color: { rgb: "DDDDDD" } };
+            s.border.bottom = { style: "medium", color: { rgb: "DDDDDD" } };
+          }
+          sheet[cellAddress].s = s;
+        }
+      }
+
+      sheet['!cols'] = colWidths;
+      return sheet;
+    };
+
     const summaryData = [
       ["Report Type", "Financial Performance Summary"],
       ["Resort", activeResort?.name || "N/A"],
-      ["Period", `${range.start} to ${range.end}`],
+      ["Period", `${format(new Date(range.start), 'dd MMM yyyy')} to ${format(new Date(range.end), 'dd MMM yyyy')}`],
       ["Generated At", new Date().toLocaleString()],
       [],
       ["Metric", "Value (₹)"],
@@ -159,24 +209,66 @@ export default function Reports() {
       ["Completed Stays", completedBookings.length],
       ["Total Guests Served", completedGuests]
     ];
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(summaryData), "Summary");
+    const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+    summarySheet['!cols'] = [{ wch: 25 }, { wch: 30 }];
+    const sumRange = XLSX.utils.decode_range(summarySheet['!ref']);
+    for(let r = 0; r <= sumRange.e.r; r++) {
+       const cell = summarySheet[XLSX.utils.encode_cell({r, c:0})];
+       if(cell) cell.s = { font: { bold: true } };
+    }
+    XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
 
-    const bookingsData = data.bookings.map(b => {
+    const bookingsHeaders = ["Ref #", "Guest Name", "Source", "Status", "Check-in", "Check-out", "Total Value", "Paid", "Balance"];
+    const bookingsRows = sortedBookings.map(b => {
       const total = Number(b.total_amount || 0);
       const paid = Number(b.advance_paid || 0);
-      return {
-        "Ref #": b.reference_number,
-        "Guest Name": b.guest_name,
-        "Status": b.status,
-        "Check-in": b.check_in_date,
-        "Check-out": b.check_out_date,
-        "Total Value": total,
-        "Paid": paid,
-        "Balance": total - paid
-      };
+      return [
+        b.reference_number,
+        b.guest_name,
+        b.booking_source || 'Direct',
+        b.status,
+        b.check_in_date,
+        b.check_out_date,
+        total,
+        paid,
+        total - paid
+      ];
     });
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(bookingsData), "Bookings_Detail");
-    XLSX.writeFile(workbook, `${(activeResort?.name || 'Hotel').replace(/\s+/g, '_')}_Report.xlsx`);
+    
+    const totalBookingValue = bookingsRows.reduce((sum, r) => sum + r[6], 0);
+    const totalBookingPaid = bookingsRows.reduce((sum, r) => sum + r[7], 0);
+    const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[8], 0);
+    const bookingsAOA = [bookingsHeaders, ...bookingsRows, ["", "", "", "", "", "TOTAL", totalBookingValue, totalBookingPaid, totalBookingBalance]];
+    XLSX.utils.book_append_sheet(workbook, createStyledSheet(bookingsAOA, [{wch:15}, {wch:25}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}], true), "Bookings");
+
+    const incomeHeaders = ["Date", "Ref #", "Guest Name", "Amount (₹)", "Method", "Notes"];
+    const incomeRows = sortedIncomes.map(i => [
+      i.date,
+      i.bookings?.reference_number || '-',
+      i.bookings?.guest_name || '-',
+      Number(i.amount),
+      i.payment_method || '-',
+      i.notes || '-'
+    ]);
+    const totalIncome = incomeRows.reduce((sum, r) => sum + r[3], 0);
+    const incomeAOA = [incomeHeaders, ...incomeRows, ["", "", "TOTAL COLLECTIONS", totalIncome, "", ""]];
+    XLSX.utils.book_append_sheet(workbook, createStyledSheet(incomeAOA, [{wch:12}, {wch:15}, {wch:25}, {wch:15}, {wch:15}, {wch:30}], true), "Income");
+
+    const expenseHeaders = ["Date", "Category", "Amount (₹)", "Paid To", "Notes"];
+    const expenseRows = sortedExpenses.map(e => [
+      e.date,
+      e.category,
+      Number(e.amount),
+      e.paid_to || '-',
+      e.description || '-'
+    ]);
+    const totalExpenseAmount = expenseRows.reduce((sum, r) => sum + r[2], 0);
+    const expenseAOA = [expenseHeaders, ...expenseRows, ["", "TOTAL EXPENSES", totalExpenseAmount, "", ""]];
+    XLSX.utils.book_append_sheet(workbook, createStyledSheet(expenseAOA, [{wch:12}, {wch:20}, {wch:15}, {wch:20}, {wch:35}], true), "Expenses");
+
+    const resortStr = (activeResort?.name || 'Hotel').replace(/\s+/g, '_');
+    const periodStr = `${format(new Date(range.start), 'MMM_dd_yyyy')}_to_${format(new Date(range.end), 'MMM_dd_yyyy')}`;
+    XLSX.writeFile(workbook, `${resortStr}_Report_${periodStr}.xlsx`);
   };
 
   return (
