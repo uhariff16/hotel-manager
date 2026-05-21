@@ -78,27 +78,37 @@ export default function Subscription() {
         };
 
         if (adminSettings) {
-          setPlansList(PLANS.map(p => {
-            if (p.id === 'pro' && adminSettings.pro) {
-              const offerActive = isOfferValid(adminSettings.pro);
-              return {
-                ...p,
-                price: offerActive ? `₹${adminSettings.pro.offerPrice}` : `₹${adminSettings.pro.price}`,
-                basePrice: offerActive ? `₹${adminSettings.pro.price}` : null,
-                offerEndDate: offerActive && adminSettings.pro.offerEndDate ? adminSettings.pro.offerEndDate : null
-              };
+          const updatedPlans = PLANS.map(p => {
+            const planConfig = adminSettings[p.id];
+            
+            // If the plan doesn't exist in config or is disabled, mark it for removal
+            if (planConfig && planConfig.enabled === false) return null;
+
+            // Start with base static config
+            let newPlan = { ...p };
+
+            if (planConfig) {
+              const offerActive = isOfferValid(planConfig);
+              
+              if (p.id !== 'free') {
+                newPlan.price = offerActive ? `₹${planConfig.offerPrice}` : `₹${planConfig.price}`;
+                newPlan.basePrice = offerActive ? `₹${planConfig.price}` : null;
+                newPlan.offerEndDate = offerActive && planConfig.offerEndDate ? planConfig.offerEndDate : null;
+              }
+
+              // Overwrite features with dynamic features array if it exists
+              if (planConfig.features && Array.isArray(planConfig.features)) {
+                // Only keep enabled features, map them to just their names (strings) for the UI
+                newPlan.features = planConfig.features
+                  .filter(f => f.enabled !== false)
+                  .map(f => f.name);
+              }
             }
-            if (p.id === 'premium' && adminSettings.premium) {
-              const offerActive = isOfferValid(adminSettings.premium);
-              return {
-                ...p,
-                price: offerActive ? `₹${adminSettings.premium.offerPrice}` : `₹${adminSettings.premium.price}`,
-                basePrice: offerActive ? `₹${adminSettings.premium.price}` : null,
-                offerEndDate: offerActive && adminSettings.premium.offerEndDate ? adminSettings.premium.offerEndDate : null
-              };
-            }
-            return p;
-          }));
+            
+            return newPlan;
+          }).filter(Boolean); // Filter out any plans that returned null (disabled plans)
+
+          setPlansList(updatedPlans);
         }
       } catch (e) {
         console.error("Failed to load dynamic pricing", e);

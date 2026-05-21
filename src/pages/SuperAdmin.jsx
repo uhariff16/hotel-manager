@@ -18,11 +18,50 @@ export default function SuperAdmin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Dynamic Pricing Config State
-  const [pricingConfig, setPricingConfig] = useState({
-    pro: { price: 2999, offerPrice: 1999, offerActive: false },
-    premium: { price: 9999, offerPrice: 7999, offerActive: false }
-  });
+  const DEFAULT_PLANS = {
+    free: {
+      enabled: true,
+      price: 0,
+      features: [
+        { name: '1 Resort Limit', enabled: true },
+        { name: 'Up to 5 Rooms', enabled: true },
+        { name: 'Basic Reports', enabled: true },
+        { name: 'Community Support', enabled: true }
+      ]
+    },
+    pro: {
+      enabled: true,
+      price: 1999,
+      offerPrice: 1499,
+      offerActive: false,
+      offerStartDate: '',
+      offerEndDate: '',
+      features: [
+        { name: 'Up to 5 Resorts', enabled: true },
+        { name: 'Unlimited Rooms', enabled: true },
+        { name: 'Advanced Analytics', enabled: true },
+        { name: 'Email Automation', enabled: true },
+        { name: 'Priority Support', enabled: true }
+      ]
+    },
+    premium: {
+      enabled: true,
+      price: 5999,
+      offerPrice: 4999,
+      offerActive: false,
+      offerStartDate: '',
+      offerEndDate: '',
+      features: [
+        { name: 'Unlimited Resorts', enabled: true },
+        { name: 'Custom Branding', enabled: true },
+        { name: 'Super Admin Panel', enabled: true },
+        { name: 'WhatsApp Notifications', enabled: true },
+        { name: '24/7 Dedicated Support', enabled: true }
+      ]
+    }
+  };
+
+  const [pricingConfig, setPricingConfig] = useState(DEFAULT_PLANS);
   
   // Modal states
   const [showUserForm, setShowUserForm] = useState(false);
@@ -69,7 +108,12 @@ export default function SuperAdmin() {
 
       const superAdminProfile = (u || []).find(user => user.id === profile.id);
       if (superAdminProfile?.global_settings?.pricing) {
-        setPricingConfig(superAdminProfile.global_settings.pricing);
+        const loaded = superAdminProfile.global_settings.pricing;
+        setPricingConfig({
+          free: { ...DEFAULT_PLANS.free, ...loaded.free, features: loaded.free?.features || DEFAULT_PLANS.free.features },
+          pro: { ...DEFAULT_PLANS.pro, ...loaded.pro, features: loaded.pro?.features || DEFAULT_PLANS.pro.features },
+          premium: { ...DEFAULT_PLANS.premium, ...loaded.premium, features: loaded.premium?.features || DEFAULT_PLANS.premium.features }
+        });
       }
 
       setTenants(tenantsWithData.filter(t => t.id !== profile.id));
@@ -262,62 +306,111 @@ export default function SuperAdmin() {
           <DollarSign /> Dynamic Pricing & Offers
         </h3>
         
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '2rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
           
-          {/* Pro Plan Editor */}
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-            <h4 style={{ color: 'var(--success)', marginBottom: '1rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem' }}>PRO MANAGER</h4>
-            <div className="form-group">
-              <label className="form-label">Base Rate (₹/month)</label>
-              <input type="number" className="form-input" value={pricingConfig.pro.price} onChange={e => setPricingConfig({...pricingConfig, pro: {...pricingConfig.pro, price: Number(e.target.value)}})} />
-            </div>
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label className="form-label">Promotional Offer Rate (₹/month)</label>
-              <input type="number" className="form-input" value={pricingConfig.pro.offerPrice} onChange={e => setPricingConfig({...pricingConfig, pro: {...pricingConfig.pro, offerPrice: Number(e.target.value)}})} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Offer Starts</label>
-                <input type="date" className="form-input" value={pricingConfig.pro.offerStartDate || ''} onChange={e => setPricingConfig({...pricingConfig, pro: {...pricingConfig.pro, offerStartDate: e.target.value}})} disabled={!pricingConfig.pro.offerActive} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Offer Ends</label>
-                <input type="date" className="form-input" value={pricingConfig.pro.offerEndDate || ''} onChange={e => setPricingConfig({...pricingConfig, pro: {...pricingConfig.pro, offerEndDate: e.target.value}})} disabled={!pricingConfig.pro.offerActive} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', background: pricingConfig.pro.offerActive ? 'rgba(34, 197, 94, 0.1)' : 'transparent', padding: '0.5rem', borderRadius: '4px' }}>
-              <input type="checkbox" id="pro-offer" checked={pricingConfig.pro.offerActive} onChange={e => setPricingConfig({...pricingConfig, pro: {...pricingConfig.pro, offerActive: e.target.checked}})} style={{ width: '18px', height: '18px' }} />
-              <label htmlFor="pro-offer" style={{ fontWeight: 'bold', color: pricingConfig.pro.offerActive ? 'var(--success)' : 'var(--text-muted)', cursor: 'pointer' }}>Activate Offer</label>
-            </div>
-          </div>
+          {['free', 'pro', 'premium'].map((planKey) => {
+            const plan = pricingConfig[planKey];
+            const titleColor = planKey === 'free' ? '#64748b' : planKey === 'pro' ? 'var(--success)' : 'var(--primary)';
+            const titleName = planKey === 'free' ? 'FREE STARTER' : planKey === 'pro' ? 'PRO MANAGER' : 'LUXURY PREMIUM';
+            
+            return (
+              <div key={planKey} style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', opacity: plan.enabled ? 1 : 0.6, transition: 'all 0.3s' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem' }}>
+                  <h4 style={{ color: titleColor, margin: 0 }}>{titleName}</h4>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <input 
+                      type="checkbox" 
+                      id={`enable-${planKey}`}
+                      checked={plan.enabled}
+                      onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, enabled: e.target.checked}})}
+                    />
+                    <label htmlFor={`enable-${planKey}`} style={{ fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>Enabled</label>
+                  </div>
+                </div>
 
-          {/* Premium Plan Editor */}
-          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-            <h4 style={{ color: 'var(--primary)', marginBottom: '1rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem' }}>LUXURY PREMIUM</h4>
-            <div className="form-group">
-              <label className="form-label">Base Rate (₹/month)</label>
-              <input type="number" className="form-input" value={pricingConfig.premium.price} onChange={e => setPricingConfig({...pricingConfig, premium: {...pricingConfig.premium, price: Number(e.target.value)}})} />
-            </div>
-            <div className="form-group" style={{ marginTop: '1rem' }}>
-              <label className="form-label">Promotional Offer Rate (₹/month)</label>
-              <input type="number" className="form-input" value={pricingConfig.premium.offerPrice} onChange={e => setPricingConfig({...pricingConfig, premium: {...pricingConfig.premium, offerPrice: Number(e.target.value)}})} />
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-              <div className="form-group">
-                <label className="form-label">Offer Starts</label>
-                <input type="date" className="form-input" value={pricingConfig.premium.offerStartDate || ''} onChange={e => setPricingConfig({...pricingConfig, premium: {...pricingConfig.premium, offerStartDate: e.target.value}})} disabled={!pricingConfig.premium.offerActive} />
+                {planKey !== 'free' && (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">Base Rate (₹/month)</label>
+                      <input type="number" className="form-input" value={plan.price} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, price: Number(e.target.value)}})} disabled={!plan.enabled} />
+                    </div>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                      <label className="form-label">Promotional Offer Rate (₹/month)</label>
+                      <input type="number" className="form-input" value={plan.offerPrice} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerPrice: Number(e.target.value)}})} disabled={!plan.enabled} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">Offer Starts</label>
+                        <input type="date" className="form-input" value={plan.offerStartDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerStartDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Offer Ends</label>
+                        <input type="date" className="form-input" value={plan.offerEndDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerEndDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', background: plan.offerActive ? 'rgba(34, 197, 94, 0.1)' : 'transparent', padding: '0.5rem', borderRadius: '4px' }}>
+                      <input type="checkbox" id={`offer-${planKey}`} checked={plan.offerActive} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerActive: e.target.checked}})} style={{ width: '18px', height: '18px' }} disabled={!plan.enabled} />
+                      <label htmlFor={`offer-${planKey}`} style={{ fontWeight: 'bold', color: plan.offerActive ? 'var(--success)' : 'var(--text-muted)', cursor: 'pointer' }}>Activate Offer</label>
+                    </div>
+                  </>
+                )}
+                
+                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
+                  <h5 style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.85rem', textTransform: 'uppercase' }}>Included Features</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {plan.features.map((feat, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={feat.enabled} 
+                          onChange={(e) => {
+                            const newFeats = [...plan.features];
+                            newFeats[idx] = { ...newFeats[idx], enabled: e.target.checked };
+                            setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                          }}
+                          disabled={!plan.enabled}
+                        />
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          value={feat.name}
+                          onChange={(e) => {
+                            const newFeats = [...plan.features];
+                            newFeats[idx] = { ...newFeats[idx], name: e.target.value };
+                            setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                          }}
+                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
+                          disabled={!plan.enabled}
+                        />
+                        <button 
+                          className="btn-outline" 
+                          style={{ padding: '0.35rem', color: 'var(--danger)', border: 'none' }}
+                          onClick={() => {
+                            const newFeats = plan.features.filter((_, i) => i !== idx);
+                            setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                          }}
+                          disabled={!plan.enabled}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem' }}
+                      onClick={() => {
+                        const newFeats = [...plan.features, { name: 'New Feature', enabled: true }];
+                        setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                      }}
+                      disabled={!plan.enabled}
+                    >
+                      + Add Feature
+                    </button>
+                  </div>
+                </div>
               </div>
-              <div className="form-group">
-                <label className="form-label">Offer Ends</label>
-                <input type="date" className="form-input" value={pricingConfig.premium.offerEndDate || ''} onChange={e => setPricingConfig({...pricingConfig, premium: {...pricingConfig.premium, offerEndDate: e.target.value}})} disabled={!pricingConfig.premium.offerActive} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', background: pricingConfig.premium.offerActive ? 'rgba(59, 130, 246, 0.1)' : 'transparent', padding: '0.5rem', borderRadius: '4px' }}>
-              <input type="checkbox" id="prem-offer" checked={pricingConfig.premium.offerActive} onChange={e => setPricingConfig({...pricingConfig, premium: {...pricingConfig.premium, offerActive: e.target.checked}})} style={{ width: '18px', height: '18px' }} />
-              <label htmlFor="prem-offer" style={{ fontWeight: 'bold', color: pricingConfig.premium.offerActive ? 'var(--primary)' : 'var(--text-muted)', cursor: 'pointer' }}>Activate Offer</label>
-            </div>
-          </div>
-
+            );
+          })}
         </div>
 
         <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
