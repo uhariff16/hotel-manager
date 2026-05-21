@@ -26,15 +26,15 @@ export default function Reports() {
     if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
     try {
       setLoading(true);
-      const endOfDay = `${range.end} 23:59:59`;
       const [inc, exp, bks, cts, rms] = await Promise.all([
-        supabase.from('incomes').select('*, bookings(reference_number, guest_name)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', endOfDay),
-        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', endOfDay),
+        supabase.from('incomes').select('*, bookings(reference_number, guest_name)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
+        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
         supabase.from('bookings').select('*').eq('resort_id', activeResortId).gte('check_in_date', range.start).lte('check_in_date', range.end),
         supabase.from('cottages').select('*').eq('resort_id', activeResortId),
         supabase.from('rooms').select('*').eq('resort_id', activeResortId)
       ]);
       
+      console.log("Supabase query results:", { inc, exp, bks });
       setData({
         incomes: inc.data || [],
         expenses: exp.data || [],
@@ -43,7 +43,7 @@ export default function Reports() {
         rooms: rms.data || []
       });
     } catch(err) {
-      console.error(err);
+      console.error("fetchReports error:", err);
     } finally { setLoading(false); }
   };
 
