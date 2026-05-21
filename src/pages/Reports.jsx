@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Download, FileText, Filter, Table as TableIcon, CreditCard, Wallet, TrendingDown, CalendarCheck, CheckCircle2, UserCheck } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
-import * as XLSX from 'xlsx-js-style';
 import { useSettingsStore } from '../lib/store';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
@@ -142,7 +141,8 @@ export default function Reports() {
     html2pdf().set(opt).from(element).save();
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    const XLSX = await import('xlsx-js-style');
     const workbook = XLSX.utils.book_new();
 
     const createStyledSheet = (dataAOA, colWidths, hasTotalRow = false) => {
