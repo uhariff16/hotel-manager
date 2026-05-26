@@ -123,16 +123,28 @@ export default function Bookings() {
 
   const settleBooking = (b) => {
     setSettlingBooking(b);
-    setSettlementData({ discount: 0, allSettled: false });
+    setSettlementData({ discount: 0, allSettled: false, pendingOTA: false });
   };
 
   const handleFinalSettlement = async () => {
-    if (!settlementData.allSettled) {
-      alert("Please confirm that all payments are settled.");
+    if (!settlementData.allSettled && !settlementData.pendingOTA) {
+      alert("Please either confirm payment is received or mark it as a Pending OTA Payment.");
       return;
     }
 
     try {
+      if (settlementData.pendingOTA) {
+        // Mark as completed but keep the balance for later
+        const { error: bookingErr } = await supabase
+          .from('bookings')
+          .update({ status: 'Completed' })
+          .eq('id', settlingBooking.id);
+        if (bookingErr) throw bookingErr;
+
+        setBookings(prev => prev.map(x => x.id === settlingBooking.id ? { ...x, status: 'Completed' } : x));
+        setSettlingBooking(null);
+        return;
+      }
       const finalBalance = settlingBooking.balance_amount - settlementData.discount;
       
       const { error: bookingErr } = await supabase
@@ -248,10 +260,18 @@ export default function Bookings() {
     });
 
     if (sortConfig.key === 'check_in_date' && sortConfig.direction === 'ascending') {
-      const priority = { 'Checked-in': 1, 'Confirmed': 2, 'Pending': 3, 'Completed': 4, 'Cancelled': 5 };
+      const getPriority = (b) => {
+        if (b.status === 'Checked-in') return 1;
+        if (b.status === 'Completed' && b.balance_amount > 0) return 2; // OTA Receivables
+        if (b.status === 'Confirmed') return 3;
+        if (b.status === 'Pending') return 4;
+        if (b.status === 'Completed') return 5; // Fully settled
+        if (b.status === 'Cancelled') return 6;
+        return 99;
+      };
       items.sort((a, b) => {
-        const pA = priority[a.status] || 99;
-        const pB = priority[b.status] || 99;
+        const pA = getPriority(a);
+        const pB = getPriority(b);
         if (pA !== pB) return pA - pB;
         return new Date(a.check_in_date) - new Date(b.check_in_date);
       });
@@ -451,6 +471,9 @@ export default function Bookings() {
                       {b.status === 'Checked-in' && (
                         <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#6366f1' }}>Checkout</button>
                       )}
+                      {b.status === 'Completed' && b.balance_amount > 0 && (
+                        <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#f59e0b', borderColor: '#f59e0b' }}>Receive Pay</button>
+                      )}
                       {b.status === 'Completed' && (
                         <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}><RotateCcw size={18} /></button>
                       )}
@@ -478,6 +501,7 @@ export default function Bookings() {
                   <th onClick={() => requestSort('check_in_date')} style={{ cursor: 'pointer' }}>Stay Dates</th>
                   <th onClick={() => requestSort('cottage_id')} style={{ cursor: 'pointer' }}>Unit / Room</th>
                   <th onClick={() => requestSort('booking_source')} style={{ cursor: 'pointer' }}>Source</th>
+                  <th onClick={() => requestSort('status')} style={{ cursor: 'pointer' }}>Status</th>
                   <th onClick={() => requestSort('advance_paid')} style={{ cursor: 'pointer', textAlign: 'right' }}>Paid</th>
                   <th onClick={() => requestSort('balance_amount')} style={{ cursor: 'pointer', textAlign: 'right' }}>Balance</th>
                   <th onClick={() => requestSort('total_amount')} style={{ cursor: 'pointer', textAlign: 'right' }}>Total</th>
@@ -486,7 +510,7 @@ export default function Bookings() {
               </thead>
               <tbody>
                 {sortedAndFilteredBookings.length === 0 ? (
-                  <tr><td colSpan="7" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found.</td></tr>
+                  <tr><td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found.</td></tr>
                 ) : sortedAndFilteredBookings.map((b) => {
                   const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
                   const rname = b.booking_type === 'Entire Property' ? 'Entire Property' : (b.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
@@ -518,6 +542,11 @@ export default function Bookings() {
                       <td>
                         <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.3rem 0.6rem', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{b.booking_source || 'Direct'}</span>
                       </td>
+                      <td>
+                        <span style={{ padding: '0.3rem 0.6rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44`, display: 'inline-block', whiteSpace: 'nowrap' }}>
+                          {b.status}
+                        </span>
+                      </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--success)' }}>₹{(b.total_amount - b.balance_amount).toLocaleString()}</div>
                       </td>
@@ -534,6 +563,9 @@ export default function Bookings() {
                           )}
                           {b.status === 'Checked-in' && (
                             <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#6366f1' }}>Checkout</button>
+                          )}
+                          {b.status === 'Completed' && b.balance_amount > 0 && (
+                            <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#f59e0b', borderColor: '#f59e0b' }}>Receive Pay</button>
                           )}
                           {b.status === 'Completed' && (
                             <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ color: '#6366f1' }}><RotateCcw size={16} /></button>
@@ -572,10 +604,23 @@ export default function Bookings() {
               <input type="number" className="form-input" value={settlementData.discount} onChange={e => setSettlementData({ ...settlementData, discount: Number(e.target.value) })} />
             </div>
             <div style={{ marginTop: '1.5rem' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-                <input type="checkbox" checked={settlementData.allSettled} onChange={e => setSettlementData({ ...settlementData, allSettled: e.target.checked })} style={{ width: '18px', height: '18px' }} />
-                <span>I confirm that all payments are received.</span>
-              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  <input type="radio" name="settlementType" checked={settlementData.allSettled} onChange={() => setSettlementData({ ...settlementData, allSettled: true, pendingOTA: false })} style={{ width: '18px', height: '18px', accentColor: 'var(--success)' }} />
+                  <span style={{ fontWeight: 600 }}>Payment Received Now (Cash/UPI/Card)</span>
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  <input type="radio" name="settlementType" checked={settlementData.pendingOTA} onChange={() => setSettlementData({ ...settlementData, allSettled: false, pendingOTA: true })} style={{ width: '18px', height: '18px', accentColor: 'var(--warning)' }} />
+                  <span style={{ fontWeight: 600 }}>Payment Pending from OTA (Agoda/Booking.com)</span>
+                </label>
+              </div>
+              
+              {settlementData.pendingOTA && (
+                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', color: '#b45309', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                  This will mark the booking as Completed but keep the balance pending. You can record the payment later once received from the OTA.
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
                 <button className="btn btn-outline" onClick={() => setSettlingBooking(null)}>Cancel</button>
                 <button className="btn btn-primary" onClick={handleFinalSettlement}>Confirm & Close</button>
