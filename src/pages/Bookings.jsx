@@ -63,6 +63,7 @@ export default function Bookings() {
     { label: 'Pending', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
     { label: 'Confirmed', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
     { label: 'Checked-in', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' },
+    { label: 'Pending Payment', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
     { label: 'Completed', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
     { label: 'Cancelled', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
   ];
@@ -134,7 +135,7 @@ export default function Bookings() {
 
     try {
       if (settlementData.pendingOTA) {
-        // Mark as completed but keep the balance for later
+        // Mark as Completed but keep the balance for later (UI will show as Pending payment)
         const { error: bookingErr } = await supabase
           .from('bookings')
           .update({ status: 'Completed' })
@@ -252,7 +253,8 @@ export default function Bookings() {
 
   const sortedAndFilteredBookings = React.useMemo(() => {
     let items = bookings.filter(b => {
-      const matchesStatus = activeTab === 'All' || b.status === activeTab;
+      const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
+      const matchesStatus = activeTab === 'All' || displayStatus === activeTab;
       const matchesSearch = b.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             (b.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (b.phone_number || '').includes(searchTerm);
@@ -261,18 +263,23 @@ export default function Bookings() {
 
     if (sortConfig.key === 'check_in_date' && sortConfig.direction === 'ascending') {
       const getPriority = (b) => {
-        if (b.status === 'Checked-in') return 1;
-        if (b.status === 'Completed' && b.balance_amount > 0) return 2; // OTA Receivables
-        if (b.status === 'Confirmed') return 3;
-        if (b.status === 'Pending') return 4;
-        if (b.status === 'Completed') return 5; // Fully settled
-        if (b.status === 'Cancelled') return 6;
+        const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
+        if (displayStatus === 'Checked-in') return 1;
+        if (displayStatus === 'Pending Payment') return 2;
+        if (displayStatus === 'Confirmed') return 3;
+        if (displayStatus === 'Pending') return 4;
+        if (displayStatus === 'Completed') return 5; // Fully settled
+        if (displayStatus === 'Cancelled') return 6;
         return 99;
       };
       items.sort((a, b) => {
         const pA = getPriority(a);
         const pB = getPriority(b);
         if (pA !== pB) return pA - pB;
+        if (pA === 5 || pA === 2) {
+          // Completed or Pending payment: latest checkout date first
+          return new Date(b.check_out_date) - new Date(a.check_out_date);
+        }
         return new Date(a.check_in_date) - new Date(b.check_in_date);
       });
     } else if (sortConfig !== null) {
@@ -407,7 +414,8 @@ export default function Bookings() {
           ) : sortedAndFilteredBookings.map((b) => {
             const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
             const rname = b.booking_type === 'Entire Property' ? 'Entire Property' : (b.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
-            const opt = statusOptions.find(o => o.label === b.status) || statusOptions[1];
+            const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
+            const opt = statusOptions.find(o => o.label === displayStatus) || statusOptions[1];
             
             return (
               <div key={b.id} className="card" style={{ padding: 0, overflow: 'hidden', borderLeft: `6px solid ${opt.color}`, opacity: b.status === 'Cancelled' ? 0.7 : 1 }}>
@@ -424,7 +432,7 @@ export default function Bookings() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
                       <span style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44`, width: 'fit-content' }}>
-                        {b.status}
+                        {displayStatus}
                       </span>
                       <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800, border: '1px solid rgba(99, 102, 241, 0.2)' }}>
                         {b.booking_source || 'Direct'}
@@ -514,7 +522,8 @@ export default function Bookings() {
                 ) : sortedAndFilteredBookings.map((b) => {
                   const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
                   const rname = b.booking_type === 'Entire Property' ? 'Entire Property' : (b.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
-                  const opt = statusOptions.find(o => o.label === b.status) || statusOptions[1];
+                  const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
+                  const opt = statusOptions.find(o => o.label === displayStatus) || statusOptions[1];
 
                   return (
                     <tr key={b.id} className="table-row-hover" style={{ opacity: b.status === 'Cancelled' ? 0.6 : 1 }}>
@@ -544,7 +553,7 @@ export default function Bookings() {
                       </td>
                       <td>
                         <span style={{ padding: '0.3rem 0.6rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44`, display: 'inline-block', whiteSpace: 'nowrap' }}>
-                          {b.status}
+                          {displayStatus}
                         </span>
                       </td>
                       <td style={{ textAlign: 'right' }}>
@@ -617,7 +626,7 @@ export default function Bookings() {
               
               {settlementData.pendingOTA && (
                 <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', color: '#b45309', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                  This will mark the booking as Completed but keep the balance pending. You can record the payment later once received from the OTA.
+                  This will mark the booking as Pending payment. You can record the payment later once received from the OTA.
                 </div>
               )}
 
