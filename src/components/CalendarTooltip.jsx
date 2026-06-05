@@ -9,11 +9,27 @@ export default function CalendarTooltip({ booking, cottageName, rooms, position 
     ? 'Entire Property' 
     : (booking.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
 
+  const tooltipWidth = 280;
+  const tooltipHeight = 180;
+  
+  let left = position.x + 20;
+  let top = position.y - 10;
+  
+  if (typeof window !== 'undefined') {
+    if (left + tooltipWidth > window.innerWidth - 10) {
+      left = position.x - tooltipWidth - 20; // Show on left side of cursor if near right edge
+    }
+    if (top + tooltipHeight > window.innerHeight - 10) {
+      top = window.innerHeight - tooltipHeight - 10; // Shift up if near bottom edge
+    }
+    if (top < 10) top = 10;
+  }
+
   return (
     <div style={{
       position: 'fixed',
-      left: position.x + 20,
-      top: position.y - 10,
+      left: left,
+      top: top,
       zIndex: 1000,
       width: '280px',
       background: 'var(--bg-secondary)',
