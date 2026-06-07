@@ -433,6 +433,12 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
 
   const handleMouseUpWrapper = () => {
     if (!dragSelection) return;
+    const isSingleClick = dragSelection.startDate.getTime() === dragSelection.endDate.getTime();
+    if (isSingleClick) {
+      setDragSelection(null);
+      return;
+    }
+    
     const datesArr = [dragSelection.startDate, dragSelection.endDate].sort((a,b) => a - b);
     const inDate = datesArr[0];
     const outDate = addDays(datesArr[1], 1);
@@ -447,6 +453,24 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
       prefill.booking_type = 'Room';
       prefill.cottage_id = dragSelection.cottageId;
       prefill.room_ids = dragSelection.itemIds;
+    }
+    setDragSelection(null);
+    navigate('/bookings/new', { state: { prefill } });
+  };
+
+  const handleEmptyCellDoubleClick = (date, type, itemId, cottageId) => {
+    const outDate = addDays(date, 1);
+    let prefill = {
+       check_in_date: format(date, 'yyyy-MM-dd'),
+       check_out_date: format(outDate, 'yyyy-MM-dd')
+    };
+    if (type === 'Property') {
+      prefill.booking_type = 'Entire Property';
+      prefill.cottage_id = cottageId;
+    } else {
+      prefill.booking_type = 'Room';
+      prefill.cottage_id = cottageId;
+      prefill.room_ids = [itemId];
     }
     setDragSelection(null);
     navigate('/bookings/new', { state: { prefill } });
@@ -666,7 +690,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
         {/* RENDER VIEWS */}
         <div style={{ flex: 1, overflow: 'auto', background: 'var(--bg-color)' }}>
           {viewType === 'timeline' && (
-            <div ref={timelineRef} style={{ overflowX: 'auto', height: '100%' }} onMouseUp={handleMouseUpWrapper} onMouseLeave={() => { setDragSelection(null); setHoveredBooking(null); }}>
+            <div ref={timelineRef} style={{ overflowX: 'auto', height: '100%', touchAction: dragSelection ? 'none' : 'auto' }} onPointerUp={handleMouseUpWrapper} onMouseUp={handleMouseUpWrapper} onPointerCancel={() => setDragSelection(null)} onMouseLeave={() => { setDragSelection(null); setHoveredBooking(null); }}>
               <div style={{ display: 'inline-block', minWidth: '100%', userSelect: 'none' }}>
                 <div style={{ display: 'flex', borderBottom: '2px solid var(--border)', background: 'var(--bg-secondary)', position: 'sticky', top: 0, zIndex: 20 }}>
                   <div style={{ width: isMobile ? '100px' : '220px', flexShrink: 0, padding: isMobile ? '0.75rem 0.5rem' : '1rem', fontWeight: '900', borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'inherit', color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: isMobile ? '0.6rem' : '0.75rem', zIndex: 30, display: 'flex', alignItems: 'center' }}>
@@ -699,10 +723,10 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
 
                         return (
                           <div key={i} 
-                               onMouseDown={() => handleMouseDown(d, 'Property', c.id, bookingId, c.id)} 
+                               onPointerDown={(e) => { if (e.target.hasPointerCapture(e.pointerId)) e.target.releasePointerCapture(e.pointerId); handleMouseDown(d, 'Property', c.id, bookingId, c.id); }} 
                                onClick={() => bookingId && setSelectedBooking(bookings.find(x => x.id === bookingId))}
-                               onMouseEnter={(e) => handleMouseEnter(e, d, 'Property', c.id, bookingId, c.id)} 
-                               onDoubleClick={() => bookingId && navigate(`/bookings/edit/${bookingId}`)} 
+                               onPointerEnter={(e) => handleMouseEnter(e, d, 'Property', c.id, bookingId, c.id)} 
+                               onDoubleClick={() => { if (bookingId) { navigate(`/bookings/edit/${bookingId}`); } else { handleEmptyCellDoubleClick(d, 'Property', c.id, c.id); } }} 
                                style={{ width: isMobile ? '45px' : '54px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '5px', cursor: isPast && !bookingId ? 'not-allowed' : 'pointer', background: isToday(d) ? 'rgba(5, 150, 105, 0.03)' : 'transparent', transition: 'all 0.2s' }}>
                             <div style={{ 
                                 width: '100%', height: '34px', borderRadius: '6px', 
@@ -735,10 +759,10 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
 
                           return (
                             <div key={i} 
-                                 onMouseDown={() => handleMouseDown(d, 'Room', r.id, bookingId, r.cottage_id)} 
+                                 onPointerDown={(e) => { if (e.target.hasPointerCapture(e.pointerId)) e.target.releasePointerCapture(e.pointerId); handleMouseDown(d, 'Room', r.id, bookingId, r.cottage_id); }} 
                                  onClick={() => bookingId && setSelectedBooking(bookings.find(x => x.id === bookingId))}
-                                 onMouseEnter={(e) => handleMouseEnter(e, d, 'Room', r.id, bookingId, r.cottage_id)} 
-                                 onDoubleClick={() => bookingId && navigate(`/bookings/edit/${bookingId}`)} 
+                                 onPointerEnter={(e) => handleMouseEnter(e, d, 'Room', r.id, bookingId, r.cottage_id)} 
+                                 onDoubleClick={() => { if (bookingId) { navigate(`/bookings/edit/${bookingId}`); } else { handleEmptyCellDoubleClick(d, 'Room', r.id, r.cottage_id); } }} 
                                  style={{ width: isMobile ? '45px' : '54px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '6px', cursor: isPast && !bookingId ? 'not-allowed' : 'pointer', background: isToday(d) ? 'rgba(5, 150, 105, 0.03)' : 'transparent' }}>
                               <div style={{ 
                                   width: '100%', height: '28px', borderRadius: '5px', 
