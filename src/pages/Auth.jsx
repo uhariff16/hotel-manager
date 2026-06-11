@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
-import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound } from 'lucide-react';
+import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff } from 'lucide-react';
 
 export default function Auth() {
   const { isRecovering, setIsRecovering } = useSettingsStore();
@@ -10,6 +10,8 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   const [formData, setFormData] = useState({
     email: '',
@@ -227,14 +229,33 @@ export default function Auth() {
                   <Lock size={18} />
                 </span>
                 <input 
-                  type="password" 
+                  type={showPassword ? "text" : "password"} 
                   required 
                   className="form-input" 
-                  style={{ paddingLeft: '3rem' }}
+                  style={{ paddingLeft: '3rem', paddingRight: '3rem' }}
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '1rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
           )}
@@ -247,14 +268,33 @@ export default function Auth() {
                   <Lock size={18} />
                 </span>
                 <input 
-                  type="password" 
+                  type={showConfirmPassword ? "text" : "password"} 
                   required 
                   className="form-input" 
-                  style={{ paddingLeft: '3rem' }}
+                  style={{ paddingLeft: '3rem', paddingRight: '3rem' }}
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: '1rem',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--text-muted)',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex',
+                    alignItems: 'center'
+                  }}
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
             </div>
           )}
