@@ -25,8 +25,15 @@ export default function BookingForm() {
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
     reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '',
-    addon_selections: [], addon_others: ''
+    addon_selections: [], addon_others: '',
+    room_type: 'Deluxe Room',
+    room_types_map: {},
+    breakfast: 'NA',
+    agent_name: '',
+    is_custom_agent: false
   });
+
+  const [agents, setAgents] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -53,6 +60,25 @@ export default function BookingForm() {
       setCottages(cts.data || []);
       setRooms(rms.data || []);
 
+      // Fetch agents from existing bookings
+      let fetchedAgents = ['Agent Ram', 'Agent Priya', 'Agent Vikram'];
+      try {
+        const { data: bks, error: bksErr } = await supabase
+          .from('bookings')
+          .select('booking_source')
+          .eq('resort_id', activeResortId);
+        if (!bksErr && bks) {
+          const dbAgents = bks
+            .map(b => b.booking_source)
+            .filter(src => src && src.startsWith('Agent:'))
+            .map(src => src.replace('Agent:', '').trim());
+          fetchedAgents = Array.from(new Set([...fetchedAgents, ...dbAgents]));
+        }
+      } catch (e) {
+        console.warn("Could not load agents from bookings:", e);
+      }
+      setAgents(fetchedAgents);
+
       if (id) {
         // Fetch existing booking for edit
         const { data: b, error: fetchErr } = await supabase
@@ -74,6 +100,13 @@ export default function BookingForm() {
           }
           if (othersText.length > 0) selections.push('Others');
 
+          const selectedRoomIds = b.room_ids || (b.room_id ? [b.room_id] : []);
+          const roomTypeParts = (b.room_type || '').split(',').map(s => s.trim()).filter(Boolean);
+          const initialMap = {};
+          selectedRoomIds.forEach((rid, index) => {
+            initialMap[rid] = roomTypeParts[index] || b.room_type || 'Deluxe Room';
+          });
+
           setBookingForm({
             guest_name: b.guest_name,
             guest_email: b.guest_email || '',
@@ -84,7 +117,7 @@ export default function BookingForm() {
             kids_count: b.kids_count || 0,
             booking_type: b.booking_type,
             cottage_id: b.cottage_id,
-            room_ids: b.room_ids || (b.room_id ? [b.room_id] : []),
+            room_ids: selectedRoomIds,
             night_count: b.night_count || 0,
             base_amount: b.base_amount || 0,
             extra_guest_charges: b.extra_guest_charges || 0,
@@ -92,8 +125,10 @@ export default function BookingForm() {
             total_amount: b.total_amount || 0,
             advance_paid: b.advance_paid || 0,
             balance_amount: b.balance_amount || 0,
-            booking_source: b.booking_source ? (['Direct', 'Airbnb', 'Booking.com', 'Agent'].includes(b.booking_source) ? b.booking_source : 'Other') : 'Direct',
-            custom_booking_source: b.booking_source && !['Direct', 'Airbnb', 'Booking.com', 'Agent'].includes(b.booking_source) ? b.booking_source : '',
+            booking_source: b.booking_source ? (b.booking_source.startsWith('Agent') ? 'Agent' : (['Direct', 'Airbnb', 'Booking.com', 'Agent'].includes(b.booking_source) ? b.booking_source : 'Other')) : 'Direct',
+            agent_name: b.booking_source && b.booking_source.startsWith('Agent:') ? b.booking_source.replace('Agent:', '').trim() : '',
+            is_custom_agent: false,
+            custom_booking_source: b.booking_source && !['Direct', 'Airbnb', 'Booking.com', 'Agent'].includes(b.booking_source) && !b.booking_source.startsWith('Agent') ? b.booking_source : '',
             status: b.status,
             reference_number: b.reference_number || '',
             vehicle_number: b.vehicle_number || '',
@@ -102,7 +137,10 @@ export default function BookingForm() {
             price_type: b.price_type || 'Calculated',
             addon_selections: selections,
             addon_others: othersText.join(', '),
-            is_loading_edit: true
+            is_loading_edit: true,
+            room_type: b.room_type || 'Deluxe Room',
+            room_types_map: initialMap,
+            breakfast: b.breakfast || 'NA'
           });
           setOriginalStatus(b.status);
         }
@@ -230,8 +268,12 @@ export default function BookingForm() {
         id_proof_type: bookingForm.id_proof_type,
         id_proof_number: bookingForm.id_proof_number,
         addon_details: bookingForm.addon_selections.map(s => s === 'Others' ? bookingForm.addon_others : s).filter(Boolean).join(', '),
-        booking_source: bookingForm.booking_source === 'Other' ? bookingForm.custom_booking_source : bookingForm.booking_source,
-        price_type: bookingForm.price_type
+        booking_source: bookingForm.booking_source === 'Other' ? bookingForm.custom_booking_source 
+                      : bookingForm.booking_source === 'Agent' ? `Agent: ${bookingForm.agent_name || agents[0] || 'Unknown'}`
+                      : bookingForm.booking_source,
+        price_type: bookingForm.price_type,
+        room_type: bookingForm.room_type,
+        breakfast: bookingForm.breakfast
       };
       
       // If status was Completed and now it's NOT, delete the auto-settled income record
@@ -243,8 +285,20 @@ export default function BookingForm() {
       let result;
       if (id) {
         result = await supabase.from('bookings').update(bookingData).eq('id', id);
+        if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
+          alert("Notice: Room Type and Breakfast could not be saved to the database. Please run the SQL migration script 'add_room_type_breakfast.sql' in your Supabase SQL Editor to add these columns.");
+          console.warn("DB columns for room_type/breakfast missing. Retrying save without them.");
+          const { room_type, breakfast, ...cleanData } = bookingData;
+          result = await supabase.from('bookings').update(cleanData).eq('id', id);
+        }
       } else {
-        result = await supabase.from('bookings').insert([bookingData]).select().single();
+        result = await supabase.from('bookings').insert([bookingData]).select();
+        if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
+          alert("Notice: Room Type and Breakfast could not be saved to the database. Please run the SQL migration script 'add_room_type_breakfast.sql' in your Supabase SQL Editor to add these columns.");
+          console.warn("DB columns for room_type/breakfast missing. Retrying save without them.");
+          const { room_type, breakfast, ...cleanData } = bookingData;
+          result = await supabase.from('bookings').insert([cleanData]).select();
+        }
       }
 
       if (result.error) throw result.error;
@@ -367,6 +421,60 @@ export default function BookingForm() {
             </div>
           </div>
 
+          {/* Room Type & Breakfast Selection */}
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+            <div className="form-group">
+              <label className="form-label">Room Type</label>
+              {bookingForm.booking_type === 'Room' && bookingForm.room_ids.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
+                  {bookingForm.room_ids.map(rid => {
+                    const r = rooms.find(room => room.id === rid);
+                    if (!r) return null;
+                    const currentVal = bookingForm.room_types_map?.[rid] || 'Deluxe Room';
+                    return (
+                      <div key={rid} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: '500', minWidth: '80px' }}>{r.name}:</span>
+                        <select 
+                          className="form-select" 
+                          style={{ padding: '0.25rem 0.5rem', height: 'auto' }}
+                          value={currentVal} 
+                          onChange={e => {
+                            const newMap = { ...bookingForm.room_types_map, [rid]: e.target.value };
+                            const roomTypesString = bookingForm.room_ids.map(id => newMap[id] || 'Deluxe Room').join(', ');
+                            setBookingForm({
+                              ...bookingForm,
+                              room_types_map: newMap,
+                              room_type: roomTypesString
+                            });
+                          }}
+                        >
+                          <option value="Deluxe Room">Deluxe Room</option>
+                          <option value="Super Deluxe">Super Deluxe</option>
+                          <option value="Suite">Suite</option>
+                          <option value="Standard Room">Standard Room</option>
+                        </select>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <select className="form-select" value={bookingForm.room_type} onChange={e => setBookingForm({...bookingForm, room_type: e.target.value})}>
+                  <option value="Deluxe Room">Deluxe Room</option>
+                  <option value="Super Deluxe">Super Deluxe</option>
+                  <option value="Suite">Suite</option>
+                  <option value="Standard Room">Standard Room</option>
+                </select>
+              )}
+            </div>
+            <div className="form-group">
+              <label className="form-label">Breakfast Option</label>
+              <select className="form-select" value={bookingForm.breakfast} onChange={e => setBookingForm({...bookingForm, breakfast: e.target.value})}>
+                <option value="NA">NA</option>
+                <option value="Included">Included</option>
+              </select>
+            </div>
+          </div>
+
           {bookingForm.booking_type === 'Room' && (
             <div className="form-group">
               <label className="form-label">Select Rooms</label>
@@ -375,7 +483,19 @@ export default function BookingForm() {
                   <label key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                     <input type="checkbox" checked={bookingForm.room_ids.includes(r.id)} onChange={e => {
                       const newIds = e.target.checked ? [...bookingForm.room_ids, r.id] : bookingForm.room_ids.filter(id => id !== r.id);
-                      setBookingForm({...bookingForm, room_ids: newIds});
+                      const newMap = { ...bookingForm.room_types_map };
+                      if (e.target.checked) {
+                        newMap[r.id] = 'Deluxe Room';
+                      } else {
+                        delete newMap[r.id];
+                      }
+                      const roomTypesString = newIds.map(id => newMap[id] || 'Deluxe Room').join(', ');
+                      setBookingForm({
+                        ...bookingForm,
+                        room_ids: newIds,
+                        room_types_map: newMap,
+                        room_type: roomTypesString || 'Deluxe Room'
+                      });
                     }} />
                     {r.name}
                   </label>
@@ -416,13 +536,52 @@ export default function BookingForm() {
             </div>
             <div className="form-group">
               <label className="form-label">Booking Source</label>
-              <select className="form-select" value={bookingForm.booking_source} onChange={e => setBookingForm({...bookingForm, booking_source: e.target.value})}>
+              <select className="form-select" value={bookingForm.booking_source} onChange={e => {
+                const src = e.target.value;
+                setBookingForm({
+                  ...bookingForm,
+                  booking_source: src,
+                  agent_name: src === 'Agent' ? (bookingForm.agent_name || agents[0] || '') : ''
+                });
+              }}>
                 <option value="Direct">Direct</option>
                 <option value="Airbnb">Airbnb</option>
                 <option value="Booking.com">Booking.com</option>
                 <option value="Agent">Agent</option>
                 <option value="Other">Other...</option>
               </select>
+              {bookingForm.booking_source === 'Agent' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                  <select 
+                    className="form-select" 
+                    value={agents.includes(bookingForm.agent_name) ? bookingForm.agent_name : (bookingForm.agent_name ? 'Other' : '')} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setBookingForm({
+                        ...bookingForm,
+                        agent_name: val === 'Other' ? '' : val,
+                        is_custom_agent: val === 'Other'
+                      });
+                    }}
+                    required
+                  >
+                    <option value="">Select Agent...</option>
+                    {agents.map(a => <option key={a} value={a}>{a}</option>)}
+                    <option value="Other">+ Add New Agent...</option>
+                  </select>
+                  
+                  {(bookingForm.is_custom_agent || (!agents.includes(bookingForm.agent_name) && bookingForm.agent_name)) && (
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      placeholder="Enter new agent name" 
+                      value={bookingForm.agent_name} 
+                      onChange={e => setBookingForm({...bookingForm, agent_name: e.target.value})} 
+                      required 
+                    />
+                  )}
+                </div>
+              )}
               {bookingForm.booking_source === 'Other' && (
                 <input 
                   type="text" 

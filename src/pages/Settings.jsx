@@ -3,6 +3,51 @@ import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 
+const DEFAULT_CONFIRM_TEMPLATE = `🏡 Booking Confirmed – {resort_name}
+
+Dear {guest_name},
+
+Thank you for choosing {resort_name}.
+
+We are pleased to confirm your reservation:
+
+🔖 Booking ID: {booking_id}
+📅 Check-in Date & Time : {check_in_date} & {check_in_time}
+📅 Check-out Date & Time: {check_out_date} & {check_out_time}
+🌙 Duration of Stay: {duration_of_stay}
+🛏 Room Type: {room_type}
+🏠 Number of Rooms: {num_rooms}
+👥 Number of Guests: {num_guests}
+👨 Adults: {adults_count}
+👧 Kids: {kids_count}
+🍳 Breakfast: {breakfast}
+
+💰 Total Amount: ₹{total_amount}
+✅ Advance Paid: ₹{advance_paid}
+💳 Balance Amount: ₹{balance_amount} (Payable at Check-in)
+
+Your reservation has been successfully confirmed. We look forward to welcoming you and ensuring a pleasant stay.
+
+📞 For any queries or assistance, please contact: {resort_phone}`;
+
+const DEFAULT_RECEIPT_TEMPLATE = `Dear {guest_name},
+
+We have received your payment for booking {booking_id}.
+Amount Paid: ₹{payment_amount}
+Balance Amount: ₹{balance_amount}
+
+Thank you!`;
+
+const DEFAULT_REMINDER_TEMPLATE = `Dear {guest_name},
+
+This is a friendly reminder for your upcoming stay at {resort_name}.
+Booking ID: {booking_id}
+Check-in Date & Time: {check_in_date} & {check_in_time}
+Accommodation: {room_type}
+Vehicle: {vehicle_number}
+
+We look forward to hosting you!`;
+
 export default function Settings() {
   const { profile, setProfile, theme, toggleTheme, session, activeResortId } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
@@ -25,8 +70,96 @@ export default function Settings() {
     whatsapp_business_account_id: '',
     auto_booking_confirmation: false,
     auto_checkin_reminder: false,
-    auto_payment_receipt: false
+    auto_payment_receipt: false,
+    whatsapp_confirm_msg_template: localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE,
+    whatsapp_receipt_msg_template: localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE,
+    whatsapp_reminder_msg_template: localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE
   });
+
+  // Custom Tags Manager State
+  const [customTags, setCustomTags] = useState(() => {
+    try {
+      const saved = localStorage.getItem('whatsapp_custom_tags');
+      return saved ? JSON.parse(saved) : [
+        { key: 'wifi_password', value: 'chalet2026' }
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  const [newTagKey, setNewTagKey] = useState('');
+  const [newTagVal, setNewTagVal] = useState('');
+
+  const handleAddCustomTag = (e) => {
+    e.preventDefault();
+    if (!newTagKey.trim()) return;
+    const cleanKey = newTagKey.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
+    if (!cleanKey) return;
+    
+    const defaultTagKeys = ['guest_name', 'booking_id', 'check_in_date', 'check_in_time', 'check_out_date', 'check_out_time', 'duration_of_stay', 'room_type', 'num_rooms', 'num_guests', 'adults_count', 'kids_count', 'breakfast', 'total_amount', 'advance_paid', 'balance_amount', 'vehicle_number', 'payment_amount', 'resort_name', 'resort_phone', 'agent_name'];
+    if (defaultTagKeys.includes(cleanKey) || customTags.some(t => t.key === cleanKey)) {
+      alert("This tag key already exists.");
+      return;
+    }
+
+    const updated = [...customTags, { key: cleanKey, value: newTagVal }];
+    setCustomTags(updated);
+    localStorage.setItem('whatsapp_custom_tags', JSON.stringify(updated));
+    setNewTagKey('');
+    setNewTagVal('');
+  };
+
+  const handleRemoveCustomTag = (keyToRemove) => {
+    const updated = customTags.filter(t => t.key !== keyToRemove);
+    setCustomTags(updated);
+    localStorage.setItem('whatsapp_custom_tags', JSON.stringify(updated));
+  };
+
+  // Keep track of which template textarea is currently focused/active
+  const [activeTextarea, setActiveTextarea] = useState('confirm');
+
+  const insertTag = (tag) => {
+    const fieldName = activeTextarea === 'confirm' ? 'whatsapp_confirm_msg_template' 
+                    : activeTextarea === 'receipt' ? 'whatsapp_receipt_msg_template'
+                    : 'whatsapp_reminder_msg_template';
+                    
+    const textarea = document.getElementById(fieldName);
+    if (!textarea) return;
+
+    const startPos = textarea.selectionStart;
+    const endPos = textarea.selectionEnd;
+    const text = commSettings[fieldName] || '';
+    const newText = text.substring(0, startPos) + tag + text.substring(endPos);
+    
+    setCommSettings({
+      ...commSettings,
+      [fieldName]: newText
+    });
+    
+    // Focus back and set selection
+    setTimeout(() => {
+      textarea.focus();
+      textarea.selectionStart = textarea.selectionEnd = startPos + tag.length;
+    }, 10);
+  };
+
+  const handleClearTemplate = (type) => {
+    const fieldName = type === 'confirm' ? 'whatsapp_confirm_msg_template' 
+                    : type === 'receipt' ? 'whatsapp_receipt_msg_template'
+                    : 'whatsapp_reminder_msg_template';
+    setCommSettings(prev => ({ ...prev, [fieldName]: '' }));
+  };
+
+  const handleResetTemplate = (type) => {
+    const fieldName = type === 'confirm' ? 'whatsapp_confirm_msg_template' 
+                    : type === 'receipt' ? 'whatsapp_receipt_msg_template'
+                    : 'whatsapp_reminder_msg_template';
+    const defaultValue = type === 'confirm' ? DEFAULT_CONFIRM_TEMPLATE 
+                        : type === 'receipt' ? DEFAULT_RECEIPT_TEMPLATE
+                        : DEFAULT_REMINDER_TEMPLATE;
+    setCommSettings(prev => ({ ...prev, [fieldName]: defaultValue }));
+  };
 
   useEffect(() => {
     if (activeResortId) {
@@ -43,6 +176,9 @@ export default function Settings() {
         .maybeSingle();
       
       if (data) {
+        const confirm_tpl = data.whatsapp_confirm_msg_template || localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE;
+        const receipt_tpl = data.whatsapp_receipt_msg_template || localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE;
+        const reminder_tpl = data.whatsapp_reminder_msg_template || localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE;
         setCommSettings({
           email_enabled: data.email_enabled || false,
           email_api_key: data.email_api_key || '',
@@ -54,8 +190,14 @@ export default function Settings() {
           whatsapp_business_account_id: data.whatsapp_business_account_id || '',
           auto_booking_confirmation: data.auto_booking_confirmation || false,
           auto_checkin_reminder: data.auto_checkin_reminder || false,
-          auto_payment_receipt: data.auto_payment_receipt || false
+          auto_payment_receipt: data.auto_payment_receipt || false,
+          whatsapp_confirm_msg_template: confirm_tpl,
+          whatsapp_receipt_msg_template: receipt_tpl,
+          whatsapp_reminder_msg_template: reminder_tpl
         });
+        localStorage.setItem('whatsapp_confirm_msg_template', confirm_tpl);
+        localStorage.setItem('whatsapp_receipt_msg_template', receipt_tpl);
+        localStorage.setItem('whatsapp_reminder_msg_template', reminder_tpl);
       }
     } catch (err) {
       console.error("Error fetching comm settings:", err);
@@ -65,17 +207,41 @@ export default function Settings() {
   const saveCommSettings = async (e) => {
     e.preventDefault();
     setSavingComm(true);
+    // Save locally
+    localStorage.setItem('whatsapp_confirm_msg_template', commSettings.whatsapp_confirm_msg_template);
+    localStorage.setItem('whatsapp_receipt_msg_template', commSettings.whatsapp_receipt_msg_template);
+    localStorage.setItem('whatsapp_reminder_msg_template', commSettings.whatsapp_reminder_msg_template);
     try {
+      const payload = {
+        tenant_id: profile.id,
+        resort_id: activeResortId,
+        ...commSettings,
+        updated_at: new Date().toISOString()
+      };
+
       const { error } = await supabase
         .from('tenant_integrations')
-        .upsert({
-          tenant_id: profile.id,
-          resort_id: activeResortId,
-          ...commSettings,
-          updated_at: new Date().toISOString()
-        }, { onConflict: 'resort_id' });
+        .upsert(payload, { onConflict: 'resort_id' });
 
-      if (error) throw error;
+      if (error) {
+        // Fallback: If DB columns do not exist, try upserting without template columns
+        if (error.message && (error.message.includes('column') || error.code === '42703')) {
+          console.warn("DB template columns missing. Saving templates in LocalStorage and other configuration in database.");
+          const { whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, ...cleanSettings } = commSettings;
+          const retryPayload = {
+            tenant_id: profile.id,
+            resort_id: activeResortId,
+            ...cleanSettings,
+            updated_at: new Date().toISOString()
+          };
+          const { error: retryError } = await supabase
+            .from('tenant_integrations')
+            .upsert(retryPayload, { onConflict: 'resort_id' });
+          if (retryError) throw retryError;
+        } else {
+          throw error;
+        }
+      }
       alert("Communication settings saved successfully!");
     } catch (err) {
       alert("Error saving settings: " + err.message);
@@ -400,8 +566,185 @@ export default function Settings() {
                   </div>
                 </div>
 
+                {/* WhatsApp Text Templates */}
+                <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <MessageCircle size={18} color="#22c55e" /> Client-Side WhatsApp Templates
+                  </h3>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1rem', fontSize: '0.8rem' }}>
+                    Customize the messages generated on the Bookings page. Placeholders will be replaced automatically.
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.25rem', padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}>
+                      Click to Add Placeholder Tag to {activeTextarea === 'confirm' ? 'Confirmation' : activeTextarea === 'receipt' ? 'Receipt' : 'Reminder'}:
+                    </span>
+                    {[
+                      '{guest_name}', '{booking_id}', '{check_in_date}', '{check_in_time}', 
+                      '{check_out_date}', '{check_out_time}', '{duration_of_stay}', '{room_type}', 
+                      '{num_rooms}', '{num_guests}', '{adults_count}', '{kids_count}', '{breakfast}', 
+                      '{total_amount}', '{advance_paid}', '{balance_amount}', '{vehicle_number}', 
+                      '{payment_amount}', '{resort_name}', '{resort_phone}', '{agent_name}',
+                      ...customTags.map(t => `{${t.key}}`)
+                    ].map(tag => (
+                      <button
+                        type="button"
+                        key={tag}
+                        onClick={() => insertTag(tag)}
+                        style={{
+                          fontSize: '0.7rem',
+                          padding: '3px 8px',
+                          background: 'var(--bg-color)',
+                          borderRadius: '4px',
+                          border: '1px solid var(--border)',
+                          fontFamily: 'monospace',
+                          color: 'var(--primary)',
+                          cursor: 'pointer',
+                          fontWeight: 600,
+                          transition: 'all 0.15s'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.borderColor = 'var(--primary)'}
+                        onMouseOut={e => e.currentTarget.style.borderColor = 'var(--border)'}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                    {/* Booking Confirmation */}
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>Booking Confirmation Template</label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button type="button" onClick={() => handleClearTemplate('confirm')} style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Clear</button>
+                          <span style={{ color: 'var(--border)' }}>|</span>
+                          <button type="button" onClick={() => handleResetTemplate('confirm')} style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Reset</button>
+                        </div>
+                      </div>
+                      <textarea 
+                        id="whatsapp_confirm_msg_template"
+                        className="form-input" 
+                        rows={7} 
+                        style={{ fontFamily: 'inherit', resize: 'vertical', padding: '0.75rem', height: 'auto', border: activeTextarea === 'confirm' ? '1px solid var(--primary)' : '1px solid var(--border)' }}
+                        value={commSettings.whatsapp_confirm_msg_template} 
+                        onChange={e => setCommSettings({...commSettings, whatsapp_confirm_msg_template: e.target.value})} 
+                        onFocus={() => setActiveTextarea('confirm')}
+                      />
+                    </div>
+                    
+                    {/* Payment Receipt */}
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>Payment Receipt Template</label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button type="button" onClick={() => handleClearTemplate('receipt')} style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Clear</button>
+                          <span style={{ color: 'var(--border)' }}>|</span>
+                          <button type="button" onClick={() => handleResetTemplate('receipt')} style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Reset</button>
+                        </div>
+                      </div>
+                      <textarea 
+                        id="whatsapp_receipt_msg_template"
+                        className="form-input" 
+                        rows={6} 
+                        style={{ fontFamily: 'inherit', resize: 'vertical', padding: '0.75rem', height: 'auto', border: activeTextarea === 'receipt' ? '1px solid var(--primary)' : '1px solid var(--border)' }}
+                        value={commSettings.whatsapp_receipt_msg_template} 
+                        onChange={e => setCommSettings({...commSettings, whatsapp_receipt_msg_template: e.target.value})} 
+                        onFocus={() => setActiveTextarea('receipt')}
+                      />
+                    </div>
+
+                    {/* Check-in Reminder */}
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>Check-in Reminder Template</label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button type="button" onClick={() => handleClearTemplate('reminder')} style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Clear</button>
+                          <span style={{ color: 'var(--border)' }}>|</span>
+                          <button type="button" onClick={() => handleResetTemplate('reminder')} style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Reset</button>
+                        </div>
+                      </div>
+                      <textarea 
+                        id="whatsapp_reminder_msg_template"
+                        className="form-input" 
+                        rows={6} 
+                        style={{ fontFamily: 'inherit', resize: 'vertical', padding: '0.75rem', height: 'auto', border: activeTextarea === 'reminder' ? '1px solid var(--primary)' : '1px solid var(--border)' }}
+                        value={commSettings.whatsapp_reminder_msg_template} 
+                        onChange={e => setCommSettings({...commSettings, whatsapp_reminder_msg_template: e.target.value})} 
+                        onFocus={() => setActiveTextarea('reminder')}
+                      />
+                    </div>
+                  </div>
+
+                    {/* Custom Template Variables */}
+                    <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        Manage Custom Tags
+                      </h4>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                        Add custom tags (e.g. <code>wifi_password</code>) and define their values. They will appear in the quick tags list above.
+                      </p>
+
+                      {/* Add Custom Tag Form */}
+                      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                        <div style={{ flex: 1, minWidth: '150px' }}>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            style={{ height: '36px', fontSize: '0.85rem', padding: '0 0.5rem' }} 
+                            placeholder="Tag Key (e.g. wifi_password)" 
+                            value={newTagKey}
+                            onChange={e => setNewTagKey(e.target.value)}
+                          />
+                        </div>
+                        <div style={{ flex: 2, minWidth: '200px' }}>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            style={{ height: '36px', fontSize: '0.85rem', padding: '0 0.5rem' }} 
+                            placeholder="Tag Value (e.g. chalet2026)" 
+                            value={newTagVal}
+                            onChange={e => setNewTagVal(e.target.value)}
+                          />
+                        </div>
+                        <button 
+                          type="button" 
+                          onClick={handleAddCustomTag}
+                          className="btn btn-outline"
+                          style={{ height: '36px', padding: '0 1rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center' }}
+                        >
+                          Add Tag
+                        </button>
+                      </div>
+
+                      {/* Custom Tags List */}
+                      {customTags.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                          {customTags.map(tag => (
+                            <div key={tag.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                <code style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', fontFamily: 'monospace' }}>{`{${tag.key}}`}</code>
+                                <span style={{ color: 'var(--text-muted)' }}>:</span>
+                                <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{tag.value}</span>
+                              </div>
+                              <button 
+                                type="button" 
+                                onClick={() => handleRemoveCustomTag(tag.key)} 
+                                style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                              >
+                                Remove
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <small style={{ color: 'var(--text-muted)', display: 'block', fontStyle: 'italic' }}>No custom tags added yet.</small>
+                      )}
+                    </div>
+                  </div>
+
                 <button type="submit" className="btn btn-primary" disabled={savingComm} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center', padding: '1rem' }}>
-                  <Save size={18} /> {savingComm ? 'Saving Integration Settings...' : 'Save Communication Configuration'}
+                  <Save size={18} /> {savingComm ? 'Saving Settings...' : 'Save Configuration & Templates'}
                 </button>
               </form>
             </div>
