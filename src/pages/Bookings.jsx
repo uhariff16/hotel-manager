@@ -5,6 +5,45 @@ import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
 
+const parseAgentSource = (sourceStr) => {
+  if (!sourceStr) return { isAgent: false, name: '', phone: '' };
+  
+  const str = sourceStr.trim();
+  if (!str.startsWith('Agent:')) {
+    return { isAgent: false, name: str, phone: '' };
+  }
+  
+  const cleaned = str.replace(/^Agent:\s*/i, '').trim();
+  
+  // Pattern 1: Agent: Name | Phone
+  if (cleaned.includes('|')) {
+    const [n, p] = cleaned.split('|');
+    return { isAgent: true, name: (n || '').trim(), phone: (p || '').trim() };
+  }
+  
+  // Pattern 2: Agent: Name (Contact: Phone)
+  const bracketMatch = cleaned.match(/^([^(]+)\(\s*Contact:\s*([^)]+)\)/i);
+  if (bracketMatch) {
+    return { 
+      isAgent: true, 
+      name: bracketMatch[1].trim(), 
+      phone: bracketMatch[2].trim() 
+    };
+  }
+  
+  // Pattern 3: Agent: Name Contact: Phone (without brackets)
+  const contactMatch = cleaned.match(/^([\s\S]+?)\s*Contact:\s*(.+)$/i);
+  if (contactMatch) {
+    return {
+      isAgent: true,
+      name: contactMatch[1].trim(),
+      phone: contactMatch[2].trim()
+    };
+  }
+  
+  return { isAgent: true, name: cleaned, phone: '' };
+};
+
 const DEFAULT_CONFIRM_TEMPLATE = `Dear {guest_name},
 
 Thank you for choosing Cheerful Chalet! Your booking is confirmed.
@@ -74,14 +113,16 @@ export default function Bookings() {
     open: false,
     templateType: 'confirm', // 'confirm', 'receipt' or 'reminder'
     messageText: '',
-    paymentAmount: ''
+    paymentAmount: '',
+    paymentOption: 'property' // 'online' | 'agent' | 'property'
   });
   const [whatsappTemplates, setWhatsappTemplates] = useState({
-    confirm: localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE,
-    receipt: localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE,
-    reminder: localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE,
-    review: localStorage.getItem('whatsapp_review_msg_template') || DEFAULT_REVIEW_TEMPLATE
+    confirm: DEFAULT_CONFIRM_TEMPLATE,
+    receipt: DEFAULT_RECEIPT_TEMPLATE,
+    reminder: DEFAULT_REMINDER_TEMPLATE,
+    review: DEFAULT_REVIEW_TEMPLATE
   });
+  const [customTags, setCustomTags] = useState([]);
 
   useEffect(() => {
     fetchData();
@@ -101,7 +142,7 @@ export default function Bookings() {
         supabase.from('bookings').select('*').eq('resort_id', activeResortId).order('created_at', { ascending: false }),
         supabase.from('cottages').select('*').eq('resort_id', activeResortId),
         supabase.from('rooms').select('*').eq('resort_id', activeResortId),
-        supabase.from('tenant_integrations').select('whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template').eq('resort_id', activeResortId).maybeSingle(),
+        supabase.from('tenant_integrations').select('whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, whatsapp_custom_tags').eq('resort_id', activeResortId).maybeSingle(),
         supabase.from('resorts').select('*').eq('id', activeResortId).maybeSingle()
       ]);
       setBookings(bks.data || []);
@@ -113,21 +154,22 @@ export default function Bookings() {
       const dbReceipt = integrationsRes?.data?.whatsapp_receipt_msg_template;
       const dbReminder = integrationsRes?.data?.whatsapp_reminder_msg_template;
       const dbReview = integrationsRes?.data?.whatsapp_review_msg_template;
-      const confirm_tpl = dbConfirm || localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE;
-      const receipt_tpl = dbReceipt || localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE;
-      const reminder_tpl = dbReminder || localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE;
-      const review_tpl = dbReview || localStorage.getItem('whatsapp_review_msg_template') || DEFAULT_REVIEW_TEMPLATE;
+      const dbCustomTags = integrationsRes?.data?.whatsapp_custom_tags;
       
       setWhatsappTemplates({
-        confirm: confirm_tpl,
-        receipt: receipt_tpl,
-        reminder: reminder_tpl,
-        review: review_tpl
+        confirm: dbConfirm || DEFAULT_CONFIRM_TEMPLATE,
+        receipt: dbReceipt || DEFAULT_RECEIPT_TEMPLATE,
+        reminder: dbReminder || DEFAULT_REMINDER_TEMPLATE,
+        review: dbReview || DEFAULT_REVIEW_TEMPLATE
       });
-      localStorage.setItem('whatsapp_confirm_msg_template', confirm_tpl);
-      localStorage.setItem('whatsapp_receipt_msg_template', receipt_tpl);
-      localStorage.setItem('whatsapp_reminder_msg_template', reminder_tpl);
-      localStorage.setItem('whatsapp_review_msg_template', review_tpl);
+
+      if (dbCustomTags) {
+        try {
+          setCustomTags(typeof dbCustomTags === 'string' ? JSON.parse(dbCustomTags) : dbCustomTags);
+        } catch (e) {
+          console.error("Failed to parse custom tags:", e);
+        }
+      }
     } catch (err) {
       console.error(err);
       setError('Error fetching data.');
@@ -145,7 +187,7 @@ export default function Bookings() {
     });
   };
 
-  const compileWhatsAppTemplate = (template, booking, customPaymentAmount = '') => {
+  const compileWhatsAppTemplate = (template, booking, customPaymentAmount = '', paymentOption = '') => {
     if (!template || !booking) return '';
     const cname = cottages.find(x => x.id === booking.cottage_id)?.name || 'Unknown';
     const rname = booking.booking_type === 'Entire Property' ? 'Entire Property' : (booking.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
@@ -163,6 +205,7 @@ export default function Bookings() {
 
     const resName = activeResort?.name || 'Cheerful Chalet';
     const resPhone = activeResort?.phone || '+91 8220320178';
+    const wifiPasswordVal = customTags.find(t => t.key === 'wifi_password')?.value || 'chalet2026';
 
     const roomTypeVal = booking.room_type || rname;
 
@@ -190,14 +233,27 @@ export default function Bookings() {
       .replace(/{vehicle_number}/g, booking.vehicle_number || 'N/A')
       .replace(/{resort_name}/g, resName)
       .replace(/{resort_phone}/g, resPhone)
-      .replace(/{agent_name}/g, booking.booking_source && booking.booking_source.startsWith('Agent:') ? booking.booking_source.replace('Agent:', '').trim() : 'N/A')
+      .replace(/{wifi_password}/g, wifiPasswordVal)
+      .replace(/{agent_name}/g, (() => {
+        const { isAgent, name } = parseAgentSource(booking.booking_source);
+        return isAgent ? name : 'N/A';
+      })())
+      .replace(/{agent_phone}/g, (() => {
+        const { isAgent, phone } = parseAgentSource(booking.booking_source);
+        return isAgent && phone ? phone : 'N/A';
+      })())
+      .replace(/{booking_source}/g, (() => {
+        const { isAgent, name, phone } = parseAgentSource(booking.booking_source);
+        if (isAgent) {
+          return `Agent: ${name}${phone ? `, Contact: ${phone}` : ''}`;
+        }
+        return booking.booking_source || 'Direct';
+      })())
       .replace(/{payment_amount}/g, customPaymentAmount || (booking.total_amount - booking.balance_amount || 0).toLocaleString());
 
     // Substitute custom tags dynamically
     try {
-      const saved = localStorage.getItem('whatsapp_custom_tags');
-      const customTagsList = saved ? JSON.parse(saved) : [];
-      customTagsList.forEach(t => {
+      customTags.forEach(t => {
         const regex = new RegExp(`{${t.key}}`, 'g');
         compiled = compiled.replace(regex, t.value || '');
       });
@@ -205,11 +261,28 @@ export default function Bookings() {
       console.error("Error compiling custom tags:", e);
     }
 
-    if (booking.booking_source && (booking.booking_source.startsWith('Agent') || booking.booking_source.toLowerCase().includes('agent'))) {
-      compiled = compiled.replace(/Total Amount:.*$/gmi, 'Total Amount: Payable to agent');
-      compiled = compiled.replace(/(Total Amount\s*:).*$/gmi, '$1 Payable to agent');
-      compiled = compiled.replace(/Balance Amount:.*$/gmi, 'Balance Amount: Payable to agent');
-      compiled = compiled.replace(/(Balance Amount\s*:).*$/gmi, '$1 Payable to agent');
+    const isAgent = booking.booking_source && (booking.booking_source.startsWith('Agent') || booking.booking_source.toLowerCase().includes('agent'));
+    const finalOption = paymentOption || (isAgent ? 'agent' : (booking.balance_amount === 0 ? 'online' : 'property'));
+
+    if (finalOption === 'agent') {
+      compiled = compiled.replace(/^.*Total/i, 'Total'); // standard safety strip
+      compiled = compiled.replace(/^.*Total Amount:.*$/gmi, 'Payment: Payable to Agent');
+      compiled = compiled.replace(/^.*Total Amount\s*:.*$/gmi, 'Payment: Payable to Agent');
+      compiled = compiled.replace(/^.*Advance Paid:.*$\n?/gmi, '');
+      compiled = compiled.replace(/^.*Advance Paid\s*:.*$\n?/gmi, '');
+      compiled = compiled.replace(/^.*Balance Amount:.*$\n?/gmi, '');
+      compiled = compiled.replace(/^.*Balance Amount\s*:.*$\n?/gmi, '');
+    } else if (finalOption === 'online') {
+      compiled = compiled.replace(/^.*Total/i, 'Total'); // standard safety strip
+      compiled = compiled.replace(/^.*Total Amount:.*$/gmi, 'Payment: ONLINE');
+      compiled = compiled.replace(/^.*Total Amount\s*:.*$/gmi, 'Payment: ONLINE');
+      compiled = compiled.replace(/^.*Advance Paid:.*$\n?/gmi, '');
+      compiled = compiled.replace(/^.*Advance Paid\s*:.*$\n?/gmi, '');
+      compiled = compiled.replace(/^.*Balance Amount:.*$\n?/gmi, '');
+      compiled = compiled.replace(/^.*Balance Amount\s*:.*$\n?/gmi, '');
+    } else if (finalOption === 'property') {
+      compiled = compiled.replace(/Balance Amount:.*$/gmi, `Balance Amount: ₹${(booking.balance_amount || 0).toLocaleString()} (Payable at property during check-in)`);
+      compiled = compiled.replace(/(Balance Amount\s*:).*$/gmi, `$1 ₹${(booking.balance_amount || 0).toLocaleString()} (Payable at property during check-in)`);
     }
 
     return compiled;
@@ -597,7 +670,24 @@ export default function Bookings() {
                         {displayStatus}
                       </span>
                       <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800, border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                        {b.booking_source || 'Direct'}
+                        {(() => {
+                          const { isAgent, name, phone } = parseAgentSource(b.booking_source);
+                          if (isAgent) {
+                            return (
+                              <span onClick={(e) => e.stopPropagation()}>
+                                Agent: {name} {phone && (
+                                  <>
+                                    {', Contact: '}
+                                    <a href={`tel:${phone}`} style={{ color: '#6366f1', textDecoration: 'underline' }}>
+                                      {phone}
+                                    </a>
+                                  </>
+                                )}
+                              </span>
+                            );
+                          }
+                          return b.booking_source || 'Direct';
+                        })()}
                       </span>
                     </div>
                   </div>
@@ -711,7 +801,26 @@ export default function Bookings() {
                         <small style={{ color: 'var(--primary)' }}>{rname}</small>
                       </td>
                       <td>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.3rem 0.6rem', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>{b.booking_source || 'Direct'}</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 800, padding: '0.3rem 0.6rem', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}>
+                          {(() => {
+                            const { isAgent, name, phone } = parseAgentSource(b.booking_source);
+                            if (isAgent) {
+                              return (
+                                <span onClick={(e) => e.stopPropagation()}>
+                                  Agent: {name} {phone && (
+                                    <>
+                                      {', Contact: '}
+                                      <a href={`tel:${phone}`} style={{ color: '#6366f1', textDecoration: 'underline' }}>
+                                        {phone}
+                                      </a>
+                                    </>
+                                  )}
+                                </span>
+                              );
+                            }
+                            return b.booking_source || 'Direct';
+                          })()}
+                        </span>
                       </td>
                       <td>
                         <span style={{ padding: '0.3rem 0.6rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44`, display: 'inline-block', whiteSpace: 'nowrap' }}>
@@ -868,6 +977,54 @@ export default function Bookings() {
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Vehicle Number</small>
                     <span style={{ fontWeight: 600 }}>{selectedDetailedBooking.vehicle_number || 'None'}</span>
                   </div>
+                  <div>
+                    <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Booking Source</small>
+                    <span style={{ fontWeight: 600 }}>
+                      {(() => {
+                        const { isAgent, name, phone } = parseAgentSource(selectedDetailedBooking.booking_source);
+                        if (isAgent) {
+                          return (
+                            <span>
+                              Agent: {name} {phone && (
+                                <>
+                                  {' | '}
+                                  <a href={`tel:${phone}`} style={{ color: 'var(--primary)', textDecoration: 'underline' }} onClick={(e) => e.stopPropagation()}>
+                                    {phone}
+                                  </a>
+                                </>
+                              )}
+                            </span>
+                          );
+                        }
+                        return selectedDetailedBooking.booking_source || 'Direct';
+                      })()}
+                    </span>
+                  </div>
+                  {selectedDetailedBooking.additional_guests && (() => {
+                    let guests = [];
+                    try {
+                      guests = typeof selectedDetailedBooking.additional_guests === 'string' 
+                        ? JSON.parse(selectedDetailedBooking.additional_guests) 
+                        : selectedDetailedBooking.additional_guests;
+                    } catch (e) {
+                      console.error("Failed to parse additional guests:", e);
+                    }
+                    if (!Array.isArray(guests) || guests.length === 0) return null;
+                    return (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700, marginBottom: '0.25rem' }}>Additional Guests</small>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                          {guests.map((g, idx) => (
+                            <div key={idx} style={{ padding: '0.5rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', fontSize: '0.85rem' }}>
+                              <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{g.name}</div>
+                              {g.phone && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.1rem' }}>Phone: {g.phone}</div>}
+                              {g.email && <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>Email: {g.email}</div>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 
@@ -938,12 +1095,15 @@ export default function Bookings() {
               <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                 <button 
                   onClick={() => {
-                    const text = compileWhatsAppTemplate(whatsappTemplates.confirm, selectedDetailedBooking);
+                    const isAgent = selectedDetailedBooking.booking_source && (selectedDetailedBooking.booking_source.startsWith('Agent') || selectedDetailedBooking.booking_source.toLowerCase().includes('agent'));
+                    const defaultOption = isAgent ? 'agent' : (selectedDetailedBooking.balance_amount === 0 ? 'online' : 'property');
+                    const text = compileWhatsAppTemplate(whatsappTemplates.confirm, selectedDetailedBooking, '', defaultOption);
                     setWhatsappGenerator({
                       open: true,
                       templateType: 'confirm',
                       messageText: text,
-                      paymentAmount: ''
+                      paymentAmount: '',
+                      paymentOption: defaultOption
                     });
                   }} 
                   className="btn btn-outline" 
@@ -1058,16 +1218,111 @@ export default function Bookings() {
               </div>
             )}
 
+            {whatsappGenerator.templateType === 'confirm' && (
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Payment Option</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                  {[
+                    { id: 'online', label: 'Online Payment' },
+                    { id: 'agent', label: 'Payable to Agent' },
+                    { id: 'property', label: 'Pay at Property' }
+                  ].map(opt => {
+                    const isSelected = whatsappGenerator.paymentOption === opt.id;
+                    return (
+                      <button
+                        type="button"
+                        key={opt.id}
+                        onClick={() => {
+                          const text = compileWhatsAppTemplate(whatsappTemplates.confirm, selectedDetailedBooking, '', opt.id);
+                          setWhatsappGenerator({
+                            ...whatsappGenerator,
+                            paymentOption: opt.id,
+                            messageText: text
+                          });
+                        }}
+                        style={{
+                          padding: '0.5rem',
+                          fontSize: '0.8rem',
+                          fontWeight: 600,
+                          borderRadius: '8px',
+                          border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
+                          background: isSelected ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-secondary)',
+                          color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          transition: 'all 0.15s'
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="form-group">
               <label className="form-label" style={{ fontWeight: 600 }}>Message Text Preview</label>
               <textarea 
                 className="form-input" 
                 rows={9} 
-                style={{ fontFamily: 'inherit', resize: 'vertical', height: 'auto', padding: '0.75rem', fontSize: '0.9rem' }}
+                style={{ fontFamily: 'inherit', resize: 'vertical', height: 'auto', padding: '0.75rem', fontSize: '0.9rem', marginBottom: '1rem' }}
                 value={whatsappGenerator.messageText} 
                 onChange={(e) => setWhatsappGenerator({ ...whatsappGenerator, messageText: e.target.value })}
               />
             </div>
+
+            {/* Contact Selector if additional guests exist */}
+            {(() => {
+              let guests = [];
+              try {
+                guests = typeof selectedDetailedBooking.additional_guests === 'string' 
+                  ? JSON.parse(selectedDetailedBooking.additional_guests) 
+                  : selectedDetailedBooking.additional_guests;
+              } catch (e) {
+                console.error(e);
+              }
+              
+              const contacts = [
+                { name: `${selectedDetailedBooking.guest_name} (Primary)`, phone: selectedDetailedBooking.phone_number },
+                ...(Array.isArray(guests) ? guests : []).map(g => ({ name: g.name, phone: g.phone || g.phone_number })).filter(c => c.phone)
+              ];
+
+              if (contacts.length <= 1) return null;
+
+              return (
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary)' }}>Send to Contact</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {contacts.map((contact, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => {
+                          let rawPhone = contact.phone || '';
+                          let cleanedPhone = rawPhone.replace(/\D/g, '');
+                          if (!rawPhone.trim().startsWith('+') && cleanedPhone.length === 10) {
+                            cleanedPhone = '91' + cleanedPhone;
+                          }
+                          const encodedText = encodeURIComponent(whatsappGenerator.messageText);
+                          const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
+                          window.open(waUrl, '_blank');
+                        }}
+                        className="btn btn-outline"
+                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1rem', fontSize: '0.85rem', height: 'auto', textAlign: 'left', borderColor: '#22c55e', background: 'rgba(34, 197, 94, 0.03)' }}
+                      >
+                        <div>
+                          <strong style={{ color: 'var(--text-main)' }}>{contact.name}</strong>
+                          <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>({contact.phone})</span>
+                        </div>
+                        <span style={{ color: '#22c55e', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          Send <Send size={12} />
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1.5rem' }}>
               <button 
@@ -1081,18 +1336,35 @@ export default function Bookings() {
                 <Copy size={16} /> Copy Message
               </button>
               
-              <button 
-                onClick={() => {
-                  const cleanedPhone = selectedDetailedBooking.phone_number.replace(/\D/g, '');
-                  const encodedText = encodeURIComponent(whatsappGenerator.messageText);
-                  const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
-                  window.open(waUrl, '_blank');
-                }} 
-                className="btn btn-primary"
-                style={{ background: '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', height: '40px' }}
-              >
-                <Send size={16} /> Send via WhatsApp
-              </button>
+              {(() => {
+                let guests = [];
+                try {
+                  guests = typeof selectedDetailedBooking.additional_guests === 'string' 
+                    ? JSON.parse(selectedDetailedBooking.additional_guests) 
+                    : selectedDetailedBooking.additional_guests;
+                } catch (e) {}
+                const hasAdditional = Array.isArray(guests) && guests.some(g => g.phone || g.phone_number);
+                if (hasAdditional) return null; // Recipients are selected individually above
+
+                return (
+                  <button 
+                    onClick={() => {
+                      const rawPhone = selectedDetailedBooking.phone_number || '';
+                      let cleanedPhone = rawPhone.replace(/\D/g, '');
+                      if (!rawPhone.trim().startsWith('+') && cleanedPhone.length === 10) {
+                        cleanedPhone = '91' + cleanedPhone;
+                      }
+                      const encodedText = encodeURIComponent(whatsappGenerator.messageText);
+                      const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
+                      window.open(waUrl, '_blank');
+                    }} 
+                    className="btn btn-primary"
+                    style={{ background: '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', height: '40px' }}
+                  >
+                    <Send size={16} /> Send via WhatsApp
+                  </button>
+                );
+              })()}
             </div>
           </div>
         </div>

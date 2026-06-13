@@ -65,6 +65,11 @@ export default function Settings() {
   const [userName, setUserName] = useState(profile?.full_name || '');
   const [loading, setLoading] = useState(false);
   const [savingComm, setSavingComm] = useState(false);
+  const [savingResort, setSavingResort] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
+  const [resortName, setResortName] = useState('');
+  const [resortPhone, setResortPhone] = useState('');
+  const [wifiPassword, setWifiPassword] = useState('chalet2026');
   const [testStatus, setTestStatus] = useState({
     email: { loading: false, success: null, message: '' },
     whatsapp: { loading: false, success: null, message: '' }
@@ -83,23 +88,16 @@ export default function Settings() {
     auto_booking_confirmation: false,
     auto_checkin_reminder: false,
     auto_payment_receipt: false,
-    whatsapp_confirm_msg_template: localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE,
-    whatsapp_receipt_msg_template: localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE,
-    whatsapp_reminder_msg_template: localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE,
-    whatsapp_review_msg_template: localStorage.getItem('whatsapp_review_msg_template') || DEFAULT_REVIEW_TEMPLATE
+    whatsapp_confirm_msg_template: DEFAULT_CONFIRM_TEMPLATE,
+    whatsapp_receipt_msg_template: DEFAULT_RECEIPT_TEMPLATE,
+    whatsapp_reminder_msg_template: DEFAULT_REMINDER_TEMPLATE,
+    whatsapp_review_msg_template: DEFAULT_REVIEW_TEMPLATE
   });
 
   // Custom Tags Manager State
-  const [customTags, setCustomTags] = useState(() => {
-    try {
-      const saved = localStorage.getItem('whatsapp_custom_tags');
-      return saved ? JSON.parse(saved) : [
-        { key: 'wifi_password', value: 'chalet2026' }
-      ];
-    } catch {
-      return [];
-    }
-  });
+  const [customTags, setCustomTags] = useState([
+    { key: 'wifi_password', value: 'chalet2026' }
+  ]);
 
   const [newTagKey, setNewTagKey] = useState('');
   const [newTagVal, setNewTagVal] = useState('');
@@ -110,7 +108,7 @@ export default function Settings() {
     const cleanKey = newTagKey.trim().toLowerCase().replace(/[^a-z0-9_]/g, '');
     if (!cleanKey) return;
     
-    const defaultTagKeys = ['guest_name', 'booking_id', 'check_in_date', 'check_in_time', 'check_out_date', 'check_out_time', 'duration_of_stay', 'room_type', 'num_rooms', 'num_guests', 'adults_count', 'kids_count', 'breakfast', 'total_amount', 'advance_paid', 'balance_amount', 'vehicle_number', 'payment_amount', 'resort_name', 'resort_phone', 'agent_name'];
+    const defaultTagKeys = ['guest_name', 'booking_id', 'check_in_date', 'check_in_time', 'check_out_date', 'check_out_time', 'duration_of_stay', 'room_type', 'num_rooms', 'num_guests', 'adults_count', 'kids_count', 'breakfast', 'total_amount', 'advance_paid', 'balance_amount', 'vehicle_number', 'payment_amount', 'resort_name', 'resort_phone', 'agent_name', 'agent_phone', 'booking_source'];
     if (defaultTagKeys.includes(cleanKey) || customTags.some(t => t.key === cleanKey)) {
       alert("This tag key already exists.");
       return;
@@ -118,7 +116,6 @@ export default function Settings() {
 
     const updated = [...customTags, { key: cleanKey, value: newTagVal }];
     setCustomTags(updated);
-    localStorage.setItem('whatsapp_custom_tags', JSON.stringify(updated));
     setNewTagKey('');
     setNewTagVal('');
   };
@@ -126,7 +123,6 @@ export default function Settings() {
   const handleRemoveCustomTag = (keyToRemove) => {
     const updated = customTags.filter(t => t.key !== keyToRemove);
     setCustomTags(updated);
-    localStorage.setItem('whatsapp_custom_tags', JSON.stringify(updated));
   };
 
   // Keep track of which template textarea is currently focused/active
@@ -178,9 +174,27 @@ export default function Settings() {
     setCommSettings(prev => ({ ...prev, [fieldName]: defaultValue }));
   };
 
+  const fetchResortDetails = async () => {
+    if (!activeResortId) return;
+    try {
+      const { data, error } = await supabase
+        .from('resorts')
+        .select('name, phone')
+        .eq('id', activeResortId)
+        .maybeSingle();
+      if (data) {
+        setResortName(data.name || '');
+        setResortPhone(data.phone || '');
+      }
+    } catch (e) {
+      console.error("Error fetching resort details:", e);
+    }
+  };
+
   useEffect(() => {
     if (activeResortId) {
       fetchCommSettings();
+      fetchResortDetails();
     }
   }, [activeResortId]);
 
@@ -193,10 +207,10 @@ export default function Settings() {
         .maybeSingle();
       
       if (data) {
-        const confirm_tpl = data.whatsapp_confirm_msg_template || localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE;
-        const receipt_tpl = data.whatsapp_receipt_msg_template || localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE;
-        const reminder_tpl = data.whatsapp_reminder_msg_template || localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE;
-        const review_tpl = data.whatsapp_review_msg_template || localStorage.getItem('whatsapp_review_msg_template') || DEFAULT_REVIEW_TEMPLATE;
+        const confirm_tpl = data.whatsapp_confirm_msg_template || DEFAULT_CONFIRM_TEMPLATE;
+        const receipt_tpl = data.whatsapp_receipt_msg_template || DEFAULT_RECEIPT_TEMPLATE;
+        const reminder_tpl = data.whatsapp_reminder_msg_template || DEFAULT_REMINDER_TEMPLATE;
+        const review_tpl = data.whatsapp_review_msg_template || DEFAULT_REVIEW_TEMPLATE;
         setCommSettings({
           email_enabled: data.email_enabled || false,
           email_api_key: data.email_api_key || '',
@@ -214,29 +228,82 @@ export default function Settings() {
           whatsapp_reminder_msg_template: reminder_tpl,
           whatsapp_review_msg_template: review_tpl
         });
-        localStorage.setItem('whatsapp_confirm_msg_template', confirm_tpl);
-        localStorage.setItem('whatsapp_receipt_msg_template', receipt_tpl);
-        localStorage.setItem('whatsapp_reminder_msg_template', reminder_tpl);
-        localStorage.setItem('whatsapp_review_msg_template', review_tpl);
+        if (data.whatsapp_custom_tags) {
+          try {
+            const tags = typeof data.whatsapp_custom_tags === 'string' ? JSON.parse(data.whatsapp_custom_tags) : data.whatsapp_custom_tags;
+            setCustomTags(tags);
+            const wifiTag = tags.find(t => t.key === 'wifi_password');
+            if (wifiTag) {
+              setWifiPassword(wifiTag.value || '');
+            }
+          } catch (e) {
+            console.error("Failed to parse custom tags:", e);
+          }
+        }
       }
     } catch (err) {
       console.error("Error fetching comm settings:", err);
     }
   };
 
-  const saveCommSettings = async (e) => {
+  const saveResortDetails = async (e) => {
     e.preventDefault();
-    setSavingComm(true);
-    // Save locally
-    localStorage.setItem('whatsapp_confirm_msg_template', commSettings.whatsapp_confirm_msg_template);
-    localStorage.setItem('whatsapp_receipt_msg_template', commSettings.whatsapp_receipt_msg_template);
-    localStorage.setItem('whatsapp_reminder_msg_template', commSettings.whatsapp_reminder_msg_template);
-    localStorage.setItem('whatsapp_review_msg_template', commSettings.whatsapp_review_msg_template);
+    setSavingResort(true);
     try {
+      const { error: resortError } = await supabase
+        .from('resorts')
+        .update({ name: resortName, phone: resortPhone })
+        .eq('id', activeResortId);
+      if (resortError) throw resortError;
+
+      const updatedTags = [...customTags];
+      const wifiIndex = updatedTags.findIndex(t => t.key === 'wifi_password');
+      if (wifiIndex !== -1) {
+        updatedTags[wifiIndex] = { key: 'wifi_password', value: wifiPassword };
+      } else {
+        updatedTags.push({ key: 'wifi_password', value: wifiPassword });
+      }
+      setCustomTags(updatedTags);
+
       const payload = {
         tenant_id: profile.id,
         resort_id: activeResortId,
         ...commSettings,
+        whatsapp_custom_tags: updatedTags,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error: commError } = await supabase
+        .from('tenant_integrations')
+        .upsert(payload, { onConflict: 'resort_id' });
+      if (commError) throw commError;
+
+      alert("Resort details and Wi-Fi password updated successfully!");
+    } catch (err) {
+      alert("Error saving resort info: " + err.message);
+    } finally {
+      setSavingResort(false);
+    }
+  };
+
+  const saveCommSettings = async (e) => {
+    e.preventDefault();
+    setSavingComm(true);
+    try {
+      const updatedTags = [...customTags];
+      const wifiIndex = updatedTags.findIndex(t => t.key === 'wifi_password');
+      if (wifiIndex !== -1) {
+        updatedTags[wifiIndex] = { key: 'wifi_password', value: wifiPassword };
+      } else {
+        updatedTags.push({ key: 'wifi_password', value: wifiPassword });
+      }
+      setCustomTags(updatedTags);
+
+      const payload = {
+        tenant_id: profile.id,
+        resort_id: activeResortId,
+        ...commSettings,
+        whatsapp_custom_tags: updatedTags,
         updated_at: new Date().toISOString()
       };
 
@@ -247,7 +314,7 @@ export default function Settings() {
       if (error) {
         // Fallback: If DB columns do not exist, try upserting without template columns
         if (error.message && (error.message.includes('column') || error.code === '42703')) {
-          console.warn("DB template columns missing. Saving templates in LocalStorage and other configuration in database.");
+          console.warn("DB template columns missing. Saving other configuration in database.");
           const { whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, ...cleanSettings } = commSettings;
           const retryPayload = {
             tenant_id: profile.id,
@@ -359,234 +426,379 @@ export default function Settings() {
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
         {/* Sidebar Nav */}
         <aside style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-           <div style={{ padding: '0.75rem 1rem', background: 'var(--primary)', color: 'white', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-             <SettingsIcon size={18} /> General Settings
-           </div>
-           <div style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', borderRadius: '8px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-             <ShieldAlert size={18} /> Security
-           </div>
+          <button 
+            type="button"
+            onClick={() => setActiveTab('general')}
+            style={{ 
+              padding: '0.75rem 1rem', 
+              background: activeTab === 'general' ? 'var(--primary)' : 'transparent', 
+              color: activeTab === 'general' ? 'white' : 'var(--text-muted)', 
+              borderRadius: '8px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem',
+              border: 'none',
+              textAlign: 'left',
+              width: '100%',
+              fontSize: '0.95rem',
+              fontWeight: 500,
+              transition: 'all 0.2s'
+            }}
+          >
+            <SettingsIcon size={18} /> General Settings
+          </button>
+
+          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+            <button 
+              type="button"
+              onClick={() => setActiveTab('templates')}
+              style={{ 
+                padding: '0.75rem 1rem', 
+                background: activeTab === 'templates' ? 'var(--primary)' : 'transparent', 
+                color: activeTab === 'templates' ? 'white' : 'var(--text-muted)', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem',
+                border: 'none',
+                textAlign: 'left',
+                width: '100%',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}
+            >
+              <MessageCircle size={18} /> Templates Management
+            </button>
+          )}
+
+          <button 
+            type="button"
+            onClick={() => setActiveTab('security')}
+            style={{ 
+              padding: '0.75rem 1rem', 
+              background: activeTab === 'security' ? 'var(--primary)' : 'transparent', 
+              color: activeTab === 'security' ? 'white' : 'var(--text-muted)', 
+              borderRadius: '8px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem',
+              border: 'none',
+              textAlign: 'left',
+              width: '100%',
+              fontSize: '0.95rem',
+              fontWeight: 500,
+              transition: 'all 0.2s'
+            }}
+          >
+            <ShieldAlert size={18} /> Security
+          </button>
         </aside>
 
         <main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          {/* 1. User Profile Section */}
-          <div className="card">
-            <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <User size={24} color="var(--primary)" /> User Profile
-            </h2>
-            <form onSubmit={updateProfile}>
-              <div className="form-group">
-                <label className="form-label">Full Name</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={userName} 
-                  onChange={e => setUserName(e.target.value)} 
-                  required 
-                />
+          {/* GENERAL SETTINGS TAB */}
+          {activeTab === 'general' && (
+            <>
+              {/* User Profile Section */}
+              <div className="card">
+                <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <User size={24} color="var(--primary)" /> User Profile
+                </h2>
+                <form onSubmit={updateProfile}>
+                  <div className="form-group">
+                    <label className="form-label">Full Name</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={userName} 
+                      onChange={e => setUserName(e.target.value)} 
+                      required 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Email Address (Read-only)</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={session?.user?.email || ''} 
+                      disabled 
+                      style={{ opacity: 0.6, cursor: 'not-allowed' }} 
+                    />
+                  </div>
+                  <button type="submit" className="btn btn-primary" disabled={loading}>
+                    {loading ? 'Saving...' : 'Update Profile'}
+                  </button>
+                </form>
               </div>
-              <div className="form-group">
-                <label className="form-label">Email Address (Read-only)</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={session?.user?.email || ''} 
-                  disabled 
-                  style={{ opacity: 0.6, cursor: 'not-allowed' }} 
-                />
-              </div>
-              <button type="submit" className="btn btn-primary" disabled={loading}>
-                {loading ? 'Saving...' : 'Update Profile'}
-              </button>
-            </form>
-          </div>
 
-          {/* 2. Communications Section */}
-          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+              {/* Resort & Wi-Fi Details Section */}
+              {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+                <div className="card">
+                  <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <SettingsIcon size={24} color="var(--primary)" /> Resort & Wi-Fi Details
+                  </h2>
+                  <form onSubmit={saveResortDetails}>
+                    <div className="form-group">
+                      <label className="form-label">Resort Name</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        value={resortName} 
+                        onChange={e => setResortName(e.target.value)} 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Resort Contact Number</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        value={resortPhone} 
+                        onChange={e => setResortPhone(e.target.value)} 
+                        required 
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Resort Wi-Fi Password</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        value={wifiPassword} 
+                        onChange={e => setWifiPassword(e.target.value)} 
+                        required 
+                      />
+                    </div>
+                    <button type="submit" className="btn btn-primary" disabled={savingResort}>
+                      {savingResort ? 'Saving...' : 'Save Resort Details'}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Communications API Configurations */}
+              {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+                <div className="card">
+                  <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <Mail size={24} color="var(--primary)" /> Communications & Automations
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Configure API settings and automated actions.</p>
+                  
+                  <form onSubmit={saveCommSettings}>
+                    {/* Email (Resend) */}
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>
+                            <Mail size={20} color="var(--primary)" />
+                          </div>
+                          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Email Integration (Resend)</h3>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                              type="email" 
+                              placeholder="Test Email..." 
+                              className="form-input" 
+                              style={{ height: '32px', width: '160px', fontSize: '0.75rem' }} 
+                              value={testEmail} 
+                              onChange={e => setTestEmail(e.target.value)} 
+                            />
+                            <button type="button" onClick={() => testConnection('email')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={!commSettings.email_api_key || testStatus.email.loading}>
+                              {testStatus.email.loading ? <Loader2 size={14} className="animate-spin" /> : 'Send Test'}
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => setCommSettings({...commSettings, email_enabled: !commSettings.email_enabled})}
+                              className={`btn ${commSettings.email_enabled ? 'btn-primary' : 'btn-outline'}`}
+                              style={{ 
+                                height: '32px', 
+                                fontSize: '0.75rem', 
+                                padding: '0 0.75rem', 
+                                minWidth: '80px',
+                                background: commSettings.email_enabled ? 'var(--primary)' : 'transparent',
+                                color: commSettings.email_enabled ? 'white' : 'var(--text-main)',
+                                border: commSettings.email_enabled ? 'none' : '1px solid var(--border)'
+                              }}
+                            >
+                              {commSettings.email_enabled ? 'Active' : 'Inactive'}
+                            </button>
+                          </div>
+                          {testStatus.email.message && (
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '0.5rem',
+                              color: testStatus.email.success === null ? 'var(--text-muted)' : (testStatus.email.success ? '#10b981' : '#ef4444'),
+                              background: testStatus.email.success === null ? 'rgba(0,0,0,0.05)' : (testStatus.email.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              width: 'fit-content'
+                            }}>
+                              {testStatus.email.loading ? <Loader2 size={12} className="animate-spin" /> : (testStatus.email.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />)}
+                              {testStatus.email.message}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div className="grid-2" style={{ gap: '1.5rem' }}>
+                        <div className="form-group">
+                          <label className="form-label">Resend API Key</label>
+                          <input type="password" placeholder="re_..." className="form-input" value={commSettings.email_api_key} onChange={e => setCommSettings({...commSettings, email_api_key: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Sender Email Address</label>
+                          <input type="email" placeholder="info@yourdomain.com" className="form-input" value={commSettings.email_from_address} onChange={e => setCommSettings({...commSettings, email_from_address: e.target.value})} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">Sender Name</label>
+                          <input type="text" placeholder="Cheerful Chalet" className="form-input" value={commSettings.email_from_name} onChange={e => setCommSettings({...commSettings, email_from_name: e.target.value})} />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* WhatsApp (Meta) */}
+                    <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>
+                            <MessageCircle size={20} color="#22c55e" />
+                          </div>
+                          <h3 style={{ margin: 0, fontSize: '1.1rem' }}>WhatsApp Integration (Meta Cloud)</h3>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                              type="text" 
+                              placeholder="Test Phone..." 
+                              className="form-input" 
+                              style={{ height: '32px', width: '150px', fontSize: '0.75rem' }} 
+                              value={testPhone} 
+                              onChange={e => setTestPhone(e.target.value)} 
+                            />
+                            <button type="button" onClick={() => testConnection('whatsapp')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={!commSettings.whatsapp_access_token || testStatus.whatsapp.loading}>
+                              {testStatus.whatsapp.loading ? <Loader2 size={14} className="animate-spin" /> : 'Send Test'}
+                            </button>
+                            <button 
+                              type="button" 
+                              onClick={() => setCommSettings({...commSettings, whatsapp_enabled: !commSettings.whatsapp_enabled})}
+                              className={`btn ${commSettings.whatsapp_enabled ? 'btn-primary' : 'btn-outline'}`}
+                              style={{ 
+                                height: '32px', 
+                                fontSize: '0.75rem', 
+                                padding: '0 0.75rem', 
+                                minWidth: '80px',
+                                background: commSettings.whatsapp_enabled ? '#22c55e' : 'transparent',
+                                color: commSettings.whatsapp_enabled ? 'white' : 'var(--text-main)',
+                                border: commSettings.whatsapp_enabled ? 'none' : '1px solid var(--border)'
+                              }}
+                            >
+                              {commSettings.whatsapp_enabled ? 'Active' : 'Inactive'}
+                            </button>
+                          </div>
+                          {testStatus.whatsapp.message && (
+                            <div style={{ 
+                              fontSize: '0.75rem', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              gap: '0.5rem',
+                              color: testStatus.whatsapp.success === null ? 'var(--text-muted)' : (testStatus.whatsapp.success ? '#10b981' : '#ef4444'),
+                              background: testStatus.whatsapp.success === null ? 'rgba(0,0,0,0.05)' : (testStatus.whatsapp.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
+                              padding: '6px 10px',
+                              borderRadius: '6px',
+                              width: 'fit-content'
+                            }}>
+                              {testStatus.whatsapp.loading ? <Loader2 size={12} className="animate-spin" /> : (testStatus.whatsapp.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />)}
+                              {testStatus.whatsapp.message}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <div className="form-group">
+                          <label className="form-label">Permanent Access Token</label>
+                          <input type="password" placeholder="EAAB..." className="form-input" value={commSettings.whatsapp_access_token} onChange={e => setCommSettings({...commSettings, whatsapp_access_token: e.target.value})} />
+                        </div>
+                        <div className="grid-2" style={{ gap: '1.5rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Phone Number ID</label>
+                            <input type="text" placeholder="10555..." className="form-input" value={commSettings.whatsapp_phone_number_id} onChange={e => setCommSettings({...commSettings, whatsapp_phone_number_id: e.target.value})} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Business Account ID</label>
+                            <input type="text" placeholder="12345..." className="form-input" value={commSettings.whatsapp_business_account_id} onChange={e => setCommSettings({...commSettings, whatsapp_business_account_id: e.target.value})} />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Automation Toggles */}
+                    <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Automated Guest Notifications</h3>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={commSettings.auto_booking_confirmation} onChange={e => setCommSettings({...commSettings, auto_booking_confirmation: e.target.checked})} />
+                          <div>
+                            <span style={{ fontWeight: 600, display: 'block' }}>Booking Confirmation</span>
+                            <small style={{ color: 'var(--text-muted)' }}>Send details immediately after a new booking is created.</small>
+                          </div>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={commSettings.auto_checkin_reminder} onChange={e => setCommSettings({...commSettings, auto_checkin_reminder: e.target.checked})} />
+                          <div>
+                            <span style={{ fontWeight: 600, display: 'block' }}>Check-in Reminder</span>
+                            <small style={{ color: 'var(--text-muted)' }}>Send welcome info 24 hours before guest arrival.</small>
+                          </div>
+                        </label>
+                        <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}>
+                          <input type="checkbox" checked={commSettings.auto_payment_receipt} onChange={e => setCommSettings({...commSettings, auto_payment_receipt: e.target.checked})} />
+                          <div>
+                            <span style={{ fontWeight: 600, display: 'block' }}>Payment Receipt</span>
+                            <small style={{ color: 'var(--text-muted)' }}>Send an official receipt whenever a payment is logged.</small>
+                          </div>
+                        </label>
+                      </div>
+                    </div>
+
+                    <button type="submit" className="btn btn-primary" disabled={savingComm} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center', padding: '1rem' }}>
+                      <Save size={18} /> {savingComm ? 'Saving Settings...' : 'Save API Configuration'}
+                    </button>
+                  </form>
+                </div>
+              )}
+
+              {/* Appearance Section */}
+              <div className="card">
+                <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <Palette size={24} color="var(--primary)" /> Appearance & Theme
+                </h2>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <p style={{ margin: 0, fontWeight: '500' }}>Current Mode: {theme === 'light' ? 'Light (Eco)' : 'Dark (Luxury)'}</p>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Customize how the dashboard looks on your screen.</p>
+                  </div>
+                  <button className="btn btn-outline" onClick={toggleTheme}>
+                    Toggle Theme
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* TEMPLATES MANAGEMENT TAB */}
+          {activeTab === 'templates' && (profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
             <div className="card">
               <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <Mail size={24} color="var(--primary)" /> Communications & Automations
+                <MessageCircle size={24} color="var(--primary)" /> Templates Management
               </h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Configure how you interact with your guests automatically.</p>
-              
+              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Customize templates and variables for client-side WhatsApp messaging.</p>
+
               <form onSubmit={saveCommSettings}>
-                {/* Email (Resend) */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ background: 'rgba(59, 130, 246, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>
-                        <Mail size={20} color="var(--primary)" />
-                      </div>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Email Integration (Resend)</h3>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input 
-                          type="email" 
-                          placeholder="Test Email..." 
-                          className="form-input" 
-                          style={{ height: '32px', width: '160px', fontSize: '0.75rem' }} 
-                          value={testEmail} 
-                          onChange={e => setTestEmail(e.target.value)} 
-                        />
-                        <button type="button" onClick={() => testConnection('email')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={!commSettings.email_api_key || testStatus.email.loading}>
-                          {testStatus.email.loading ? <Loader2 size={14} className="animate-spin" /> : 'Send Test'}
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => setCommSettings({...commSettings, email_enabled: !commSettings.email_enabled})}
-                          className={`btn ${commSettings.email_enabled ? 'btn-primary' : 'btn-outline'}`}
-                          style={{ 
-                            height: '32px', 
-                            fontSize: '0.75rem', 
-                            padding: '0 0.75rem', 
-                            minWidth: '80px',
-                            background: commSettings.email_enabled ? 'var(--primary)' : 'transparent',
-                            color: commSettings.email_enabled ? 'white' : 'var(--text-main)',
-                            border: commSettings.email_enabled ? 'none' : '1px solid var(--border)'
-                          }}
-                        >
-                          {commSettings.email_enabled ? 'Active' : 'Inactive'}
-                        </button>
-                      </div>
-                      {testStatus.email.message && (
-                        <div style={{ 
-                          fontSize: '0.75rem', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '0.5rem',
-                          color: testStatus.email.success === null ? 'var(--text-muted)' : (testStatus.email.success ? '#10b981' : '#ef4444'),
-                          background: testStatus.email.success === null ? 'rgba(0,0,0,0.05)' : (testStatus.email.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
-                          padding: '6px 10px',
-                          borderRadius: '6px',
-                          width: 'fit-content'
-                        }}>
-                          {testStatus.email.loading ? <Loader2 size={12} className="animate-spin" /> : (testStatus.email.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />)}
-                          {testStatus.email.message}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="grid-2" style={{ gap: '1.5rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">Resend API Key</label>
-                      <input type="password" placeholder="re_..." className="form-input" value={commSettings.email_api_key} onChange={e => setCommSettings({...commSettings, email_api_key: e.target.value})} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Sender Email Address</label>
-                      <input type="email" placeholder="info@yourdomain.com" className="form-input" value={commSettings.email_from_address} onChange={e => setCommSettings({...commSettings, email_from_address: e.target.value})} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Sender Name</label>
-                      <input type="text" placeholder="Cheerful Chalet" className="form-input" value={commSettings.email_from_name} onChange={e => setCommSettings({...commSettings, email_from_name: e.target.value})} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* WhatsApp (Meta) */}
-                <div style={{ border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ background: 'rgba(34, 197, 94, 0.1)', padding: '0.5rem', borderRadius: '8px' }}>
-                        <MessageCircle size={20} color="#22c55e" />
-                      </div>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem' }}>WhatsApp Integration (Meta Cloud)</h3>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input 
-                          type="text" 
-                          placeholder="Test Phone..." 
-                          className="form-input" 
-                          style={{ height: '32px', width: '150px', fontSize: '0.75rem' }} 
-                          value={testPhone} 
-                          onChange={e => setTestPhone(e.target.value)} 
-                        />
-                        <button type="button" onClick={() => testConnection('whatsapp')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={!commSettings.whatsapp_access_token || testStatus.whatsapp.loading}>
-                          {testStatus.whatsapp.loading ? <Loader2 size={14} className="animate-spin" /> : 'Send Test'}
-                        </button>
-                        <button 
-                          type="button" 
-                          onClick={() => setCommSettings({...commSettings, whatsapp_enabled: !commSettings.whatsapp_enabled})}
-                          className={`btn ${commSettings.whatsapp_enabled ? 'btn-primary' : 'btn-outline'}`}
-                          style={{ 
-                            height: '32px', 
-                            fontSize: '0.75rem', 
-                            padding: '0 0.75rem', 
-                            minWidth: '80px',
-                            background: commSettings.whatsapp_enabled ? '#22c55e' : 'transparent',
-                            color: commSettings.whatsapp_enabled ? 'white' : 'var(--text-main)',
-                            border: commSettings.whatsapp_enabled ? 'none' : '1px solid var(--border)'
-                          }}
-                        >
-                          {commSettings.whatsapp_enabled ? 'Active' : 'Inactive'}
-                        </button>
-                      </div>
-                      {testStatus.whatsapp.message && (
-                        <div style={{ 
-                          fontSize: '0.75rem', 
-                          display: 'flex', 
-                          alignItems: 'center', 
-                          gap: '0.5rem',
-                          color: testStatus.whatsapp.success === null ? 'var(--text-muted)' : (testStatus.whatsapp.success ? '#10b981' : '#ef4444'),
-                          background: testStatus.whatsapp.success === null ? 'rgba(0,0,0,0.05)' : (testStatus.whatsapp.success ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)'),
-                          padding: '6px 10px',
-                          borderRadius: '6px',
-                          width: 'fit-content'
-                        }}>
-                          {testStatus.whatsapp.loading ? <Loader2 size={12} className="animate-spin" /> : (testStatus.whatsapp.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />)}
-                          {testStatus.whatsapp.message}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <div className="form-group">
-                      <label className="form-label">Permanent Access Token</label>
-                      <input type="password" placeholder="EAAB..." className="form-input" value={commSettings.whatsapp_access_token} onChange={e => setCommSettings({...commSettings, whatsapp_access_token: e.target.value})} />
-                    </div>
-                    <div className="grid-2" style={{ gap: '1.5rem' }}>
-                      <div className="form-group">
-                        <label className="form-label">Phone Number ID</label>
-                        <input type="text" placeholder="10555..." className="form-input" value={commSettings.whatsapp_phone_number_id} onChange={e => setCommSettings({...commSettings, whatsapp_phone_number_id: e.target.value})} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Business Account ID</label>
-                        <input type="text" placeholder="12345..." className="form-input" value={commSettings.whatsapp_business_account_id} onChange={e => setCommSettings({...commSettings, whatsapp_business_account_id: e.target.value})} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Automation Toggles */}
-                <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem' }}>
-                  <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Automated Guest Notifications</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={commSettings.auto_booking_confirmation} onChange={e => setCommSettings({...commSettings, auto_booking_confirmation: e.target.checked})} />
-                      <div>
-                        <span style={{ fontWeight: 600, display: 'block' }}>Booking Confirmation</span>
-                        <small style={{ color: 'var(--text-muted)' }}>Send details immediately after a new booking is created.</small>
-                      </div>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={commSettings.auto_checkin_reminder} onChange={e => setCommSettings({...commSettings, auto_checkin_reminder: e.target.checked})} />
-                      <div>
-                        <span style={{ fontWeight: 600, display: 'block' }}>Check-in Reminder</span>
-                        <small style={{ color: 'var(--text-muted)' }}>Send welcome info 24 hours before guest arrival.</small>
-                      </div>
-                    </label>
-                    <label style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer' }}>
-                      <input type="checkbox" checked={commSettings.auto_payment_receipt} onChange={e => setCommSettings({...commSettings, auto_payment_receipt: e.target.checked})} />
-                      <div>
-                        <span style={{ fontWeight: 600, display: 'block' }}>Payment Receipt</span>
-                        <small style={{ color: 'var(--text-muted)' }}>Send an official receipt whenever a payment is logged.</small>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-
                 {/* WhatsApp Text Templates */}
                 <div style={{ background: 'rgba(0,0,0,0.02)', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
                   <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -606,6 +818,7 @@ export default function Settings() {
                       '{num_rooms}', '{num_guests}', '{adults_count}', '{kids_count}', '{breakfast}', 
                       '{total_amount}', '{advance_paid}', '{balance_amount}', '{vehicle_number}', 
                       '{payment_amount}', '{resort_name}', '{resort_phone}', '{agent_name}',
+                      '{agent_phone}', '{booking_source}',
                       ...customTags.map(t => `{${t.key}}`)
                     ].map(tag => (
                       <button
@@ -718,113 +931,102 @@ export default function Settings() {
                     </div>
                   </div>
 
-                    {/* Custom Template Variables */}
-                    <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                      <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        Manage Custom Tags
-                      </h4>
-                      <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>
-                        Add custom tags (e.g. <code>wifi_password</code>) and define their values. They will appear in the quick tags list above.
-                      </p>
+                  {/* Custom Template Variables */}
+                  <div style={{ marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+                    <h4 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      Manage Custom Tags
+                    </h4>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginBottom: '1rem' }}>
+                      Add custom tags (e.g. <code>wifi_password</code>) and define their values. They will appear in the quick tags list above.
+                    </p>
 
-                      {/* Add Custom Tag Form */}
-                      <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 1, minWidth: '150px' }}>
-                          <input 
-                            type="text" 
-                            className="form-input" 
-                            style={{ height: '36px', fontSize: '0.85rem', padding: '0 0.5rem' }} 
-                            placeholder="Tag Key (e.g. wifi_password)" 
-                            value={newTagKey}
-                            onChange={e => setNewTagKey(e.target.value)}
-                          />
-                        </div>
-                        <div style={{ flex: 2, minWidth: '200px' }}>
-                          <input 
-                            type="text" 
-                            className="form-input" 
-                            style={{ height: '36px', fontSize: '0.85rem', padding: '0 0.5rem' }} 
-                            placeholder="Tag Value (e.g. chalet2026)" 
-                            value={newTagVal}
-                            onChange={e => setNewTagVal(e.target.value)}
-                          />
-                        </div>
-                        <button 
-                          type="button" 
-                          onClick={handleAddCustomTag}
-                          className="btn btn-outline"
-                          style={{ height: '36px', padding: '0 1rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center' }}
-                        >
-                          Add Tag
-                        </button>
+                    {/* Add Custom Tag Form */}
+                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: '150px' }}>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          style={{ height: '36px', fontSize: '0.85rem', padding: '0 0.5rem' }} 
+                          placeholder="Tag Key (e.g. wifi_password)" 
+                          value={newTagKey}
+                          onChange={e => setNewTagKey(e.target.value)}
+                        />
                       </div>
-
-                      {/* Custom Tags List */}
-                      {customTags.length > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                          {customTags.map(tag => (
-                            <div key={tag.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <code style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', fontFamily: 'monospace' }}>{`{${tag.key}}`}</code>
-                                <span style={{ color: 'var(--text-muted)' }}>:</span>
-                                <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{tag.value}</span>
-                              </div>
-                              <button 
-                                type="button" 
-                                onClick={() => handleRemoveCustomTag(tag.key)} 
-                                style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <small style={{ color: 'var(--text-muted)', display: 'block', fontStyle: 'italic' }}>No custom tags added yet.</small>
-                      )}
+                      <div style={{ flex: 2, minWidth: '200px' }}>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          style={{ height: '36px', fontSize: '0.85rem', padding: '0 0.5rem' }} 
+                          placeholder="Tag Value (e.g. chalet2026)" 
+                          value={newTagVal}
+                          onChange={e => setNewTagVal(e.target.value)}
+                        />
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={handleAddCustomTag}
+                        className="btn btn-outline"
+                        style={{ height: '36px', padding: '0 1rem', fontSize: '0.85rem', display: 'inline-flex', alignItems: 'center' }}
+                      >
+                        Add Tag
+                      </button>
                     </div>
+
+                    {/* Custom Tags List */}
+                    {customTags.length > 0 ? (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        {customTags.map(tag => (
+                          <div key={tag.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <code style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)', fontFamily: 'monospace' }}>{`{${tag.key}}`}</code>
+                              <span style={{ color: 'var(--text-muted)' }}>:</span>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{tag.value}</span>
+                            </div>
+                            <button 
+                              type="button" 
+                              onClick={() => handleRemoveCustomTag(tag.key)} 
+                              style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <small style={{ color: 'var(--text-muted)', display: 'block', fontStyle: 'italic' }}>No custom tags added yet.</small>
+                    )}
                   </div>
+                </div>
 
                 <button type="submit" className="btn btn-primary" disabled={savingComm} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', justifyContent: 'center', padding: '1rem' }}>
-                  <Save size={18} /> {savingComm ? 'Saving Settings...' : 'Save Configuration & Templates'}
+                  <Save size={18} /> {savingComm ? 'Saving Templates...' : 'Save Templates & Custom Tags'}
                 </button>
               </form>
             </div>
           )}
 
-          {/* 3. Appearance Section */}
-          <div className="card">
-            <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Palette size={24} color="var(--primary)" /> Appearance & Theme
-            </h2>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <p style={{ margin: 0, fontWeight: '500' }}>Current Mode: {theme === 'light' ? 'Light (Eco)' : 'Dark (Luxury)'}</p>
-                <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Customize how the dashboard looks on your screen.</p>
-              </div>
-              <button className="btn btn-outline" onClick={toggleTheme}>
-                Toggle Theme
-              </button>
-            </div>
-          </div>
-
-          {/* 4. Danger Zone */}
-          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
-            <div className="card" style={{ border: '1px solid var(--danger)' }}>
-              <h2 style={{ marginBottom: '1rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <ShieldAlert size={24} /> Danger Zone
-              </h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                Factory Reset: This action will permanently delete all transactional history (Bookings, Incomes, Expenses). 
-              </p>
-              <button 
-                className="btn" 
-                style={{ background: 'var(--danger)', color: 'white', border: 'none' }} 
-                onClick={wipeData}
-              >
-                Reset Transactional Data
-              </button>
-            </div>
+          {/* SECURITY TAB */}
+          {activeTab === 'security' && (
+            <>
+              {/* Danger Zone */}
+              {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+                <div className="card" style={{ border: '1px solid var(--danger)' }}>
+                  <h2 style={{ marginBottom: '1rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <ShieldAlert size={24} /> Danger Zone
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+                    Factory Reset: This action will permanently delete all transactional history (Bookings, Incomes, Expenses). 
+                  </p>
+                  <button 
+                    className="btn" 
+                    style={{ background: 'var(--danger)', color: 'white', border: 'none' }} 
+                    onClick={wipeData}
+                  >
+                    Reset Transactional Data
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </main>
       </div>

@@ -8,9 +8,48 @@ import CalendarTooltip from '../components/CalendarTooltip';
 import * as XLSX from 'xlsx';
 import html2canvas from 'html2canvas';
 
+const parseAgentSource = (sourceStr) => {
+  if (!sourceStr) return { isAgent: false, name: '', phone: '' };
+  
+  const str = sourceStr.trim();
+  if (!str.startsWith('Agent:')) {
+    return { isAgent: false, name: str, phone: '' };
+  }
+  
+  const cleaned = str.replace(/^Agent:\s*/i, '').trim();
+  
+  // Pattern 1: Agent: Name | Phone
+  if (cleaned.includes('|')) {
+    const [n, p] = cleaned.split('|');
+    return { isAgent: true, name: (n || '').trim(), phone: (p || '').trim() };
+  }
+  
+  // Pattern 2: Agent: Name (Contact: Phone)
+  const bracketMatch = cleaned.match(/^([^(]+)\(\s*Contact:\s*([^)]+)\)/i);
+  if (bracketMatch) {
+    return { 
+      isAgent: true, 
+      name: bracketMatch[1].trim(), 
+      phone: bracketMatch[2].trim() 
+    };
+  }
+  
+  // Pattern 3: Agent: Name Contact: Phone (without brackets)
+  const contactMatch = cleaned.match(/^([\s\S]+?)\s*Contact:\s*(.+)$/i);
+  if (contactMatch) {
+    return {
+      isAgent: true,
+      name: contactMatch[1].trim(),
+      phone: contactMatch[2].trim()
+    };
+  }
+  
+  return { isAgent: true, name: cleaned, phone: '' };
+};
+
 export default function CalendarView() {
   const navigate = useNavigate();
-  const { activeResortId } = useSettingsStore();
+  const { activeResortId, profile } = useSettingsStore();
   const [bookings, setBookings] = useState([]);
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -59,13 +98,27 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
   const dates = useMemo(() => eachDayOfInterval({ start: startOfMonth(currentDate), end: endOfMonth(currentDate) }), [currentDate]);
 
   useEffect(() => {
-    const saved = localStorage.getItem('cheerful_chalet_whatsapp_template');
-    if (saved) {
-      setShareTemplate(saved);
-    } else {
-      setShareTemplate(DEFAULT_TEMPLATE);
-    }
-  }, []);
+    // Initial fetch of template
+    const loadInitialTemplate = async () => {
+      if (!isSupabaseConfigured() || !activeResortId) return;
+      try {
+        const { data } = await supabase
+          .from('tenant_integrations')
+          .select('whatsapp_share_template')
+          .eq('resort_id', activeResortId)
+          .maybeSingle();
+        if (data && data.whatsapp_share_template) {
+          setShareTemplate(data.whatsapp_share_template);
+        } else {
+          setShareTemplate(DEFAULT_TEMPLATE);
+        }
+      } catch (err) {
+        console.error("Error loading share template:", err);
+        setShareTemplate(DEFAULT_TEMPLATE);
+      }
+    };
+    loadInitialTemplate();
+  }, [activeResortId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -90,10 +143,26 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
     fetchData();
   }, [activeResortId]);
 
-  const handleSaveTemplate = () => {
-    localStorage.setItem('cheerful_chalet_whatsapp_template', shareTemplate);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
+  const handleSaveTemplate = async () => {
+    setIsSaved(false);
+    try {
+      const payload = {
+        tenant_id: profile?.id,
+        resort_id: activeResortId,
+        whatsapp_share_template: shareTemplate,
+        updated_at: new Date().toISOString()
+      };
+      const { error } = await supabase
+        .from('tenant_integrations')
+        .upsert(payload, { onConflict: 'resort_id' });
+      
+      if (error) throw error;
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    } catch (err) {
+      console.error("Error saving share template:", err);
+      alert("Failed to save template: " + err.message);
+    }
   };
 
   const handleResetTemplate = () => {
@@ -858,7 +927,15 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                         </div>
                         <div style={{ textAlign: 'right' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
-                            <span style={{ padding: '0.2rem 0.75rem', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800, background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.2)' }}>{b.booking_source || 'Direct'}</span>
+                             <span style={{ padding: '0.2rem 0.75rem', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800, background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                               {(() => {
+                                 const { isAgent, name, phone } = parseAgentSource(b.booking_source);
+                                 if (isAgent) {
+                                   return `Agent: ${name}${phone ? `, Contact: ${phone}` : ''}`;
+                                 }
+                                 return b.booking_source || 'Direct';
+                               })()}
+                             </span>
                             <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
                           </div>
                           <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
@@ -912,7 +989,26 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                             <div style={{ background: 'var(--bg-color)', p: '0.5rem', borderRadius: '8px' }}><Globe size={20} color="var(--primary)" /></div>
                             <div>
                                 <small style={{ display: 'block', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', fontSize: '0.65rem' }}>Booking Source</small>
-                                <strong style={{ fontSize: '1rem' }}>{selectedBooking.booking_source || 'Direct'}</strong>
+                                 <strong style={{ fontSize: '1rem' }}>
+                                   {(() => {
+                                     const { isAgent, name, phone } = parseAgentSource(selectedBooking.booking_source);
+                                     if (isAgent) {
+                                       return (
+                                         <span>
+                                           Agent: {name} {phone && (
+                                             <>
+                                               {', Contact: '}
+                                               <a href={`tel:${phone}`} style={{ color: 'var(--primary)', textDecoration: 'underline' }} onClick={(e) => e.stopPropagation()}>
+                                                 {phone}
+                                               </a>
+                                             </>
+                                           )}
+                                         </span>
+                                       );
+                                     }
+                                     return selectedBooking.booking_source || 'Direct';
+                                   })()}
+                                 </strong>
                             </div>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

@@ -5,6 +5,118 @@ import { CalendarCheck, CheckCircle2, ArrowLeft } from 'lucide-react';
 import { eachDayOfInterval, isWeekend } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
+const parseAgentSource = (sourceStr) => {
+  if (!sourceStr) return { isAgent: false, name: '', phone: '' };
+  
+  const str = sourceStr.trim();
+  if (!str.startsWith('Agent:')) {
+    return { isAgent: false, name: str, phone: '' };
+  }
+  
+  const cleaned = str.replace(/^Agent:\s*/i, '').trim();
+  
+  // Pattern 1: Agent: Name | Phone
+  if (cleaned.includes('|')) {
+    const [n, p] = cleaned.split('|');
+    return { isAgent: true, name: (n || '').trim(), phone: (p || '').trim() };
+  }
+  
+  // Pattern 2: Agent: Name (Contact: Phone)
+  const bracketMatch = cleaned.match(/^([^(]+)\(\s*Contact:\s*([^)]+)\)/i);
+  if (bracketMatch) {
+    return { 
+      isAgent: true, 
+      name: bracketMatch[1].trim(), 
+      phone: bracketMatch[2].trim() 
+    };
+  }
+  
+  // Pattern 3: Agent: Name Contact: Phone (without brackets)
+  const contactMatch = cleaned.match(/^([\s\S]+?)\s*Contact:\s*(.+)$/i);
+  if (contactMatch) {
+    return {
+      isAgent: true,
+      name: contactMatch[1].trim(),
+      phone: contactMatch[2].trim()
+    };
+  }
+  
+  return { isAgent: true, name: cleaned, phone: '' };
+};
+
+const parsePhone = (fullPhone) => {
+  if (!fullPhone) return { code: '+91', raw: '' };
+  const codes = ['+91', '+1', '+44', '+971', '+61', '+65', '+60', '+63', '+94', '+977'];
+  for (let c of codes) {
+    if (fullPhone.startsWith(c)) {
+      return { code: c, raw: fullPhone.slice(c.length).trim() };
+    }
+  }
+  if (fullPhone.startsWith('+')) {
+    const match = fullPhone.match(/^(\+\d{1,4})/);
+    if (match) {
+      return { code: match[1], raw: fullPhone.slice(match[1].length).trim() };
+    }
+  }
+  return { code: '+91', raw: fullPhone };
+};
+
+const COUNTRY_CODES = [
+  { code: '+91', name: 'India' },
+  { code: '+1', name: 'United States / Canada' },
+  { code: '+44', name: 'United Kingdom' },
+  { code: '+971', name: 'United Arab Emirates' },
+  { code: '+65', name: 'Singapore' },
+  { code: '+60', name: 'Malaysia' },
+  { code: '+63', name: 'Philippines' },
+  { code: '+61', name: 'Australia' },
+  { code: '+64', name: 'New Zealand' },
+  { code: '+94', name: 'Sri Lanka' },
+  { code: '+977', name: 'Nepal' },
+  { code: '+880', name: 'Bangladesh' },
+  { code: '+966', name: 'Saudi Arabia' },
+  { code: '+968', name: 'Oman' },
+  { code: '+974', name: 'Qatar' },
+  { code: '+965', name: 'Kuwait' },
+  { code: '+973', name: 'Bahrain' },
+  { code: '+960', name: 'Maldives' },
+  { code: '+49', name: 'Germany' },
+  { code: '+33', name: 'France' },
+  { code: '+39', name: 'Italy' },
+  { code: '+34', name: 'Spain' },
+  { code: '+31', name: 'Netherlands' },
+  { code: '+41', name: 'Switzerland' },
+  { code: '+27', name: 'South Africa' },
+  { code: '+86', name: 'China' },
+  { code: '+81', name: 'Japan' },
+  { code: '+82', name: 'South Korea' },
+  { code: '+66', name: 'Thailand' },
+  { code: '+62', name: 'Indonesia' },
+  { code: '+84', name: 'Vietnam' },
+  { code: '+353', name: 'Ireland' },
+  { code: '+7', name: 'Russia' },
+  { code: '+55', name: 'Brazil' },
+  { code: '+52', name: 'Mexico' },
+  { code: '+90', name: 'Turkey' },
+  { code: '+32', name: 'Belgium' },
+  { code: '+46', name: 'Sweden' },
+  { code: '+47', name: 'Norway' },
+  { code: '+45', name: 'Denmark' },
+  { code: '+351', name: 'Portugal' },
+  { code: '+30', name: 'Greece' },
+  { code: '+43', name: 'Austria' },
+  { code: '+48', name: 'Poland' },
+  { code: '+358', name: 'Finland' },
+  { code: '+420', name: 'Czech Republic' },
+  { code: '+36', name: 'Hungary' },
+  { code: '+40', name: 'Romania' },
+  { code: '+380', name: 'Ukraine' },
+  { code: '+972', name: 'Israel' },
+  { code: '+20', name: 'Egypt' },
+  { code: '+234', name: 'Nigeria' },
+  { code: '+254', name: 'Kenya' }
+];
+
 export default function BookingForm() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -20,7 +132,7 @@ export default function BookingForm() {
   const [rooms, setRooms] = useState([]);
 
   const [bookingForm, setBookingForm] = useState({
-    guest_name: '', guest_email: '', phone_number: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
+    guest_name: '', guest_email: '', phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
     booking_type: 'Entire Property', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
@@ -30,10 +142,13 @@ export default function BookingForm() {
     room_types_map: {},
     breakfast: 'NA',
     agent_name: '',
-    is_custom_agent: false
+    agent_phone: '',
+    is_custom_agent: false,
+    additional_guests: []
   });
 
   const [agents, setAgents] = useState([]);
+  const [agentPhones, setAgentPhones] = useState({});
 
   useEffect(() => {
     fetchData();
@@ -61,20 +176,22 @@ export default function BookingForm() {
       setRooms(rms.data || []);
 
       // Fetch agents from existing bookings
-      let fetchedAgents = ['Agent Ram', 'Agent Priya', 'Agent Vikram'];
+      let fetchedAgents = [];
       try {
         const { data: bks, error: bksErr } = await supabase
           .from('bookings')
           .select('booking_source')
-          .eq('resort_id', activeResortId);
         if (!bksErr && bks) {
-          const dbAgents = bks
-            .map(b => b.booking_source)
-            .filter(src => src && src.startsWith('Agent:'))
-            .map(src => src.replace('Agent:', '').trim());
-          fetchedAgents = Array.from(new Set([...fetchedAgents, ...dbAgents]));
-        }
-      } catch (e) {
+          const dbAgentsMap = {};
+           bks.forEach(b => {
+             const { isAgent, name, phone } = parseAgentSource(b.booking_source);
+             if (isAgent && name) {
+               dbAgentsMap[name] = phone;
+             }
+           });
+           fetchedAgents = Array.from(new Set([...fetchedAgents, ...Object.keys(dbAgentsMap)]));
+           setAgentPhones(dbAgentsMap);
+        }      } catch (e) {
         console.warn("Could not load agents from bookings:", e);
       }
       setAgents(fetchedAgents);
@@ -107,10 +224,33 @@ export default function BookingForm() {
             initialMap[rid] = roomTypeParts[index] || b.room_type || 'Deluxe Room';
           });
 
+          const parsedPhone = parsePhone(b.phone_number);
+          let rawAdditionalGuests = [];
+          if (b.additional_guests) {
+            try {
+              const parsedGuests = typeof b.additional_guests === 'string' ? JSON.parse(b.additional_guests) : b.additional_guests;
+              if (Array.isArray(parsedGuests)) {
+                rawAdditionalGuests = parsedGuests.map(g => {
+                  const pgPhone = parsePhone(g.phone || g.phone_number);
+                  return {
+                    name: g.name || '',
+                    email: g.email || '',
+                    phone_code: pgPhone.code,
+                    phone_raw: pgPhone.raw
+                  };
+                });
+              }
+            } catch (e) {
+              console.error("Failed to parse additional guests:", e);
+            }
+          }
+
           setBookingForm({
             guest_name: b.guest_name,
             guest_email: b.guest_email || '',
             phone_number: b.phone_number,
+            phone_code: parsedPhone.code,
+            phone_raw: parsedPhone.raw,
             check_in_date: b.check_in_date.split('T')[0],
             check_out_date: b.check_out_date.split('T')[0],
             adults_count: b.adults_count || b.number_of_guests || 1,
@@ -126,7 +266,14 @@ export default function BookingForm() {
             advance_paid: b.advance_paid || 0,
             balance_amount: b.balance_amount || 0,
             booking_source: b.booking_source ? (b.booking_source.startsWith('Agent') ? 'Agent' : (['Direct', 'Airbnb', 'Booking.com', 'Agent'].includes(b.booking_source) ? b.booking_source : 'Other')) : 'Direct',
-            agent_name: b.booking_source && b.booking_source.startsWith('Agent:') ? b.booking_source.replace('Agent:', '').trim() : '',
+            agent_name: (() => {
+              const { isAgent, name } = parseAgentSource(b.booking_source);
+              return isAgent ? name : '';
+            })(),
+            agent_phone: (() => {
+              const { isAgent, phone } = parseAgentSource(b.booking_source);
+              return isAgent ? phone : '';
+            })(),
             is_custom_agent: false,
             custom_booking_source: b.booking_source && !['Direct', 'Airbnb', 'Booking.com', 'Agent'].includes(b.booking_source) && !b.booking_source.startsWith('Agent') ? b.booking_source : '',
             status: b.status,
@@ -140,7 +287,8 @@ export default function BookingForm() {
             is_loading_edit: true,
             room_type: b.room_type || 'Deluxe Room',
             room_types_map: initialMap,
-            breakfast: b.breakfast || 'NA'
+            breakfast: b.breakfast || 'NA',
+            additional_guests: rawAdditionalGuests
           });
           setOriginalStatus(b.status);
         }
@@ -234,6 +382,28 @@ export default function BookingForm() {
     }));
   }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid, bookingForm.extra_guest_charges]);
 
+  const handleAddAdditionalGuest = () => {
+    setBookingForm(prev => ({
+      ...prev,
+      additional_guests: [...(prev.additional_guests || []), { name: '', email: '', phone_code: '+91', phone_raw: '' }]
+    }));
+  };
+
+  const handleRemoveAdditionalGuest = (index) => {
+    setBookingForm(prev => ({
+      ...prev,
+      additional_guests: prev.additional_guests.filter((_, idx) => idx !== index)
+    }));
+  };
+
+  const handleUpdateAdditionalGuest = (index, field, value) => {
+    setBookingForm(prev => {
+      const updated = [...prev.additional_guests];
+      updated[index] = { ...updated[index], [field]: value };
+      return { ...prev, additional_guests: updated };
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
@@ -241,19 +411,25 @@ export default function BookingForm() {
     setError(null);
 
     try {
+      const formattedAdditionalGuests = (bookingForm.additional_guests || []).map(g => ({
+        name: g.name,
+        email: g.email || '',
+        phone: g.phone_code + g.phone_raw
+      }));
+
       const bookingData = {
-        resort_id: activeResortId,
-        tenant_id: profile.tenant_id,
+        resort_id: activeResortId || null,
+        tenant_id: profile?.tenant_id || profile?.id || null,
         guest_name: bookingForm.guest_name,
         guest_email: bookingForm.guest_email || null,
-        phone_number: bookingForm.phone_number,
+        phone_number: bookingForm.phone_code + bookingForm.phone_raw,
         check_in_date: bookingForm.check_in_date,
         check_out_date: bookingForm.check_out_date,
         adults_count: bookingForm.adults_count,
         kids_count: bookingForm.kids_count,
         number_of_guests: Number(bookingForm.adults_count || 0) + Number(bookingForm.kids_count || 0),
         booking_type: bookingForm.booking_type,
-        cottage_id: bookingForm.cottage_id,
+        cottage_id: bookingForm.cottage_id || null,
         room_ids: bookingForm.booking_type === 'Room' ? bookingForm.room_ids : null,
         room_id: bookingForm.booking_type === 'Room' && bookingForm.room_ids.length > 0 ? bookingForm.room_ids[0] : null,
         night_count: bookingForm.night_count,
@@ -269,11 +445,12 @@ export default function BookingForm() {
         id_proof_number: bookingForm.id_proof_number,
         addon_details: bookingForm.addon_selections.map(s => s === 'Others' ? bookingForm.addon_others : s).filter(Boolean).join(', '),
         booking_source: bookingForm.booking_source === 'Other' ? bookingForm.custom_booking_source 
-                      : bookingForm.booking_source === 'Agent' ? `Agent: ${bookingForm.agent_name || agents[0] || 'Unknown'}`
+                      : bookingForm.booking_source === 'Agent' ? `Agent: ${(bookingForm.agent_name || agents[0] || 'Unknown').trim()}${bookingForm.agent_phone ? ' | ' + bookingForm.agent_phone.trim() : ''}`
                       : bookingForm.booking_source,
         price_type: bookingForm.price_type,
         room_type: bookingForm.room_type,
-        breakfast: bookingForm.breakfast
+        breakfast: bookingForm.breakfast,
+        additional_guests: formattedAdditionalGuests
       };
       
       // If status was Completed and now it's NOT, delete the auto-settled income record
@@ -286,17 +463,17 @@ export default function BookingForm() {
       if (id) {
         result = await supabase.from('bookings').update(bookingData).eq('id', id);
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
-          alert("Notice: Room Type and Breakfast could not be saved to the database. Please run the SQL migration script 'add_room_type_breakfast.sql' in your Supabase SQL Editor to add these columns.");
-          console.warn("DB columns for room_type/breakfast missing. Retrying save without them.");
-          const { room_type, breakfast, ...cleanData } = bookingData;
+          alert("Notice: Room Type, Breakfast or Additional Guests columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
+          console.warn("DB columns missing. Retrying save without them.");
+          const { room_type, breakfast, additional_guests, ...cleanData } = bookingData;
           result = await supabase.from('bookings').update(cleanData).eq('id', id);
         }
       } else {
         result = await supabase.from('bookings').insert([bookingData]).select();
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
-          alert("Notice: Room Type and Breakfast could not be saved to the database. Please run the SQL migration script 'add_room_type_breakfast.sql' in your Supabase SQL Editor to add these columns.");
-          console.warn("DB columns for room_type/breakfast missing. Retrying save without them.");
-          const { room_type, breakfast, ...cleanData } = bookingData;
+          alert("Notice: Room Type, Breakfast or Additional Guests columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
+          console.warn("DB columns missing. Retrying save without them.");
+          const { room_type, breakfast, additional_guests, ...cleanData } = bookingData;
           result = await supabase.from('bookings').insert([cleanData]).select();
         }
       }
@@ -345,9 +522,77 @@ export default function BookingForm() {
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div className="form-group"><label className="form-label">Guest Name</label><input type="text" required className="form-input" value={bookingForm.guest_name} onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} /></div>
             <div className="form-group"><label className="form-label">Email Address</label><input type="email" className="form-input" placeholder="guest@email.com" value={bookingForm.guest_email} onChange={e => setBookingForm({...bookingForm, guest_email: e.target.value})} /></div>
-            <div className="form-group"><label className="form-label">Phone</label><input type="text" required className="form-input" value={bookingForm.phone_number} onChange={e => setBookingForm({...bookingForm, phone_number: e.target.value})} /></div>
+            <div className="form-group">
+              <label className="form-label">Phone</label>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <input 
+                  list="country-codes"
+                  className="form-input" 
+                  style={{ width: '130px', flexShrink: 0 }} 
+                  value={bookingForm.phone_code || '+91'} 
+                  placeholder="Code (e.g. +91)"
+                  onChange={e => setBookingForm(prev => ({ ...prev, phone_code: e.target.value, phone_number: e.target.value + prev.phone_raw }))}
+                />
+                <input 
+                  type="text" 
+                  required 
+                  className="form-input" 
+                  placeholder="9876543210" 
+                  value={bookingForm.phone_raw || ''} 
+                  onChange={e => setBookingForm(prev => ({ ...prev, phone_raw: e.target.value, phone_number: prev.phone_code + e.target.value }))} 
+                />
+              </div>
+            </div>
             <div className="form-group"><label className="form-label">Reference #</label><input type="text" required className="form-input" style={{ fontWeight: 'bold', color: 'var(--primary)' }} value={bookingForm.reference_number} onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} /></div>
           </div>
+
+          {/* Additional Guests List */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)', marginTop: '0.5rem' }}>
+            <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', color: 'var(--primary)', fontWeight: 800 }}>Additional Occupants / Contacts</h3>
+            
+            {bookingForm.additional_guests && bookingForm.additional_guests.map((guest, index) => (
+              <div key={index} style={{ border: '1px solid var(--border)', padding: '1rem', borderRadius: '8px', background: 'var(--bg-color)', position: 'relative' }}>
+                <div style={{ position: 'absolute', top: '0.5rem', right: '0.5rem' }}>
+                  <button type="button" onClick={() => handleRemoveAdditionalGuest(index)} style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem' }}>Remove</button>
+                </div>
+                <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)' }}>Occupant #{index + 2}</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Guest Name</label>
+                    <input type="text" required className="form-input" placeholder="Name" value={guest.name} onChange={e => handleUpdateAdditionalGuest(index, 'name', e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Email Address</label>
+                    <input type="email" className="form-input" placeholder="guest@email.com" value={guest.email} onChange={e => handleUpdateAdditionalGuest(index, 'email', e.target.value)} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Phone Contact</label>
+                    <div style={{ display: 'flex', gap: '0.4rem' }}>
+                      <input 
+                        list="country-codes"
+                        className="form-input" 
+                        style={{ width: '110px', flexShrink: 0, padding: '0 0.5rem', fontSize: '0.85rem' }} 
+                        value={guest.phone_code || '+91'} 
+                        placeholder="Code"
+                        onChange={e => handleUpdateAdditionalGuest(index, 'phone_code', e.target.value)}
+                      />
+                      <input type="text" className="form-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+            
+            <button type="button" className="btn btn-outline" onClick={handleAddAdditionalGuest} style={{ height: '38px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderStyle: 'dashed' }}>
+              + Add More Guest / Contact Detail
+            </button>
+          </div>
+
+          <datalist id="country-codes">
+            {COUNTRY_CODES.map(c => (
+              <option key={`${c.code}-${c.name}`} value={c.code}>{`${c.name} (${c.code})`}</option>
+            ))}
+          </datalist>
 
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div className="form-group">
@@ -538,10 +783,12 @@ export default function BookingForm() {
               <label className="form-label">Booking Source</label>
               <select className="form-select" value={bookingForm.booking_source} onChange={e => {
                 const src = e.target.value;
+                const defName = bookingForm.agent_name || agents[0] || '';
                 setBookingForm({
                   ...bookingForm,
                   booking_source: src,
-                  agent_name: src === 'Agent' ? (bookingForm.agent_name || agents[0] || '') : ''
+                  agent_name: src === 'Agent' ? defName : '',
+                  agent_phone: src === 'Agent' ? (bookingForm.agent_phone || agentPhones[defName] || '') : ''
                 });
               }}>
                 <option value="Direct">Direct</option>
@@ -560,6 +807,7 @@ export default function BookingForm() {
                       setBookingForm({
                         ...bookingForm,
                         agent_name: val === 'Other' ? '' : val,
+                        agent_phone: val && val !== 'Other' && agentPhones[val] ? agentPhones[val] : '',
                         is_custom_agent: val === 'Other'
                       });
                     }}
@@ -580,6 +828,13 @@ export default function BookingForm() {
                       required 
                     />
                   )}
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Agent Contact Number" 
+                    value={bookingForm.agent_phone || ''} 
+                    onChange={e => setBookingForm({...bookingForm, agent_phone: e.target.value})} 
+                  />
                 </div>
               )}
               {bookingForm.booking_source === 'Other' && (
