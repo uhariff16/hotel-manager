@@ -48,6 +48,18 @@ Vehicle: {vehicle_number}
 
 We look forward to hosting you!`;
 
+const DEFAULT_REVIEW_TEMPLATE = `Dear {guest_name},
+
+Thank you for choosing {resort_name}. We hope you had a wonderful stay!
+
+We would highly appreciate it if you could take a moment to share your feedback and review your stay with us:
+
+⭐ Review Link: https://g.page/r/...
+
+Thank you again, and we look forward to welcoming you back soon!
+
+📞 Contact: {resort_phone}`;
+
 export default function Settings() {
   const { profile, setProfile, theme, toggleTheme, session, activeResortId } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
@@ -73,7 +85,8 @@ export default function Settings() {
     auto_payment_receipt: false,
     whatsapp_confirm_msg_template: localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE,
     whatsapp_receipt_msg_template: localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE,
-    whatsapp_reminder_msg_template: localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE
+    whatsapp_reminder_msg_template: localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE,
+    whatsapp_review_msg_template: localStorage.getItem('whatsapp_review_msg_template') || DEFAULT_REVIEW_TEMPLATE
   });
 
   // Custom Tags Manager State
@@ -122,7 +135,8 @@ export default function Settings() {
   const insertTag = (tag) => {
     const fieldName = activeTextarea === 'confirm' ? 'whatsapp_confirm_msg_template' 
                     : activeTextarea === 'receipt' ? 'whatsapp_receipt_msg_template'
-                    : 'whatsapp_reminder_msg_template';
+                    : activeTextarea === 'reminder' ? 'whatsapp_reminder_msg_template'
+                    : 'whatsapp_review_msg_template';
                     
     const textarea = document.getElementById(fieldName);
     if (!textarea) return;
@@ -147,17 +161,20 @@ export default function Settings() {
   const handleClearTemplate = (type) => {
     const fieldName = type === 'confirm' ? 'whatsapp_confirm_msg_template' 
                     : type === 'receipt' ? 'whatsapp_receipt_msg_template'
-                    : 'whatsapp_reminder_msg_template';
+                    : type === 'reminder' ? 'whatsapp_reminder_msg_template'
+                    : 'whatsapp_review_msg_template';
     setCommSettings(prev => ({ ...prev, [fieldName]: '' }));
   };
 
   const handleResetTemplate = (type) => {
     const fieldName = type === 'confirm' ? 'whatsapp_confirm_msg_template' 
                     : type === 'receipt' ? 'whatsapp_receipt_msg_template'
-                    : 'whatsapp_reminder_msg_template';
+                    : type === 'reminder' ? 'whatsapp_reminder_msg_template'
+                    : 'whatsapp_review_msg_template';
     const defaultValue = type === 'confirm' ? DEFAULT_CONFIRM_TEMPLATE 
                         : type === 'receipt' ? DEFAULT_RECEIPT_TEMPLATE
-                        : DEFAULT_REMINDER_TEMPLATE;
+                        : type === 'reminder' ? DEFAULT_REMINDER_TEMPLATE
+                        : DEFAULT_REVIEW_TEMPLATE;
     setCommSettings(prev => ({ ...prev, [fieldName]: defaultValue }));
   };
 
@@ -179,6 +196,7 @@ export default function Settings() {
         const confirm_tpl = data.whatsapp_confirm_msg_template || localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE;
         const receipt_tpl = data.whatsapp_receipt_msg_template || localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE;
         const reminder_tpl = data.whatsapp_reminder_msg_template || localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE;
+        const review_tpl = data.whatsapp_review_msg_template || localStorage.getItem('whatsapp_review_msg_template') || DEFAULT_REVIEW_TEMPLATE;
         setCommSettings({
           email_enabled: data.email_enabled || false,
           email_api_key: data.email_api_key || '',
@@ -193,11 +211,13 @@ export default function Settings() {
           auto_payment_receipt: data.auto_payment_receipt || false,
           whatsapp_confirm_msg_template: confirm_tpl,
           whatsapp_receipt_msg_template: receipt_tpl,
-          whatsapp_reminder_msg_template: reminder_tpl
+          whatsapp_reminder_msg_template: reminder_tpl,
+          whatsapp_review_msg_template: review_tpl
         });
         localStorage.setItem('whatsapp_confirm_msg_template', confirm_tpl);
         localStorage.setItem('whatsapp_receipt_msg_template', receipt_tpl);
         localStorage.setItem('whatsapp_reminder_msg_template', reminder_tpl);
+        localStorage.setItem('whatsapp_review_msg_template', review_tpl);
       }
     } catch (err) {
       console.error("Error fetching comm settings:", err);
@@ -211,6 +231,7 @@ export default function Settings() {
     localStorage.setItem('whatsapp_confirm_msg_template', commSettings.whatsapp_confirm_msg_template);
     localStorage.setItem('whatsapp_receipt_msg_template', commSettings.whatsapp_receipt_msg_template);
     localStorage.setItem('whatsapp_reminder_msg_template', commSettings.whatsapp_reminder_msg_template);
+    localStorage.setItem('whatsapp_review_msg_template', commSettings.whatsapp_review_msg_template);
     try {
       const payload = {
         tenant_id: profile.id,
@@ -227,7 +248,7 @@ export default function Settings() {
         // Fallback: If DB columns do not exist, try upserting without template columns
         if (error.message && (error.message.includes('column') || error.code === '42703')) {
           console.warn("DB template columns missing. Saving templates in LocalStorage and other configuration in database.");
-          const { whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, ...cleanSettings } = commSettings;
+          const { whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, ...cleanSettings } = commSettings;
           const retryPayload = {
             tenant_id: profile.id,
             resort_id: activeResortId,
@@ -577,7 +598,7 @@ export default function Settings() {
                   
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1.25rem', padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
                     <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}>
-                      Click to Add Placeholder Tag to {activeTextarea === 'confirm' ? 'Confirmation' : activeTextarea === 'receipt' ? 'Receipt' : 'Reminder'}:
+                      Click to Add Placeholder Tag to {activeTextarea === 'confirm' ? 'Confirmation' : activeTextarea === 'receipt' ? 'Receipt' : activeTextarea === 'reminder' ? 'Reminder' : 'Review/Thanks'}:
                     </span>
                     {[
                       '{guest_name}', '{booking_id}', '{check_in_date}', '{check_in_time}', 
@@ -672,6 +693,27 @@ export default function Settings() {
                         value={commSettings.whatsapp_reminder_msg_template} 
                         onChange={e => setCommSettings({...commSettings, whatsapp_reminder_msg_template: e.target.value})} 
                         onFocus={() => setActiveTextarea('reminder')}
+                      />
+                    </div>
+
+                    {/* Thanks & Review */}
+                    <div className="form-group" style={{ margin: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>Thanks & Review Template</label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button type="button" onClick={() => handleClearTemplate('review')} style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Clear</button>
+                          <span style={{ color: 'var(--border)' }}>|</span>
+                          <button type="button" onClick={() => handleResetTemplate('review')} style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Reset</button>
+                        </div>
+                      </div>
+                      <textarea 
+                        id="whatsapp_review_msg_template"
+                        className="form-input" 
+                        rows={6} 
+                        style={{ fontFamily: 'inherit', resize: 'vertical', padding: '0.75rem', height: 'auto', border: activeTextarea === 'review' ? '1px solid var(--primary)' : '1px solid var(--border)' }}
+                        value={commSettings.whatsapp_review_msg_template} 
+                        onChange={e => setCommSettings({...commSettings, whatsapp_review_msg_template: e.target.value})} 
+                        onFocus={() => setActiveTextarea('review')}
                       />
                     </div>
                   </div>

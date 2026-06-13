@@ -36,6 +36,18 @@ Vehicle: {vehicle_number}
 
 We look forward to hosting you!`;
 
+const DEFAULT_REVIEW_TEMPLATE = `Dear {guest_name},
+
+Thank you for choosing {resort_name}. We hope you had a wonderful stay!
+
+We would highly appreciate it if you could take a moment to share your feedback and review your stay with us:
+
+⭐ Review Link: https://g.page/r/...
+
+Thank you again, and we look forward to welcoming you back soon!
+
+📞 Contact: {resort_phone}`;
+
 export default function Bookings() {
   const navigate = useNavigate();
   const { activeResortId, profile } = useSettingsStore();
@@ -67,7 +79,8 @@ export default function Bookings() {
   const [whatsappTemplates, setWhatsappTemplates] = useState({
     confirm: localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE,
     receipt: localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE,
-    reminder: localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE
+    reminder: localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE,
+    review: localStorage.getItem('whatsapp_review_msg_template') || DEFAULT_REVIEW_TEMPLATE
   });
 
   useEffect(() => {
@@ -88,7 +101,7 @@ export default function Bookings() {
         supabase.from('bookings').select('*').eq('resort_id', activeResortId).order('created_at', { ascending: false }),
         supabase.from('cottages').select('*').eq('resort_id', activeResortId),
         supabase.from('rooms').select('*').eq('resort_id', activeResortId),
-        supabase.from('tenant_integrations').select('whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template').eq('resort_id', activeResortId).maybeSingle(),
+        supabase.from('tenant_integrations').select('whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template').eq('resort_id', activeResortId).maybeSingle(),
         supabase.from('resorts').select('*').eq('id', activeResortId).maybeSingle()
       ]);
       setBookings(bks.data || []);
@@ -99,18 +112,22 @@ export default function Bookings() {
       const dbConfirm = integrationsRes?.data?.whatsapp_confirm_msg_template;
       const dbReceipt = integrationsRes?.data?.whatsapp_receipt_msg_template;
       const dbReminder = integrationsRes?.data?.whatsapp_reminder_msg_template;
+      const dbReview = integrationsRes?.data?.whatsapp_review_msg_template;
       const confirm_tpl = dbConfirm || localStorage.getItem('whatsapp_confirm_msg_template') || DEFAULT_CONFIRM_TEMPLATE;
       const receipt_tpl = dbReceipt || localStorage.getItem('whatsapp_receipt_msg_template') || DEFAULT_RECEIPT_TEMPLATE;
       const reminder_tpl = dbReminder || localStorage.getItem('whatsapp_reminder_msg_template') || DEFAULT_REMINDER_TEMPLATE;
+      const review_tpl = dbReview || localStorage.getItem('whatsapp_review_msg_template') || DEFAULT_REVIEW_TEMPLATE;
       
       setWhatsappTemplates({
         confirm: confirm_tpl,
         receipt: receipt_tpl,
-        reminder: reminder_tpl
+        reminder: reminder_tpl,
+        review: review_tpl
       });
       localStorage.setItem('whatsapp_confirm_msg_template', confirm_tpl);
       localStorage.setItem('whatsapp_receipt_msg_template', receipt_tpl);
       localStorage.setItem('whatsapp_reminder_msg_template', reminder_tpl);
+      localStorage.setItem('whatsapp_review_msg_template', review_tpl);
     } catch (err) {
       console.error(err);
       setError('Error fetching data.');
@@ -966,6 +983,22 @@ export default function Bookings() {
                   style={{ borderColor: '#f59e0b', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
                 >
                   <MessageSquare size={16} /> WhatsApp Reminder
+                </button>
+
+                <button 
+                  onClick={() => {
+                    const text = compileWhatsAppTemplate(whatsappTemplates.review, selectedDetailedBooking);
+                    setWhatsappGenerator({
+                      open: true,
+                      templateType: 'review',
+                      messageText: text,
+                      paymentAmount: ''
+                    });
+                  }} 
+                  className="btn btn-outline" 
+                  style={{ borderColor: '#8b5cf6', color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                >
+                  <MessageSquare size={16} /> WhatsApp Review
                 </button>
               </div>
 

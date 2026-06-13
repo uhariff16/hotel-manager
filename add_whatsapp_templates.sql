@@ -4,4 +4,5 @@
 ALTER TABLE public.tenant_integrations 
   ADD COLUMN IF NOT EXISTS whatsapp_confirm_msg_template TEXT,
   ADD COLUMN IF NOT EXISTS whatsapp_receipt_msg_template TEXT,
-  ADD COLUMN IF NOT EXISTS whatsapp_reminder_msg_template TEXT;
+  ADD COLUMN IF NOT EXISTS whatsapp_reminder_msg_template TEXT,
+  ADD COLUMN IF NOT EXISTS whatsapp_review_msg_template TEXT;
