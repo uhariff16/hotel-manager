@@ -36,6 +36,25 @@ export default function CottagesRooms() {
     try {
       const dbStatus = editForm.status === 'Active' ? 'Available' : 'Maintenance';
       if (editingType === 'cottage') {
+        if (dbStatus === 'Maintenance') {
+          // Check for active bookings (status is not 'Completed' and not 'Cancelled') under this property
+          const { data: activeBookings, error: checkError } = await supabase
+            .from('bookings')
+            .select('id')
+            .eq('cottage_id', editingId)
+            .neq('status', 'Completed')
+            .neq('status', 'Cancelled');
+
+          if (checkError) {
+            alert("Error checking active bookings: " + checkError.message);
+            return;
+          }
+
+          if (activeBookings && activeBookings.length > 0) {
+            alert("Cannot disable property: There are active bookings under this property that are not Completed or Cancelled.");
+            return;
+          }
+        }
         const { error } = await supabase.from('cottages').update({ weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus }).eq('id', editingId);
         if (error) {
           alert("Error saving property: " + error.message);
