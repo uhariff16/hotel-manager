@@ -502,7 +502,7 @@ export default function BookingForm() {
 
   if (loading) return <div style={{ padding: '2rem' }}>Loading Form...</div>;
 
-  const relevantRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id);
+  const relevantRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id && (r.status === 'Available' || r.status === 'Active' || bookingForm.room_ids.includes(r.id)));
 
   return (
     <div className="container" style={{ maxWidth: '800px', margin: '0 auto', padding: '2rem' }}>
@@ -661,7 +661,7 @@ export default function BookingForm() {
               <label className="form-label">Property</label>
               <select className="form-select" value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value})}>
                 <option value="">Select Property...</option>
-                {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {cottages.filter(c => c.status === 'Available' || c.status === 'Active' || c.id === bookingForm.cottage_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
           </div>

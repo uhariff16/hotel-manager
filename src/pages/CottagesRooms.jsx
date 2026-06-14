@@ -11,35 +11,48 @@ export default function CottagesRooms() {
   const [error, setError] = useState(null);
 
   const [newCottage, setNewCottage] = useState({
-    name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Available'
+    name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Active'
   });
 
   const [newRoom, setNewRoom] = useState({
-    cottage_id: '', name: '', capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Available'
+    cottage_id: '', name: '', capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Active'
   });
 
   const [editingId, setEditingId] = useState(null);
   const [editingType, setEditingType] = useState(null);
-  const [editForm, setEditForm] = useState({ weekday: 0, weekend: 0 });
+  const [editForm, setEditForm] = useState({ weekday: 0, weekend: 0, status: 'Active' });
 
   const startEdit = (item, type) => {
     setEditingId(item.id);
     setEditingType(type);
-    setEditForm({ weekday: item.weekday_price, weekend: item.weekend_price });
+    setEditForm({ 
+      weekday: item.weekday_price, 
+      weekend: item.weekend_price, 
+      status: (item.status === 'Available' || item.status === 'Active') ? 'Active' : 'Inactive' 
+    });
   };
 
   const saveEdit = async () => {
     try {
+      const dbStatus = editForm.status === 'Active' ? 'Available' : 'Maintenance';
       if (editingType === 'cottage') {
-        await supabase.from('cottages').update({ weekday_price: editForm.weekday, weekend_price: editForm.weekend }).eq('id', editingId);
-        setCottages(cottages.map(c => c.id === editingId ? { ...c, weekday_price: editForm.weekday, weekend_price: editForm.weekend } : c));
+        const { error } = await supabase.from('cottages').update({ weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus }).eq('id', editingId);
+        if (error) {
+          alert("Error saving property: " + error.message);
+          return;
+        }
+        setCottages(cottages.map(c => c.id === editingId ? { ...c, weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus } : c));
       } else {
-        await supabase.from('rooms').update({ weekday_price: editForm.weekday, weekend_price: editForm.weekend }).eq('id', editingId);
-        setRooms(rooms.map(r => r.id === editingId ? { ...r, weekday_price: editForm.weekday, weekend_price: editForm.weekend } : r));
+        const { error } = await supabase.from('rooms').update({ weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus }).eq('id', editingId);
+        if (error) {
+          alert("Error saving room: " + error.message);
+          return;
+        }
+        setRooms(rooms.map(r => r.id === editingId ? { ...r, weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus } : r));
       }
       setEditingId(null);
       setEditingType(null);
-    } catch (e) { alert("Error saving prices"); }
+    } catch (e) { alert("Error saving changes: " + e.message); }
   };
 
   useEffect(() => {
@@ -74,13 +87,24 @@ export default function CottagesRooms() {
 
   const handleAddCottage = async (e) => {
     e.preventDefault();
+    
+    // Free Plan Gate
+    if (profile?.plan_type === 'free' && cottages.length >= 1) {
+      return alert('Free Plan Limit Reached: You can only add 1 property total in the Free Plan. Please upgrade your plan to add more.');
+    }
+
     try {
-      const payload = { ...newCottage, tenant_id: session.user.id, resort_id: activeResortId };
+      const payload = { 
+        ...newCottage, 
+        status: newCottage.status === 'Active' ? 'Available' : 'Maintenance',
+        tenant_id: session.user.id, 
+        resort_id: activeResortId 
+      };
       const { data, error } = await supabase.from('cottages').insert([payload]).select();
       if (error) alert(error.message);
       else {
         setCottages([...cottages, data[0]]);
-        setNewCottage({ name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Available' });
+        setNewCottage({ name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Active' });
       }
     } catch (e) {
       alert("Error adding property.");
@@ -97,12 +121,17 @@ export default function CottagesRooms() {
     }
 
     try {
-      const payload = { ...newRoom, tenant_id: session.user.id, resort_id: activeResortId };
+      const payload = { 
+        ...newRoom, 
+        status: newRoom.status === 'Active' ? 'Available' : 'Maintenance',
+        tenant_id: session.user.id, 
+        resort_id: activeResortId 
+      };
       const { data, error } = await supabase.from('rooms').insert([payload]).select();
       if (error) alert(error.message);
       else {
         setRooms([...rooms, data[0]]);
-        setNewRoom({ cottage_id: '', name: '', capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Available' });
+        setNewRoom({ cottage_id: '', name: '', capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Active' });
       }
     } catch (e) {
       alert("Error adding room.");
@@ -156,6 +185,13 @@ export default function CottagesRooms() {
               <label className="form-label">Weekend ₹</label>
               <input type="number" className="form-input" required value={newCottage.weekend_price} onChange={e => setNewCottage({...newCottage, weekend_price: e.target.value})} />
             </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select className="form-select" value={newCottage.status} onChange={e => setNewCottage({...newCottage, status: e.target.value})}>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%' }}><Plus size={16}/> Add Property</button>
         </form>
@@ -173,7 +209,24 @@ export default function CottagesRooms() {
             <tbody>
               {cottages.map(c => (
                 <tr key={c.id}>
-                  <td><strong>{c.name}</strong><br/><span className="badge badge-success">{c.status}</span></td>
+                  <td>
+                    <strong>{c.name}</strong><br/>
+                    {editingId === c.id && editingType === 'cottage' ? (
+                      <select 
+                        className="form-select" 
+                        style={{ padding: '2px 6px', fontSize: '0.75rem', height: 'auto', width: 'auto', marginTop: '0.25rem' }} 
+                        value={editForm.status} 
+                        onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                      >
+                        <option value="Active">Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                    ) : (
+                      <span className={`badge badge-${(c.status === 'Active' || c.status === 'Available') ? 'success' : 'danger'}`}>
+                        {(c.status === 'Available' || c.status === 'Active') ? 'Active' : 'Inactive'}
+                      </span>
+                    )}
+                  </td>
                   <td>{c.max_capacity}</td>
                   <td>
                     {editingId === c.id && editingType === 'cottage' ? (
@@ -234,6 +287,13 @@ export default function CottagesRooms() {
               <label className="form-label">Weekend ₹</label>
               <input type="number" className="form-input" required value={newRoom.weekend_price} onChange={e => setNewRoom({...newRoom, weekend_price: e.target.value})} />
             </div>
+            <div className="form-group">
+              <label className="form-label">Status</label>
+              <select className="form-select" value={newRoom.status} onChange={e => setNewRoom({...newRoom, status: e.target.value})}>
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
           </div>
           <button type="submit" className="btn btn-primary" style={{ width: '100%', backgroundColor: 'var(--warning)', borderColor: 'var(--warning)' }}><Plus size={16}/> Add Room</button>
         </form>
@@ -254,7 +314,24 @@ export default function CottagesRooms() {
                 return (
                   <tr key={r.id}>
                     <td>{cottage ? cottage.name : '-'}</td>
-                    <td><strong>{r.name}</strong><br/><span className="badge badge-success">{r.status}</span></td>
+                    <td>
+                      <strong>{r.name}</strong><br/>
+                      {editingId === r.id && editingType === 'room' ? (
+                        <select 
+                          className="form-select" 
+                          style={{ padding: '2px 6px', fontSize: '0.75rem', height: 'auto', width: 'auto', marginTop: '0.25rem' }} 
+                          value={editForm.status} 
+                          onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
+                        </select>
+                      ) : (
+                        <span className={`badge badge-${(r.status === 'Active' || r.status === 'Available') ? 'success' : 'danger'}`}>
+                          {(r.status === 'Available' || r.status === 'Active') ? 'Active' : 'Inactive'}
+                        </span>
+                      )}
+                    </td>
                     <td>
                       {editingId === r.id && editingType === 'room' ? (
                         <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center' }}>
