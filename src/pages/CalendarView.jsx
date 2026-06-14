@@ -776,65 +776,32 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                   })}
                 </div>
 
-                {cottages.map(c => (
-                  <React.Fragment key={c.id}>
-                    {/* Cottage Row */}
-                    <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
-                      <div style={{ width: isMobile ? '100px' : '220px', flexShrink: 0, padding: isMobile ? '0.5rem' : '1rem', fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden' }}>
-                         <Home size={isMobile ? 14 : 16} color="var(--primary)" style={{ flexShrink: 0 }} /> <span style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>{isMobile ? c.name.split(' ')[0] : c.name}</span>
-                      </div>
-                      {dates.map((d, i) => {
-                        const { blockColor, label, bookingId, booking } = getCellStatus(d, 'Property', c.id);
-                        const isPast = startOfDay(d) < startOfDay(new Date());
-                        const isSelected = dragSelection?.type === 'Property' && dragSelection.itemIds.includes(c.id) && d >= Math.min(dragSelection.startDate, dragSelection.endDate) && d <= Math.max(dragSelection.startDate, dragSelection.endDate);
-                        const isHighlighted = hoveredBooking?.id === bookingId && bookingId !== null;
-                        const isSearchMatch = searchTerm && booking && (booking.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) || (booking.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()));
-
-                        return (
-                          <div key={i} 
-                               onPointerDown={(e) => { if (e.target.hasPointerCapture(e.pointerId)) e.target.releasePointerCapture(e.pointerId); handleMouseDown(d, 'Property', c.id, bookingId, c.id); }} 
-                               onClick={() => bookingId && setSelectedBooking(bookings.find(x => x.id === bookingId))}
-                               onPointerEnter={(e) => handleMouseEnter(e, d, 'Property', c.id, bookingId, c.id)} 
-                               onDoubleClick={() => { if (bookingId) { navigate(`/bookings/edit/${bookingId}`); } else { handleEmptyCellDoubleClick(d, 'Property', c.id, c.id); } }} 
-                               style={{ width: isMobile ? '45px' : '54px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '5px', cursor: isPast && !bookingId ? 'not-allowed' : 'pointer', background: isToday(d) ? 'rgba(5, 150, 105, 0.03)' : 'transparent', transition: 'all 0.2s' }}>
-                            <div style={{ 
-                                width: '100%', height: '34px', borderRadius: '6px', 
-                                background: isSelected ? 'var(--primary)' : blockColor, 
-                                opacity: (isPast && !bookingId) ? 0.3 : 1,
-                                border: isHighlighted ? '2px solid white' : (isSearchMatch ? '3px solid var(--warning)' : 'none'),
-                                boxShadow: isHighlighted ? '0 0 10px rgba(0,0,0,0.2)' : 'none',
-                                transform: isHighlighted ? 'scale(1.1)' : 'scale(1)',
-                                zIndex: isHighlighted ? 15 : 1,
-                                position: 'relative'
-                            }}>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    
-                    {/* Room Rows */}
-                    {rooms.filter(r => r.cottage_id === c.id).map(r => (
-                      <div key={r.id} style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'var(--bg-color)' }}>
-                        <div style={{ width: isMobile ? '100px' : '220px', flexShrink: 0, padding: isMobile ? '0.5rem 0.25rem 0.5rem 0.5rem' : '0.75rem 1rem 0.75rem 3rem', fontSize: isMobile ? '0.7rem' : '0.85rem', fontWeight: 600, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--bg-color)', zIndex: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden' }}>
-                           <Navigation size={isMobile ? 10 : 12} style={{ transform: 'rotate(90deg)', flexShrink: 0 }} /> <span style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>{r.name}</span>
+                {cottages.map(c => {
+                  const cottageRooms = rooms.filter(r => r.cottage_id === c.id);
+                  const hasNoRooms = cottageRooms.length === 0;
+                  return (
+                    <React.Fragment key={c.id}>
+                      {/* Cottage Row */}
+                      <div style={{ display: 'flex', borderBottom: hasNoRooms ? '4px solid var(--border)' : '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
+                        <div style={{ width: isMobile ? '100px' : '220px', flexShrink: 0, padding: isMobile ? '0.5rem' : '1rem', fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden' }}>
+                           <Home size={isMobile ? 14 : 16} color="var(--primary)" style={{ flexShrink: 0 }} /> <span style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>{isMobile ? c.name.split(' ')[0] : c.name}</span>
                         </div>
                         {dates.map((d, i) => {
-                          const { blockColor, label, bookingId, booking } = getCellStatus(d, 'Room', r.id);
+                          const { blockColor, label, bookingId, booking } = getCellStatus(d, 'Property', c.id);
                           const isPast = startOfDay(d) < startOfDay(new Date());
-                          const isSelected = dragSelection?.type === 'Room' && dragSelection.itemIds.includes(r.id) && d >= Math.min(dragSelection.startDate, dragSelection.endDate) && d <= Math.max(dragSelection.startDate, dragSelection.endDate);
+                          const isSelected = dragSelection?.type === 'Property' && dragSelection.itemIds.includes(c.id) && d >= Math.min(dragSelection.startDate, dragSelection.endDate) && d <= Math.max(dragSelection.startDate, dragSelection.endDate);
                           const isHighlighted = hoveredBooking?.id === bookingId && bookingId !== null;
                           const isSearchMatch = searchTerm && booking && (booking.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) || (booking.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()));
 
                           return (
                             <div key={i} 
-                                 onPointerDown={(e) => { if (e.target.hasPointerCapture(e.pointerId)) e.target.releasePointerCapture(e.pointerId); handleMouseDown(d, 'Room', r.id, bookingId, r.cottage_id); }} 
+                                 onPointerDown={(e) => { if (e.target.hasPointerCapture(e.pointerId)) e.target.releasePointerCapture(e.pointerId); handleMouseDown(d, 'Property', c.id, bookingId, c.id); }} 
                                  onClick={() => bookingId && setSelectedBooking(bookings.find(x => x.id === bookingId))}
-                                 onPointerEnter={(e) => handleMouseEnter(e, d, 'Room', r.id, bookingId, r.cottage_id)} 
-                                 onDoubleClick={() => { if (bookingId) { navigate(`/bookings/edit/${bookingId}`); } else { handleEmptyCellDoubleClick(d, 'Room', r.id, r.cottage_id); } }} 
-                                 style={{ width: isMobile ? '45px' : '54px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '6px', cursor: isPast && !bookingId ? 'not-allowed' : 'pointer', background: isToday(d) ? 'rgba(5, 150, 105, 0.03)' : 'transparent' }}>
+                                 onPointerEnter={(e) => handleMouseEnter(e, d, 'Property', c.id, bookingId, c.id)} 
+                                 onDoubleClick={() => { if (bookingId) { navigate(`/bookings/edit/${bookingId}`); } else { handleEmptyCellDoubleClick(d, 'Property', c.id, c.id); } }} 
+                                 style={{ width: isMobile ? '45px' : '54px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '5px', cursor: isPast && !bookingId ? 'not-allowed' : 'pointer', background: isToday(d) ? 'rgba(5, 150, 105, 0.03)' : 'transparent', transition: 'all 0.2s' }}>
                               <div style={{ 
-                                  width: '100%', height: '28px', borderRadius: '5px', 
+                                  width: '100%', height: '34px', borderRadius: '6px', 
                                   background: isSelected ? 'var(--primary)' : blockColor, 
                                   opacity: (isPast && !bookingId) ? 0.3 : 1,
                                   border: isHighlighted ? '2px solid white' : (isSearchMatch ? '3px solid var(--warning)' : 'none'),
@@ -848,9 +815,49 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                           );
                         })}
                       </div>
-                    ))}
-                  </React.Fragment>
-                ))}
+                      
+                      {/* Room Rows */}
+                      {cottageRooms.map((r, rIdx) => {
+                        const isLastRoom = rIdx === cottageRooms.length - 1;
+                        return (
+                          <div key={r.id} style={{ display: 'flex', borderBottom: isLastRoom ? '4px solid var(--border)' : '1px solid var(--border)', background: 'var(--bg-color)' }}>
+                            <div style={{ width: isMobile ? '100px' : '220px', flexShrink: 0, padding: isMobile ? '0.5rem 0.25rem 0.5rem 0.5rem' : '0.75rem 1rem 0.75rem 3rem', fontSize: isMobile ? '0.7rem' : '0.85rem', fontWeight: 600, borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--bg-color)', zIndex: 10, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden' }}>
+                               <Navigation size={isMobile ? 10 : 12} style={{ transform: 'rotate(90deg)', flexShrink: 0 }} /> <span style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>{r.name}</span>
+                            </div>
+                            {dates.map((d, i) => {
+                              const { blockColor, label, bookingId, booking } = getCellStatus(d, 'Room', r.id);
+                              const isPast = startOfDay(d) < startOfDay(new Date());
+                              const isSelected = dragSelection?.type === 'Room' && dragSelection.itemIds.includes(r.id) && d >= Math.min(dragSelection.startDate, dragSelection.endDate) && d <= Math.max(dragSelection.startDate, dragSelection.endDate);
+                              const isHighlighted = hoveredBooking?.id === bookingId && bookingId !== null;
+                              const isSearchMatch = searchTerm && booking && (booking.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) || (booking.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()));
+
+                              return (
+                                <div key={i} 
+                                     onPointerDown={(e) => { if (e.target.hasPointerCapture(e.pointerId)) e.target.releasePointerCapture(e.pointerId); handleMouseDown(d, 'Room', r.id, bookingId, r.cottage_id); }} 
+                                     onClick={() => bookingId && setSelectedBooking(bookings.find(x => x.id === bookingId))}
+                                     onPointerEnter={(e) => handleMouseEnter(e, d, 'Room', r.id, bookingId, r.cottage_id)} 
+                                     onDoubleClick={() => { if (bookingId) { navigate(`/bookings/edit/${bookingId}`); } else { handleEmptyCellDoubleClick(d, 'Room', r.id, r.cottage_id); } }} 
+                                     style={{ width: isMobile ? '45px' : '54px', flexShrink: 0, borderRight: '1px solid var(--border)', padding: '6px', cursor: isPast && !bookingId ? 'not-allowed' : 'pointer', background: isToday(d) ? 'rgba(5, 150, 105, 0.03)' : 'transparent' }}>
+                                  <div style={{ 
+                                      width: '100%', height: '28px', borderRadius: '5px', 
+                                      background: isSelected ? 'var(--primary)' : blockColor, 
+                                      opacity: (isPast && !bookingId) ? 0.3 : 1,
+                                      border: isHighlighted ? '2px solid white' : (isSearchMatch ? '3px solid var(--warning)' : 'none'),
+                                      boxShadow: isHighlighted ? '0 0 10px rgba(0,0,0,0.2)' : 'none',
+                                      transform: isHighlighted ? 'scale(1.1)' : 'scale(1)',
+                                      zIndex: isHighlighted ? 15 : 1,
+                                      position: 'relative'
+                                  }}>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </React.Fragment>
+                  );
+                })}
               </div>
             </div>
           )}
