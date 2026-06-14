@@ -579,7 +579,7 @@ export default function Reports() {
                     <CalendarCheck size={18} color="var(--primary)" /> Bookings & Collections Summary
                   </h3>
                   
-                  <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflow: 'hidden', marginBottom: '2.5rem' }}>
+                  <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '450px', marginBottom: '2.5rem' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                       <thead style={{ background: '#fafafa' }}>
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
@@ -647,7 +647,7 @@ export default function Reports() {
                     </div>
                   </div>
 
-                  <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '600px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                       <thead style={{ background: '#fafafa' }}>
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
@@ -710,7 +710,7 @@ export default function Reports() {
                     </div>
                   </div>
 
-                  <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflow: 'hidden' }}>
+                  <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '600px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
                       <thead style={{ background: '#fafafa' }}>
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
@@ -796,7 +796,7 @@ export default function Reports() {
                       <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, color: 'var(--success)', marginBottom: '1rem' }}>
                         Incomes
                       </h4>
-                      <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                           <thead style={{ background: '#fafafa' }}>
                             <tr>
@@ -830,7 +830,7 @@ export default function Reports() {
                       <h4 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 800, color: 'var(--danger)', marginBottom: '1rem' }}>
                         Expenses
                       </h4>
-                      <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflow: 'hidden' }}>
+                      <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                           <thead style={{ background: '#fafafa' }}>
                             <tr>
