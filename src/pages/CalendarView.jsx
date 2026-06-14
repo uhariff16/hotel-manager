@@ -124,10 +124,20 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
     const fetchData = async () => {
       if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
       try {
+        let bookingsQuery = supabase.from('bookings').select('*').eq('resort_id', activeResortId).neq('status', 'Cancelled');
+        let cottagesQuery = supabase.from('cottages').select('*').eq('resort_id', activeResortId).order('name');
+        let roomsQuery = supabase.from('rooms').select('*').eq('resort_id', activeResortId).order('name');
+
+        if (profile?.role === 'staff' && profile?.cottage_id) {
+          bookingsQuery = bookingsQuery.eq('cottage_id', profile.cottage_id);
+          cottagesQuery = cottagesQuery.eq('id', profile.cottage_id);
+          roomsQuery = roomsQuery.eq('cottage_id', profile.cottage_id);
+        }
+
         const [bks, cts, rms] = await Promise.all([
-          supabase.from('bookings').select('*').eq('resort_id', activeResortId).neq('status', 'Cancelled'),
-          supabase.from('cottages').select('*').eq('resort_id', activeResortId).order('name'),
-          supabase.from('rooms').select('*').eq('resort_id', activeResortId).order('name')
+          bookingsQuery,
+          cottagesQuery,
+          roomsQuery
         ]);
         setBookings(bks.data || []);
         setCottages(cts.data || []);
@@ -141,7 +151,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
       }
     };
     fetchData();
-  }, [activeResortId]);
+  }, [activeResortId, profile?.cottage_id, profile?.role]);
 
   const handleSaveTemplate = async () => {
     setIsSaved(false);
@@ -861,103 +871,139 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
               </div>
             </div>
           )}
-
+          
           {viewType === 'monthly' && (
-            <div style={{ padding: isMobile ? '0.5rem' : '1.5rem', height: '100%' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} style={{ padding: isMobile ? '0.5rem 0.25rem' : '1rem', background: 'var(--bg-secondary)', fontWeight: '800', textAlign: 'center', color: 'var(--primary)', textTransform: 'uppercase', fontSize: isMobile ? '0.65rem' : '0.75rem', letterSpacing: isMobile ? 'normal' : '0.1em' }}>{isMobile ? day.substring(0, 3) : day}</div>
-                ))}
-                {(() => {
-                  const start = startOfWeek(startOfMonth(currentDate));
-                  const end = endOfWeek(endOfMonth(currentDate));
-                  const calendarDates = eachDayOfInterval({ start, end });
-                  return calendarDates.map(d => {
-                    const isCurrentMonth = d.getMonth() === currentDate.getMonth();
-                    const isTodayDate = isToday(d);
-                    const dayBookings = filteredBookings.filter(b => isWithinInterval(d, { start: startOfDay(new Date(b.check_in_date)), end: startOfDay(new Date(b.check_out_date)) }));
-                    
-                    return (
-                      <div key={d.toString()} style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '70px' : '140px', padding: isMobile ? '0.25rem' : '0.75rem', background: isCurrentMonth ? 'white' : 'var(--bg-color)', opacity: isCurrentMonth ? 1 : 0.4, position: 'relative', transition: 'all 0.2s' }}>
-                        <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.75rem', fontSize: isMobile ? '0.85rem' : '1.1rem', color: isTodayDate ? 'var(--primary)' : 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
-                            {format(d, 'd')}
-                            {isTodayDate && !isMobile && <span style={{ fontSize: '0.6rem', background: 'var(--primary)', color: 'white', padding: '2px 6px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                          {dayBookings.slice(0, isMobile ? 2 : 4).map(b => (
-                            <div key={b.id} 
-                                 onClick={() => setSelectedBooking(b)} 
-                                 onMouseEnter={(e) => { setHoveredBooking(b); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
-                                 onMouseLeave={() => setHoveredBooking(null)}
-                                 style={{ 
-                                    fontSize: isMobile ? '0.55rem' : '0.75rem', padding: isMobile ? '0.15rem' : '0.35rem 0.6rem', borderRadius: '4px', 
-                                    background: b.status === 'Checked-in' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
-                                    color: b.status === 'Checked-in' ? '#6366f1' : '#10b981', 
-                                    borderLeft: `2px solid ${b.status === 'Checked-in' ? '#6366f1' : '#10b981'}`, 
-                                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
-                                    fontWeight: 700,
-                                    transform: hoveredBooking?.id === b.id ? 'translateX(4px)' : 'none',
-                                    transition: 'transform 0.2s',
-                                    textAlign: isMobile ? 'center' : 'left'
-                                 }}>
-                              {isMobile ? b.guest_name.split(' ')[0] : b.guest_name}
+            <div style={{ padding: isMobile ? '0.5rem' : '1.5rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              {cottages.map(c => {
+                return (
+                  <div key={c.id} className="card" style={{ padding: '1rem' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, marginBottom: '1rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Home size={20} /> {c.name}
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', background: 'var(--border)', border: '1px solid var(--border)', borderRadius: '12px', overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+                      {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                        <div key={day} style={{ padding: isMobile ? '0.5rem 0.25rem' : '1rem', background: 'var(--bg-secondary)', fontWeight: '800', textAlign: 'center', color: 'var(--primary)', textTransform: 'uppercase', fontSize: isMobile ? '0.65rem' : '0.75rem', letterSpacing: isMobile ? 'normal' : '0.1em' }}>{isMobile ? day.substring(0, 3) : day}</div>
+                      ))}
+                      {(() => {
+                        const start = startOfWeek(startOfMonth(currentDate));
+                        const end = endOfWeek(endOfMonth(currentDate));
+                        const calendarDates = eachDayOfInterval({ start, end });
+                        return calendarDates.map(d => {
+                          const isCurrentMonth = d.getMonth() === currentDate.getMonth();
+                          const isTodayDate = isToday(d);
+                          // Filter bookings specifically for this property
+                          const dayBookings = filteredBookings.filter(b => b.cottage_id === c.id && isWithinInterval(d, { start: startOfDay(new Date(b.check_in_date)), end: startOfDay(new Date(b.check_out_date)) }));
+                          
+                          return (
+                            <div key={d.toString()} style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '120px', padding: isMobile ? '0.25rem' : '0.5rem', background: isCurrentMonth ? 'white' : 'var(--bg-color)', opacity: isCurrentMonth ? 1 : 0.4, position: 'relative', transition: 'all 0.2s' }}>
+                              <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.85rem' : '1rem', color: isTodayDate ? 'var(--primary)' : 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
+                                  {format(d, 'd')}
+                                  {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: 'var(--primary)', color: 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                                {dayBookings.slice(0, isMobile ? 2 : 3).map(b => (
+                                  <div key={b.id} 
+                                       onClick={() => setSelectedBooking(b)} 
+                                       onMouseEnter={(e) => { setHoveredBooking(b); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
+                                       onMouseLeave={() => setHoveredBooking(null)}
+                                       style={{ 
+                                          fontSize: isMobile ? '0.55rem' : '0.75rem', padding: isMobile ? '0.15rem' : '0.35rem 0.6rem', borderRadius: '4px', 
+                                          background: b.status === 'Checked-in' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
+                                          color: b.status === 'Checked-in' ? '#6366f1' : '#10b981', 
+                                          borderLeft: `2px solid ${b.status === 'Checked-in' ? '#6366f1' : '#10b981'}`, 
+                                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
+                                          fontWeight: 700,
+                                          transform: hoveredBooking?.id === b.id ? 'translateX(4px)' : 'none',
+                                          transition: 'transform 0.2s',
+                                          textAlign: isMobile ? 'center' : 'left'
+                                       }}>
+                                    {isMobile ? b.guest_name.split(' ')[0] : b.guest_name}
+                                  </div>
+                                ))}
+                                {dayBookings.length > (isMobile ? 2 : 3) && <small style={{ color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center', display: 'block', marginTop: '0.25rem', fontSize: isMobile ? '0.55rem' : '0.7rem' }}>+ {dayBookings.length - (isMobile ? 2 : 3)}</small>}
+                              </div>
                             </div>
-                          ))}
-                          {dayBookings.length > (isMobile ? 2 : 4) && <small style={{ color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center', display: 'block', marginTop: '0.25rem', fontSize: isMobile ? '0.55rem' : '0.7rem' }}>+ {dayBookings.length - (isMobile ? 2 : 4)}</small>}
-                        </div>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           )}
 
           {viewType === 'agenda' && (
-            <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto' }}>
-               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                 {filteredBookings.filter(b => new Date(b.check_in_date) >= startOfMonth(currentDate) && new Date(b.check_in_date) <= endOfMonth(currentDate)).sort((a,b) => new Date(a.check_in_date) - new Date(b.check_in_date)).map(b => (
-                   <div key={b.id} className="card" onClick={() => setSelectedBooking(b)} style={{ padding: '1.25rem', cursor: 'pointer', borderLeft: `8px solid ${b.status === 'Checked-in' ? '#6366f1' : (b.status === 'Confirmed' ? 'var(--primary)' : 'var(--warning)')}`, transition: 'all 0.2s' }}>
-                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+            <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+              {cottages.map(c => {
+                const cottageBookings = filteredBookings.filter(b => {
+                  const belongsToCottage = b.cottage_id === c.id || 
+                    (b.room_ids && b.room_ids.some(rid => {
+                      const room = rooms.find(r => r.id === rid);
+                      return room && room.cottage_id === c.id;
+                    }));
+
+                  if (!belongsToCottage) return false;
+
+                  const checkIn = startOfDay(new Date(b.check_in_date.replace(/-/g, '/')));
+                  const checkOut = startOfDay(new Date(b.check_out_date.replace(/-/g, '/')));
+                  const monthStart = startOfMonth(currentDate);
+                  const monthEnd = endOfMonth(currentDate);
+                  return checkIn <= monthEnd && checkOut >= monthStart;
+                }).sort((a,b) => new Date(a.check_in_date.replace(/-/g, '/')) - new Date(b.check_in_date.replace(/-/g, '/')));
+                
+                return (
+                  <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                    <h3 style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '2px solid var(--border)', paddingBottom: '0.5rem', margin: 0 }}>
+                      <Home size={20} /> {c.name}
+                    </h3>
+                    
+                    {cottageBookings.length === 0 ? (
+                      <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem', paddingLeft: '0.5rem' }}>No bookings for this property in this period.</p>
+                    ) : cottageBookings.map(b => (
+                      <div key={b.id} className="card" onClick={() => setSelectedBooking(b)} style={{ padding: '1.25rem', cursor: 'pointer', borderLeft: `8px solid ${b.status === 'Checked-in' ? '#6366f1' : (b.status === 'Confirmed' ? 'var(--primary)' : 'var(--warning)')}`, transition: 'all 0.2s', margin: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
                             <div style={{ textAlign: 'center', minWidth: '60px', padding: '0.5rem', background: 'var(--bg-color)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{format(new Date(b.check_in_date), 'MMM')}</div>
-                                <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{format(new Date(b.check_in_date), 'dd')}</div>
+                              <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{format(new Date(b.check_in_date), 'MMM')}</div>
+                              <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{format(new Date(b.check_in_date), 'dd')}</div>
                             </div>
                             <div>
-                                <div style={{ fontWeight: 800, fontSize: '1.25rem', marginBottom: '0.25rem' }}>{b.guest_name}</div>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> {format(new Date(b.check_in_date), 'dd MMM')} - {format(new Date(b.check_out_date), 'dd MMM')}</span>
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Home size={14} /> {cottages.find(c => c.id === b.cottage_id)?.name}</span>
-                                </div>
+                              <div style={{ fontWeight: 800, fontSize: '1.25rem', marginBottom: '0.25rem' }}>{b.guest_name}</div>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> {format(new Date(b.check_in_date), 'dd MMM')} - {format(new Date(b.check_out_date), 'dd MMM')}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Home size={14} /> {c.name}</span>
+                              </div>
                             </div>
-                        </div>
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
-                             <span style={{ padding: '0.2rem 0.75rem', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800, background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                               {(() => {
-                                 const { isAgent, name, phone } = parseAgentSource(b.booking_source);
-                                 if (isAgent) {
-                                   return `Agent: ${name}${phone ? `, Contact: ${phone}` : ''}`;
-                                 }
-                                 return b.booking_source || 'Direct';
-                               })()}
-                             </span>
-                            <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
                           </div>
-                          <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
+                              <span style={{ padding: '0.2rem 0.75rem', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800, background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                                {(() => {
+                                  const { isAgent, name, phone } = parseAgentSource(b.booking_source);
+                                  if (isAgent) {
+                                    return `Agent: ${name}${phone ? `, Contact: ${phone}` : ''}`;
+                                  }
+                                  return b.booking_source || 'Direct';
+                                })()}
+                              </span>
+                              <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
+                            </div>
+                            <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
+                          </div>
                         </div>
-                     </div>
-                   </div>
-                 ))}
-                 {filteredBookings.length === 0 && (
-                    <div style={{ textAlign: 'center', padding: '5rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '20px', border: '2px dashed var(--border)' }}>
-                        <Calendar size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
-                        <h3 style={{ margin: 0 }}>No bookings found</h3>
-                        <p>Adjust your search or change the month to see results.</p>
-                    </div>
-                 )}
-               </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+              {filteredBookings.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '5rem 2rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '20px', border: '2px dashed var(--border)' }}>
+                  <Calendar size={48} style={{ marginBottom: '1rem', opacity: 0.3 }} />
+                  <h3 style={{ margin: 0 }}>No bookings found</h3>
+                  <p>Adjust your search or change the month to see results.</p>
+                </div>
+              )}
             </div>
           )}
         </div>

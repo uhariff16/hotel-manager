@@ -152,7 +152,7 @@ export default function BookingForm() {
 
   useEffect(() => {
     fetchData();
-  }, [activeResortId]);
+  }, [activeResortId, profile?.cottage_id, profile?.role]);
 
   useEffect(() => {
     if (location.state?.prefill && !id) {
@@ -168,12 +168,28 @@ export default function BookingForm() {
   const fetchData = async () => {
     if (!activeResortId) return;
     try {
+      let cottagesQuery = supabase.from('cottages').select('*').eq('resort_id', activeResortId);
+      let roomsQuery = supabase.from('rooms').select('*').eq('resort_id', activeResortId);
+
+      if (profile?.role === 'staff' && profile?.cottage_id) {
+        cottagesQuery = cottagesQuery.eq('id', profile.cottage_id);
+        roomsQuery = roomsQuery.eq('cottage_id', profile.cottage_id);
+      }
+
       const [cts, rms] = await Promise.all([
-        supabase.from('cottages').select('*').eq('resort_id', activeResortId),
-        supabase.from('rooms').select('*').eq('resort_id', activeResortId)
+        cottagesQuery,
+        roomsQuery
       ]);
       setCottages(cts.data || []);
       setRooms(rms.data || []);
+
+      // If restricted staff, prefill the cottage_id
+      if (profile?.role === 'staff' && profile?.cottage_id && !id) {
+        setBookingForm(prev => ({
+          ...prev,
+          cottage_id: profile.cottage_id
+        }));
+      }
 
       // Fetch agents from existing bookings
       let fetchedAgents = [];
@@ -206,6 +222,13 @@ export default function BookingForm() {
         
         if (fetchErr) throw fetchErr;
         if (b) {
+          // Check if restricted staff has access to this booking
+          if (profile?.role === 'staff' && profile?.cottage_id && b.cottage_id !== profile.cottage_id) {
+            alert("You are not authorized to edit this booking.");
+            navigate('/bookings');
+            return;
+          }
+
           let selections = [];
           let othersText = [];
           if (b.addon_details) {

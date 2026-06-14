@@ -8,10 +8,12 @@ export default function Financials() {
   const { session, activeResortId } = useSettingsStore();
   const [incomes, setIncomes] = useState([]);
   const [expenses, setExpenses] = useState([]);
+  const [cottages, setCottages] = useState([]);
+  const [selectedCottageId, setSelectedCottageId] = useState('all');
   const [loading, setLoading] = useState(true);
 
-  const [newIncome, setNewIncome] = useState({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '' });
-  const [newExpense, setNewExpense] = useState({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '' });
+  const [newIncome, setNewIncome] = useState({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', cottage_id: '' });
+  const [newExpense, setNewExpense] = useState({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', cottage_id: '' });
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editingIncomeId, setEditingIncomeId] = useState(null);
   
@@ -25,11 +27,24 @@ export default function Financials() {
     end: `${new Date().getFullYear()}-12-31`
   });
 
+  const filteredIncomes = React.useMemo(() => {
+    if (selectedCottageId === 'all') return incomes;
+    return incomes.filter(i => {
+      const cId = i.cottage_id || i.bookings?.cottage_id;
+      return cId === selectedCottageId;
+    });
+  }, [incomes, selectedCottageId]);
+
+  const filteredExpenses = React.useMemo(() => {
+    if (selectedCottageId === 'all') return expenses;
+    return expenses.filter(e => e.cottage_id === selectedCottageId);
+  }, [expenses, selectedCottageId]);
+
   const stats = React.useMemo(() => {
-    const totalInc = incomes.reduce((sum, i) => sum + Number(i.amount), 0);
-    const totalExp = expenses.reduce((sum, e) => sum + Number(e.amount), 0);
+    const totalInc = filteredIncomes.reduce((sum, i) => sum + Number(i.amount), 0);
+    const totalExp = filteredExpenses.reduce((sum, e) => sum + Number(e.amount), 0);
     return { totalInc, totalExp, net: totalInc - totalExp };
-  }, [incomes, expenses]);
+  }, [filteredIncomes, filteredExpenses]);
 
   const setMonthRange = (monthIdx) => {
     const year = new Date().getFullYear();
@@ -69,12 +84,14 @@ export default function Financials() {
   const fetchData = async () => {
     if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
     try {
-      const [inc, exp] = await Promise.all([
-        supabase.from('incomes').select('*, bookings(reference_number, guest_name)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end).order('date', { ascending: false }),
-        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end).order('date', { ascending: false })
+      const [inc, exp, cot] = await Promise.all([
+        supabase.from('incomes').select('*, bookings(reference_number, guest_name, cottage_id)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end).order('date', { ascending: false }),
+        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end).order('date', { ascending: false }),
+        supabase.from('cottages').select('*').eq('resort_id', activeResortId).order('name')
       ]);
       setIncomes(inc.data || []);
       setExpenses(exp.data || []);
+      setCottages(cot.data || []);
     } catch(err) {
       console.error(err);
     } finally { setLoading(false); }
@@ -85,6 +102,7 @@ export default function Financials() {
     try {
       const payload = { ...newIncome, tenant_id: session.user.id, resort_id: activeResortId };
       if (payload.source === 'Other') payload.source = payload.custom_source || 'Other';
+      if (payload.cottage_id === '') payload.cottage_id = null;
       
       let refNum = payload.reference_number?.trim();
       delete payload.custom_source;
@@ -103,12 +121,12 @@ export default function Financials() {
       }
 
       if (editingIncomeId) {
-        const { data, error } = await supabase.from('incomes').update(payload).eq('id', editingIncomeId).select('*, bookings(reference_number, guest_name)');
+        const { data, error } = await supabase.from('incomes').update(payload).eq('id', editingIncomeId).select('*, bookings(reference_number, guest_name, cottage_id)');
         if (error) throw error;
         setIncomes(incomes.map(inc => inc.id === editingIncomeId ? data[0] : inc));
         setEditingIncomeId(null);
       } else {
-        const { data, error } = await supabase.from('incomes').insert([payload]).select('*, bookings(reference_number, guest_name)');
+        const { data, error } = await supabase.from('incomes').insert([payload]).select('*, bookings(reference_number, guest_name, cottage_id)');
         if (error) throw error;
         const savedIncome = data[0];
         setIncomes([savedIncome, ...incomes]);
@@ -126,7 +144,7 @@ export default function Financials() {
         }
       }
 
-      setNewIncome({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', custom_source: '' });
+      setNewIncome({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', custom_source: '', cottage_id: '' });
       setShowIncomeForm(false);
     } catch(err) { alert(err.message); }
   };
@@ -147,6 +165,7 @@ export default function Financials() {
       payment_mode: inc.payment_mode || 'UPI',
       notes: inc.notes || '',
       reference_number: refNum,
+      cottage_id: inc.cottage_id || '',
       custom_source: ''
     });
     setShowIncomeForm(true);
@@ -157,6 +176,7 @@ export default function Financials() {
     try {
       const payload = { ...newExpense, tenant_id: session.user.id, resort_id: activeResortId };
       if (payload.category === 'Other') payload.category = payload.custom_category || 'Other';
+      if (payload.cottage_id === '') payload.cottage_id = null;
       delete payload.custom_category;
       
       if (editingExpenseId) {
@@ -170,7 +190,7 @@ export default function Financials() {
         setExpenses([data[0], ...expenses]);
       }
       
-      setNewExpense({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', custom_category: '' });
+      setNewExpense({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', custom_category: '', cottage_id: '' });
       setShowExpenseForm(false);
     } catch(err) { alert(err.message); }
   };
@@ -184,6 +204,7 @@ export default function Financials() {
       vendor_name: exp.vendor_name || '',
       payment_mode: exp.payment_mode || 'Cash',
       notes: exp.notes || '',
+      cottage_id: exp.cottage_id || '',
       custom_category: ''
     });
     setShowExpenseForm(true);
@@ -256,7 +277,16 @@ export default function Financials() {
                 ))}
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <small style={{ fontWeight: 700, opacity: 0.6 }}>PROPERTY</small>
+              <select className="form-select" style={{ width: '160px', height: '32px', fontSize: '0.8rem', padding: '0 0.5rem' }} value={selectedCottageId} onChange={e => setSelectedCottageId(e.target.value)}>
+                <option value="all">All Properties</option>
+                {cottages.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <small style={{ fontWeight: 700, opacity: 0.6 }}>FROM</small>
               <input type="date" className="form-input" style={{ width: '130px', height: '32px', fontSize: '0.8rem' }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
@@ -311,11 +341,22 @@ export default function Financials() {
                     <input type="number" required className="form-input" placeholder="₹" value={newIncome.amount} onChange={e => setNewIncome({...newIncome, amount: e.target.value})} />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Source</label>
-                  <select className="form-select" value={newIncome.source} onChange={e => setNewIncome({...newIncome, source: e.target.value})}>
-                    <option>Room Rent</option><option>Food</option><option>Activities</option><option>Other</option>
-                  </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Source</label>
+                    <select className="form-select" value={newIncome.source} onChange={e => setNewIncome({...newIncome, source: e.target.value})}>
+                      <option>Room Rent</option><option>Food</option><option>Activities</option><option>Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Property (Optional)</label>
+                    <select className="form-select" value={newIncome.cottage_id || ''} onChange={e => setNewIncome({...newIncome, cottage_id: e.target.value})}>
+                      <option value="">General / All Properties</option>
+                      {cottages.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="form-group"><label className="form-label">Ref #</label><input type="text" className="form-input" placeholder="Booking Ref" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} /></div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{editingIncomeId ? 'Update' : 'Save Income'}</button>
@@ -345,13 +386,18 @@ export default function Financials() {
                       <td style={{ color: 'var(--success)', fontSize: isMobile ? '0.85rem' : '1.15rem', padding: isMobile ? '0.4rem' : '1rem', textAlign: 'right' }}>₹{stats.totalInc.toLocaleString()}</td>
                       <td></td>
                     </tr>
-                    {incomes.map(i => {
+                    {filteredIncomes.map(i => {
                       const isAutoGenerated = i.booking_id && (i.notes?.includes('Auto') || i.notes?.includes('Settled') || i.notes?.includes('Refund') || i.notes?.includes('Settlement'));
                       return (
                       <tr key={i.id} className="table-row-hover">
                         <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(i.date)}</td>
                         <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
                           <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{i.source}</div>
+                          <div style={{ marginTop: '2px' }}>
+                            <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                              Prop: {cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General'}
+                            </span>
+                          </div>
                           {i.bookings?.reference_number && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
                               <small style={{ color: 'var(--text-main)', fontWeight: '700', fontSize: isMobile ? '0.65rem' : '0.85rem' }}>{i.bookings.guest_name}</small>
@@ -394,11 +440,22 @@ export default function Financials() {
                     <input type="number" required className="form-input" placeholder="₹" value={newExpense.amount} onChange={e => setNewExpense({...newExpense, amount: e.target.value})} />
                   </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label">Category</label>
-                  <select className="form-select" value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})}>
-                    <option>Maintenance</option><option>Salary</option><option>Utilities</option><option>Supplies</option><option>Other</option>
-                  </select>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Category</label>
+                    <select className="form-select" value={newExpense.category} onChange={e => setNewExpense({...newExpense, category: e.target.value})}>
+                      <option>Maintenance</option><option>Salary</option><option>Utilities</option><option>Supplies</option><option>Other</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Property (Optional)</label>
+                    <select className="form-select" value={newExpense.cottage_id || ''} onChange={e => setNewExpense({...newExpense, cottage_id: e.target.value})}>
+                      <option value="">General / All Properties</option>
+                      {cottages.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
                 <div className="form-group"><label className="form-label">Vendor</label><input type="text" className="form-input" placeholder="Name" value={newExpense.vendor_name} onChange={e => setNewExpense({...newExpense, vendor_name: e.target.value})} /></div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)' }}>{editingExpenseId ? 'Update' : 'Save Expense'}</button>
@@ -428,11 +485,16 @@ export default function Financials() {
                       <td style={{ color: 'var(--danger)', fontSize: isMobile ? '0.85rem' : '1.15rem', padding: isMobile ? '0.4rem' : '1rem', textAlign: 'right' }}>₹{stats.totalExp.toLocaleString()}</td>
                       <td></td>
                     </tr>
-                    {expenses.map(e => (
+                    {filteredExpenses.map(e => (
                       <tr key={e.id} className="table-row-hover">
                         <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(e.date)}</td>
                         <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
                           <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{e.category}</div>
+                          <div style={{ marginTop: '2px', marginBottom: '2px' }}>
+                            <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                              Prop: {cottages.find(c => c.id === e.cottage_id)?.name || 'General'}
+                            </span>
+                          </div>
                           <small style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.55rem' : '0.8rem', display: 'block' }}>{e.vendor_name || 'General'}</small>
                         </td>
                         <td style={{ color: 'var(--danger)', fontWeight: '800', fontSize: isMobile ? '0.8rem' : '1.1rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', textAlign: 'right' }}>₹{e.amount.toLocaleString()}</td>

@@ -18,6 +18,15 @@ export default function AppLayout() {
 
   let navLinks = [];
 
+  const isManagementActive = ['/resorts', '/setup', '/staff'].includes(location.pathname);
+  const [isManagementOpen, setIsManagementOpen] = React.useState(isManagementActive);
+
+  React.useEffect(() => {
+    if (isManagementActive) {
+      setIsManagementOpen(true);
+    }
+  }, [location.pathname]);
+
   if (isStaff) {
     // Staff only see Bookings, Calendar, and Settings
     navLinks = [
@@ -32,10 +41,17 @@ export default function AppLayout() {
       { to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> },
       { to: '/financials', label: 'Financials', icon: <Wallet size={20} /> },
       { to: '/reports', label: 'Reports', icon: <FileText size={20} /> },
-      { to: '/resorts', label: 'Tenant Management', icon: <Hotel size={20} /> },
-      { to: '/staff', label: 'Staff Management', icon: <Users size={20} /> },
-      { to: '/setup', label: 'Property Management', icon: <Home size={20} /> },
-      { to: '/subscription', label: 'Plans & Billing', icon: <CreditCard size={24} /> },
+      { 
+        label: 'Management', 
+        icon: <Activity size={20} />, 
+        isSubmenu: true,
+        children: [
+          { to: '/resorts', label: 'Tenant Management', icon: <Hotel size={16} /> },
+          { to: '/setup', label: 'Property Management', icon: <Home size={16} /> },
+          { to: '/staff', label: 'Staff Management', icon: <Users size={16} /> },
+        ]
+      },
+      { to: '/subscription', label: 'Plans & Billing', icon: <CreditCard size={20} /> },
     ];
   }
 
@@ -60,7 +76,7 @@ export default function AppLayout() {
     <div className="app-container">
       {/* Sidebar Overlay (Mobile only) */}
       <div 
-        className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`} 
+         className={`sidebar-overlay ${isSidebarOpen ? 'open' : ''}`} 
         onClick={() => setIsSidebarOpen(false)}
       ></div>
 
@@ -99,16 +115,81 @@ export default function AppLayout() {
         )}
 
         <nav className="nav-links" style={{ flex: 1 }}>
-          {navLinks.map((link) => (
-            <NavLink
-              key={link.to}
-              to={link.to}
-              className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
-            >
-              {link.icon}
-              {link.label}
-            </NavLink>
-          ))}
+          {navLinks.map((link) => {
+            if (link.isSubmenu) {
+              return (
+                <div key={link.label} style={{ display: 'flex', flexDirection: 'column' }}>
+                  <button
+                    onClick={() => setIsManagementOpen(!isManagementOpen)}
+                    className="nav-item"
+                    style={{
+                      width: '100%',
+                      background: 'none',
+                      border: 'none',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      color: isManagementActive ? 'var(--primary)' : 'var(--text-muted)',
+                      fontWeight: isManagementActive ? 700 : 500,
+                      padding: '0.75rem 1rem',
+                      font: 'inherit'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      {link.icon}
+                      <span>{link.label}</span>
+                    </div>
+                    <span style={{ 
+                      fontSize: '0.6rem', 
+                      transform: isManagementOpen ? 'rotate(90deg)' : 'rotate(0deg)', 
+                      transition: 'transform 0.2s',
+                      opacity: 0.6
+                    }}>
+                      ▶
+                    </span>
+                  </button>
+                  {isManagementOpen && (
+                    <div className="submenu-links" style={{ paddingLeft: '1rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.25rem', marginBottom: '0.25rem', borderLeft: '1px solid var(--border)', marginLeft: '1.75rem' }}>
+                      {link.children.map((child) => (
+                        <NavLink
+                          key={child.to}
+                          to={child.to}
+                          className="nav-item"
+                          style={({ isActive }) => ({
+                            fontSize: '0.85rem',
+                            padding: '0.6rem 1rem',
+                            color: isActive ? 'var(--primary)' : 'var(--text-muted)',
+                            background: isActive ? 'rgba(5, 150, 105, 0.08)' : 'transparent',
+                            fontWeight: isActive ? 700 : 500,
+                            borderRadius: 'var(--radius-md)',
+                            transition: 'all 0.2s'
+                          })}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                            {child.icon}
+                            <span>{child.label}</span>
+                          </div>
+                        </NavLink>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            return (
+              <NavLink
+                key={link.to}
+                to={link.to}
+                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+              >
+                {link.icon}
+                {link.label}
+              </NavLink>
+            );
+          })}
         </nav>
 
         <div className="sidebar-footer" style={{ padding: '1rem', borderTop: '1px solid var(--border)' }}>

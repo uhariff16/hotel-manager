@@ -14,15 +14,33 @@ const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
 export default function Staff() {
   const { profile } = useSettingsStore();
   const [staff, setStaff] = useState([]);
+  const [cottages, setCottages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ id: '', email: '', password: '', fullName: '' });
+  const [formData, setFormData] = useState({ id: '', email: '', password: '', fullName: '', cottage_id: '' });
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    fetchStaff();
+    if (profile) {
+      fetchStaff();
+      fetchCottages();
+    }
   }, [profile]);
+
+  const fetchCottages = async () => {
+    if (!profile?.tenant_id) return;
+    try {
+      const { data, error } = await supabase
+        .from('cottages')
+        .select('*')
+        .eq('tenant_id', profile.tenant_id);
+      if (error) throw error;
+      setCottages(data || []);
+    } catch (err) {
+      console.error("fetchCottages error:", err);
+    }
+  };
 
   const fetchStaff = async () => {
     if (!profile?.tenant_id) {
@@ -46,7 +64,7 @@ export default function Staff() {
   };
 
   const resetForm = () => {
-    setFormData({ id: '', email: '', password: '', fullName: '' });
+    setFormData({ id: '', email: '', password: '', fullName: '', cottage_id: '' });
     setShowForm(false);
     setIsEditing(false);
     setError(null);
@@ -57,6 +75,7 @@ export default function Staff() {
       id: member.id, 
       email: member.id, // Email is masked in profiles usually, but we use it for identification
       fullName: member.full_name,
+      cottage_id: member.cottage_id || '',
       password: '' 
     });
     setIsEditing(true);
@@ -73,24 +92,37 @@ export default function Staff() {
         // Update existing profile
         const { error } = await supabase
           .from('profiles')
-          .update({ full_name: formData.fullName })
+          .update({ 
+            full_name: formData.fullName,
+            cottage_id: formData.cottage_id || null
+          })
           .eq('id', formData.id);
         if (error) throw error;
         alert("Staff updated successfully!");
       } else {
         // 1. Sign up the new user using the secondary client
-        const { error: authError } = await secondarySupabase.auth.signUp({
+        const { data, error: authError } = await secondarySupabase.auth.signUp({
           email: formData.email,
           password: formData.password,
           options: {
             data: {
               full_name: formData.fullName,
               tenant_id: profile.tenant_id,
-              role: 'staff'
+              role: 'staff',
+              cottage_id: formData.cottage_id || null
             }
           }
         });
         if (authError) throw authError;
+
+        // 2. Perform fallback profile update to ensure cottage_id is set
+        if (data?.user?.id) {
+          await supabase
+            .from('profiles')
+            .update({ cottage_id: formData.cottage_id || null })
+            .eq('id', data.user.id);
+        }
+
         alert(`Staff account created for ${formData.email}!`);
       }
 
@@ -157,6 +189,20 @@ export default function Staff() {
                 <input type="text" className="form-input" required style={{ paddingLeft: '2.5rem' }} value={formData.fullName} onChange={e => setFormData({...formData, fullName: e.target.value})} placeholder="e.g. John Doe" />
               </div>
             </div>
+
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+              <label className="form-label">Assign Property</label>
+              <select 
+                className="form-select" 
+                value={formData.cottage_id || ''} 
+                onChange={e => setFormData({...formData, cottage_id: e.target.value})}
+              >
+                <option value="">All Properties (General Staff)</option>
+                {cottages.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
             
             {!isEditing && (
               <>
@@ -176,7 +222,7 @@ export default function Staff() {
                 </div>
               </>
             )}
-
+ 
             <div style={{ gridColumn: 'span 2' }}>
               <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px' }} disabled={loading}>
                 {loading ? 'Processing...' : (isEditing ? 'Save Changes' : 'Create Staff Account')}
@@ -185,7 +231,7 @@ export default function Staff() {
           </form>
         </div>
       )}
-
+ 
       <div className="card">
         <h3 style={{ marginBottom: '1.5rem' }}>Active Personnel</h3>
         {staff.length === 0 ? (
@@ -199,6 +245,7 @@ export default function Staff() {
               <thead>
                 <tr>
                   <th>Identity</th>
+                  <th>Assigned Property</th>
                   <th>Permission Level</th>
                   <th>Actions</th>
                 </tr>
@@ -216,6 +263,11 @@ export default function Staff() {
                           <br/><small style={{ color: 'var(--text-muted)' }}>Ref: {member.id.split('-')[0]}</small>
                         </div>
                       </div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-main)' }}>
+                        {member.cottage_id ? (cottages.find(c => c.id === member.cottage_id)?.name || 'Loading...') : 'All Properties'}
+                      </span>
                     </td>
                     <td>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', background: 'rgba(59, 130, 246, 0.1)', padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: '600' }}>

@@ -129,7 +129,7 @@ export default function Bookings() {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, [activeResortId]);
+  }, [activeResortId, profile?.cottage_id, profile?.role]);
 
   const fetchData = async () => {
     if (!activeResortId || !isSupabaseConfigured()) {
@@ -138,10 +138,20 @@ export default function Bookings() {
     }
     
     try {
+      let bookingsQuery = supabase.from('bookings').select('*').eq('resort_id', activeResortId);
+      let cottagesQuery = supabase.from('cottages').select('*').eq('resort_id', activeResortId);
+      let roomsQuery = supabase.from('rooms').select('*').eq('resort_id', activeResortId);
+
+      if (profile?.role === 'staff' && profile?.cottage_id) {
+        bookingsQuery = bookingsQuery.eq('cottage_id', profile.cottage_id);
+        cottagesQuery = cottagesQuery.eq('id', profile.cottage_id);
+        roomsQuery = roomsQuery.eq('cottage_id', profile.cottage_id);
+      }
+
       const [bks, cts, rms, integrationsRes, resortRes] = await Promise.all([
-        supabase.from('bookings').select('*').eq('resort_id', activeResortId).order('created_at', { ascending: false }),
-        supabase.from('cottages').select('*').eq('resort_id', activeResortId),
-        supabase.from('rooms').select('*').eq('resort_id', activeResortId),
+        bookingsQuery.order('created_at', { ascending: false }),
+        cottagesQuery,
+        roomsQuery,
         supabase.from('tenant_integrations').select('whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, whatsapp_custom_tags').eq('resort_id', activeResortId).maybeSingle(),
         supabase.from('resorts').select('*').eq('id', activeResortId).maybeSingle()
       ]);

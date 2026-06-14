@@ -12,6 +12,7 @@ export default function Reports() {
   const [data, setData] = useState({ incomes: [], expenses: [], bookings: [], cottages: [], rooms: [] });
   const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState('summary'); // 'summary' | 'bookings' | 'guests' | 'finance'
+  const [selectedCottageId, setSelectedCottageId] = useState('all');
   
   const [range, setRange] = useState({
     start: `${new Date().getFullYear()}-01-01`,
@@ -34,7 +35,7 @@ export default function Reports() {
     try {
       setLoading(true);
       const [inc, exp, bks, cts, rms] = await Promise.all([
-        supabase.from('incomes').select('*, bookings(reference_number, guest_name)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
+        supabase.from('incomes').select('*, bookings(reference_number, guest_name, cottage_id)').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
         supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
         supabase.from('bookings').select('*').eq('resort_id', activeResortId).gte('check_in_date', range.start).lte('check_in_date', range.end),
         supabase.from('cottages').select('*').eq('resort_id', activeResortId),
@@ -53,13 +54,29 @@ export default function Reports() {
     } finally { setLoading(false); }
   };
 
+  // Filtered datasets based on selected Property (Cottage)
+  const cottageBookings = useMemo(() => {
+    if (selectedCottageId === 'all') return data.bookings;
+    return data.bookings.filter(b => b.cottage_id === selectedCottageId);
+  }, [data.bookings, selectedCottageId]);
+
+  const cottageIncomes = useMemo(() => {
+    if (selectedCottageId === 'all') return data.incomes;
+    return data.incomes.filter(i => (i.cottage_id === selectedCottageId || i.bookings?.cottage_id === selectedCottageId));
+  }, [data.incomes, selectedCottageId]);
+
+  const cottageExpenses = useMemo(() => {
+    if (selectedCottageId === 'all') return data.expenses;
+    return data.expenses.filter(e => e.cottage_id === selectedCottageId);
+  }, [data.expenses, selectedCottageId]);
+
   // Base metrics for sidebar & summary view
-  const totalCollections = data.incomes.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
-  const totalExpenses = data.expenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const totalCollections = cottageIncomes.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
+  const totalExpenses = cottageExpenses.reduce((acc, curr) => acc + Number(curr.amount || 0), 0);
   const netProfit = totalCollections - totalExpenses;
 
-  const validBookings = data.bookings.filter(b => b.status !== 'Cancelled');
-  const completedBookings = data.bookings.filter(b => b.status === 'Completed');
+  const validBookings = cottageBookings.filter(b => b.status !== 'Cancelled');
+  const completedBookings = cottageBookings.filter(b => b.status === 'Completed');
   const completedValue = completedBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
   const completedGuests = completedBookings.reduce((acc, b) => acc + (Number(b.adults_count || 0) + Number(b.kids_count || 0)), 0);
 
@@ -87,25 +104,25 @@ export default function Reports() {
 
   // Dynamic booking sources
   const bookingSources = useMemo(() => {
-    const sources = new Set(data.bookings.map(b => b.booking_source || 'Direct'));
+    const sources = new Set(cottageBookings.map(b => b.booking_source || 'Direct'));
     return ['All', ...Array.from(sources)];
-  }, [data.bookings]);
+  }, [cottageBookings]);
 
   // Filtered lists
   const filteredBookings = useMemo(() => {
-    return data.bookings.filter(b => {
+    return cottageBookings.filter(b => {
       const matchesSearch = (b.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                              b.reference_number?.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesStatus = statusFilter === 'All' || b.status === statusFilter;
       const matchesSource = sourceFilter === 'All' || (b.booking_source || 'Direct') === sourceFilter;
       return matchesSearch && matchesStatus && matchesSource;
     });
-  }, [data.bookings, searchTerm, statusFilter, sourceFilter]);
+  }, [cottageBookings, searchTerm, statusFilter, sourceFilter]);
 
   // Aggregate Guest Contacts
   const guestContacts = useMemo(() => {
     const contactsMap = {};
-    data.bookings.forEach(b => {
+    cottageBookings.forEach(b => {
       if (!b.guest_name) return;
       const key = `${b.guest_name.trim().toLowerCase()}_${b.phone_number?.trim() || ''}`;
       if (!contactsMap[key]) {
@@ -130,40 +147,40 @@ export default function Reports() {
       g.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
       g.phone.includes(searchTerm)
     );
-  }, [data.bookings, searchTerm]);
+  }, [cottageBookings, searchTerm]);
 
   // Filtered Incomes
   const filteredIncomes = useMemo(() => {
-    return data.incomes.filter(i => {
+    return cottageIncomes.filter(i => {
       const matchesSearch = i.bookings?.guest_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             i.bookings?.reference_number?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (i.notes && i.notes.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesMethod = paymentMethodFilter === 'All' || i.payment_method === paymentMethodFilter;
       return matchesSearch && matchesMethod;
     });
-  }, [data.incomes, searchTerm, paymentMethodFilter]);
+  }, [cottageIncomes, searchTerm, paymentMethodFilter]);
 
   // Filtered Expenses
   const filteredExpenses = useMemo(() => {
-    return data.expenses.filter(e => {
+    return cottageExpenses.filter(e => {
       const matchesSearch = e.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (e.description && e.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
                             (e.paid_to && e.paid_to.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCategory = expenseCategoryFilter === 'All' || e.category === expenseCategoryFilter;
       return matchesSearch && matchesCategory;
     });
-  }, [data.expenses, searchTerm, expenseCategoryFilter]);
+  }, [cottageExpenses, searchTerm, expenseCategoryFilter]);
 
   // Unique lists for filters
   const paymentMethods = useMemo(() => {
-    const methods = new Set(data.incomes.map(i => i.payment_method).filter(Boolean));
+    const methods = new Set(cottageIncomes.map(i => i.payment_method).filter(Boolean));
     return ['All', ...Array.from(methods)];
-  }, [data.incomes]);
+  }, [cottageIncomes]);
 
   const expenseCategories = useMemo(() => {
-    const categories = new Set(data.expenses.map(e => e.category).filter(Boolean));
+    const categories = new Set(cottageExpenses.map(e => e.category).filter(Boolean));
     return ['All', ...Array.from(categories)];
-  }, [data.expenses]);
+  }, [cottageExpenses]);
 
   const sortedBookings = useMemo(() => genericSort(filteredBookings, bookingSort), [filteredBookings, bookingSort]);
   const sortedIncomes = useMemo(() => genericSort(filteredIncomes, incomeSort), [filteredIncomes, incomeSort]);
@@ -280,6 +297,7 @@ export default function Reports() {
       const summaryData = [
         ["Report Type", "Financial Performance Summary"],
         ["Resort", activeResort?.name || "N/A"],
+        ["Property", selectedCottageId === 'all' ? 'All Properties' : (data.cottages.find(c => c.id === selectedCottageId)?.name || 'N/A')],
         ["Period", `${format(new Date(range.start), 'dd MMM yyyy')} to ${format(new Date(range.end), 'dd MMM yyyy')}`],
         ["Generated At", new Date().toLocaleString()],
         [],
@@ -297,20 +315,21 @@ export default function Reports() {
       summarySheet['!cols'] = [{ wch: 25 }, { wch: 30 }];
       const sumRange = XLSX.utils.decode_range(summarySheet['!ref']);
       for(let r = 0; r <= sumRange.e.r; r++) {
-         const cell = summarySheet[XLSX.utils.encode_cell({r, c:0})];
+         const cell = summarySheet[Xcustom_label_cell_test || XLSX.utils.encode_cell({r, c:0})];
          if(cell) cell.s = { font: { bold: true, name: "Arial", sz: 10 } };
       }
       XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
       XLSX.writeFile(workbook, `${resortStr}_Summary_Report_${periodStr}.xlsx`);
 
     } else if (reportType === 'bookings') {
-      const bookingsHeaders = ["Ref #", "Guest Name", "Source", "Status", "Check-in", "Check-out", "Total Value", "Paid", "Balance"];
+      const bookingsHeaders = ["Ref #", "Guest Name", "Property", "Source", "Status", "Check-in", "Check-out", "Total Value", "Paid", "Balance"];
       const bookingsRows = sortedBookings.map(b => {
         const total = Number(b.total_amount || 0);
         const paid = Number(b.advance_paid || 0);
         return [
           b.reference_number,
           b.guest_name,
+          data.cottages.find(c => c.id === b.cottage_id)?.name || '-',
           b.booking_source || 'Direct',
           b.status,
           b.check_in_date,
@@ -320,11 +339,11 @@ export default function Reports() {
           total - paid
         ];
       });
-      const totalBookingValue = bookingsRows.reduce((sum, r) => sum + r[6], 0);
-      const totalBookingPaid = bookingsRows.reduce((sum, r) => sum + r[7], 0);
-      const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[8], 0);
-      const bookingsAOA = [bookingsHeaders, ...bookingsRows, ["", "", "", "", "", "TOTAL", totalBookingValue, totalBookingPaid, totalBookingBalance]];
-      XLSX.utils.book_append_sheet(workbook, createStyledSheet(bookingsAOA, [{wch:15}, {wch:25}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}], true), "Bookings");
+      const totalBookingValue = bookingsRows.reduce((sum, r) => sum + r[7], 0);
+      const totalBookingPaid = bookingsRows.reduce((sum, r) => sum + r[8], 0);
+      const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[9], 0);
+      const bookingsAOA = [bookingsHeaders, ...bookingsRows, ["", "", "", "", "", "", "TOTAL", totalBookingValue, totalBookingPaid, totalBookingBalance]];
+      XLSX.utils.book_append_sheet(workbook, createStyledSheet(bookingsAOA, [{wch:15}, {wch:25}, {wch:15}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}], true), "Bookings");
       XLSX.writeFile(workbook, `${resortStr}_Bookings_Report_${periodStr}.xlsx`);
 
     } else if (reportType === 'guests') {
@@ -341,30 +360,32 @@ export default function Reports() {
       XLSX.writeFile(workbook, `${resortStr}_Guest_Contacts_${periodStr}.xlsx`);
 
     } else if (reportType === 'finance') {
-      const incomeHeaders = ["Date", "Ref #", "Guest Name", "Amount (₹)", "Method", "Notes"];
+      const incomeHeaders = ["Date", "Ref #", "Guest Name", "Property", "Amount (₹)", "Method", "Notes"];
       const incomeRows = sortedIncomes.map(i => [
         i.date,
         i.bookings?.reference_number || '-',
         i.bookings?.guest_name || '-',
+        data.cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General',
         Number(i.amount),
         i.payment_method || '-',
         i.notes || '-'
       ]);
-      const totalIncome = incomeRows.reduce((sum, r) => sum + r[3], 0);
-      const incomeAOA = [incomeHeaders, ...incomeRows, ["", "", "TOTAL COLLECTIONS", totalIncome, "", ""]];
-      XLSX.utils.book_append_sheet(workbook, createStyledSheet(incomeAOA, [{wch:12}, {wch:15}, {wch:25}, {wch:15}, {wch:15}, {wch:30}], true), "Income Log");
+      const totalIncome = incomeRows.reduce((sum, r) => sum + r[4], 0);
+      const incomeAOA = [incomeHeaders, ...incomeRows, ["", "", "", "TOTAL COLLECTIONS", totalIncome, "", ""]];
+      XLSX.utils.book_append_sheet(workbook, createStyledSheet(incomeAOA, [{wch:12}, {wch:15}, {wch:25}, {wch:15}, {wch:15}, {wch:15}, {wch:30}], true), "Income Log");
 
-      const expenseHeaders = ["Date", "Category", "Amount (₹)", "Paid To", "Notes"];
+      const expenseHeaders = ["Date", "Category", "Property", "Amount (₹)", "Paid To", "Notes"];
       const expenseRows = sortedExpenses.map(e => [
         e.date,
         e.category,
+        data.cottages.find(c => c.id === e.cottage_id)?.name || 'General',
         Number(e.amount),
         e.paid_to || '-',
         e.description || '-'
       ]);
-      const totalExpenseAmount = expenseRows.reduce((sum, r) => sum + r[2], 0);
-      const expenseAOA = [expenseHeaders, ...expenseRows, ["", "TOTAL EXPENSES", totalExpenseAmount, "", ""]];
-      XLSX.utils.book_append_sheet(workbook, createStyledSheet(expenseAOA, [{wch:12}, {wch:20}, {wch:15}, {wch:20}, {wch:35}], true), "Expense Log");
+      const totalExpenseAmount = expenseRows.reduce((sum, r) => sum + r[3], 0);
+      const expenseAOA = [expenseHeaders, ...expenseRows, ["", "", "TOTAL EXPENSES", totalExpenseAmount, "", ""]];
+      XLSX.utils.book_append_sheet(workbook, createStyledSheet(expenseAOA, [{wch:12}, {wch:20}, {wch:15}, {wch:15}, {wch:20}, {wch:35}], true), "Expense Log");
 
       XLSX.writeFile(workbook, `${resortStr}_Financials_${periodStr}.xlsx`);
     }
@@ -401,6 +422,24 @@ export default function Reports() {
       <div className="reports-layout" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', alignItems: 'start' }}>
         <aside style={{ position: 'sticky', top: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
+          {/* Select Property */}
+          <div className="card" style={{ border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '1.25rem' }}>
+            <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Filter size={16} color="var(--primary)"/> Select Property
+            </h3>
+            <select 
+              className="form-select" 
+              style={{ width: '100%', padding: '0.6rem', fontSize: '0.85rem' }} 
+              value={selectedCottageId} 
+              onChange={e => setSelectedCottageId(e.target.value)}
+            >
+              <option value="all">All Properties</option>
+              {data.cottages.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+
           {/* Select Report View */}
           <div className="card" style={{ border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '1.25rem' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -553,7 +592,7 @@ export default function Reports() {
                   {reportType === 'finance' && 'Financial Performance Log (Income & Expenses)'}
                 </p>
                 <div style={{ display: 'inline-block', padding: '0.4rem 1.25rem', background: 'var(--bg-secondary)', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', marginTop: '0.5rem' }}>
-                  {format(new Date(range.start), 'MMM dd, yyyy')} — {format(new Date(range.end), 'MMM dd, yyyy')}
+                  {format(new Date(range.start), 'MMM dd, yyyy')} — {format(new Date(range.end), 'MMM dd, yyyy')} ({selectedCottageId === 'all' ? 'All Properties' : (data.cottages.find(c => c.id === selectedCottageId)?.name || '')})
                 </div>
               </div>
 
@@ -653,6 +692,7 @@ export default function Reports() {
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
                           <th onClick={() => requestSort('reference_number')} style={{ padding: '0.8rem', textAlign: 'left', cursor: 'pointer' }}>REF # <SortIcon column="reference_number"/></th>
                           <th onClick={() => requestSort('guest_name')} style={{ padding: '0.8rem', textAlign: 'left', cursor: 'pointer' }}>GUEST NAME <SortIcon column="guest_name"/></th>
+                          <th style={{ padding: '0.8rem', textAlign: 'left' }}>PROPERTY</th>
                           <th style={{ padding: '0.8rem', textAlign: 'left' }}>SOURCE</th>
                           <th style={{ padding: '0.8rem', textAlign: 'center' }}>STATUS</th>
                           <th style={{ padding: '0.8rem', textAlign: 'left' }}>CHECK-IN</th>
@@ -664,7 +704,7 @@ export default function Reports() {
                       </thead>
                       <tbody>
                         {sortedBookings.length === 0 ? (
-                          <tr><td colSpan="9" style={{ textAlign: 'center', padding: '3rem', color: '#ccc' }}>No bookings found for the selected filters.</td></tr>
+                          <tr><td colSpan="10" style={{ textAlign: 'center', padding: '3rem', color: '#ccc' }}>No bookings found for the selected filters.</td></tr>
                         ) : sortedBookings.map(b => {
                           const total = Number(b.total_amount || 0);
                           const paid = Number(b.advance_paid || 0);
@@ -672,6 +712,11 @@ export default function Reports() {
                             <tr key={b.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
                               <td style={{ padding: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>{b.reference_number}</td>
                               <td style={{ padding: '0.8rem' }}>{b.guest_name}</td>
+                              <td style={{ padding: '0.8rem' }}>
+                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700 }}>
+                                  {data.cottages.find(c => c.id === b.cottage_id)?.name || '-'}
+                                </span>
+                              </td>
                               <td style={{ padding: '0.8rem' }}>
                                 <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: '#f0f4ff', color: '#5a67d8', fontWeight: 700 }}>
                                   {b.booking_source || 'Direct'}
@@ -799,23 +844,29 @@ export default function Reports() {
                       <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                           <thead style={{ background: '#fafafa' }}>
-                            <tr>
-                              <th style={{ padding: '0.6rem', textAlign: 'left' }}>DATE</th>
-                              <th style={{ padding: '0.6rem', textAlign: 'left' }}>GUEST / REF</th>
-                              <th style={{ padding: '0.6rem', textAlign: 'left' }}>METHOD</th>
-                              <th style={{ padding: '0.6rem', textAlign: 'right' }}>AMOUNT</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedIncomes.length === 0 ? (
-                              <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#ccc' }}>No incomes logged.</td></tr>
-                            ) : sortedIncomes.map(i => (
-                              <tr key={i.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                                <td style={{ padding: '0.6rem' }}>{i.date}</td>
-                                <td style={{ padding: '0.6rem' }}>
-                                  <div style={{ fontWeight: 700 }}>{i.bookings?.guest_name || 'Direct Deposit'}</div>
-                                  <div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{i.bookings?.reference_number || '-'}</div>
-                                </td>
+                             <tr>
+                               <th style={{ padding: '0.6rem', textAlign: 'left' }}>DATE</th>
+                               <th style={{ padding: '0.6rem', textAlign: 'left' }}>GUEST / REF</th>
+                               <th style={{ padding: '0.6rem', textAlign: 'left' }}>PROPERTY</th>
+                               <th style={{ padding: '0.6rem', textAlign: 'left' }}>METHOD</th>
+                               <th style={{ padding: '0.6rem', textAlign: 'right' }}>AMOUNT</th>
+                             </tr>
+                           </thead>
+                           <tbody>
+                             {sortedIncomes.length === 0 ? (
+                               <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#ccc' }}>No incomes logged.</td></tr>
+                             ) : sortedIncomes.map(i => (
+                               <tr key={i.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
+                                 <td style={{ padding: '0.6rem' }}>{i.date}</td>
+                                 <td style={{ padding: '0.6rem' }}>
+                                   <div style={{ fontWeight: 700 }}>{i.bookings?.guest_name || 'Direct Deposit'}</div>
+                                   <div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{i.bookings?.reference_number || '-'}</div>
+                                 </td>
+                                 <td style={{ padding: '0.6rem' }}>
+                                   <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700 }}>
+                                     {data.cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General'}
+                                   </span>
+                                 </td>
                                 <td style={{ padding: '0.6rem' }}>{i.payment_method || '-'}</td>
                                 <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>+₹{Number(i.amount).toLocaleString()}</td>
                               </tr>
@@ -833,20 +884,26 @@ export default function Reports() {
                       <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
                           <thead style={{ background: '#fafafa' }}>
-                            <tr>
-                              <th style={{ padding: '0.6rem', textAlign: 'left' }}>DATE</th>
-                              <th style={{ padding: '0.6rem', textAlign: 'left' }}>CATEGORY</th>
-                              <th style={{ padding: '0.6rem', textAlign: 'left' }}>PAID TO</th>
-                              <th style={{ padding: '0.6rem', textAlign: 'right' }}>AMOUNT</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sortedExpenses.length === 0 ? (
-                              <tr><td colSpan="4" style={{ textAlign: 'center', padding: '2rem', color: '#ccc' }}>No expenses logged.</td></tr>
-                            ) : sortedExpenses.map(e => (
-                              <tr key={e.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                                <td style={{ padding: '0.6rem' }}>{e.date}</td>
-                                <td style={{ padding: '0.6rem', fontWeight: 700 }}>{e.category}</td>
+                             <tr>
+                               <th style={{ padding: '0.6rem', textAlign: 'left' }}>DATE</th>
+                               <th style={{ padding: '0.6rem', textAlign: 'left' }}>CATEGORY</th>
+                               <th style={{ padding: '0.6rem', textAlign: 'left' }}>PROPERTY</th>
+                               <th style={{ padding: '0.6rem', textAlign: 'left' }}>PAID TO</th>
+                               <th style={{ padding: '0.6rem', textAlign: 'right' }}>AMOUNT</th>
+                             </tr>
+                           </thead>
+                           <tbody>
+                             {sortedExpenses.length === 0 ? (
+                               <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem', color: '#ccc' }}>No expenses logged.</td></tr>
+                             ) : sortedExpenses.map(e => (
+                               <tr key={e.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
+                                 <td style={{ padding: '0.6rem' }}>{e.date}</td>
+                                 <td style={{ padding: '0.6rem', fontWeight: 700 }}>{e.category}</td>
+                                 <td style={{ padding: '0.6rem' }}>
+                                   <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700 }}>
+                                     {data.cottages.find(c => c.id === e.cottage_id)?.name || 'General'}
+                                   </span>
+                                 </td>
                                 <td style={{ padding: '0.6rem' }}>{e.paid_to || '-'}</td>
                                 <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>-₹{Number(e.amount).toLocaleString()}</td>
                               </tr>
