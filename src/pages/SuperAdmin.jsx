@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle } from 'lucide-react';
 
 // Secondary client for creating users without affecting the admin session
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
