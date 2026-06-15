@@ -299,10 +299,12 @@ export default function Settings() {
       }
       setCustomTags(updatedTags);
 
+      const { email_api_key, email_from_address, email_from_name, whatsapp_access_token, whatsapp_phone_number_id, whatsapp_business_account_id, ...cleanSettings } = commSettings;
+
       const payload = {
         tenant_id: profile.id,
         resort_id: activeResortId,
-        ...commSettings,
+        ...(profile?.role === 'super_admin' ? commSettings : cleanSettings),
         whatsapp_custom_tags: updatedTags,
         updated_at: new Date().toISOString()
       };
@@ -315,11 +317,11 @@ export default function Settings() {
         // Fallback: If DB columns do not exist, try upserting without template columns
         if (error.message && (error.message.includes('column') || error.code === '42703')) {
           console.warn("DB template columns missing. Saving other configuration in database.");
-          const { whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, ...cleanSettings } = commSettings;
+          const { whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, ...cleanSettingsFallback } = profile?.role === 'super_admin' ? commSettings : cleanSettings;
           const retryPayload = {
             tenant_id: profile.id,
             resort_id: activeResortId,
-            ...cleanSettings,
+            ...cleanSettingsFallback,
             updated_at: new Date().toISOString()
           };
           const { error: retryError } = await supabase
@@ -606,7 +608,7 @@ export default function Settings() {
                               value={testEmail} 
                               onChange={e => setTestEmail(e.target.value)} 
                             />
-                            <button type="button" onClick={() => testConnection('email')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={!commSettings.email_api_key || testStatus.email.loading}>
+                            <button type="button" onClick={() => testConnection('email')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={testStatus.email.loading}>
                               {testStatus.email.loading ? <Loader2 size={14} className="animate-spin" /> : 'Send Test'}
                             </button>
                             <button 
@@ -645,20 +647,26 @@ export default function Settings() {
                         </div>
                       </div>
                       
-                      <div className="grid-2" style={{ gap: '1.5rem' }}>
-                        <div className="form-group">
-                          <label className="form-label">Resend API Key</label>
-                          <input type="password" placeholder="re_..." className="form-input" value={commSettings.email_api_key} onChange={e => setCommSettings({...commSettings, email_api_key: e.target.value})} />
+                      {profile?.role === 'super_admin' ? (
+                        <div className="grid-2" style={{ gap: '1.5rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Resend API Key</label>
+                            <input type="password" placeholder="re_..." className="form-input" value={commSettings.email_api_key} onChange={e => setCommSettings({...commSettings, email_api_key: e.target.value})} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Sender Email Address</label>
+                            <input type="email" placeholder="info@yourdomain.com" className="form-input" value={commSettings.email_from_address} onChange={e => setCommSettings({...commSettings, email_from_address: e.target.value})} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Sender Name</label>
+                            <input type="text" placeholder="Cheerful Chalet" className="form-input" value={commSettings.email_from_name} onChange={e => setCommSettings({...commSettings, email_from_name: e.target.value})} />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label className="form-label">Sender Email Address</label>
-                          <input type="email" placeholder="info@yourdomain.com" className="form-input" value={commSettings.email_from_address} onChange={e => setCommSettings({...commSettings, email_from_address: e.target.value})} />
+                      ) : (
+                        <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          🔒 API Credentials and integrations are managed globally by the Super Admin.
                         </div>
-                        <div className="form-group">
-                          <label className="form-label">Sender Name</label>
-                          <input type="text" placeholder="Cheerful Chalet" className="form-input" value={commSettings.email_from_name} onChange={e => setCommSettings({...commSettings, email_from_name: e.target.value})} />
-                        </div>
-                      </div>
+                      )}
                     </div>
 
                     {/* WhatsApp (Meta) */}
@@ -680,7 +688,7 @@ export default function Settings() {
                               value={testPhone} 
                               onChange={e => setTestPhone(e.target.value)} 
                             />
-                            <button type="button" onClick={() => testConnection('whatsapp')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={!commSettings.whatsapp_access_token || testStatus.whatsapp.loading}>
+                            <button type="button" onClick={() => testConnection('whatsapp')} className="btn btn-outline" style={{ height: '32px', fontSize: '0.75rem', padding: '0 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }} disabled={testStatus.whatsapp.loading}>
                               {testStatus.whatsapp.loading ? <Loader2 size={14} className="animate-spin" /> : 'Send Test'}
                             </button>
                             <button 
@@ -719,22 +727,28 @@ export default function Settings() {
                         </div>
                       </div>
                       
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                        <div className="form-group">
-                          <label className="form-label">Permanent Access Token</label>
-                          <input type="password" placeholder="EAAB..." className="form-input" value={commSettings.whatsapp_access_token} onChange={e => setCommSettings({...commSettings, whatsapp_access_token: e.target.value})} />
-                        </div>
-                        <div className="grid-2" style={{ gap: '1.5rem' }}>
+                      {profile?.role === 'super_admin' ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                           <div className="form-group">
-                            <label className="form-label">Phone Number ID</label>
-                            <input type="text" placeholder="10555..." className="form-input" value={commSettings.whatsapp_phone_number_id} onChange={e => setCommSettings({...commSettings, whatsapp_phone_number_id: e.target.value})} />
+                            <label className="form-label">Permanent Access Token</label>
+                            <input type="password" placeholder="EAAB..." className="form-input" value={commSettings.whatsapp_access_token} onChange={e => setCommSettings({...commSettings, whatsapp_access_token: e.target.value})} />
                           </div>
-                          <div className="form-group">
-                            <label className="form-label">Business Account ID</label>
-                            <input type="text" placeholder="12345..." className="form-input" value={commSettings.whatsapp_business_account_id} onChange={e => setCommSettings({...commSettings, whatsapp_business_account_id: e.target.value})} />
+                          <div className="grid-2" style={{ gap: '1.5rem' }}>
+                            <div className="form-group">
+                              <label className="form-label">Phone Number ID</label>
+                              <input type="text" placeholder="10555..." className="form-input" value={commSettings.whatsapp_phone_number_id} onChange={e => setCommSettings({...commSettings, whatsapp_phone_number_id: e.target.value})} />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Business Account ID</label>
+                              <input type="text" placeholder="12345..." className="form-input" value={commSettings.whatsapp_business_account_id} onChange={e => setCommSettings({...commSettings, whatsapp_business_account_id: e.target.value})} />
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                          🔒 API Credentials and integrations are managed globally by the Super Admin.
+                        </div>
+                      )}
                     </div>
 
                     {/* Automation Toggles */}

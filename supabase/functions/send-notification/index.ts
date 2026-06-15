@@ -18,15 +18,32 @@ serve(async (req) => {
     const { type, booking_id, resort_id, custom_payload, test_recipient } = await req.json()
 
     // 1. Fetch Integration Settings
-    const { data: settings, error: settingsError } = await supabaseClient
+    const { data: settings } = await supabaseClient
       .from("tenant_integrations")
       .select("*")
       .eq("resort_id", resort_id)
-      .single()
+      .maybeSingle()
 
-    if (settingsError || !settings) throw new Error("Integration settings not found.")
+    // 2. Fetch Global Integration Settings from Super Admin profile
+    const { data: superAdminProfile } = await supabaseClient
+      .from("profiles")
+      .select("global_settings")
+      .eq("role", "super_admin")
+      .maybeSingle()
 
-    // 2. Fetch Booking Info (if provided)
+    const globalIntegrations = superAdminProfile?.global_settings?.integrations || {}
+
+    // Combine/fallback to global settings
+    const email_enabled = settings?.email_enabled ?? false
+    const email_api_key = globalIntegrations.email_api_key || settings?.email_api_key || ""
+    const email_from_address = globalIntegrations.email_from_address || settings?.email_from_address || ""
+    const email_from_name = globalIntegrations.email_from_name || settings?.email_from_name || ""
+
+    const whatsapp_enabled = settings?.whatsapp_enabled ?? false
+    const whatsapp_access_token = globalIntegrations.whatsapp_access_token || settings?.whatsapp_access_token || ""
+    const whatsapp_phone_number_id = globalIntegrations.whatsapp_phone_number_id || settings?.whatsapp_phone_number_id || ""
+
+    // 3. Fetch Booking Info (if provided)
     let booking = null
     if (booking_id) {
       const { data, error } = await supabaseClient
@@ -38,7 +55,7 @@ serve(async (req) => {
     }
 
     const guestName = booking?.guest_name || "Valued Guest"
-    const resortName = booking?.resorts?.name || settings.email_from_name || "Our Resort"
+    const resortName = booking?.resorts?.name || email_from_name || "Our Resort"
     
     // Determine recipients
     let guestEmail = booking?.guest_email || (type === "test_email" ? test_recipient : null)
@@ -48,11 +65,11 @@ serve(async (req) => {
 
     let results = { email: null, whatsapp: null }
 
-    // 3. Handle Email
-    const canSendEmail = settings.email_enabled && (
-      (type === "confirmation" && settings.auto_booking_confirmation) ||
-      (type === "receipt" && settings.auto_payment_receipt) ||
-      (type === "reminder" && settings.auto_checkin_reminder) ||
+    // 4. Handle Email
+    const canSendEmail = email_enabled && (
+      (type === "confirmation" && settings?.auto_booking_confirmation) ||
+      (type === "receipt" && settings?.auto_payment_receipt) ||
+      (type === "reminder" && settings?.auto_checkin_reminder) ||
       type === "test_email"
     )
 
@@ -79,11 +96,11 @@ serve(async (req) => {
         const res = await fetch("https://api.resend.com/emails", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${settings.email_api_key}`,
+            "Authorization": `Bearer ${email_api_key}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: `${settings.email_from_name} <${settings.email_from_address}>`,
+            from: `${email_from_name} <${email_from_address}>`,
             to: [guestEmail],
             subject: subject,
             html: html,
@@ -95,11 +112,11 @@ serve(async (req) => {
       }
     }
 
-    // 4. Handle WhatsApp
-    const canSendWhatsApp = settings.whatsapp_enabled && (
-      (type === "confirmation" && settings.auto_booking_confirmation) ||
-      (type === "receipt" && settings.auto_payment_receipt) ||
-      (type === "reminder" && settings.auto_checkin_reminder) ||
+    // 5. Handle WhatsApp
+    const canSendWhatsApp = whatsapp_enabled && (
+      (type === "confirmation" && settings?.auto_booking_confirmation) ||
+      (type === "receipt" && settings?.auto_payment_receipt) ||
+      (type === "reminder" && settings?.auto_checkin_reminder) ||
       type === "test_whatsapp"
     )
 
@@ -143,10 +160,10 @@ serve(async (req) => {
 
       if (payload) {
         console.log(`Attempting to send WhatsApp to: ${guestPhone}`)
-        const res = await fetch(`https://graph.facebook.com/v17.0/${settings.whatsapp_phone_number_id}/messages`, {
+        const res = await fetch(`https://graph.facebook.com/v17.0/${whatsapp_phone_number_id}/messages`, {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${settings.whatsapp_access_token}`,
+            "Authorization": `Bearer ${whatsapp_access_token}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify(payload),

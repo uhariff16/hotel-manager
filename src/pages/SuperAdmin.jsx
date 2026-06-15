@@ -63,6 +63,15 @@ export default function SuperAdmin() {
 
   const [pricingConfig, setPricingConfig] = useState(DEFAULT_PLANS);
   
+  const [globalIntegrations, setGlobalIntegrations] = useState({
+    email_api_key: '',
+    email_from_address: '',
+    email_from_name: '',
+    whatsapp_access_token: '',
+    whatsapp_phone_number_id: '',
+    whatsapp_business_account_id: ''
+  });
+
   // Modal states
   const [showUserForm, setShowUserForm] = useState(false);
   const [userFormData, setUserFormData] = useState({ 
@@ -114,6 +123,13 @@ export default function SuperAdmin() {
           pro: { ...DEFAULT_PLANS.pro, ...loaded.pro, features: loaded.pro?.features || DEFAULT_PLANS.pro.features },
           premium: { ...DEFAULT_PLANS.premium, ...loaded.premium, features: loaded.premium?.features || DEFAULT_PLANS.premium.features }
         });
+      }
+
+      if (superAdminProfile?.global_settings?.integrations) {
+        setGlobalIntegrations(prev => ({
+          ...prev,
+          ...superAdminProfile.global_settings.integrations
+        }));
       }
 
       setTenants(tenantsWithData.filter(t => t.id !== profile.id));
@@ -229,6 +245,22 @@ export default function SuperAdmin() {
       alert("Global pricing configuration updated successfully!");
     } catch (err) {
       alert("Failed to save pricing: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveGlobalIntegrations = async () => {
+    try {
+      setIsUpdating(true);
+      const settings = profile.global_settings || {};
+      settings.integrations = globalIntegrations;
+      
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      if (error) throw error;
+      alert("Global communications configuration updated successfully!");
+    } catch (err) {
+      alert("Failed to save global configurations: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -416,6 +448,97 @@ export default function SuperAdmin() {
         <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
           <button className="btn btn-primary" onClick={handleSavePricing} disabled={isUpdating} style={{ padding: '0.75rem 2rem' }}>
             {isUpdating ? 'Saving Changes...' : 'Broadcast Prices Globally'}
+          </button>
+        </div>
+      </div>
+
+      {/* Global Communications & Automations */}
+      <div className="card" style={{ marginBottom: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+        <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
+          <Mail /> Global Communications & Automations API
+        </h3>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '2rem' }}>
+          
+          {/* Email Settings */}
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <h4 style={{ color: 'var(--primary)', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Mail size={18} /> Email Integration (Resend)
+            </h4>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Resend API Key</label>
+              <input 
+                type="password" 
+                placeholder="re_..." 
+                className="form-input" 
+                value={globalIntegrations.email_api_key || ''} 
+                onChange={e => setGlobalIntegrations({...globalIntegrations, email_api_key: e.target.value})} 
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Sender Email Address</label>
+              <input 
+                type="email" 
+                placeholder="info@yourdomain.com" 
+                className="form-input" 
+                value={globalIntegrations.email_from_address || ''} 
+                onChange={e => setGlobalIntegrations({...globalIntegrations, email_from_address: e.target.value})} 
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Sender Name</label>
+              <input 
+                type="text" 
+                placeholder="Cheerful Chalet" 
+                className="form-input" 
+                value={globalIntegrations.email_from_name || ''} 
+                onChange={e => setGlobalIntegrations({...globalIntegrations, email_from_name: e.target.value})} 
+              />
+            </div>
+          </div>
+
+          {/* WhatsApp Settings */}
+          <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <h4 style={{ color: '#22c55e', margin: '0 0 1rem 0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <MessageCircle size={18} /> WhatsApp Integration (Meta Cloud)
+            </h4>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Permanent Access Token</label>
+              <input 
+                type="password" 
+                placeholder="EAAB..." 
+                className="form-input" 
+                value={globalIntegrations.whatsapp_access_token || ''} 
+                onChange={e => setGlobalIntegrations({...globalIntegrations, whatsapp_access_token: e.target.value})} 
+              />
+            </div>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Phone Number ID</label>
+              <input 
+                type="text" 
+                placeholder="10555..." 
+                className="form-input" 
+                value={globalIntegrations.whatsapp_phone_number_id || ''} 
+                onChange={e => setGlobalIntegrations({...globalIntegrations, whatsapp_phone_number_id: e.target.value})} 
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Business Account ID</label>
+              <input 
+                type="text" 
+                placeholder="12345..." 
+                className="form-input" 
+                value={globalIntegrations.whatsapp_business_account_id || ''} 
+                onChange={e => setGlobalIntegrations({...globalIntegrations, whatsapp_business_account_id: e.target.value})} 
+              />
+            </div>
+          </div>
+
+        </div>
+
+        <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+          <button className="btn btn-primary" onClick={handleSaveGlobalIntegrations} disabled={isUpdating} style={{ padding: '0.75rem 2rem' }}>
+            {isUpdating ? 'Saving...' : 'Broadcast API Configurations'}
           </button>
         </div>
       </div>
