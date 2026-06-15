@@ -470,7 +470,7 @@ export default function Settings() {
             <SettingsIcon size={18} /> General Settings
           </button>
 
-          {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalCommEnabled && profile?.feature_comm_enabled !== false)) && (
+          {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && (globalCommEnabled ? profile?.feature_comm_enabled !== false : profile?.feature_comm_enabled === true))) && (
             <button 
               type="button"
               onClick={() => setActiveTab('templates')}
@@ -600,7 +600,7 @@ export default function Settings() {
               )}
 
               {/* Communications API Configurations */}
-              {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalCommEnabled && profile?.feature_comm_enabled !== false)) && (
+              {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && (globalCommEnabled ? profile?.feature_comm_enabled !== false : profile?.feature_comm_enabled === true))) && (
                 <div className="card">
                   <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Mail size={24} color="var(--primary)" /> Communications & Automations

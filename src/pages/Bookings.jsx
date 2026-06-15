@@ -1126,7 +1126,7 @@ export default function Bookings() {
 
             {/* Modal Actions */}
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
-              {(profile?.role === 'super_admin' || (globalCommEnabled && tenantCommEnabled)) && (
+              {(profile?.role === 'super_admin' || (globalCommEnabled ? tenantCommEnabled !== false : tenantCommEnabled === true)) && (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button 
                     onClick={() => {

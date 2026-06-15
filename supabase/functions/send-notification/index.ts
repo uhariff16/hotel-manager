@@ -42,9 +42,11 @@ serve(async (req) => {
       .eq("id", settings.tenant_id)
       .maybeSingle()
 
-    const tenantCommEnabled = tenantProfile?.feature_comm_enabled !== false
+    const tenantCommEnabled = tenantProfile?.feature_comm_enabled
 
-    if (!globalCommEnabled || !tenantCommEnabled) {
+    const commsEnabled = globalCommEnabled ? (tenantCommEnabled !== false) : (tenantCommEnabled === true)
+
+    if (!commsEnabled) {
       throw new Error("Communications & Automations feature is currently disabled by administration.")
     }
 
