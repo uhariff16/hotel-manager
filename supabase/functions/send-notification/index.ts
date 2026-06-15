@@ -24,24 +24,38 @@ serve(async (req) => {
       .eq("resort_id", resort_id)
       .maybeSingle()
 
-    // 2. Fetch Global Integration Settings from Super Admin profile
+    if (!settings) throw new Error("Integration settings not found.")
+
+    // 2. Validate Global Toggles from Super Admin profile
     const { data: superAdminProfile } = await supabaseClient
       .from("profiles")
       .select("global_settings")
       .eq("role", "super_admin")
       .maybeSingle()
 
-    const globalIntegrations = superAdminProfile?.global_settings?.integrations || {}
+    const globalCommEnabled = superAdminProfile?.global_settings?.comm_features_enabled !== false
 
-    // Combine/fallback to global settings
-    const email_enabled = settings?.email_enabled ?? false
-    const email_api_key = globalIntegrations.email_api_key || settings?.email_api_key || ""
-    const email_from_address = globalIntegrations.email_from_address || settings?.email_from_address || ""
-    const email_from_name = globalIntegrations.email_from_name || settings?.email_from_name || ""
+    // 3. Validate Tenant-Specific Toggle
+    const { data: tenantProfile } = await supabaseClient
+      .from("profiles")
+      .select("feature_comm_enabled")
+      .eq("id", settings.tenant_id)
+      .maybeSingle()
 
-    const whatsapp_enabled = settings?.whatsapp_enabled ?? false
-    const whatsapp_access_token = globalIntegrations.whatsapp_access_token || settings?.whatsapp_access_token || ""
-    const whatsapp_phone_number_id = globalIntegrations.whatsapp_phone_number_id || settings?.whatsapp_phone_number_id || ""
+    const tenantCommEnabled = tenantProfile?.feature_comm_enabled !== false
+
+    if (!globalCommEnabled || !tenantCommEnabled) {
+      throw new Error("Communications & Automations feature is currently disabled by administration.")
+    }
+
+    const email_enabled = settings.email_enabled || false
+    const email_api_key = settings.email_api_key || ""
+    const email_from_address = settings.email_from_address || ""
+    const email_from_name = settings.email_from_name || ""
+
+    const whatsapp_enabled = settings.whatsapp_enabled || false
+    const whatsapp_access_token = settings.whatsapp_access_token || ""
+    const whatsapp_phone_number_id = settings.whatsapp_phone_number_id || ""
 
     // 3. Fetch Booking Info (if provided)
     let booking = null
