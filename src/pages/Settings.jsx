@@ -523,11 +523,17 @@ export default function Settings() {
           {/* GENERAL SETTINGS TAB */}
           {activeTab === 'general' && (
             <>
+              <div style={{ marginBottom: '1rem' }}>
+                <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>General Settings</h1>
+                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Manage your personal profile and resort configurations.</p>
+              </div>
+
               {/* User Profile Section */}
               <div className="card">
-                <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
                   <User size={24} color="var(--primary)" /> User Profile
                 </h2>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Update your personal identity details and account contact name.</p>
                 <form onSubmit={updateProfile}>
                   <div className="form-group">
                     <label className="form-label">Full Name</label>
@@ -558,9 +564,10 @@ export default function Settings() {
               {/* Resort & Wi-Fi Details Section */}
               {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
                 <div className="card">
-                  <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
                     <SettingsIcon size={24} color="var(--primary)" /> Resort & Wi-Fi Details
                   </h2>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Configure your resort name, contact number, and guest Wi-Fi details.</p>
                   <form onSubmit={saveResortDetails}>
                     <div className="form-group">
                       <label className="form-label">Resort Name</label>
