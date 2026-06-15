@@ -526,7 +526,7 @@ export default function SuperAdmin() {
                 <input 
                   type="checkbox" 
                   id="feat_inv" 
-                  checked={editingUser.feature_investment_enabled} 
+                  checked={!!editingUser.feature_investment_enabled} 
                   onChange={e => setEditingUser({...editingUser, feature_investment_enabled: e.target.checked})} 
                   style={{ width: '20px', height: '20px' }}
                 />
@@ -708,7 +708,10 @@ export default function SuperAdmin() {
                     <button 
                       className="btn btn-outline" 
                       style={{ padding: '0.25rem 0.8rem', fontSize: '0.75rem' }} 
-                      onClick={() => setEditingUser(tenant)}
+                      onClick={() => {
+                        console.log("Manage button clicked. Setting editingUser to:", tenant);
+                        setEditingUser(tenant);
+                      }}
                     >
                       Manage
                     </button>

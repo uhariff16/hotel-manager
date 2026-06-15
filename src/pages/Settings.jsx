@@ -206,6 +206,14 @@ export default function Settings() {
       if (data && data.global_settings) {
         setGlobalCommEnabled(data.global_settings.comm_features_enabled !== false);
       }
+      
+      // Fetch latest profile to ensure toggles/permissions are fresh
+      if (session?.user?.id) {
+        const { data: latestProfile, error } = await supabase.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+        if (latestProfile && !error) {
+          setProfile(latestProfile);
+        }
+      }
     } catch (e) {
       console.error("Error fetching global settings:", e);
     }

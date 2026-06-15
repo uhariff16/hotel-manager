@@ -123,6 +123,8 @@ export default function Bookings() {
     review: DEFAULT_REVIEW_TEMPLATE
   });
   const [customTags, setCustomTags] = useState([]);
+  const [globalCommEnabled, setGlobalCommEnabled] = useState(true);
+  const [tenantCommEnabled, setTenantCommEnabled] = useState(true);
 
   useEffect(() => {
     fetchData();
@@ -180,6 +182,28 @@ export default function Bookings() {
           console.error("Failed to parse custom tags:", e);
         }
       }
+
+      // Fetch global and tenant communication setting
+      let gComm = true;
+      let tComm = true;
+      try {
+        const { data: superAdminData } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').maybeSingle();
+        if (superAdminData && superAdminData.global_settings) {
+          gComm = superAdminData.global_settings.comm_features_enabled !== false;
+        }
+        
+        if (profile?.tenant_id) {
+          const { data: tenantProfile } = await supabase.from('profiles').select('feature_comm_enabled').eq('id', profile.tenant_id).maybeSingle();
+          if (tenantProfile) {
+            tComm = tenantProfile.feature_comm_enabled !== false;
+          }
+        }
+      } catch (err) {
+        console.error("Error fetching feature flags in Bookings:", err);
+      }
+      setGlobalCommEnabled(gComm);
+      setTenantCommEnabled(tComm);
+
     } catch (err) {
       console.error(err);
       setError('Error fetching data.');
@@ -1102,75 +1126,77 @@ export default function Bookings() {
 
             {/* Modal Actions */}
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button 
-                  onClick={() => {
-                    const isAgent = selectedDetailedBooking.booking_source && (selectedDetailedBooking.booking_source.startsWith('Agent') || selectedDetailedBooking.booking_source.toLowerCase().includes('agent'));
-                    const defaultOption = isAgent ? 'agent' : (selectedDetailedBooking.balance_amount === 0 ? 'online' : 'property');
-                    const text = compileWhatsAppTemplate(whatsappTemplates.confirm, selectedDetailedBooking, '', defaultOption);
-                    setWhatsappGenerator({
-                      open: true,
-                      templateType: 'confirm',
-                      messageText: text,
-                      paymentAmount: '',
-                      paymentOption: defaultOption
-                    });
-                  }} 
-                  className="btn btn-outline" 
-                  style={{ borderColor: '#22c55e', color: '#15803d', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
-                >
-                  <MessageSquare size={16} /> WhatsApp Confirm
-                </button>
-                
-                <button 
-                  onClick={() => {
-                    const defaultAmount = (selectedDetailedBooking.total_amount - selectedDetailedBooking.balance_amount || 0).toLocaleString();
-                    const text = compileWhatsAppTemplate(whatsappTemplates.receipt, selectedDetailedBooking, defaultAmount);
-                    setWhatsappGenerator({
-                      open: true,
-                      templateType: 'receipt',
-                      messageText: text,
-                      paymentAmount: defaultAmount
-                    });
-                  }} 
-                  className="btn btn-outline" 
-                  style={{ borderColor: '#3b82f6', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
-                >
-                  <MessageSquare size={16} /> WhatsApp Receipt
-                </button>
+              {(profile?.role === 'super_admin' || (globalCommEnabled && tenantCommEnabled)) && (
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <button 
+                    onClick={() => {
+                      const isAgent = selectedDetailedBooking.booking_source && (selectedDetailedBooking.booking_source.startsWith('Agent') || selectedDetailedBooking.booking_source.toLowerCase().includes('agent'));
+                      const defaultOption = isAgent ? 'agent' : (selectedDetailedBooking.balance_amount === 0 ? 'online' : 'property');
+                      const text = compileWhatsAppTemplate(whatsappTemplates.confirm, selectedDetailedBooking, '', defaultOption);
+                      setWhatsappGenerator({
+                        open: true,
+                        templateType: 'confirm',
+                        messageText: text,
+                        paymentAmount: '',
+                        paymentOption: defaultOption
+                      });
+                    }} 
+                    className="btn btn-outline" 
+                    style={{ borderColor: '#22c55e', color: '#15803d', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                  >
+                    <MessageSquare size={16} /> WhatsApp Confirm
+                  </button>
+                  
+                  <button 
+                    onClick={() => {
+                      const defaultAmount = (selectedDetailedBooking.total_amount - selectedDetailedBooking.balance_amount || 0).toLocaleString();
+                      const text = compileWhatsAppTemplate(whatsappTemplates.receipt, selectedDetailedBooking, defaultAmount);
+                      setWhatsappGenerator({
+                        open: true,
+                        templateType: 'receipt',
+                        messageText: text,
+                        paymentAmount: defaultAmount
+                      });
+                    }} 
+                    className="btn btn-outline" 
+                    style={{ borderColor: '#3b82f6', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                  >
+                    <MessageSquare size={16} /> WhatsApp Receipt
+                  </button>
 
-                <button 
-                  onClick={() => {
-                    const text = compileWhatsAppTemplate(whatsappTemplates.reminder, selectedDetailedBooking);
-                    setWhatsappGenerator({
-                      open: true,
-                      templateType: 'reminder',
-                      messageText: text,
-                      paymentAmount: ''
-                    });
-                  }} 
-                  className="btn btn-outline" 
-                  style={{ borderColor: '#f59e0b', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
-                >
-                  <MessageSquare size={16} /> WhatsApp Reminder
-                </button>
+                  <button 
+                    onClick={() => {
+                      const text = compileWhatsAppTemplate(whatsappTemplates.reminder, selectedDetailedBooking);
+                      setWhatsappGenerator({
+                        open: true,
+                        templateType: 'reminder',
+                        messageText: text,
+                        paymentAmount: ''
+                      });
+                    }} 
+                    className="btn btn-outline" 
+                    style={{ borderColor: '#f59e0b', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                  >
+                    <MessageSquare size={16} /> WhatsApp Reminder
+                  </button>
 
-                <button 
-                  onClick={() => {
-                    const text = compileWhatsAppTemplate(whatsappTemplates.review, selectedDetailedBooking);
-                    setWhatsappGenerator({
-                      open: true,
-                      templateType: 'review',
-                      messageText: text,
-                      paymentAmount: ''
-                    });
-                  }} 
-                  className="btn btn-outline" 
-                  style={{ borderColor: '#8b5cf6', color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
-                >
-                  <MessageSquare size={16} /> WhatsApp Review
-                </button>
-              </div>
+                  <button 
+                    onClick={() => {
+                      const text = compileWhatsAppTemplate(whatsappTemplates.review, selectedDetailedBooking);
+                      setWhatsappGenerator({
+                        open: true,
+                        templateType: 'review',
+                        messageText: text,
+                        paymentAmount: ''
+                      });
+                    }} 
+                    className="btn btn-outline" 
+                    style={{ borderColor: '#8b5cf6', color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                  >
+                    <MessageSquare size={16} /> WhatsApp Review
+                  </button>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
