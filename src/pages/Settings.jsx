@@ -526,7 +526,7 @@ export default function Settings() {
             <SettingsIcon size={18} /> General Settings
           </button>
 
-          {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && (globalCommEnabled ? profile?.feature_comm_enabled !== false : profile?.feature_comm_enabled === true))) && (
+          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
             <button 
               type="button"
               onClick={() => setActiveTab('templates')}
