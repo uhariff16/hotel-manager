@@ -57,6 +57,7 @@ const formatOfferDate = (dateString) => {
 export default function Subscription() {
   const { profile, setProfile } = useSettingsStore();
   const [loading, setLoading] = useState(null);
+  const [fetchingPricing, setFetchingPricing] = useState(true);
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
   const [paymentForm, setPaymentForm] = useState({ cardNumber: '', expiry: '', cvc: '', name: '' });
@@ -112,6 +113,8 @@ export default function Subscription() {
         }
       } catch (e) {
         console.error("Failed to load dynamic pricing", e);
+      } finally {
+        setFetchingPricing(false);
       }
     };
     fetchDynamicPricing();
@@ -148,6 +151,15 @@ export default function Subscription() {
       }
     }, 2000);
   };
+
+  if (fetchingPricing) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' }}>
+        <div className="animate-spin" style={{ border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid var(--primary)', borderRadius: '50%', width: '40px', height: '40px' }}></div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Loading plans and pricing...</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 0' }}>
