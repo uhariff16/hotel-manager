@@ -203,9 +203,12 @@ export default function Settings() {
 
   const fetchGlobalSettings = async () => {
     try {
-      const { data } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').maybeSingle();
-      if (data && data.global_settings) {
-        setGlobalCommEnabled(data.global_settings.comm_features_enabled !== false);
+      const { data: adminList } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
+      if (adminList && adminList.length > 0) {
+        const data = adminList[0];
+        if (data && data.global_settings) {
+          setGlobalCommEnabled(data.global_settings.comm_features_enabled !== false);
+        }
       }
       
       // Fetch latest profile to ensure toggles/permissions are fresh
