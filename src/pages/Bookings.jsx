@@ -1319,8 +1319,8 @@ export default function Bookings() {
               }
               
               const contacts = [
-                { name: `${selectedDetailedBooking.guest_name} (Primary)`, phone: selectedDetailedBooking.phone_number },
-                ...(Array.isArray(guests) ? guests : []).map(g => ({ name: g.name, phone: g.phone || g.phone_number })).filter(c => c.phone)
+                { name: `${selectedDetailedBooking.guest_name} (Primary)`, phone: selectedDetailedBooking.phone_number, guestNameOnly: selectedDetailedBooking.guest_name },
+                ...(Array.isArray(guests) ? guests : []).map(g => ({ name: g.name, phone: g.phone || g.phone_number, guestNameOnly: g.name })).filter(c => c.phone)
               ];
 
               if (contacts.length <= 1) return null;
@@ -1338,7 +1338,13 @@ export default function Bookings() {
                           if (!rawPhone.trim().startsWith('+') && cleanedPhone.length === 10) {
                             cleanedPhone = '91' + cleanedPhone;
                           }
-                          const encodedText = encodeURIComponent(whatsappGenerator.messageText);
+                          
+                          let textToSend = whatsappGenerator.messageText;
+                          if (contact.guestNameOnly && contact.guestNameOnly !== selectedDetailedBooking.guest_name) {
+                            textToSend = textToSend.split(selectedDetailedBooking.guest_name).join(contact.guestNameOnly);
+                          }
+                          
+                          const encodedText = encodeURIComponent(textToSend);
                           const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
                           window.open(waUrl, '_blank');
                         }}
