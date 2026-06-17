@@ -203,29 +203,31 @@ export default function CottagesRooms() {
         <form onSubmit={handleAddCottage} style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: 'var(--radius-md)', marginBottom: '1.5rem' }}>
           <h4>Add New Property</h4>
           <div className="grid-2" style={{ gap: '1rem', marginTop: '1rem' }}>
-            <div className="form-group">
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Name</label>
               <input type="text" className="form-input" required value={newCottage.name} onChange={e => setNewCottage({...newCottage, name: e.target.value})} />
             </div>
-            <div className="form-group">
-              <label className="form-label">Capacity</label>
-              <input type="number" className="form-input" min="1" required value={newCottage.max_capacity} onChange={e => setNewCottage({...newCottage, max_capacity: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Weekday ₹</label>
-              <input type="number" className="form-input" required value={newCottage.weekday_price} onChange={e => setNewCottage({...newCottage, weekday_price: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Weekend ₹</label>
-              <input type="number" className="form-input" required value={newCottage.weekend_price} onChange={e => setNewCottage({...newCottage, weekend_price: e.target.value})} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', gridColumn: 'span 2' }}>
+              <div className="form-group">
+                <label className="form-label">Capacity</label>
+                <input type="number" className="form-input" min="1" required value={newCottage.max_capacity} onChange={e => setNewCottage({...newCottage, max_capacity: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Weekday ₹</label>
+                <input type="number" className="form-input" required value={newCottage.weekday_price} onChange={e => setNewCottage({...newCottage, weekday_price: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Weekend ₹</label>
+                <input type="number" className="form-input" required value={newCottage.weekend_price} onChange={e => setNewCottage({...newCottage, weekend_price: e.target.value})} />
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Property Contact Number</label>
-              <input type="text" className="form-input" placeholder="e.g. +918220320178" value={newCottage.phone} onChange={e => setNewCottage({...newCottage, phone: e.target.value})} />
+              <input type="text" className="form-input" placeholder="e.g. +919876543210" value={newCottage.phone} onChange={e => setNewCottage({...newCottage, phone: e.target.value})} />
             </div>
             <div className="form-group">
               <label className="form-label">Property Wi-Fi Password</label>
-              <input type="text" className="form-input" placeholder="e.g. 5432106789" value={newCottage.wifi_password} onChange={e => setNewCottage({...newCottage, wifi_password: e.target.value})} />
+              <input type="text" className="form-input" placeholder="e.g. mysecretwifi123" value={newCottage.wifi_password} onChange={e => setNewCottage({...newCottage, wifi_password: e.target.value})} />
             </div>
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Status</label>
@@ -321,23 +323,25 @@ export default function CottagesRooms() {
                 {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Room Name</label>
               <input type="text" className="form-input" required value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} />
             </div>
-            <div className="form-group">
-              <label className="form-label">Capacity</label>
-              <input type="number" className="form-input" min="1" required value={newRoom.capacity} onChange={e => setNewRoom({...newRoom, capacity: e.target.value})} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem', gridColumn: 'span 2' }}>
+              <div className="form-group">
+                <label className="form-label">Capacity</label>
+                <input type="number" className="form-input" min="1" required value={newRoom.capacity} onChange={e => setNewRoom({...newRoom, capacity: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Weekday ₹</label>
+                <input type="number" className="form-input" required value={newRoom.weekday_price} onChange={e => setNewRoom({...newRoom, weekday_price: e.target.value})} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Weekend ₹</label>
+                <input type="number" className="form-input" required value={newRoom.weekend_price} onChange={e => setNewRoom({...newRoom, weekend_price: e.target.value})} />
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label">Weekday ₹</label>
-              <input type="number" className="form-input" required value={newRoom.weekday_price} onChange={e => setNewRoom({...newRoom, weekday_price: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Weekend ₹</label>
-              <input type="number" className="form-input" required value={newRoom.weekend_price} onChange={e => setNewRoom({...newRoom, weekend_price: e.target.value})} />
-            </div>
-            <div className="form-group">
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Status</label>
               <select className="form-select" value={newRoom.status} onChange={e => setNewRoom({...newRoom, status: e.target.value})}>
                 <option value="Active">Active</option>
