@@ -20,12 +20,13 @@ export default function CottagesRooms() {
 
   const [editingId, setEditingId] = useState(null);
   const [editingType, setEditingType] = useState(null);
-  const [editForm, setEditForm] = useState({ weekday: 0, weekend: 0, status: 'Active', phone: '', wifi_password: '' });
+  const [editForm, setEditForm] = useState({ name: '', weekday: 0, weekend: 0, status: 'Active', phone: '', wifi_password: '' });
 
   const startEdit = (item, type) => {
     setEditingId(item.id);
     setEditingType(type);
     setEditForm({ 
+      name: item.name || '',
       weekday: item.weekday_price, 
       weekend: item.weekend_price, 
       status: (item.status === 'Available' || item.status === 'Active') ? 'Active' : 'Inactive',
@@ -58,6 +59,7 @@ export default function CottagesRooms() {
           }
         }
         const { error } = await supabase.from('cottages').update({ 
+          name: editForm.name,
           weekday_price: editForm.weekday, 
           weekend_price: editForm.weekend, 
           status: dbStatus,
@@ -70,6 +72,7 @@ export default function CottagesRooms() {
         }
         setCottages(cottages.map(c => c.id === editingId ? { 
           ...c, 
+          name: editForm.name,
           weekday_price: editForm.weekday, 
           weekend_price: editForm.weekend, 
           status: dbStatus,
@@ -77,12 +80,12 @@ export default function CottagesRooms() {
           wifi_password: editForm.wifi_password
         } : c));
       } else {
-        const { error } = await supabase.from('rooms').update({ weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus }).eq('id', editingId);
+        const { error } = await supabase.from('rooms').update({ name: editForm.name, weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus }).eq('id', editingId);
         if (error) {
           alert("Error saving room: " + error.message);
           return;
         }
-        setRooms(rooms.map(r => r.id === editingId ? { ...r, weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus } : r));
+        setRooms(rooms.map(r => r.id === editingId ? { ...r, name: editForm.name, weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus } : r));
       }
       setEditingId(null);
       setEditingType(null);
@@ -254,14 +257,40 @@ export default function CottagesRooms() {
               {cottages.map(c => (
                 <tr key={c.id}>
                   <td>
-                    <strong>{c.name}</strong>
                     {editingId === c.id && editingType === 'cottage' ? (
-                      <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                        <input type="text" className="form-input" style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto' }} placeholder="Contact Number" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
-                        <input type="text" className="form-input" style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto' }} placeholder="Wi-Fi Password" value={editForm.wifi_password} onChange={e => setEditForm({...editForm, wifi_password: e.target.value})} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          style={{ fontSize: '0.9rem', fontWeight: 'bold', padding: '4px 8px', height: 'auto' }} 
+                          value={editForm.name} 
+                          onChange={e => setEditForm({...editForm, name: e.target.value})} 
+                        />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
+                          <span>📞</span>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            style={{ fontSize: '0.8rem', padding: '2px 6px', height: 'auto', flex: 1 }} 
+                            placeholder="Contact Number" 
+                            value={editForm.phone} 
+                            onChange={e => setEditForm({...editForm, phone: e.target.value})} 
+                          />
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
+                          <span>🔑</span>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            style={{ fontSize: '0.8rem', padding: '2px 6px', height: 'auto', flex: 1 }} 
+                            placeholder="Wi-Fi Password" 
+                            value={editForm.wifi_password} 
+                            onChange={e => setEditForm({...editForm, wifi_password: e.target.value})} 
+                          />
+                        </div>
                         <select 
                           className="form-select" 
-                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto' }} 
+                          style={{ padding: '4px 8px', fontSize: '0.8rem', height: 'auto' }} 
                           value={editForm.status} 
                           onChange={e => setEditForm({ ...editForm, status: e.target.value })}
                         >
@@ -270,13 +299,16 @@ export default function CottagesRooms() {
                         </select>
                       </div>
                     ) : (
-                      <div style={{ marginTop: '0.25rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                        {c.phone && <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>📞 {c.phone}</div>}
-                        {c.wifi_password && <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.1rem' }}>🔑 Wi-Fi: {c.wifi_password}</div>}
-                        <span className={`badge badge-${(c.status === 'Active' || c.status === 'Available') ? 'success' : 'danger'}`} style={{ marginTop: '0.4rem', display: 'inline-block' }}>
-                          {(c.status === 'Available' || c.status === 'Active') ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
+                      <>
+                        <strong>{c.name}</strong>
+                        <div style={{ marginTop: '0.25rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                          {c.phone && <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>📞 {c.phone}</div>}
+                          {c.wifi_password && <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.1rem' }}>🔑 Wi-Fi: {c.wifi_password}</div>}
+                          <span className={`badge badge-${(c.status === 'Active' || c.status === 'Available') ? 'success' : 'danger'}`} style={{ marginTop: '0.4rem', display: 'inline-block' }}>
+                            {(c.status === 'Available' || c.status === 'Active') ? 'Active' : 'Inactive'}
+                          </span>
+                        </div>
+                      </>
                     )}
                   </td>
                   <td>{c.max_capacity}</td>
@@ -369,21 +401,32 @@ export default function CottagesRooms() {
                   <tr key={r.id}>
                     <td>{cottage ? cottage.name : '-'}</td>
                     <td>
-                      <strong>{r.name}</strong><br/>
                       {editingId === r.id && editingType === 'room' ? (
-                        <select 
-                          className="form-select" 
-                          style={{ padding: '2px 6px', fontSize: '0.75rem', height: 'auto', width: 'auto', marginTop: '0.25rem' }} 
-                          value={editForm.status} 
-                          onChange={e => setEditForm({ ...editForm, status: e.target.value })}
-                        >
-                          <option value="Active">Active</option>
-                          <option value="Inactive">Inactive</option>
-                        </select>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                          <input 
+                            type="text" 
+                            className="form-input" 
+                            style={{ fontSize: '0.9rem', fontWeight: 'bold', padding: '4px 8px', height: 'auto' }} 
+                            value={editForm.name} 
+                            onChange={e => setEditForm({...editForm, name: e.target.value})} 
+                          />
+                          <select 
+                            className="form-select" 
+                            style={{ padding: '2px 6px', fontSize: '0.75rem', height: 'auto', width: 'auto' }} 
+                            value={editForm.status} 
+                            onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                          >
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                          </select>
+                        </div>
                       ) : (
-                        <span className={`badge badge-${(r.status === 'Active' || r.status === 'Available') ? 'success' : 'danger'}`}>
-                          {(r.status === 'Available' || r.status === 'Active') ? 'Active' : 'Inactive'}
-                        </span>
+                        <>
+                          <strong>{r.name}</strong><br/>
+                          <span className={`badge badge-${(r.status === 'Active' || r.status === 'Available') ? 'success' : 'danger'}`}>
+                            {(r.status === 'Available' || r.status === 'Active') ? 'Active' : 'Inactive'}
+                          </span>
+                        </>
                       )}
                     </td>
                     <td>
