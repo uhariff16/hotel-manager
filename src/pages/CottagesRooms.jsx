@@ -11,7 +11,7 @@ export default function CottagesRooms() {
   const [error, setError] = useState(null);
 
   const [newCottage, setNewCottage] = useState({
-    name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Active'
+    name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Active', phone: '', wifi_password: ''
   });
 
   const [newRoom, setNewRoom] = useState({
@@ -20,7 +20,7 @@ export default function CottagesRooms() {
 
   const [editingId, setEditingId] = useState(null);
   const [editingType, setEditingType] = useState(null);
-  const [editForm, setEditForm] = useState({ weekday: 0, weekend: 0, status: 'Active' });
+  const [editForm, setEditForm] = useState({ weekday: 0, weekend: 0, status: 'Active', phone: '', wifi_password: '' });
 
   const startEdit = (item, type) => {
     setEditingId(item.id);
@@ -28,7 +28,9 @@ export default function CottagesRooms() {
     setEditForm({ 
       weekday: item.weekday_price, 
       weekend: item.weekend_price, 
-      status: (item.status === 'Available' || item.status === 'Active') ? 'Active' : 'Inactive' 
+      status: (item.status === 'Available' || item.status === 'Active') ? 'Active' : 'Inactive',
+      phone: item.phone || '',
+      wifi_password: item.wifi_password || ''
     });
   };
 
@@ -55,12 +57,25 @@ export default function CottagesRooms() {
             return;
           }
         }
-        const { error } = await supabase.from('cottages').update({ weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus }).eq('id', editingId);
+        const { error } = await supabase.from('cottages').update({ 
+          weekday_price: editForm.weekday, 
+          weekend_price: editForm.weekend, 
+          status: dbStatus,
+          phone: editForm.phone,
+          wifi_password: editForm.wifi_password
+        }).eq('id', editingId);
         if (error) {
           alert("Error saving property: " + error.message);
           return;
         }
-        setCottages(cottages.map(c => c.id === editingId ? { ...c, weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus } : c));
+        setCottages(cottages.map(c => c.id === editingId ? { 
+          ...c, 
+          weekday_price: editForm.weekday, 
+          weekend_price: editForm.weekend, 
+          status: dbStatus,
+          phone: editForm.phone,
+          wifi_password: editForm.wifi_password
+        } : c));
       } else {
         const { error } = await supabase.from('rooms').update({ weekday_price: editForm.weekday, weekend_price: editForm.weekend, status: dbStatus }).eq('id', editingId);
         if (error) {
@@ -123,7 +138,7 @@ export default function CottagesRooms() {
       if (error) alert(error.message);
       else {
         setCottages([...cottages, data[0]]);
-        setNewCottage({ name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Active' });
+        setNewCottage({ name: '', max_capacity: 1, weekday_price: 0, weekend_price: 0, seasonal_price: 0, status: 'Active', phone: '', wifi_password: '' });
       }
     } catch (e) {
       alert("Error adding property.");
@@ -205,6 +220,14 @@ export default function CottagesRooms() {
               <input type="number" className="form-input" required value={newCottage.weekend_price} onChange={e => setNewCottage({...newCottage, weekend_price: e.target.value})} />
             </div>
             <div className="form-group">
+              <label className="form-label">Property Contact Number</label>
+              <input type="text" className="form-input" placeholder="e.g. +918220320178" value={newCottage.phone} onChange={e => setNewCottage({...newCottage, phone: e.target.value})} />
+            </div>
+            <div className="form-group">
+              <label className="form-label">Property Wi-Fi Password</label>
+              <input type="text" className="form-input" placeholder="e.g. 5432106789" value={newCottage.wifi_password} onChange={e => setNewCottage({...newCottage, wifi_password: e.target.value})} />
+            </div>
+            <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label className="form-label">Status</label>
               <select className="form-select" value={newCottage.status} onChange={e => setNewCottage({...newCottage, status: e.target.value})}>
                 <option value="Active">Active</option>
@@ -212,14 +235,14 @@ export default function CottagesRooms() {
               </select>
             </div>
           </div>
-          <button type="submit" className="btn btn-primary" style={{ width: '100%' }}><Plus size={16}/> Add Property</button>
+          <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}><Plus size={16}/> Add Property</button>
         </form>
 
         <div className="table-container">
           <table className="table">
             <thead>
               <tr>
-                <th>Name</th>
+                <th>Name & Credentials</th>
                 <th>Capacity</th>
                 <th>Prices (W/E)</th>
                 <th>Act</th>
@@ -229,21 +252,29 @@ export default function CottagesRooms() {
               {cottages.map(c => (
                 <tr key={c.id}>
                   <td>
-                    <strong>{c.name}</strong><br/>
+                    <strong>{c.name}</strong>
                     {editingId === c.id && editingType === 'cottage' ? (
-                      <select 
-                        className="form-select" 
-                        style={{ padding: '2px 6px', fontSize: '0.75rem', height: 'auto', width: 'auto', marginTop: '0.25rem' }} 
-                        value={editForm.status} 
-                        onChange={e => setEditForm({ ...editForm, status: e.target.value })}
-                      >
-                        <option value="Active">Active</option>
-                        <option value="Inactive">Inactive</option>
-                      </select>
+                      <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                        <input type="text" className="form-input" style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto' }} placeholder="Contact Number" value={editForm.phone} onChange={e => setEditForm({...editForm, phone: e.target.value})} />
+                        <input type="text" className="form-input" style={{ fontSize: '0.75rem', padding: '4px 8px', height: 'auto' }} placeholder="Wi-Fi Password" value={editForm.wifi_password} onChange={e => setEditForm({...editForm, wifi_password: e.target.value})} />
+                        <select 
+                          className="form-select" 
+                          style={{ padding: '4px 8px', fontSize: '0.75rem', height: 'auto' }} 
+                          value={editForm.status} 
+                          onChange={e => setEditForm({ ...editForm, status: e.target.value })}
+                        >
+                          <option value="Active">Active</option>
+                          <option value="Inactive">Inactive</option>
+                        </select>
+                      </div>
                     ) : (
-                      <span className={`badge badge-${(c.status === 'Active' || c.status === 'Available') ? 'success' : 'danger'}`}>
-                        {(c.status === 'Available' || c.status === 'Active') ? 'Active' : 'Inactive'}
-                      </span>
+                      <div style={{ marginTop: '0.25rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                        {c.phone && <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>📞 {c.phone}</div>}
+                        {c.wifi_password && <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.1rem' }}>🔑 Wi-Fi: {c.wifi_password}</div>}
+                        <span className={`badge badge-${(c.status === 'Active' || c.status === 'Available') ? 'success' : 'danger'}`} style={{ marginTop: '0.4rem', display: 'inline-block' }}>
+                          {(c.status === 'Available' || c.status === 'Active') ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
                     )}
                   </td>
                   <td>{c.max_capacity}</td>

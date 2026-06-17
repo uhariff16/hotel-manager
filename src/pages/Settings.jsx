@@ -364,7 +364,7 @@ export default function Settings() {
     e.preventDefault();
     setSavingGeneral(true);
     try {
-      // 1. Update Profile (User Name)
+      // Update Profile (User Name)
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .update({ full_name: userName })
@@ -374,42 +374,9 @@ export default function Settings() {
       if (profileData && profileData.length > 0) {
         setProfile(profileData[0]);
       }
-
-      // 2. Update Resort Name & Phone (if tenant/super admin)
-      if (profile?.role === 'tenant_admin' || profile?.role === 'super_admin') {
-        const { error: resortError } = await supabase
-          .from('resorts')
-          .update({ name: resortName, phone: resortPhone })
-          .eq('id', activeResortId);
-        if (resortError) throw resortError;
-
-        // 3. Update Wi-Fi Password in tenant_integrations
-        const updatedTags = [...customTags];
-        const wifiIndex = updatedTags.findIndex(t => t.key === 'wifi_password');
-        if (wifiIndex !== -1) {
-          updatedTags[wifiIndex] = { key: 'wifi_password', value: wifiPassword };
-        } else {
-          updatedTags.push({ key: 'wifi_password', value: wifiPassword });
-        }
-        setCustomTags(updatedTags);
-
-        const payload = {
-          tenant_id: profile.id,
-          resort_id: activeResortId,
-          ...commSettings,
-          whatsapp_custom_tags: updatedTags,
-          updated_at: new Date().toISOString()
-        };
-
-        const { error: commError } = await supabase
-          .from('tenant_integrations')
-          .upsert(payload, { onConflict: 'resort_id' });
-        if (commError) throw commError;
-      }
-
-      alert("General settings saved successfully!");
+      alert("Profile updated successfully!");
     } catch (err) {
-      alert("Error saving settings: " + err.message);
+      alert("Error updating profile: " + err.message);
     } finally {
       setSavingGeneral(false);
     }
@@ -584,85 +551,36 @@ export default function Settings() {
                 <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Manage your personal profile and resort configurations.</p>
               </div>
 
-              {/* General Settings Unified Card */}
+              {/* User Profile Card */}
               <div className="card">
+                <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
+                  <User size={24} color="var(--primary)" /> User Profile
+                </h2>
+                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Update your personal identity details and account contact name.</p>
                 <form onSubmit={saveGeneralSettings}>
-                  
-                  {/* User Profile Section */}
-                  <div style={{ marginBottom: '2rem' }}>
-                    <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
-                      <User size={24} color="var(--primary)" /> User Profile
-                    </h2>
-                    <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Update your personal identity details and account contact name.</p>
-                    
-                    <div className="form-group">
-                      <label className="form-label">Full Name</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={userName} 
-                        onChange={e => setUserName(e.target.value)} 
-                        required 
-                      />
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label">Email Address (Read-only)</label>
-                      <input 
-                        type="text" 
-                        className="form-input" 
-                        value={session?.user?.email || ''} 
-                        disabled 
-                        style={{ opacity: 0.6, cursor: 'not-allowed' }} 
-                      />
-                    </div>
+                  <div className="form-group">
+                    <label className="form-label">Full Name</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={userName} 
+                      onChange={e => setUserName(e.target.value)} 
+                      required 
+                    />
                   </div>
-
-                  {/* Resort & Wi-Fi Details Section */}
-                  {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
-                    <div style={{ borderTop: '1px solid var(--border)', paddingTop: '2rem', marginBottom: '2rem' }}>
-                      <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
-                        <SettingsIcon size={24} color="var(--primary)" /> Resort & Wi-Fi Details
-                      </h2>
-                      <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Configure your resort name, contact number, and guest Wi-Fi details.</p>
-                      
-                      <div className="form-group">
-                        <label className="form-label">Resort Name</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          value={resortName} 
-                          onChange={e => setResortName(e.target.value)} 
-                          required 
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Resort Contact Number</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          value={resortPhone} 
-                          onChange={e => setResortPhone(e.target.value)} 
-                          required 
-                        />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label">Resort Wi-Fi Password</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          value={wifiPassword} 
-                          onChange={e => setWifiPassword(e.target.value)} 
-                          required 
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
-                    <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 2rem' }} disabled={savingGeneral}>
-                      {savingGeneral ? 'Saving...' : 'Save General Settings'}
-                    </button>
+                  <div className="form-group">
+                    <label className="form-label">Email Address (Read-only)</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={session?.user?.email || ''} 
+                      disabled 
+                      style={{ opacity: 0.6, cursor: 'not-allowed' }} 
+                    />
                   </div>
+                  <button type="submit" className="btn btn-primary" disabled={savingGeneral}>
+                    {savingGeneral ? 'Saving...' : 'Update Profile'}
+                  </button>
                 </form>
               </div>
 

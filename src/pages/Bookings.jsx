@@ -237,9 +237,10 @@ export default function Bookings() {
     const hasBreakfast = (booking.addon_details || '').toLowerCase().includes('food') || (booking.addon_details || '').toLowerCase().includes('breakfast');
     const breakfastVal = booking.breakfast || (hasBreakfast ? 'Included' : 'NA');
 
-    const resName = activeResort?.name || 'Cheerful Chalet';
-    const resPhone = activeResort?.phone || '+91 8220320178';
-    const wifiPasswordVal = customTags.find(t => t.key === 'wifi_password')?.value || 'chalet2026';
+    const cottageObj = cottages.find(x => x.id === booking.cottage_id);
+    const resName = cottageObj?.name || activeResort?.name || 'Cheerful Chalet';
+    const resPhone = cottageObj?.phone || activeResort?.phone || '+91 8220320178';
+    const wifiPasswordVal = cottageObj?.wifi_password || customTags.find(t => t.key === 'wifi_password')?.value || 'chalet2026';
 
     const roomTypeVal = booking.room_type || rname;
 
