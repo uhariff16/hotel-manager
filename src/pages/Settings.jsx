@@ -203,7 +203,7 @@ export default function Settings() {
 
   const fetchGlobalSettings = async () => {
     try {
-      const { data: adminList } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
+      const { data: adminList } = await supabase.from('profiles').select('global_settings').eq('email', 'uhariff@gmail.com').limit(1);
       if (adminList && adminList.length > 0) {
         const data = adminList[0];
         if (data && data.global_settings) {

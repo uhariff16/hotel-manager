@@ -187,7 +187,7 @@ export default function Bookings() {
       let gComm = true;
       let tComm = true;
       try {
-        const { data: superAdminDataList } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
+        const { data: superAdminDataList } = await supabase.from('profiles').select('global_settings').eq('email', 'uhariff@gmail.com').limit(1);
         if (superAdminDataList && superAdminDataList.length > 0) {
           const superAdminData = superAdminDataList[0];
           if (superAdminData && superAdminData.global_settings) {
