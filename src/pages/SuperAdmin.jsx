@@ -63,6 +63,7 @@ export default function SuperAdmin() {
 
   const [pricingConfig, setPricingConfig] = useState(DEFAULT_PLANS);
   const [globalCommEnabled, setGlobalCommEnabled] = useState(true);
+  const [globalTemplatesEnabled, setGlobalTemplatesEnabled] = useState(true);
 
   // Modal states
   const [showUserForm, setShowUserForm] = useState(false);
@@ -119,6 +120,7 @@ export default function SuperAdmin() {
 
       if (superAdminProfile?.global_settings) {
         setGlobalCommEnabled(superAdminProfile.global_settings.comm_features_enabled !== false);
+        setGlobalTemplatesEnabled(superAdminProfile.global_settings.templates_enabled !== false);
       }
 
       setTenants(tenantsWithData.filter(t => t.id !== profile.id));
@@ -259,6 +261,7 @@ export default function SuperAdmin() {
       setIsUpdating(true);
       const settings = profile.global_settings || {};
       settings.comm_features_enabled = globalCommEnabled;
+      settings.templates_enabled = globalTemplatesEnabled;
       
       const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
       if (error) throw error;
@@ -463,17 +466,32 @@ export default function SuperAdmin() {
         </h3>
         <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Enable or disable system features platform-wide.</p>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-          <input 
-            type="checkbox" 
-            id="global_comm" 
-            checked={globalCommEnabled} 
-            onChange={e => setGlobalCommEnabled(e.target.checked)} 
-            style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-          />
-          <label htmlFor="global_comm" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer' }}>
-            Enable Communications & Automations Feature Globally
-          </label>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <input 
+              type="checkbox" 
+              id="global_comm" 
+              checked={globalCommEnabled} 
+              onChange={e => setGlobalCommEnabled(e.target.checked)} 
+              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+            />
+            <label htmlFor="global_comm" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer' }}>
+              {"Enable General Setting -> Communications & Automations Globally"}
+            </label>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <input 
+              type="checkbox" 
+              id="global_templates" 
+              checked={globalTemplatesEnabled} 
+              onChange={e => setGlobalTemplatesEnabled(e.target.checked)} 
+              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+            />
+            <label htmlFor="global_templates" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer' }}>
+              {"Enable Settings -> Template Management Globally"}
+            </label>
+          </div>
         </div>
 
         <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>

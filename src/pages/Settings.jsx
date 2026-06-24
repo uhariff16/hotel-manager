@@ -64,6 +64,7 @@ export default function Settings() {
   const { profile, setProfile, theme, toggleTheme, session, activeResortId } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
   const [globalCommEnabled, setGlobalCommEnabled] = useState(true);
+  const [globalTemplatesEnabled, setGlobalTemplatesEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
   const [savingComm, setSavingComm] = useState(false);
   const [savingResort, setSavingResort] = useState(false);
@@ -212,6 +213,7 @@ export default function Settings() {
         const data = adminList[0];
         if (data && data.global_settings) {
           setGlobalCommEnabled(data.global_settings.comm_features_enabled !== false);
+          setGlobalTemplatesEnabled(data.global_settings.templates_enabled !== false);
         }
       }
       
@@ -500,7 +502,7 @@ export default function Settings() {
             <SettingsIcon size={18} /> General Settings
           </button>
 
-          {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalCommEnabled && profile?.feature_comm_enabled !== false)) && (
+          {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalTemplatesEnabled && profile?.feature_comm_enabled !== false)) && (
             <button 
               type="button"
               onClick={() => setActiveTab('templates')}
