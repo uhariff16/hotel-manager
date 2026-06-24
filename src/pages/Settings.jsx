@@ -201,9 +201,13 @@ export default function Settings() {
     }
   }, [activeResortId]);
 
+  useEffect(() => {
+    fetchGlobalSettings();
+  }, [session]);
+
   const fetchGlobalSettings = async () => {
     try {
-      const { data: adminList } = await supabase.from('profiles').select('global_settings').eq('email', 'uhariff@gmail.com').limit(1);
+      const { data: adminList } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
       if (adminList && adminList.length > 0) {
         const data = adminList[0];
         if (data && data.global_settings) {
@@ -496,7 +500,7 @@ export default function Settings() {
             <SettingsIcon size={18} /> General Settings
           </button>
 
-          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+          {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalCommEnabled && profile?.feature_comm_enabled !== false)) && (
             <button 
               type="button"
               onClick={() => setActiveTab('templates')}
@@ -588,7 +592,7 @@ export default function Settings() {
               </div>
 
               {/* Communications API Configurations */}
-              {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && (globalCommEnabled ? profile?.feature_comm_enabled !== false : profile?.feature_comm_enabled === true))) && (
+              {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalCommEnabled && profile?.feature_comm_enabled !== false)) && (
                 <div className="card">
                   <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                     <Mail size={24} color="var(--primary)" /> Communications & Automations

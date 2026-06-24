@@ -66,7 +66,7 @@ export default function Subscription() {
   useEffect(() => {
     const fetchDynamicPricing = async () => {
       try {
-        const { data, error } = await supabase.from('profiles').select('global_settings').eq('email', 'uhariff@gmail.com').limit(1);
+        const { data, error } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
         if (error) throw error;
         const adminSettings = data?.[0]?.global_settings?.pricing;
 
