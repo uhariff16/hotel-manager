@@ -329,7 +329,10 @@ export default function Bookings() {
 
   const getStatusCount = (status) => {
     if (status === 'All') return bookings.length;
-    return bookings.filter(b => b.status === status).length;
+    return bookings.filter(b => {
+      const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
+      return displayStatus === status;
+    }).length;
   };
 
   const statusOptions = [
@@ -337,6 +340,7 @@ export default function Bookings() {
     { label: 'Pending', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
     { label: 'Confirmed', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' },
     { label: 'Checked-in', color: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)' },
+    { label: 'Checked-out', color: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)' },
     { label: 'Pending Payment', color: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)' },
     { label: 'Completed', color: '#10b981', bg: 'rgba(16, 185, 129, 0.1)' },
     { label: 'Cancelled', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
@@ -351,6 +355,19 @@ export default function Bookings() {
       setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: 'Checked-in' } : x));
     } catch (err) {
       alert("Error during check-in: " + err.message);
+    }
+  };
+
+  const handleCheckOut = async (b) => {
+    if (!window.confirm(`Are you sure you want to check out ${b.guest_name}?`)) return;
+    try {
+      const targetStatus = Number(b.balance_amount || 0) <= 0 ? 'Completed' : 'Checked-out';
+      const { error } = await supabase.from('bookings').update({ status: targetStatus }).eq('id', b.id);
+      if (error) throw error;
+      setBookings(prev => prev.map(x => x.id === b.id ? { ...x, status: targetStatus } : x));
+      alert(`Guest successfully checked out. Status set to: ${targetStatus}`);
+    } catch (err) {
+      alert("Error during check-out: " + err.message);
     }
   };
 
@@ -398,66 +415,81 @@ export default function Bookings() {
 
   const settleBooking = (b) => {
     setSettlingBooking(b);
-    setSettlementData({ discount: 0, allSettled: false, pendingOTA: false });
+    setSettlementData({ 
+      discount: 0, 
+      amountPaid: b.balance_amount, 
+      paymentMode: 'UPI', 
+      notes: '' 
+    });
   };
 
   const handleFinalSettlement = async () => {
-    if (!settlementData.allSettled && !settlementData.pendingOTA) {
-      alert("Please either confirm payment is received or mark it as a Pending OTA Payment.");
-      return;
-    }
-
     try {
-      if (settlementData.pendingOTA) {
-        // Mark as Completed but keep the balance for later (UI will show as Pending payment)
-        const { error: bookingErr } = await supabase
-          .from('bookings')
-          .update({ status: 'Completed' })
-          .eq('id', settlingBooking.id);
-        if (bookingErr) throw bookingErr;
-
-        setBookings(prev => prev.map(x => x.id === settlingBooking.id ? { ...x, status: 'Completed' } : x));
-        setSettlingBooking(null);
+      const amtPaid = Number(settlementData.amountPaid || 0);
+      const discount = Number(settlementData.discount || 0);
+      
+      if (amtPaid < 0 || discount < 0) {
+        alert("Amount and discount cannot be negative.");
         return;
       }
-      const finalBalance = settlingBooking.balance_amount - settlementData.discount;
       
+      const newTotal = Math.max(0, Number(settlingBooking.total_amount || 0) - discount);
+      const newBalance = Math.max(0, Number(settlingBooking.balance_amount || 0) - amtPaid - discount);
+      
+      let targetStatus = settlingBooking.status;
+      if (newBalance === 0 && (settlingBooking.status === 'Checked-out' || settlingBooking.status === 'Completed')) {
+        targetStatus = 'Completed';
+      }
+
       const { error: bookingErr } = await supabase
         .from('bookings')
-        .update({ status: 'Completed', balance_amount: 0 })
+        .update({ 
+          status: targetStatus,
+          total_amount: newTotal,
+          balance_amount: newBalance
+        })
         .eq('id', settlingBooking.id);
+        
       if (bookingErr) throw bookingErr;
 
-      if (finalBalance > 0) {
+      if (amtPaid > 0 || discount > 0) {
         await supabase.from('incomes').insert([{
           resort_id: activeResortId,
           tenant_id: profile?.tenant_id,
           booking_id: settlingBooking.id,
-          amount: finalBalance,
+          amount: amtPaid,
           source: 'Room Rent',
-          notes: `Settlement: ${settlingBooking.guest_name} (${settlingBooking.reference_number})`,
+          notes: `Settlement: ${settlingBooking.guest_name} (${settlingBooking.reference_number})${discount > 0 ? ` [Discount: ₹${discount}]` : ''}${settlementData.notes ? ` - ${settlementData.notes}` : ''}`,
           date: new Date().toISOString().split('T')[0],
-          payment_mode: 'UPI'
+          payment_mode: settlementData.paymentMode || 'UPI'
         }]);
       }
 
-      setBookings(prev => prev.map(x => x.id === settlingBooking.id ? { ...x, status: 'Completed', balance_amount: 0 } : x));
+      setBookings(prev => prev.map(x => x.id === settlingBooking.id ? { 
+        ...x, 
+        status: targetStatus,
+        total_amount: newTotal,
+        balance_amount: newBalance 
+      } : x));
+      const bookingId = settlingBooking.id;
       setSettlingBooking(null);
       
-      fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({
-          bookingId: settlingBooking.id,
-          type: 'payment_receipt'
-        })
-      }).catch(err => console.error("Notification Trigger Error:", err));
+      if (amtPaid > 0) {
+        fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-notification`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
+          },
+          body: JSON.stringify({
+            bookingId: bookingId,
+            type: 'payment_receipt'
+          })
+        }).catch(err => console.error("Notification Trigger Error:", err));
+      }
 
     } catch (err) {
-      alert("Error during settlement: " + err.message);
+      alert("Error during recording payment: " + err.message);
     }
   };
 
@@ -535,29 +567,35 @@ export default function Bookings() {
       return matchesStatus && matchesSearch;
     });
 
-    if (sortConfig.key === 'check_in_date' && sortConfig.direction === 'ascending') {
-      const getPriority = (b) => {
-        const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
-        if (displayStatus === 'Checked-in') return 1;
-        if (displayStatus === 'Pending Payment') return 2;
-        if (displayStatus === 'Confirmed') return 3;
-        if (displayStatus === 'Pending') return 4;
-        if (displayStatus === 'Completed') return 5; // Fully settled
-        if (displayStatus === 'Cancelled') return 6;
-        return 99;
-      };
-      items.sort((a, b) => {
+    items.sort((a, b) => {
+      // Primary sort: Has pending balance (Receive Pay button is enabled)
+      const hasBalanceA = (a.balance_amount > 0 && a.status !== 'Cancelled') ? 1 : 0;
+      const hasBalanceB = (b.balance_amount > 0 && b.status !== 'Cancelled') ? 1 : 0;
+      
+      if (hasBalanceA !== hasBalanceB) {
+        return hasBalanceB - hasBalanceA; // Bookings with balance first
+      }
+
+      // Secondary sort: Configured sort logic
+      if (sortConfig.key === 'check_in_date' && sortConfig.direction === 'ascending') {
+        const getPriority = (x) => {
+          const displayStatus = (x.status === 'Completed' && x.balance_amount > 0) ? 'Pending Payment' : x.status;
+          if (displayStatus === 'Checked-in') return 1;
+          if (displayStatus === 'Pending Payment') return 2;
+          if (displayStatus === 'Confirmed') return 3;
+          if (displayStatus === 'Pending') return 4;
+          if (displayStatus === 'Completed') return 5;
+          if (displayStatus === 'Cancelled') return 6;
+          return 99;
+        };
         const pA = getPriority(a);
         const pB = getPriority(b);
         if (pA !== pB) return pA - pB;
         if (pA === 5 || pA === 2) {
-          // Completed or Pending payment: latest checkout date first
           return new Date(b.check_out_date) - new Date(a.check_out_date);
         }
         return new Date(a.check_in_date) - new Date(b.check_in_date);
-      });
-    } else if (sortConfig !== null) {
-      items.sort((a, b) => {
+      } else if (sortConfig !== null) {
         let valA = a[sortConfig.key];
         let valB = b[sortConfig.key];
         if (typeof valA === 'string' && typeof valB === 'string') {
@@ -566,8 +604,10 @@ export default function Bookings() {
         if (valA < valB) return sortConfig.direction === 'ascending' ? -1 : 1;
         if (valA > valB) return sortConfig.direction === 'ascending' ? 1 : -1;
         return 0;
-      });
-    }
+      }
+      return 0;
+    });
+
     return items;
   }, [bookings, activeTab, sortConfig, searchTerm]);
 
@@ -768,12 +808,12 @@ export default function Bookings() {
                         <button onClick={() => handleCheckIn(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Check-in</button>
                       )}
                       {b.status === 'Checked-in' && (
-                        <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#6366f1' }}>Checkout</button>
+                        <button onClick={() => handleCheckOut(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#8b5cf6', borderColor: '#8b5cf6' }}>Check-out</button>
                       )}
-                      {b.status === 'Completed' && b.balance_amount > 0 && (
+                      {b.status !== 'Cancelled' && b.status !== 'Pending' && b.balance_amount > 0 && (
                         <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#f59e0b', borderColor: '#f59e0b' }}>Receive Pay</button>
                       )}
-                      {b.status === 'Completed' && (
+                      {(b.status === 'Completed' || b.status === 'Checked-out') && (
                         <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}><RotateCcw size={18} /></button>
                       )}
                     </div>
@@ -881,12 +921,12 @@ export default function Bookings() {
                             <button onClick={() => handleCheckIn(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}>Check-in</button>
                           )}
                           {b.status === 'Checked-in' && (
-                            <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#6366f1' }}>Checkout</button>
+                            <button onClick={() => handleCheckOut(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#8b5cf6', borderColor: '#8b5cf6' }}>Check-out</button>
                           )}
-                          {b.status === 'Completed' && b.balance_amount > 0 && (
+                          {b.status !== 'Cancelled' && b.status !== 'Pending' && b.balance_amount > 0 && (
                             <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#f59e0b', borderColor: '#f59e0b' }}>Receive Pay</button>
                           )}
-                          {b.status === 'Completed' && (
+                          {(b.status === 'Completed' || b.status === 'Checked-out') && (
                             <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ color: '#6366f1' }}><RotateCcw size={16} /></button>
                           )}
                           <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon"><Edit2 size={16} /></button>
@@ -910,39 +950,66 @@ export default function Bookings() {
           <div className="modal-content" style={{ maxWidth: '400px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem' }}>
-                <CheckCircle2 color="var(--success)" /> Final Settlement
+                <CheckCircle2 color="var(--success)" /> Record Payment
               </h2>
               <button className="btn-icon" onClick={() => setSettlingBooking(null)}><X size={20} /></button>
             </div>
-            <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '1.5rem', background: 'var(--bg-color)', borderRadius: 'var(--radius-md)' }}>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Balance due from <strong>{settlingBooking.guest_name}</strong></p>
-              <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>₹{settlingBooking.balance_amount - settlementData.discount}</div>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem', padding: '1.25rem', background: 'var(--bg-color)', borderRadius: 'var(--radius-md)' }}>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', fontSize: '0.9rem' }}>Remaining Balance due from <strong>{settlingBooking.guest_name}</strong></p>
+              <div style={{ fontSize: '2rem', fontWeight: 900, color: 'var(--text-main)' }}>₹{(settlingBooking.balance_amount || 0).toLocaleString()}</div>
             </div>
-            <div className="form-group">
+            
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Amount Paid now (₹)</label>
+              <input 
+                type="number" 
+                className="form-input" 
+                max={settlingBooking.balance_amount}
+                value={settlementData.amountPaid} 
+                onChange={e => setSettlementData({ ...settlementData, amountPaid: Number(e.target.value) })} 
+              />
+            </div>
+            
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
               <label className="form-label">Discount Amount (₹)</label>
-              <input type="number" className="form-input" value={settlementData.discount} onChange={e => setSettlementData({ ...settlementData, discount: Number(e.target.value) })} />
+              <input 
+                type="number" 
+                className="form-input" 
+                value={settlementData.discount} 
+                onChange={e => setSettlementData({ ...settlementData, discount: Number(e.target.value) })} 
+              />
             </div>
-            <div style={{ marginTop: '1.5rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-                  <input type="radio" name="settlementType" checked={settlementData.allSettled} onChange={() => setSettlementData({ ...settlementData, allSettled: true, pendingOTA: false })} style={{ width: '18px', height: '18px', accentColor: 'var(--success)' }} />
-                  <span style={{ fontWeight: 600 }}>Payment Received Now (Cash/UPI/Card)</span>
-                </label>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-                  <input type="radio" name="settlementType" checked={settlementData.pendingOTA} onChange={() => setSettlementData({ ...settlementData, allSettled: false, pendingOTA: true })} style={{ width: '18px', height: '18px', accentColor: 'var(--warning)' }} />
-                  <span style={{ fontWeight: 600 }}>Payment Pending from OTA (Agoda/Booking.com)</span>
-                </label>
-              </div>
-              
-              {settlementData.pendingOTA && (
-                <div style={{ marginTop: '1rem', padding: '0.75rem', background: 'rgba(245, 158, 11, 0.1)', color: '#b45309', borderRadius: '8px', fontSize: '0.8rem', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                  This will mark the booking as Pending payment. You can record the payment later once received from the OTA.
-                </div>
-              )}
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1.5rem' }}>
+            <div className="form-group" style={{ marginBottom: '1rem' }}>
+              <label className="form-label">Payment Mode</label>
+              <select 
+                className="form-select" 
+                value={settlementData.paymentMode} 
+                onChange={e => setSettlementData({ ...settlementData, paymentMode: e.target.value })}
+              >
+                <option value="UPI">UPI</option>
+                <option value="Cash">Cash</option>
+                <option value="Card">Card</option>
+                <option value="Net Banking">Net Banking</option>
+                <option value="OTA">OTA (Pending)</option>
+              </select>
+            </div>
+
+            <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+              <label className="form-label">Notes</label>
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="e.g. Received via GPay"
+                value={settlementData.notes || ''} 
+                onChange={e => setSettlementData({ ...settlementData, notes: e.target.value })} 
+              />
+            </div>
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <button className="btn btn-outline" onClick={() => setSettlingBooking(null)}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleFinalSettlement}>Confirm & Close</button>
+                <button className="btn btn-primary" onClick={handleFinalSettlement}>Record Payment</button>
               </div>
             </div>
           </div>

@@ -127,6 +127,8 @@ export default function BookingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [originalStatus, setOriginalStatus] = useState(null);
+  const [settlementPaid, setSettlementPaid] = useState(0);
+  const [settlementDiscount, setSettlementDiscount] = useState(0);
   
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
@@ -314,6 +316,27 @@ export default function BookingForm() {
             additional_guests: rawAdditionalGuests
           });
           setOriginalStatus(b.status);
+
+          // Fetch settlement incomes and discounts to prevent balance override
+          const { data: bookingIncomes } = await supabase
+            .from('incomes')
+            .select('amount, notes')
+            .eq('booking_id', id);
+            
+          const totalSettled = (bookingIncomes || [])
+            .filter(inc => inc.notes?.toLowerCase().includes('settlement'))
+            .reduce((sum, inc) => sum + Number(inc.amount), 0);
+            
+          let totalDiscount = 0;
+          (bookingIncomes || []).forEach(inc => {
+            const match = inc.notes?.match(/\[Discount:\s*₹?(\d+)\]/i);
+            if (match) {
+              totalDiscount += Number(match[1]);
+            }
+          });
+          
+          setSettlementPaid(totalSettled);
+          setSettlementDiscount(totalDiscount);
         }
       } else {
         // Generate new reference if not editing
@@ -396,14 +419,15 @@ export default function BookingForm() {
   }, [bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, JSON.stringify(bookingForm.room_ids), cottages, rooms]);
 
   useEffect(() => {
-    const total = Number(bookingForm.base_amount || 0) + Number(bookingForm.addons_cost || 0) + Number(bookingForm.extra_guest_charges || 0);
-    const balance = total - Number(bookingForm.advance_paid || 0);
+    const rawTotal = Number(bookingForm.base_amount || 0) + Number(bookingForm.addons_cost || 0) + Number(bookingForm.extra_guest_charges || 0);
+    const discountedTotal = Math.max(0, rawTotal - settlementDiscount);
+    const balance = Math.max(0, discountedTotal - Number(bookingForm.advance_paid || 0) - settlementPaid);
     setBookingForm(prev => ({
       ...prev,
-      total_amount: total,
+      total_amount: discountedTotal,
       balance_amount: balance
     }));
-  }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid, bookingForm.extra_guest_charges]);
+  }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid, bookingForm.extra_guest_charges, settlementPaid, settlementDiscount]);
 
   const handleAddAdditionalGuest = () => {
     setBookingForm(prev => ({
@@ -503,9 +527,49 @@ export default function BookingForm() {
 
       if (result.error) throw result.error;
 
-      // Trigger notification
-      const targetId = id || result.data.id;
+      const targetId = id || result.data?.[0]?.id;
       
+      // Synchronize advance payment with incomes table
+      if (targetId) {
+        try {
+          if (bookingForm.status === 'Pending') {
+            // Delete any existing advance payment records if status is set to Pending
+            await supabase
+              .from('incomes')
+              .delete()
+              .eq('booking_id', targetId)
+              .or('notes.ilike.%Advance%,notes.ilike.%Adjustment%,notes.ilike.%Refund%');
+          } else {
+            const { data: existingIncomes } = await supabase
+              .from('incomes')
+              .select('id, amount')
+              .eq('booking_id', targetId)
+              .or('notes.ilike.%Advance%,notes.ilike.%Adjustment%,notes.ilike.%Refund%');
+              
+            const totalLogged = (existingIncomes || []).reduce((sum, inc) => sum + Number(inc.amount), 0);
+            const difference = Number(bookingForm.advance_paid || 0) - totalLogged;
+            
+            if (difference !== 0) {
+              await supabase.from('incomes').insert([{
+                resort_id: activeResortId,
+                tenant_id: profile?.tenant_id,
+                booking_id: targetId,
+                amount: difference,
+                source: 'Room Rent',
+                notes: difference > 0 
+                  ? `Advance Payment: ${bookingForm.guest_name} (${bookingForm.reference_number})`
+                  : `Adjustment/Refund: ${bookingForm.guest_name} (${bookingForm.reference_number})`,
+                date: new Date().toISOString().split('T')[0],
+                payment_mode: 'UPI'
+              }]);
+            }
+          }
+        } catch (syncErr) {
+          console.error("Error syncing advance payment to incomes:", syncErr);
+        }
+      }
+
+      // Trigger notification
       supabase.functions.invoke('send-notification', {
         body: { 
           booking_id: targetId, 
@@ -913,8 +977,13 @@ export default function BookingForm() {
                 <select className="form-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
                   <option value="Confirmed">Confirmed</option>
                   <option value="Pending">Pending</option>
-                  <option value="Checked-in">Checked-in</option>
-                  <option value="Completed">Completed</option>
+                  {id && originalStatus !== 'Pending' && (
+                    <>
+                      <option value="Checked-in">Checked-in</option>
+                      <option value="Checked-out">Checked-out</option>
+                      <option value="Completed">Completed</option>
+                    </>
+                  )}
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>

@@ -216,14 +216,31 @@ export default function Financials() {
     if (table === 'incomes') {
       const income = incomes.find(i => i.id === id);
       if (income && income.booking_id) {
-         const { data: bData } = await supabase.from('bookings').select('total_amount, advance_paid, balance_amount, status').eq('id', income.booking_id).single();
+         const { data: bData } = await supabase.from('bookings').select('*').eq('id', income.booking_id).single();
          if (bData) {
-            const newAdvance = Number(bData.advance_paid) - Number(income.amount);
-            await supabase.from('bookings').update({ 
-               advance_paid: newAdvance, 
-               balance_amount: Number(bData.total_amount) - newAdvance,
-               status: 'Confirmed' 
-            }).eq('id', income.booking_id);
+            const isSettlement = income.notes?.toLowerCase().includes('settlement');
+            if (isSettlement) {
+               // Parsing discount if any
+               const match = income.notes?.match(/\[Discount:\s*₹?(\d+)\]/i);
+               const discount = match ? Number(match[1]) : 0;
+               
+               const restoredTotal = Number(bData.total_amount) + discount;
+               const restoredBalance = Number(bData.balance_amount) + Number(income.amount) + discount;
+               
+               await supabase.from('bookings').update({ 
+                  total_amount: restoredTotal,
+                  balance_amount: restoredBalance,
+                  status: 'Checked-out' 
+               }).eq('id', income.booking_id);
+            } else {
+               // Advance payment deletion
+               const newAdvance = Number(bData.advance_paid) - Number(income.amount);
+               await supabase.from('bookings').update({ 
+                  advance_paid: newAdvance, 
+                  balance_amount: Number(bData.total_amount) - newAdvance,
+                  status: 'Confirmed' 
+               }).eq('id', income.booking_id);
+            }
          }
       }
     }
@@ -393,10 +410,25 @@ export default function Financials() {
                         <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(i.date)}</td>
                         <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
                           <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{i.source}</div>
-                          <div style={{ marginTop: '2px' }}>
+                          <div style={{ marginTop: '2px', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                             <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}>
                               Prop: {cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General'}
                             </span>
+                            {i.notes?.toLowerCase().includes('advance') && (
+                              <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700 }}>
+                                Advance
+                              </span>
+                            )}
+                            {i.notes?.toLowerCase().includes('settlement') && (
+                              <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700 }}>
+                                Settlement
+                              </span>
+                            )}
+                            {i.notes?.toLowerCase().includes('adjustment') && (
+                              <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>
+                                Adjustment
+                              </span>
+                            )}
                           </div>
                           {i.bookings?.reference_number && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>

@@ -863,10 +863,25 @@ export default function Reports() {
                                    <div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{i.bookings?.reference_number || '-'}</div>
                                  </td>
                                  <td style={{ padding: '0.6rem' }}>
-                                   <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700 }}>
-                                     {data.cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General'}
-                                   </span>
-                                 </td>
+                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700, display: 'inline-block', marginBottom: '2px' }}>
+                                      {data.cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General'}
+                                    </span>
+                                    {i.notes?.toLowerCase().includes('advance') && (
+                                      <span style={{ display: 'inline-block', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700, marginLeft: '4px' }}>
+                                        Advance
+                                      </span>
+                                    )}
+                                    {i.notes?.toLowerCase().includes('settlement') && (
+                                      <span style={{ display: 'inline-block', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700, marginLeft: '4px' }}>
+                                        Settlement
+                                      </span>
+                                    )}
+                                    {i.notes?.toLowerCase().includes('adjustment') && (
+                                      <span style={{ display: 'inline-block', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700, marginLeft: '4px' }}>
+                                        Adjustment
+                                      </span>
+                                    )}
+                                  </td>
                                 <td style={{ padding: '0.6rem' }}>{i.payment_method || '-'}</td>
                                 <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>+₹{Number(i.amount).toLocaleString()}</td>
                               </tr>
