@@ -303,7 +303,8 @@ export default function Subscription() {
           <div className="modal-content" style={{ maxWidth: '500px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Lock color="var(--success)" /> Secure Checkout
+                {window.location.protocol === 'capacitor:' ? <Crown color="var(--primary)" /> : <Lock color="var(--success)" />} 
+                {window.location.protocol === 'capacitor:' ? 'Upgrade to Pro/Premium' : 'Secure Checkout'}
               </h2>
               <button type="button" className="btn-outline" style={{ padding: '0.5rem', borderRadius: '50%' }} 
                 onClick={() => setCheckoutModal({ isOpen: false, planId: null })}
@@ -320,59 +321,86 @@ export default function Subscription() {
               </div>
             </div>
 
-            <form onSubmit={handlePaymentSubmit}>
-              <div className="form-group">
-                <label className="form-label">Name on Card</label>
-                <input type="text" className="form-input" required 
-                  placeholder="e.g. John Doe"
-                  value={paymentForm.name} onChange={e => setPaymentForm({...paymentForm, name: e.target.value})} 
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Card Number</label>
-                <div style={{ position: 'relative' }}>
-                  <input type="text" className="form-input" style={{ paddingLeft: '2.5rem' }} required 
-                    placeholder="0000 0000 0000 0000" maxLength="19"
-                    value={paymentForm.cardNumber} 
-                    onChange={e => {
-                      const val = e.target.value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim();
-                      setPaymentForm({...paymentForm, cardNumber: val});
-                    }}
-                  />
-                  <CreditCard size={18} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+            {window.location.protocol === 'capacitor:' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                <p style={{ lineHeight: 1.5, margin: 0 }}>
+                  To comply with Play Store guidelines, native in-app purchases are not supported inside the app. You can easily upgrade your account from our web portal.
+                </p>
+                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1.25rem', borderRadius: '0.5rem', border: '1px solid var(--border)' }}>
+                  <h4 style={{ margin: '0 0 0.75rem 0', color: 'var(--primary)' }}>How to Upgrade:</h4>
+                  <ol style={{ paddingLeft: '1.2rem', margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.95rem' }}>
+                    <li>Open your web browser and go to <strong>cheerfulchalet.com</strong></li>
+                    <li>Sign in using your current email and password.</li>
+                    <li>Go to the <strong>Subscription</strong> tab and complete your payment.</li>
+                  </ol>
                 </div>
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Expiry (MM/YY)</label>
-                  <input type="text" className="form-input" required 
-                    placeholder="MM/YY" maxLength="5"
-                    value={paymentForm.expiry} onChange={e => {
-                      let val = e.target.value.replace(/\D/g, '');
-                      if (val.length >= 2) val = val.slice(0,2) + '/' + val.slice(2,4);
-                      setPaymentForm({...paymentForm, expiry: val})
-                    }} 
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">CVC</label>
-                  <input type="text" className="form-input" required 
-                    placeholder="123" maxLength="4"
-                    value={paymentForm.cvc} onChange={e => setPaymentForm({...paymentForm, cvc: e.target.value.replace(/\D/g, '')})} 
-                  />
-                </div>
-              </div>
-
-              <div style={{ marginTop: '2rem' }}>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px', fontSize: '1.1rem' }} disabled={loading}>
-                  {loading ? 'Processing Payment...' : 'Confirm Payment'}
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
+                  ℹ️ Once your payment is complete on the web, this mobile app will immediately unlock all your premium features.
+                </p>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  style={{ width: '100%', height: '50px', fontSize: '1.1rem', marginTop: '1rem' }}
+                  onClick={() => setCheckoutModal({ isOpen: false, planId: null })}
+                >
+                  Got It
                 </button>
-                <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
-                  <Shield size={14} /> Mock Mode (Cards not charged)
-                </div>
               </div>
-            </form>
+            ) : (
+              <form onSubmit={handlePaymentSubmit}>
+                <div className="form-group">
+                  <label className="form-label">Name on Card</label>
+                  <input type="text" className="form-input" required 
+                    placeholder="e.g. John Doe"
+                    value={paymentForm.name} onChange={e => setPaymentForm({...paymentForm, name: e.target.value})} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Card Number</label>
+                  <div style={{ position: 'relative' }}>
+                    <input type="text" className="form-input" style={{ paddingLeft: '2.5rem' }} required 
+                      placeholder="0000 0000 0000 0000" maxLength="19"
+                      value={paymentForm.cardNumber} 
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim();
+                        setPaymentForm({...paymentForm, cardNumber: val});
+                      }}
+                    />
+                    <CreditCard size={18} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  </div>
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Expiry (MM/YY)</label>
+                    <input type="text" className="form-input" required 
+                      placeholder="MM/YY" maxLength="5"
+                      value={paymentForm.expiry} onChange={e => {
+                        let val = e.target.value.replace(/\D/g, '');
+                        if (val.length >= 2) val = val.slice(0,2) + '/' + val.slice(2,4);
+                        setPaymentForm({...paymentForm, expiry: val})
+                      }} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">CVC</label>
+                    <input type="text" className="form-input" required 
+                      placeholder="123" maxLength="4"
+                      value={paymentForm.cvc} onChange={e => setPaymentForm({...paymentForm, cvc: e.target.value.replace(/\D/g, '')})} 
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '2rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px', fontSize: '1.1rem' }} disabled={loading}>
+                    {loading ? 'Processing Payment...' : 'Confirm Payment'}
+                  </button>
+                  <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
+                    <Shield size={14} /> Mock Mode (Cards not charged)
+                  </div>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
