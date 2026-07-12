@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 import { Plus, Hotel, MapPin, Globe, Phone, Mail, Trash2, Edit3, Image } from 'lucide-react';
+import { PLAN_LIMITS } from '../utils/subscriptionLimits';
 
 export default function Resorts() {
   const { session, resorts, setResorts, activeResortId, setActiveResortId, profile } = useSettingsStore();
@@ -55,9 +56,9 @@ export default function Resorts() {
         alert("Tenant updated successfully!");
       } else {
         // Plan Gate Check
-        const resortLimit = profile?.plan_type === 'free' ? 1 : (profile?.plan_type === 'pro' ? 5 : 100);
-        if (resorts.length >= resortLimit) {
-          alert(`Limit Reached: Your current ${profile.plan_type} plan allows only ${resortLimit} tenant(s). Please upgrade for more.`);
+        const limit = PLAN_LIMITS[profile?.plan_type || 'free'].maxResorts;
+        if (resorts.length >= limit) {
+          alert(`Limit Reached: Your current ${PLAN_LIMITS[profile?.plan_type || 'free'].label} allows only ${limit} tenant(s). Please upgrade on our website for more.`);
           return;
         }
 

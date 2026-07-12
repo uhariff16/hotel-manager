@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import { PLAN_LIMITS } from '../utils/subscriptionLimits';
 
 export default function CottagesRooms() {
   const { session, activeResortId, profile } = useSettingsStore();
@@ -149,8 +150,9 @@ export default function CottagesRooms() {
     }
 
     // Free Plan Gate
-    if (profile?.plan_type === 'free' && cottages.length >= 1) {
-      return alert('Free Plan Limit Reached: You can only add 1 property total in the Free Plan. Please upgrade your plan to add more.');
+    const cottageLimit = PLAN_LIMITS[profile?.plan_type || 'free'].maxCottages;
+    if (cottages.length >= cottageLimit) {
+      return alert(`Limit Reached: Your current ${PLAN_LIMITS[profile?.plan_type || 'free'].label} allows only ${cottageLimit} property/properties. Please upgrade on our website for more.`);
     }
 
     try {
@@ -209,8 +211,9 @@ export default function CottagesRooms() {
     }
 
     // Free Plan Gate
-    if (profile?.plan_type === 'free' && rooms.length >= 5) {
-      return alert('Free Plan Limit Reached: You can only add up to 5 rooms total. Please upgrade your plan to add more.');
+    const roomLimit = PLAN_LIMITS[profile?.plan_type || 'free'].maxRooms;
+    if (rooms.length >= roomLimit) {
+      return alert(`Limit Reached: Your current ${PLAN_LIMITS[profile?.plan_type || 'free'].label} allows only ${roomLimit} rooms. Please upgrade on our website for more.`);
     }
 
     try {
