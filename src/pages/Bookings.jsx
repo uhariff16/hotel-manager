@@ -228,14 +228,14 @@ export default function Bookings() {
   const compileWhatsAppTemplate = (template, booking, customPaymentAmount = '', paymentOption = '') => {
     if (!template || !booking) return '';
     const cname = cottages.find(x => x.id === booking.cottage_id)?.name || 'Unknown';
-    const rname = booking.booking_type === 'Entire Property' ? 'Entire Property' : (booking.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+    const rname = booking.booking_type === 'Entire Property' ? rooms.filter(r => r.cottage_id === booking.cottage_id).map(r => r.name).filter(Boolean).join(', ') : (booking.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
     
     // Custom logic for extra tags
     const checkInDateFormatted = new Date(booking.check_in_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     const checkOutDateFormatted = new Date(booking.check_out_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
     
     const duration = booking.night_count === 1 ? '1 Night' : `${booking.night_count || 0} Nights`;
-    const numRoomsVal = booking.booking_type === 'Entire Property' ? 1 : (booking.room_ids?.length || 1);
+    const numRoomsVal = booking.booking_type === 'Entire Property' ? 'Entire Property' : (booking.room_ids?.length || 1);
     const numGuestsVal = booking.number_of_guests || (Number(booking.adults_count || 1) + Number(booking.kids_count || 0));
     
     const hasBreakfast = (booking.addon_details || '').toLowerCase().includes('food') || (booking.addon_details || '').toLowerCase().includes('breakfast');
@@ -612,7 +612,8 @@ export default function Bookings() {
   }, [bookings, activeTab, sortConfig, searchTerm]);
 
   const bookingStats = React.useMemo(() => {
-    const visible = sortedAndFilteredBookings;
+    // Exclude cancelled bookings from the totals so they don't artificially inflate the values
+    const visible = sortedAndFilteredBookings.filter(b => b.status !== 'Cancelled');
     const totalValue = visible.reduce((sum, b) => sum + Number(b.total_amount || 0), 0);
     const totalBalance = visible.reduce((sum, b) => sum + Number(b.balance_amount || 0), 0);
     const totalPaid = totalValue - totalBalance;
@@ -663,20 +664,22 @@ export default function Bookings() {
             </button>
           )}
 
-          <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-            <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-              <small style={{ display: 'block', color: 'var(--success)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Paid</small>
-              <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalPaid.toLocaleString()}</span>
+          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                <small style={{ display: 'block', color: 'var(--success)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Paid</small>
+                <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalPaid.toLocaleString()}</span>
+              </div>
+              <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                <small style={{ display: 'block', color: 'var(--warning)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Balance</small>
+                <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalBalance.toLocaleString()}</span>
+              </div>
+              <div style={{ background: 'var(--bg-secondary)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Total Value</small>
+                <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalValue.toLocaleString()}</span>
+              </div>
             </div>
-            <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-              <small style={{ display: 'block', color: 'var(--warning)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Balance</small>
-              <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalBalance.toLocaleString()}</span>
-            </div>
-            <div style={{ background: 'var(--bg-secondary)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-              <small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Total Value</small>
-              <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalValue.toLocaleString()}</span>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Status Tabs */}
@@ -727,7 +730,7 @@ export default function Bookings() {
             <div className="card" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found.</div>
           ) : sortedAndFilteredBookings.map((b) => {
             const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
-            const rname = b.booking_type === 'Entire Property' ? 'Entire Property' : (b.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+            const rname = b.booking_type === 'Entire Property' ? rooms.filter(r => r.cottage_id === b.cottage_id).map(r => r.name).filter(Boolean).join(', ') : (b.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
             const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
             const opt = statusOptions.find(o => o.label === displayStatus) || statusOptions[1];
             
@@ -852,7 +855,7 @@ export default function Bookings() {
                   <tr><td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>No bookings found.</td></tr>
                 ) : sortedAndFilteredBookings.map((b) => {
                   const cname = cottages.find(x => x.id === b.cottage_id)?.name || 'Unknown';
-                  const rname = b.booking_type === 'Entire Property' ? 'Entire Property' : (b.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
+                  const rname = b.booking_type === 'Entire Property' ? rooms.filter(r => r.cottage_id === b.cottage_id).map(r => r.name).filter(Boolean).join(', ') : (b.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
                   const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
                   const opt = statusOptions.find(o => o.label === displayStatus) || statusOptions[1];
 
@@ -1147,7 +1150,7 @@ export default function Bookings() {
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Room(s) Assigned</small>
                     <span style={{ fontWeight: 700, color: 'var(--primary)' }}>
-                      {selectedDetailedBooking.booking_type === 'Entire Property' ? 'Entire Property' : (selectedDetailedBooking.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ') || 'N/A'}
+                      {selectedDetailedBooking.booking_type === 'Entire Property' ? rooms.filter(r => r.cottage_id === selectedDetailedBooking.cottage_id).map(r => r.name).filter(Boolean).join(', ') : (selectedDetailedBooking.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ') || 'N/A'}
                     </span>
                   </div>
                   <div>

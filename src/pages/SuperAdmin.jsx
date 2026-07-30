@@ -20,8 +20,13 @@ export default function SuperAdmin() {
 
   const DEFAULT_PLANS = {
     free: {
+      name: 'Free Starter',
+      description: 'Perfect for small properties',
       enabled: true,
       price: 0,
+      maxResorts: 1,
+      maxRooms: 5,
+      color: '#a0aec0',
       features: [
         { name: '1 Resort Limit', enabled: true },
         { name: 'Up to 5 Rooms', enabled: true },
@@ -30,12 +35,18 @@ export default function SuperAdmin() {
       ]
     },
     pro: {
+      name: 'Pro Manager',
+      description: 'For growing businesses',
       enabled: true,
       price: 1999,
       offerPrice: 1499,
       offerActive: false,
       offerStartDate: '',
       offerEndDate: '',
+      maxResorts: 5,
+      maxRooms: 999999,
+      color: 'var(--primary)',
+      popular: true,
       features: [
         { name: 'Up to 5 Resorts', enabled: true },
         { name: 'Unlimited Rooms', enabled: true },
@@ -45,12 +56,17 @@ export default function SuperAdmin() {
       ]
     },
     premium: {
+      name: 'Luxury Premium',
+      description: 'Total control for hotel chains',
       enabled: true,
       price: 5999,
       offerPrice: 4999,
       offerActive: false,
       offerStartDate: '',
       offerEndDate: '',
+      maxResorts: 999999,
+      maxRooms: 999999,
+      color: '#d4af37',
       features: [
         { name: 'Unlimited Resorts', enabled: true },
         { name: 'Custom Branding', enabled: true },
@@ -111,11 +127,25 @@ export default function SuperAdmin() {
       const superAdminProfile = (u || []).find(user => user.id === profile.id);
       if (superAdminProfile?.global_settings?.pricing) {
         const loaded = superAdminProfile.global_settings.pricing;
-        setPricingConfig({
-          free: { ...DEFAULT_PLANS.free, ...loaded.free, features: loaded.free?.features || DEFAULT_PLANS.free.features },
-          pro: { ...DEFAULT_PLANS.pro, ...loaded.pro, features: loaded.pro?.features || DEFAULT_PLANS.pro.features },
-          premium: { ...DEFAULT_PLANS.premium, ...loaded.premium, features: loaded.premium?.features || DEFAULT_PLANS.premium.features }
-        });
+        
+        // Merge loaded pricing with DEFAULT_PLANS defaults for missing fields
+        const mergedPricing = {};
+        for (const [key, plan] of Object.entries(loaded)) {
+           mergedPricing[key] = {
+             ...(DEFAULT_PLANS[key] || {}),
+             ...plan,
+             features: plan.features || (DEFAULT_PLANS[key]?.features || [])
+           };
+        }
+        
+        // Ensure all DEFAULT_PLANS exist if they were completely missing
+        for (const [key, plan] of Object.entries(DEFAULT_PLANS)) {
+          if (!mergedPricing[key]) {
+            mergedPricing[key] = { ...plan };
+          }
+        }
+        
+        setPricingConfig(mergedPricing);
       }
 
       if (superAdminProfile?.global_settings) {
@@ -341,16 +371,35 @@ export default function SuperAdmin() {
 
       {/* Global Pricing & Offers Manager */}
       <div className="card" style={{ marginBottom: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
-          <DollarSign /> Dynamic Pricing & Offers
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b', margin: 0 }}>
+            <DollarSign /> Dynamic Pricing & Offers
+          </h3>
+          <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
+            const newId = `custom_${Date.now()}`;
+            setPricingConfig({
+              ...pricingConfig,
+              [newId]: {
+                name: 'New Custom Plan',
+                description: 'Description here',
+                enabled: true,
+                price: 999,
+                maxResorts: 1,
+                maxRooms: 10,
+                color: 'var(--primary)',
+                features: [{ name: 'New Feature', enabled: true }]
+              }
+            });
+          }}>
+            + Create New Plan
+          </button>
+        </div>
         
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
           
-          {['free', 'pro', 'premium'].map((planKey) => {
-            const plan = pricingConfig[planKey];
-            const titleColor = planKey === 'free' ? '#64748b' : planKey === 'pro' ? 'var(--success)' : 'var(--primary)';
-            const titleName = planKey === 'free' ? 'FREE STARTER' : planKey === 'pro' ? 'PRO MANAGER' : 'LUXURY PREMIUM';
+          {Object.entries(pricingConfig).map(([planKey, plan]) => {
+            const titleColor = plan.color || 'var(--primary)';
+            const titleName = plan.name || planKey.toUpperCase();
             
             return (
               <div key={planKey} style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', opacity: plan.enabled ? 1 : 0.6, transition: 'all 0.3s' }}>
@@ -364,6 +413,22 @@ export default function SuperAdmin() {
                       onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, enabled: e.target.checked}})}
                     />
                     <label htmlFor={`enable-${planKey}`} style={{ fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>Enabled</label>
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1rem' }}>
+                  <label className="form-label">Plan Name</label>
+                  <input type="text" className="form-input" value={plan.name || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, name: e.target.value}})} disabled={!plan.enabled} />
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">Max Resorts</label>
+                    <input type="number" className="form-input" value={plan.maxResorts === 999999 ? '' : plan.maxResorts} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxResorts: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Max Rooms</label>
+                    <input type="number" className="form-input" value={plan.maxRooms === 999999 ? '' : plan.maxRooms} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxRooms: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
                   </div>
                 </div>
 
@@ -521,9 +586,9 @@ export default function SuperAdmin() {
                   onChange={e => setEditingUser({...editingUser, plan_type: e.target.value})}
                   disabled={editingUser.role === 'staff'}
                 >
-                  <option value="free">FREE</option>
-                  <option value="pro">PRO</option>
-                  <option value="premium">PREMIUM</option>
+                  {Object.entries(pricingConfig).map(([planKey, planVal]) => (
+                    <option key={planKey} value={planKey}>{planVal.name?.toUpperCase() || planKey.toUpperCase()}</option>
+                  ))}
                 </select>
                 {editingUser.role === 'staff' && <small style={{ color: 'var(--text-muted)' }}>Plans apply to Tenants only</small>}
               </div>
@@ -700,7 +765,7 @@ export default function SuperAdmin() {
                     {tenant.role === 'tenant_admin' ? (
                       <>
                         <span className={`badge ${tenant.plan_type === 'premium' ? 'badge-primary' : (tenant.plan_type === 'pro' ? 'badge-success' : 'badge-outline')}`}>
-                          {tenant.plan_type?.toUpperCase() || 'FREE'}
+                          {pricingConfig[tenant.plan_type]?.name?.toUpperCase() || tenant.plan_type?.toUpperCase() || 'FREE'}
                         </span>
                         <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                           Props: <strong>{tenant.propertyCount}</strong> | Books: <strong>{tenant.bookingCount}</strong>

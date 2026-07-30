@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 import { Plus, Hotel, MapPin, Globe, Phone, Mail, Trash2, Edit3, Image } from 'lucide-react';
-import { PLAN_LIMITS } from '../utils/subscriptionLimits';
 
 export default function Resorts() {
-  const { session, resorts, setResorts, activeResortId, setActiveResortId, profile } = useSettingsStore();
+  const { session, resorts, setResorts, activeResortId, setActiveResortId, profile, globalPlans } = useSettingsStore();
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingResortId, setEditingResortId] = useState(null);
@@ -56,9 +55,13 @@ export default function Resorts() {
         alert("Tenant updated successfully!");
       } else {
         // Plan Gate Check
-        const limit = PLAN_LIMITS[profile?.plan_type || 'free'].maxResorts;
+        const currentPlanId = profile?.plan_type || 'free';
+        const planConfig = globalPlans?.[currentPlanId] || { maxResorts: 1, name: 'Free Starter' };
+        const limit = planConfig.maxResorts || 1;
+        const planName = planConfig.name || currentPlanId.toUpperCase();
+
         if (resorts.length >= limit) {
-          alert(`Limit Reached: Your current ${PLAN_LIMITS[profile?.plan_type || 'free'].label} allows only ${limit} tenant(s). Please upgrade on our website for more.`);
+          alert(`Limit Reached: Your current ${planName} plan allows only ${limit} tenant(s). Please upgrade on our website for more.`);
           return;
         }
 

@@ -2,10 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, Edit2, Check, X } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
-import { PLAN_LIMITS } from '../utils/subscriptionLimits';
 
 export default function CottagesRooms() {
-  const { session, activeResortId, profile } = useSettingsStore();
+  const { session, activeResortId, profile, globalPlans } = useSettingsStore();
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -150,9 +149,13 @@ export default function CottagesRooms() {
     }
 
     // Free Plan Gate
-    const cottageLimit = PLAN_LIMITS[profile?.plan_type || 'free'].maxCottages;
+    const currentPlanId = profile?.plan_type || 'free';
+    const planConfig = globalPlans?.[currentPlanId] || { maxCottages: 1, name: 'Free Starter' };
+    const cottageLimit = planConfig.maxCottages || 999999;
+    const planName = planConfig.name || currentPlanId.toUpperCase();
+
     if (cottages.length >= cottageLimit) {
-      return alert(`Limit Reached: Your current ${PLAN_LIMITS[profile?.plan_type || 'free'].label} allows only ${cottageLimit} property/properties. Please upgrade on our website for more.`);
+      return alert(`Limit Reached: Your current ${planName} plan allows only ${cottageLimit} property/properties. Please upgrade on our website for more.`);
     }
 
     try {
@@ -211,9 +214,13 @@ export default function CottagesRooms() {
     }
 
     // Free Plan Gate
-    const roomLimit = PLAN_LIMITS[profile?.plan_type || 'free'].maxRooms;
+    const currentPlanId = profile?.plan_type || 'free';
+    const planConfig = globalPlans?.[currentPlanId] || { maxRooms: 5, name: 'Free Starter' };
+    const roomLimit = planConfig.maxRooms || 5;
+    const planName = planConfig.name || currentPlanId.toUpperCase();
+
     if (rooms.length >= roomLimit) {
-      return alert(`Limit Reached: Your current ${PLAN_LIMITS[profile?.plan_type || 'free'].label} allows only ${roomLimit} rooms. Please upgrade on our website for more.`);
+      return alert(`Limit Reached: Your current ${planName} plan allows only ${roomLimit} rooms. Please upgrade on our website for more.`);
     }
 
     try {

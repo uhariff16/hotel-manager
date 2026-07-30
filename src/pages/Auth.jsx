@@ -66,8 +66,12 @@ export default function Auth() {
         if (error) throw error;
         setMessage("Password reset link sent to your email!");
       } else if (isLogin) {
+        let loginEmail = formData.email.trim();
+        if (!loginEmail.includes('@')) {
+          loginEmail = `${loginEmail.toLowerCase()}@staff.local`;
+        }
         const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
+          email: loginEmail,
           password: formData.password,
         });
         if (error) throw error;
@@ -190,17 +194,17 @@ export default function Auth() {
 
           {!isRecovering && (
             <div className="form-group">
-              <label className="form-label">Email Address</label>
+              <label className="form-label">{isLogin ? 'Email or Username' : 'Email Address'}</label>
               <div style={{ position: 'relative' }}>
                 <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
-                  <Mail size={18} />
+                  {isLogin && !formData.email.includes('@') && formData.email.length > 0 ? <User size={18} /> : <Mail size={18} />}
                 </span>
                 <input 
-                  type="email" 
+                  type={isLogin ? "text" : "email"} 
                   required 
                   className="form-input" 
                   style={{ paddingLeft: '3rem' }}
-                  placeholder="name@company.com"
+                  placeholder={isLogin ? "email@example.com or username" : "name@company.com"}
                   value={formData.email}
                   onChange={e => setFormData({...formData, email: e.target.value})}
                 />

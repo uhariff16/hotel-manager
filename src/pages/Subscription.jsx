@@ -3,38 +3,7 @@ import { useSettingsStore } from '../lib/store';
 import { Check, Zap, Crown, CreditCard, Shield, X, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
-const PLANS = [
-  {
-    id: 'free',
-    name: 'Free Starter',
-    price: '₹0',
-    description: 'Perfect for small properties',
-    features: ['1 Resort Limit', 'Up to 5 Rooms', 'Basic Reports', 'Community Support'],
-    icon: <Zap size={24} />,
-    color: '#a0aec0'
-  },
-  {
-    id: 'pro',
-    name: 'Pro Manager',
-    price: '₹1,999',
-    period: '/mo',
-    description: 'For growing businesses',
-    features: ['Up to 5 Resorts', 'Unlimited Rooms', 'Advanced Analytics', 'Email Automation', 'Priority Support'],
-    icon: <Crown size={24} />,
-    color: 'var(--primary)',
-    popular: true
-  },
-  {
-    id: 'premium',
-    name: 'Luxury Premium',
-    price: '₹5,999',
-    period: '/mo',
-    description: 'Total control for hotel chains',
-    features: ['Unlimited Resorts', 'Custom Branding', 'Super Admin Panel', 'WhatsApp Notifications', '24/7 Dedicated Support'],
-    icon: <Shield size={24} />,
-    color: '#d4af37'
-  }
-];
+// Dynamic plans are now loaded from the global state
 
 const formatOfferDate = (dateString) => {
   if (!dateString) return '';
@@ -55,70 +24,46 @@ const formatOfferDate = (dateString) => {
 };
 
 export default function Subscription() {
-  const { profile, setProfile } = useSettingsStore();
+  const { profile, setProfile, globalPlans } = useSettingsStore();
   const [loading, setLoading] = useState(null);
-  const [fetchingPricing, setFetchingPricing] = useState(true);
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
   const [paymentForm, setPaymentForm] = useState({ cardNumber: '', expiry: '', cvc: '', name: '' });
-  const [plansList, setPlansList] = useState(PLANS);
 
-  useEffect(() => {
-    const fetchDynamicPricing = async () => {
-      try {
-        const { data, error } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
-        if (error) throw error;
-        const adminSettings = data?.[0]?.global_settings?.pricing;
+  const isOfferValid = (planConfig) => {
+    if (!planConfig || !planConfig.offerActive) return false;
+    const today = new Date().toISOString().split('T')[0];
+    if (planConfig.offerStartDate && today < planConfig.offerStartDate) return false;
+    if (planConfig.offerEndDate && today > planConfig.offerEndDate) return false;
+    return true;
+  };
 
-        const isOfferValid = (planConfig) => {
-          if (!planConfig || !planConfig.offerActive) return false;
-          const today = new Date().toISOString().split('T')[0];
-          if (planConfig.offerStartDate && today < planConfig.offerStartDate) return false;
-          if (planConfig.offerEndDate && today > planConfig.offerEndDate) return false;
-          return true;
+  const getPlansList = () => {
+    if (!globalPlans) return [];
+    
+    return Object.entries(globalPlans)
+      .filter(([id, config]) => config.enabled !== false)
+      .map(([id, config]) => {
+        const offerActive = isOfferValid(config);
+        return {
+          id,
+          name: config.name || id.toUpperCase(),
+          description: config.description || '',
+          price: offerActive && config.offerPrice !== undefined ? `₹${config.offerPrice}` : (config.price === 0 ? '₹0' : `₹${config.price}`),
+          basePrice: offerActive && config.price !== undefined ? `₹${config.price}` : null,
+          offerEndDate: offerActive && config.offerEndDate ? config.offerEndDate : null,
+          period: id === 'free' ? '' : '/mo',
+          color: config.color || 'var(--primary)',
+          popular: config.popular || false,
+          icon: id === 'free' ? <Zap size={24} /> : (id === 'premium' ? <Shield size={24} /> : <Crown size={24} />),
+          features: Array.isArray(config.features) 
+            ? config.features.filter(f => f.enabled !== false).map(f => f.name)
+            : []
         };
+      });
+  };
 
-        if (adminSettings) {
-          const updatedPlans = PLANS.map(p => {
-            const planConfig = adminSettings[p.id];
-            
-            // If the plan doesn't exist in config or is disabled, mark it for removal
-            if (planConfig && planConfig.enabled === false) return null;
-
-            // Start with base static config
-            let newPlan = { ...p };
-
-            if (planConfig) {
-              const offerActive = isOfferValid(planConfig);
-              
-              if (p.id !== 'free') {
-                newPlan.price = offerActive ? `₹${planConfig.offerPrice}` : `₹${planConfig.price}`;
-                newPlan.basePrice = offerActive ? `₹${planConfig.price}` : null;
-                newPlan.offerEndDate = offerActive && planConfig.offerEndDate ? planConfig.offerEndDate : null;
-              }
-
-              // Overwrite features with dynamic features array if it exists
-              if (planConfig.features && Array.isArray(planConfig.features)) {
-                // Only keep enabled features, map them to just their names (strings) for the UI
-                newPlan.features = planConfig.features
-                  .filter(f => f.enabled !== false)
-                  .map(f => f.name);
-              }
-            }
-            
-            return newPlan;
-          }).filter(Boolean); // Filter out any plans that returned null (disabled plans)
-
-          setPlansList(updatedPlans);
-        }
-      } catch (e) {
-        console.error("Failed to load dynamic pricing", e);
-      } finally {
-        setFetchingPricing(false);
-      }
-    };
-    fetchDynamicPricing();
-  }, []);
+  const plansList = getPlansList();
 
   const handleSubscribe = (planId) => {
     if (planId === profile?.plan_type) return;
@@ -152,7 +97,7 @@ export default function Subscription() {
     }, 2000);
   };
 
-  if (fetchingPricing) {
+  if (!globalPlans) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' }}>
         <div className="animate-spin" style={{ border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid var(--primary)', borderRadius: '50%', width: '40px', height: '40px' }}></div>

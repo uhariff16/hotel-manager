@@ -18,7 +18,7 @@ export default function Staff() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [formData, setFormData] = useState({ id: '', email: '', password: '', fullName: '', cottage_id: '' });
+  const [formData, setFormData] = useState({ id: '', username: '', password: '', fullName: '', cottage_id: '' });
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -64,7 +64,7 @@ export default function Staff() {
   };
 
   const resetForm = () => {
-    setFormData({ id: '', email: '', password: '', fullName: '', cottage_id: '' });
+    setFormData({ id: '', username: '', password: '', fullName: '', cottage_id: '' });
     setShowForm(false);
     setIsEditing(false);
     setError(null);
@@ -73,7 +73,7 @@ export default function Staff() {
   const handleEdit = (member) => {
     setFormData({ 
       id: member.id, 
-      email: member.id, // Email is masked in profiles usually, but we use it for identification
+      username: member.username || '',
       fullName: member.full_name,
       cottage_id: member.cottage_id || '',
       password: '' 
@@ -101,15 +101,17 @@ export default function Staff() {
         alert("Staff updated successfully!");
       } else {
         // 1. Sign up the new user using the secondary client
+        const syntheticEmail = `${formData.username.trim()}@staff.local`;
         const { data, error: authError } = await secondarySupabase.auth.signUp({
-          email: formData.email,
+          email: syntheticEmail,
           password: formData.password,
           options: {
             data: {
               full_name: formData.fullName,
               tenant_id: profile.tenant_id,
               role: 'staff',
-              cottage_id: formData.cottage_id || null
+              cottage_id: formData.cottage_id || null,
+              username: formData.username.trim()
             }
           }
         });
@@ -117,13 +119,15 @@ export default function Staff() {
 
         // 2. Perform fallback profile update to ensure cottage_id is set
         if (data?.user?.id) {
-          await supabase
+          const { error: profileErr } = await supabase
             .from('profiles')
-            .update({ cottage_id: formData.cottage_id || null })
+            .update({ cottage_id: formData.cottage_id || null, username: formData.username.trim() })
             .eq('id', data.user.id);
+            
+          if (profileErr) console.warn("Failed to update profile username (SQL migration missing?):", profileErr);
         }
 
-        alert(`Staff account created for ${formData.email}!`);
+        alert(`Staff account created for username ${formData.username.trim()}!`);
       }
 
       resetForm();
@@ -207,10 +211,10 @@ export default function Staff() {
             {!isEditing && (
               <>
                 <div className="form-group">
-                  <label className="form-label">Email Address</label>
+                  <label className="form-label">Username</label>
                   <div style={{ position: 'relative' }}>
-                    <Mail size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                    <input type="email" className="form-input" required style={{ paddingLeft: '2.5rem' }} value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} placeholder="staff@example.com" />
+                    <User size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                    <input type="text" className="form-input" required style={{ paddingLeft: '2.5rem' }} value={formData.username} onChange={e => setFormData({...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')})} placeholder="staffuser123" />
                   </div>
                 </div>
                 <div className="form-group">
@@ -260,7 +264,7 @@ export default function Staff() {
                         </div>
                         <div>
                           <strong>{member.full_name}</strong>
-                          <br/><small style={{ color: 'var(--text-muted)' }}>Ref: {member.id.split('-')[0]}</small>
+                          <br/><small style={{ color: 'var(--text-muted)' }}>Username: {member.username || member.id.split('-')[0]}</small>
                         </div>
                       </div>
                     </td>
