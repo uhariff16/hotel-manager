@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2 } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2 } from 'lucide-react';
 
 const DEFAULT_CONFIRM_TEMPLATE = `🏡 Booking Confirmed – {resort_name}
 
@@ -96,6 +96,12 @@ export default function Settings() {
     whatsapp_reminder_msg_template: DEFAULT_REMINDER_TEMPLATE,
     whatsapp_review_msg_template: DEFAULT_REVIEW_TEMPLATE
   });
+
+  // Data Manager (Cleanup) State
+  const [cleanupYear, setCleanupYear] = useState(new Date().getFullYear() - 1);
+  const [cleanupStats, setCleanupStats] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isCleaning, setIsCleaning] = useState(false);
 
   // Custom Tags Manager State
   const [customTags, setCustomTags] = useState([
@@ -527,28 +533,30 @@ export default function Settings() {
             </button>
           )}
 
-          <button 
-            type="button"
-            onClick={() => setActiveTab('security')}
-            style={{ 
-              padding: '0.75rem 1rem', 
-              background: activeTab === 'security' ? 'var(--primary)' : 'transparent', 
-              color: activeTab === 'security' ? 'white' : 'var(--text-muted)', 
-              borderRadius: '8px', 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem',
-              border: 'none',
-              textAlign: 'left',
-              width: '100%',
-              fontSize: '0.95rem',
-              fontWeight: 500,
-              transition: 'all 0.2s'
-            }}
-          >
-            <ShieldAlert size={18} /> Security
-          </button>
+          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+            <button 
+              type="button"
+              onClick={() => setActiveTab('data_manager')}
+              style={{ 
+                padding: '0.75rem 1rem', 
+                background: activeTab === 'data_manager' ? 'var(--primary)' : 'transparent', 
+                color: activeTab === 'data_manager' ? 'white' : 'var(--text-muted)', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem',
+                border: 'none',
+                textAlign: 'left',
+                width: '100%',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}
+            >
+              <Database size={18} /> Data Manager
+            </button>
+          )}
         </aside>
 
         <main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -1020,25 +1028,133 @@ export default function Settings() {
             </div>
           )}
 
-          {/* SECURITY TAB */}
-          {activeTab === 'security' && (
+          {/* DATA MANAGER TAB */}
+          {activeTab === 'data_manager' && (
             <>
-              {/* Danger Zone */}
               {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
                 <div className="card" style={{ border: '1px solid var(--danger)' }}>
                   <h2 style={{ marginBottom: '1rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <ShieldAlert size={24} /> Danger Zone
+                    <ShieldAlert size={24} /> Data Manager (Cleanup)
                   </h2>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                    Factory Reset: This action will permanently delete all transactional history (Bookings, Incomes, Expenses). 
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem', lineHeight: 1.5 }}>
+                    Select a year to analyze old operational data (bookings, incomes, expenses). You can permanently clean up this data to declutter your system and improve performance.
                   </p>
-                  <button 
-                    className="btn" 
-                    style={{ background: 'var(--danger)', color: 'white', border: 'none' }} 
-                    onClick={wipeData}
-                  >
-                    Reset Transactional Data
-                  </button>
+                  
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="form-label">Select Year for Cleanup</label>
+                      <select 
+                        className="form-control" 
+                        value={cleanupYear} 
+                        onChange={(e) => { setCleanupYear(Number(e.target.value)); setCleanupStats(null); }}
+                      >
+                        {[...Array(10)].map((_, i) => {
+                          const year = new Date().getFullYear() - i;
+                          return <option key={year} value={year}>{year}</option>;
+                        })}
+                      </select>
+                    </div>
+                    <button 
+                      className="btn btn-primary" 
+                      style={{ minWidth: '150px' }}
+                      onClick={async () => {
+                        setIsAnalyzing(true);
+                        setCleanupStats(null);
+                        try {
+                          const startDate = `${cleanupYear}-01-01T00:00:00Z`;
+                          const endDate = `${cleanupYear}-12-31T23:59:59Z`;
+                          
+                          const [bks, inc, exp] = await Promise.all([
+                            supabase.from('bookings').select('id, status', { count: 'exact' }).eq('resort_id', activeResortId).gte('check_in_date', startDate).lte('check_in_date', endDate),
+                            supabase.from('incomes').select('id', { count: 'exact' }).eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate),
+                            supabase.from('expenses').select('id', { count: 'exact' }).eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate)
+                          ]);
+                          
+                          setCleanupStats({
+                            bookings: bks.count || 0,
+                            incomes: inc.count || 0,
+                            expenses: exp.count || 0,
+                            total: (bks.count || 0) + (inc.count || 0) + (exp.count || 0)
+                          });
+                        } catch (err) {
+                          alert("Error analyzing data: " + err.message);
+                        } finally {
+                          setIsAnalyzing(false);
+                        }
+                      }}
+                      disabled={isAnalyzing || isCleaning}
+                    >
+                      {isAnalyzing ? <Loader2 size={16} className="spin" /> : 'Analyze Data'}
+                    </button>
+                  </div>
+
+                  {cleanupStats && (
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
+                      <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-color)' }}>
+                        Analysis Results for {cleanupYear}
+                      </h3>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                        <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>{cleanupStats.bookings}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Bookings</div>
+                        </div>
+                        <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{cleanupStats.incomes}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Income Records</div>
+                        </div>
+                        <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>{cleanupStats.expenses}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Expense Records</div>
+                        </div>
+                        <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-color)' }}>{cleanupStats.total}</div>
+                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Records</div>
+                        </div>
+                      </div>
+                      
+                      {cleanupStats.total > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
+                          <div style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '8px', fontSize: '0.85rem', textAlign: 'center' }}>
+                            <AlertTriangle size={16} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} /> 
+                            <strong>Warning:</strong> Cleaning up will permanently delete these {cleanupStats.total} records from your database. This action cannot be undone.
+                          </div>
+                          <button 
+                            className="btn btn-danger"
+                            style={{ width: '100%', maxWidth: '300px', background: '#ef4444', color: 'white', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
+                            disabled={isCleaning}
+                            onClick={async () => {
+                              if (!window.confirm(`Are you absolutely sure you want to permanently delete ${cleanupStats.total} records from ${cleanupYear}?`)) return;
+                              
+                              setIsCleaning(true);
+                              try {
+                                const startDate = `${cleanupYear}-01-01T00:00:00Z`;
+                                const endDate = `${cleanupYear}-12-31T23:59:59Z`;
+                                
+                                await Promise.all([
+                                  supabase.from('bookings').delete().eq('resort_id', activeResortId).gte('check_in_date', startDate).lte('check_in_date', endDate),
+                                  supabase.from('incomes').delete().eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate),
+                                  supabase.from('expenses').delete().eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate)
+                                ]);
+                                
+                                alert(`Successfully cleaned up data for ${cleanupYear}`);
+                                setCleanupStats(null);
+                              } catch (err) {
+                                alert("Error cleaning data: " + err.message);
+                              } finally {
+                                setIsCleaning(false);
+                              }
+                            }}
+                          >
+                            {isCleaning ? <Loader2 size={16} className="spin" /> : 'Permanently Delete ' + cleanupYear + ' Data'}
+                          </button>
+                        </div>
+                      ) : (
+                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>
+                          No records found for {cleanupYear}. Your system is clean!
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </>

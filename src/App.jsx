@@ -51,7 +51,6 @@ function App() {
       
       if (profile) {
         setProfile(profile);
-        
         // Only fetch resorts if the user actually belongs to a tenant (Owners and Staff)
         if (profile.tenant_id) {
           const { data: resorts } = await supabase

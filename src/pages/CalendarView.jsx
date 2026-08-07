@@ -131,7 +131,6 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
         if (profile?.role === 'staff' && profile?.cottage_id) {
           bookingsQuery = bookingsQuery.eq('cottage_id', profile.cottage_id);
           cottagesQuery = cottagesQuery.eq('id', profile.cottage_id);
-          roomsQuery = roomsQuery.eq('cottage_id', profile.cottage_id);
         }
 
         const [bks, cts, rms] = await Promise.all([
@@ -139,6 +138,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
           cottagesQuery,
           roomsQuery
         ]);
+
         setBookings(bks.data || []);
         setCottages(cts.data || []);
         setRooms(rms.data || []);
@@ -793,8 +793,10 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                     <React.Fragment key={c.id}>
                       {/* Cottage Row */}
                       <div style={{ display: 'flex', borderBottom: hasNoRooms ? '4px solid var(--border)' : '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
-                        <div style={{ width: isMobile ? '100px' : '220px', flexShrink: 0, padding: isMobile ? '0.5rem' : '1rem', fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 10, display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: isMobile ? 'normal' : 'nowrap', overflow: 'hidden' }}>
-                           <Home size={isMobile ? 14 : 16} color="var(--primary)" style={{ flexShrink: 0 }} /> <span style={{ textOverflow: 'ellipsis', overflow: 'hidden' }}>{isMobile ? c.name.split(' ')[0] : c.name}</span>
+                        <div style={{ width: isMobile ? '100px' : '220px', flexShrink: 0, padding: isMobile ? '0.5rem' : '1rem', fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', borderRight: '1px solid var(--border)', position: 'sticky', left: 0, background: 'var(--bg-secondary)', zIndex: 10, display: 'flex', flexDirection: 'column', alignItems: 'flex-start', justifyContent: 'center', gap: '0.2rem', overflow: 'visible' }}>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                             <Home size={isMobile ? 14 : 16} color="var(--primary)" style={{ flexShrink: 0 }} /> <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{isMobile ? c.name.split(' ')[0] : c.name}</span>
+                           </div>
                         </div>
                         {dates.map((d, i) => {
                           const { blockColor, label, bookingId, booking } = getCellStatus(d, 'Property', c.id);

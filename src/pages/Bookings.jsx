@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, Mail } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, Mail, CheckSquare, Square } from 'lucide-react';
 import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
@@ -98,7 +98,7 @@ export default function Bookings() {
   const [error, setError] = useState(null);
 
   const [selectedBookings, setSelectedBookings] = useState([]);
-  const [sortConfig, setSortConfig] = useState({ key: 'check_in_date', direction: 'ascending' });
+  const [sortConfig, setSortConfig] = useState({ key: 'priority', direction: 'ascending' });
   const [searchTerm, setSearchTerm] = useState('');
 
   const [settlingBooking, setSettlingBooking] = useState(null);
@@ -144,11 +144,10 @@ export default function Bookings() {
       let cottagesQuery = supabase.from('cottages').select('*').eq('resort_id', activeResortId);
       let roomsQuery = supabase.from('rooms').select('*').eq('resort_id', activeResortId);
 
-      if (profile?.role === 'staff' && profile?.cottage_id) {
-        bookingsQuery = bookingsQuery.eq('cottage_id', profile.cottage_id);
-        cottagesQuery = cottagesQuery.eq('id', profile.cottage_id);
-        roomsQuery = roomsQuery.eq('cottage_id', profile.cottage_id);
-      }
+        if (profile?.role === 'staff' && profile?.cottage_id) {
+          bookingsQuery = bookingsQuery.eq('cottage_id', profile.cottage_id);
+          cottagesQuery = cottagesQuery.eq('id', profile.cottage_id);
+        }
 
       const [bks, cts, rms, integrationsRes, resortRes] = await Promise.all([
         bookingsQuery.order('created_at', { ascending: false }),
@@ -346,7 +345,7 @@ export default function Bookings() {
     { label: 'Cancelled', color: '#ef4444', bg: 'rgba(239, 68, 68, 0.1)' }
   ];
 
-  const [activeTab, setActiveTab] = useState('All');
+  const [activeTabs, setActiveTabs] = useState(['All']);
 
   const handleCheckIn = async (b) => {
     try {
@@ -435,6 +434,7 @@ export default function Bookings() {
       
       const newTotal = Math.max(0, Number(settlingBooking.total_amount || 0) - discount);
       const newBalance = Math.max(0, Number(settlingBooking.balance_amount || 0) - amtPaid - discount);
+      const newAdvancePaid = Number(settlingBooking.advance_paid || 0) + amtPaid;
       
       let targetStatus = settlingBooking.status;
       if (newBalance === 0 && (settlingBooking.status === 'Checked-out' || settlingBooking.status === 'Completed')) {
@@ -446,7 +446,8 @@ export default function Bookings() {
         .update({ 
           status: targetStatus,
           total_amount: newTotal,
-          balance_amount: newBalance
+          balance_amount: newBalance,
+          advance_paid: newAdvancePaid
         })
         .eq('id', settlingBooking.id);
         
@@ -469,7 +470,8 @@ export default function Bookings() {
         ...x, 
         status: targetStatus,
         total_amount: newTotal,
-        balance_amount: newBalance 
+        balance_amount: newBalance,
+        advance_paid: newAdvancePaid
       } : x));
       const bookingId = settlingBooking.id;
       setSettlingBooking(null);
@@ -560,7 +562,7 @@ export default function Bookings() {
   const sortedAndFilteredBookings = React.useMemo(() => {
     let items = bookings.filter(b => {
       const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
-      const matchesStatus = activeTab === 'All' || displayStatus === activeTab;
+      const matchesStatus = activeTabs.includes('All') || activeTabs.includes(displayStatus);
       const matchesSearch = b.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             (b.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (b.phone_number || '').includes(searchTerm);
@@ -568,32 +570,32 @@ export default function Bookings() {
     });
 
     items.sort((a, b) => {
-      // Primary sort: Has pending balance (Receive Pay button is enabled)
-      const hasBalanceA = (a.balance_amount > 0 && a.status !== 'Cancelled') ? 1 : 0;
-      const hasBalanceB = (b.balance_amount > 0 && b.status !== 'Cancelled') ? 1 : 0;
-      
-      if (hasBalanceA !== hasBalanceB) {
-        return hasBalanceB - hasBalanceA; // Bookings with balance first
-      }
-
-      // Secondary sort: Configured sort logic
-      if (sortConfig.key === 'check_in_date' && sortConfig.direction === 'ascending') {
+      // If we are using the default priority sort, use our smart priority system
+      if (sortConfig.key === 'priority' && sortConfig.direction === 'ascending') {
         const getPriority = (x) => {
           const displayStatus = (x.status === 'Completed' && x.balance_amount > 0) ? 'Pending Payment' : x.status;
-          if (displayStatus === 'Checked-in') return 1;
-          if (displayStatus === 'Pending Payment') return 2;
-          if (displayStatus === 'Confirmed') return 3;
-          if (displayStatus === 'Pending') return 4;
-          if (displayStatus === 'Completed') return 5;
-          if (displayStatus === 'Cancelled') return 6;
+          
+          // Priority 1: Not checked-out (or cancelled) AND received pay (Advance paid > 0)
+          if (x.status !== 'Completed' && x.status !== 'Cancelled' && (x.advance_paid > 0 || (x.total_amount > 0 && x.balance_amount === 0))) return 1;
+          
+          if (displayStatus === 'Checked-in') return 2;
+          if (displayStatus === 'Pending Payment') return 3;
+          if (displayStatus === 'Confirmed') return 4;
+          if (displayStatus === 'Pending') return 5;
+          if (displayStatus === 'Completed') return 6;
+          if (displayStatus === 'Cancelled') return 7;
           return 99;
         };
         const pA = getPriority(a);
         const pB = getPriority(b);
+        
         if (pA !== pB) return pA - pB;
-        if (pA === 5 || pA === 2) {
+        
+        if (pA === 6 || pA === 3) {
+          // For completed/pending payment, sort by check-out date descending
           return new Date(b.check_out_date) - new Date(a.check_out_date);
         }
+        // For others, sort by check-in date ascending
         return new Date(a.check_in_date) - new Date(b.check_in_date);
       } else if (sortConfig !== null) {
         let valA = a[sortConfig.key];
@@ -609,7 +611,7 @@ export default function Bookings() {
     });
 
     return items;
-  }, [bookings, activeTab, sortConfig, searchTerm]);
+  }, [bookings, activeTabs, sortConfig, searchTerm]);
 
   const bookingStats = React.useMemo(() => {
     // Exclude cancelled bookings from the totals so they don't artificially inflate the values
@@ -685,12 +687,27 @@ export default function Bookings() {
         {/* Status Tabs */}
         <div style={{ display: 'flex', gap: '0.4rem', marginTop: '1.25rem', overflowX: 'auto', paddingBottom: '0.25rem', scrollbarWidth: 'none' }}>
           {statusOptions.map(opt => {
-            const isActive = activeTab === opt.label;
+            const isActive = activeTabs.includes(opt.label);
             const count = getStatusCount(opt.label);
             return (
               <button
                 key={opt.label}
-                onClick={() => setActiveTab(opt.label)}
+                onClick={() => {
+                  if (opt.label === 'All') {
+                    setActiveTabs(['All']);
+                  } else {
+                    let newTabs = activeTabs.filter(t => t !== 'All');
+                    if (newTabs.includes(opt.label)) {
+                      newTabs = newTabs.filter(t => t !== opt.label);
+                    } else {
+                      newTabs.push(opt.label);
+                    }
+                    if (newTabs.length === 0) {
+                      newTabs = ['All'];
+                    }
+                    setActiveTabs(newTabs);
+                  }
+                }}
                 style={{
                   padding: '0.5rem 1rem',
                   borderRadius: 'var(--radius-md)',
@@ -708,6 +725,7 @@ export default function Bookings() {
                   border: isActive ? `1px solid ${opt.color}` : '1px solid var(--border)'
                 }}
               >
+                {isActive ? <CheckSquare size={16} /> : <Square size={16} />}
                 {opt.label}
                 <span style={{ 
                   fontSize: '0.7rem', 
