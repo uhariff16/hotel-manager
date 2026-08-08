@@ -16,6 +16,8 @@
     "date-fns": "^4.1.0",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.2",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.8",
     "lucide-react": "^0.471.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

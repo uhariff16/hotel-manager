@@ -150,8 +150,8 @@ export default function CottagesRooms() {
 
     // Free Plan Gate
     const currentPlanId = profile?.plan_type || 'free';
-    const planConfig = globalPlans?.[currentPlanId] || { maxCottages: 1, name: 'Free Starter' };
-    const cottageLimit = planConfig.maxCottages || 999999;
+    const planConfig = globalPlans?.[currentPlanId] || { maxResorts: 1, name: 'Free Starter' };
+    const cottageLimit = planConfig.maxResorts || 1;
     const planName = planConfig.name || currentPlanId.toUpperCase();
 
     if (cottages.length >= cottageLimit) {

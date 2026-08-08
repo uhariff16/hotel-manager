@@ -27,6 +27,7 @@ export default function SuperAdmin() {
       maxResorts: 1,
       maxRooms: 5,
       color: '#a0aec0',
+      reports: { summary: false, bookings: true, guests: false, finance: true, exportExcel: false, exportPdf: false },
       features: [
         { name: '1 Resort Limit', enabled: true },
         { name: 'Up to 5 Rooms', enabled: true },
@@ -47,6 +48,7 @@ export default function SuperAdmin() {
       maxRooms: 999999,
       color: 'var(--primary)',
       popular: true,
+      reports: { summary: true, bookings: true, guests: true, finance: false, exportExcel: true, exportPdf: true },
       features: [
         { name: 'Up to 5 Resorts', enabled: true },
         { name: 'Unlimited Rooms', enabled: true },
@@ -67,6 +69,7 @@ export default function SuperAdmin() {
       maxResorts: 999999,
       maxRooms: 999999,
       color: '#d4af37',
+      reports: { summary: true, bookings: true, guests: true, finance: true, exportExcel: true, exportPdf: true },
       features: [
         { name: 'Unlimited Resorts', enabled: true },
         { name: 'Custom Branding', enabled: true },
@@ -134,7 +137,8 @@ export default function SuperAdmin() {
            mergedPricing[key] = {
              ...(DEFAULT_PLANS[key] || {}),
              ...plan,
-             features: plan.features || (DEFAULT_PLANS[key]?.features || [])
+             features: plan.features || (DEFAULT_PLANS[key]?.features || []),
+             reports: plan.reports || (DEFAULT_PLANS[key]?.reports || { summary: true, bookings: true, guests: true, finance: true, exportExcel: true, exportPdf: true })
            };
         }
         
@@ -423,7 +427,7 @@ export default function SuperAdmin() {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                   <div className="form-group">
-                    <label className="form-label">Max Resorts</label>
+                    <label className="form-label">Max Properties (Resorts)</label>
                     <input type="number" className="form-input" value={plan.maxResorts === 999999 ? '' : plan.maxResorts} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxResorts: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
                   </div>
                   <div className="form-group">
@@ -459,6 +463,56 @@ export default function SuperAdmin() {
                   </>
                 )}
                 
+                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
+                  <h5 style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.85rem', textTransform: 'uppercase' }}>Enabled Reports</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {[
+                      { id: 'summary', label: 'Performance Summary' },
+                      { id: 'bookings', label: 'Booking Details' },
+                      { id: 'guests', label: 'Guest Contacts' },
+                      { id: 'finance', label: 'Income & Expenses' }
+                    ].map(report => (
+                      <div key={report.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input 
+                          type="checkbox" 
+                          id={`report-${planKey}-${report.id}`}
+                          checked={plan.reports?.[report.id] ?? true}
+                          onChange={(e) => {
+                            const newReports = { ...(plan.reports || {}), [report.id]: e.target.checked };
+                            setPricingConfig({...pricingConfig, [planKey]: {...plan, reports: newReports}});
+                          }}
+                          disabled={!plan.enabled}
+                        />
+                        <label htmlFor={`report-${planKey}-${report.id}`} style={{ fontSize: '0.85rem', cursor: 'pointer' }}>{report.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
+                  <h5 style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.85rem', textTransform: 'uppercase' }}>Export Permissions</h5>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    {[
+                      { id: 'exportExcel', label: 'Allow Export to Excel' },
+                      { id: 'exportPdf', label: 'Allow Export to PDF' }
+                    ].map(exportOption => (
+                      <div key={exportOption.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input 
+                          type="checkbox" 
+                          id={`export-${planKey}-${exportOption.id}`}
+                          checked={plan.reports?.[exportOption.id] ?? true}
+                          onChange={(e) => {
+                            const newReports = { ...(plan.reports || {}), [exportOption.id]: e.target.checked };
+                            setPricingConfig({...pricingConfig, [planKey]: {...plan, reports: newReports}});
+                          }}
+                          disabled={!plan.enabled}
+                        />
+                        <label htmlFor={`export-${planKey}-${exportOption.id}`} style={{ fontSize: '0.85rem', cursor: 'pointer' }}>{exportOption.label}</label>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
                   <h5 style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.85rem', textTransform: 'uppercase' }}>Included Features</h5>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>

@@ -6,12 +6,22 @@ import { useSettingsStore } from '../lib/store';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
 export default function Reports() {
-  const { activeResortId, resorts, session } = useSettingsStore();
+  const { activeResortId, resorts, session, profile, globalPlans } = useSettingsStore();
   const activeResort = resorts.find(r => r.id === activeResortId);
   
+  const currentPlanId = profile?.plan_type || 'free';
+  const planConfig = globalPlans?.[currentPlanId] || {};
+  const allowedReports = planConfig.reports || { summary: true, bookings: false, guests: false, finance: false };
+
   const [data, setData] = useState({ incomes: [], expenses: [], bookings: [], cottages: [], rooms: [] });
   const [loading, setLoading] = useState(true);
-  const [reportType, setReportType] = useState('summary'); // 'summary' | 'bookings' | 'guests' | 'finance'
+  const [reportType, setReportType] = useState(null);
+  
+  const activeReportType = useMemo(() => {
+    if (reportType && allowedReports[reportType] !== false) return reportType;
+    return ['summary', 'bookings', 'guests', 'finance'].find(id => allowedReports[id] !== false) || 'summary';
+  }, [reportType, allowedReports]);
+
   const [selectedCottageId, setSelectedCottageId] = useState('all');
   
   const [range, setRange] = useState({
@@ -225,16 +235,131 @@ export default function Reports() {
   };
 
   const handleExportPDF = () => {
-    const element = document.getElementById('report-container');
-    const resortName = activeResort?.name || 'Hotel_Manager';
-    const opt = {
-      margin: [0.5, 0.5],
-      filename: `${resortName.replace(/\s+/g, '_')}_${reportType}_Report_${range.start}_to_${range.end}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2, useCORS: true },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    };
-    html2pdf().set(opt).from(element).save();
+    import('jspdf').then(({ default: jsPDF }) => {
+      import('jspdf-autotable').then(({ default: autoTable }) => {
+        const doc = new jsPDF();
+        const resortName = activeResort?.name || 'Hotel_Manager';
+        const title = `${resortName} - ${activeReportType.toUpperCase()} Report`;
+        const periodStr = `${format(new Date(range.start), 'dd MMM yyyy')} to ${format(new Date(range.end), 'dd MMM yyyy')}`;
+        
+        doc.setFontSize(16);
+        doc.text(title, 14, 15);
+        doc.setFontSize(10);
+        doc.text(`Period: ${periodStr}`, 14, 22);
+        doc.text(`Generated At: ${new Date().toLocaleString()}`, 14, 27);
+        
+        if (activeReportType === 'summary') {
+          autoTable(doc, {
+            startY: 32,
+            head: [['Metric', 'Value']],
+            body: [
+              ["Total Collections (Cash)", totalCollections],
+              ["Total Expenses", totalExpenses],
+              ["Net Cash Profit", netProfit],
+              ["Valid Bookings", validBookings.length],
+              ["Completed Stays", completedBookings.length],
+              ["Total Guests Served", completedGuests]
+            ],
+            theme: 'grid',
+            headStyles: { fillColor: [5, 150, 105] }
+          });
+        } else if (activeReportType === 'bookings') {
+          const bookingsRows = sortedBookings.map(b => [
+            b.reference_number,
+            b.guest_name,
+            data.cottages.find(c => c.id === b.cottage_id)?.name || '-',
+            b.status,
+            b.check_in_date,
+            b.check_out_date,
+            Number(b.total_amount || 0),
+            Number(b.advance_paid || 0),
+            Number(b.total_amount || 0) - Number(b.advance_paid || 0)
+          ]);
+          const totalBookingValue = bookingsRows.reduce((sum, r) => sum + r[6], 0);
+          const totalBookingPaid = bookingsRows.reduce((sum, r) => sum + r[7], 0);
+          const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[8], 0);
+          bookingsRows.push([
+            { content: 'TOTAL', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: totalBookingValue, styles: { fontStyle: 'bold' } },
+            { content: totalBookingPaid, styles: { fontStyle: 'bold' } },
+            { content: totalBookingBalance, styles: { fontStyle: 'bold' } }
+          ]);
+          
+          autoTable(doc, {
+            startY: 32,
+            head: [["Ref #", "Guest", "Property", "Status", "Check-in", "Check-out", "Total (₹)", "Paid (₹)", "Balance (₹)"]],
+            body: bookingsRows,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [5, 150, 105] },
+            theme: 'grid'
+          });
+        } else if (activeReportType === 'guests') {
+          const guestRows = guestContacts.map(g => [
+            g.name,
+            g.email,
+            g.phone,
+            g.bookingsCount,
+            g.latestRef,
+            g.latestBookingDate
+          ]);
+          autoTable(doc, {
+            startY: 32,
+            head: [["Name", "Email", "Phone", "Bookings", "Latest Ref", "Latest Stay"]],
+            body: guestRows,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [5, 150, 105] },
+            theme: 'grid'
+          });
+        } else if (activeReportType === 'finance') {
+          const incomeRows = sortedIncomes.map(i => [
+            i.date,
+            i.bookings?.reference_number || '-',
+            i.bookings?.guest_name || '-',
+            data.cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General',
+            i.payment_method || '-',
+            Number(i.amount)
+          ]);
+          const totalIncome = incomeRows.reduce((sum, r) => sum + r[5], 0);
+          incomeRows.push([
+            { content: 'TOTAL INCOMES', colSpan: 5, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: totalIncome, styles: { fontStyle: 'bold', textColor: [5, 150, 105] } }
+          ]);
+          
+          autoTable(doc, {
+            startY: 32,
+            head: [["Date", "Ref #", "Guest", "Property", "Method", "Amount (₹)"]],
+            body: incomeRows,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [5, 150, 105] },
+            theme: 'grid'
+          });
+          
+          const expenseRows = sortedExpenses.map(e => [
+            e.date,
+            e.category,
+            data.cottages.find(c => c.id === e.cottage_id)?.name || 'General',
+            e.paid_to || '-',
+            Number(e.amount)
+          ]);
+          const totalExpense = expenseRows.reduce((sum, r) => sum + r[4], 0);
+          expenseRows.push([
+            { content: 'TOTAL EXPENSES', colSpan: 4, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: totalExpense, styles: { fontStyle: 'bold', textColor: [220, 38, 38] } }
+          ]);
+          
+          autoTable(doc, {
+            startY: doc.lastAutoTable.finalY + 15,
+            head: [["Date", "Category", "Property", "Paid To", "Amount (₹)"]],
+            body: expenseRows,
+            styles: { fontSize: 8 },
+            headStyles: { fillColor: [220, 38, 38] },
+            theme: 'grid'
+          });
+        }
+        
+        doc.save(`${resortName.replace(/\s+/g, '_')}_${activeReportType}_Report_${format(new Date(range.start), 'MMM_dd_yyyy')}.pdf`);
+      });
+    });
   };
 
   const handleExportExcel = async () => {
@@ -293,7 +418,7 @@ export default function Reports() {
     const resortStr = (activeResort?.name || 'Hotel').replace(/\s+/g, '_');
     const periodStr = `${format(new Date(range.start), 'MMM_dd_yyyy')}_to_${format(new Date(range.end), 'MMM_dd_yyyy')}`;
 
-    if (reportType === 'summary') {
+    if (activeReportType === 'summary') {
       const summaryData = [
         ["Report Type", "Financial Performance Summary"],
         ["Resort", activeResort?.name || "N/A"],
@@ -315,13 +440,13 @@ export default function Reports() {
       summarySheet['!cols'] = [{ wch: 25 }, { wch: 30 }];
       const sumRange = XLSX.utils.decode_range(summarySheet['!ref']);
       for(let r = 0; r <= sumRange.e.r; r++) {
-         const cell = summarySheet[Xcustom_label_cell_test || XLSX.utils.encode_cell({r, c:0})];
+         const cell = summarySheet[XLSX.utils.encode_cell({r, c:0})];
          if(cell) cell.s = { font: { bold: true, name: "Arial", sz: 10 } };
       }
       XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
       XLSX.writeFile(workbook, `${resortStr}_Summary_Report_${periodStr}.xlsx`);
 
-    } else if (reportType === 'bookings') {
+    } else if (activeReportType === 'bookings') {
       const bookingsHeaders = ["Ref #", "Guest Name", "Property", "Source", "Status", "Check-in", "Check-out", "Total Value", "Paid", "Balance"];
       const bookingsRows = sortedBookings.map(b => {
         const total = Number(b.total_amount || 0);
@@ -346,7 +471,7 @@ export default function Reports() {
       XLSX.utils.book_append_sheet(workbook, createStyledSheet(bookingsAOA, [{wch:15}, {wch:25}, {wch:15}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}], true), "Bookings");
       XLSX.writeFile(workbook, `${resortStr}_Bookings_Report_${periodStr}.xlsx`);
 
-    } else if (reportType === 'guests') {
+    } else if (activeReportType === 'guests') {
       const guestHeaders = ["Guest Name", "Email", "Phone", "Bookings Count", "Latest Booking Ref", "Latest Stay Date"];
       const guestRows = guestContacts.map(g => [
         g.name,
@@ -359,7 +484,7 @@ export default function Reports() {
       XLSX.utils.book_append_sheet(workbook, createStyledSheet([guestHeaders, ...guestRows], [{wch:25}, {wch:30}, {wch:20}, {wch:15}, {wch:20}, {wch:15}]), "Guests Directory");
       XLSX.writeFile(workbook, `${resortStr}_Guest_Contacts_${periodStr}.xlsx`);
 
-    } else if (reportType === 'finance') {
+    } else if (activeReportType === 'finance') {
       const incomeHeaders = ["Date", "Ref #", "Guest Name", "Property", "Amount (₹)", "Method", "Notes"];
       const incomeRows = sortedIncomes.map(i => [
         i.date,
@@ -400,6 +525,7 @@ export default function Reports() {
           .reports-layout { display: block !important; }
           aside { display: none !important; }
           main { width: 100% !important; }
+          .table-container { max-height: none !important; overflow: visible !important; }
         }
       `}</style>
 
@@ -409,12 +535,16 @@ export default function Reports() {
             <FileText size={28} color="var(--primary)" /> Reports & Analytics
           </h2>
           <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button className="btn btn-outline" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <TableIcon size={18}/> <span className="desktop-only">Export Excel</span>
-            </button>
-            <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Download size={18}/> <span className="desktop-only">Export PDF</span>
-            </button>
+            {allowedReports?.exportExcel !== false && (
+              <button className="btn btn-outline" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <TableIcon size={18}/> <span className="desktop-only">Export Excel</span>
+              </button>
+            )}
+            {allowedReports?.exportPdf !== false && (
+              <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Download size={18}/> <span className="desktop-only">Export PDF</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -451,7 +581,7 @@ export default function Reports() {
                 { id: 'bookings', label: 'Booking Details' },
                 { id: 'guests', label: 'Guest Contacts' },
                 { id: 'finance', label: 'Income & Expenses' }
-              ].map(opt => (
+              ].filter(opt => allowedReports[opt.id] !== false).map(opt => (
                 <button
                   key={opt.id}
                   onClick={() => {
@@ -464,12 +594,12 @@ export default function Reports() {
                     borderRadius: '8px',
                     border: 'none',
                     textAlign: 'left',
-                    background: reportType === opt.id ? 'rgba(5, 150, 105, 0.08)' : 'transparent',
-                    color: reportType === opt.id ? 'var(--primary)' : 'var(--text-main)',
-                    fontWeight: reportType === opt.id ? 800 : 500,
+                    background: activeReportType === opt.id ? 'rgba(5, 150, 105, 0.08)' : 'transparent',
+                    color: activeReportType === opt.id ? 'var(--primary)' : 'var(--text-main)',
+                    fontWeight: activeReportType === opt.id ? 800 : 500,
                     cursor: 'pointer',
                     transition: 'all 0.2s',
-                    borderLeft: reportType === opt.id ? '4px solid var(--primary)' : '4px solid transparent'
+                    borderLeft: activeReportType === opt.id ? '4px solid var(--primary)' : '4px solid transparent'
                   }}
                 >
                   {opt.label}
@@ -586,10 +716,10 @@ export default function Reports() {
                 {activeResort?.logo_url && <img src={activeResort.logo_url} alt="Logo" style={{ maxHeight: '80px', marginBottom: '1.5rem' }} />}
                 <h1 style={{ margin: 0, fontSize: '1.85rem', fontWeight: 800, color: 'var(--text-main)' }}>{activeResort?.name || 'Cheerful Chalet'}</h1>
                 <p style={{ color: 'var(--text-muted)', fontSize: '1rem', margin: '0.5rem 0' }}>
-                  {reportType === 'summary' && 'Stay & Financial Performance Report'}
-                  {reportType === 'bookings' && 'Booking Details Report'}
-                  {reportType === 'guests' && 'Guest Contacts Directory'}
-                  {reportType === 'finance' && 'Financial Performance Log (Income & Expenses)'}
+                  {activeReportType === 'summary' && 'Stay & Financial Performance Report'}
+                  {activeReportType === 'bookings' && 'Booking Details Report'}
+                  {activeReportType === 'guests' && 'Guest Contacts Directory'}
+                  {activeReportType === 'finance' && 'Financial Performance Log (Income & Expenses)'}
                 </p>
                 <div style={{ display: 'inline-block', padding: '0.4rem 1.25rem', background: 'var(--bg-secondary)', borderRadius: '50px', fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)', marginTop: '0.5rem' }}>
                   {format(new Date(range.start), 'MMM dd, yyyy')} — {format(new Date(range.end), 'MMM dd, yyyy')} ({selectedCottageId === 'all' ? 'All Properties' : (data.cottages.find(c => c.id === selectedCottageId)?.name || '')})
@@ -597,65 +727,43 @@ export default function Reports() {
               </div>
 
               {/* REPORT VIEW: SUMMARY */}
-              {reportType === 'summary' && (
+              {activeReportType === 'summary' && (
                 <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                    <div style={{ background: 'rgba(5, 150, 105, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.2)' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>TOTAL COLLECTIONS</span>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0', color: 'var(--primary)' }}>₹{(totalCollections || 0).toLocaleString()}</h3>
+                    </div>
+                    <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--danger)' }}>TOTAL EXPENSES</span>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0', color: 'var(--danger)' }}>₹{(totalExpenses || 0).toLocaleString()}</h3>
+                    </div>
+                    <div style={{ background: netProfit >= 0 ? 'rgba(5, 150, 105, 0.1)' : 'rgba(239, 68, 68, 0.1)', padding: '1rem', borderRadius: '8px', border: `1px solid ${netProfit >= 0 ? 'rgba(5, 150, 105, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: netProfit >= 0 ? 'var(--primary)' : 'var(--danger)' }}>NET PROFIT</span>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0', color: netProfit >= 0 ? 'var(--primary)' : 'var(--danger)' }}>₹{(netProfit || 0).toLocaleString()}</h3>
+                    </div>
+                  </div>
+
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>STAYS FINALIZED</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>VALID BOOKINGS</span>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0' }}>{validBookings.length}</h3>
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>COMPLETED STAYS</span>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0' }}>{completedBookings.length}</h3>
                     </div>
                     <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>TOTAL VALUE</span>
-                      <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0' }}>₹{completedValue.toLocaleString()}</h3>
-                    </div>
-                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>GUESTS SERVED</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>TOTAL GUESTS SERVED</span>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0' }}>{completedGuests}</h3>
                     </div>
                   </div>
 
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem', fontWeight: 800, marginBottom: '1rem' }}>
-                    <CalendarCheck size={18} color="var(--primary)" /> Bookings & Collections Summary
-                  </h3>
-                  
-                  <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '450px', marginBottom: '2.5rem' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                      <thead style={{ background: '#fafafa' }}>
-                        <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
-                          <th style={{ padding: '0.8rem', textAlign: 'left' }}>Ref #</th>
-                          <th style={{ padding: '0.8rem', textAlign: 'left' }}>Guest Name</th>
-                          <th style={{ padding: '0.8rem', textAlign: 'left' }}>Check In</th>
-                          <th style={{ padding: '0.8rem', textAlign: 'center' }}>Status</th>
-                          <th style={{ padding: '0.8rem', textAlign: 'right' }}>Total Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {validBookings.slice(0, 10).map(b => (
-                          <tr key={b.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
-                            <td style={{ padding: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>{b.reference_number}</td>
-                            <td style={{ padding: '0.8rem' }}>{b.guest_name}</td>
-                            <td style={{ padding: '0.8rem' }}>{b.check_in_date}</td>
-                            <td style={{ padding: '0.8rem', textAlign: 'center' }}>
-                              <span className={`badge badge-${b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
-                            </td>
-                            <td style={{ padding: '0.8rem', textAlign: 'right', fontWeight: 700 }}>₹{Number(b.total_amount || 0).toLocaleString()}</td>
-                          </tr>
-                        ))}
-                        {validBookings.length > 10 && (
-                          <tr>
-                            <td colSpan="5" style={{ textAlign: 'center', padding: '0.75rem', color: 'var(--text-muted)', fontSize: '0.75rem', fontStyle: 'italic' }}>
-                              Showing top 10 bookings. View 'Booking Details' tab for the complete list.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
                 </div>
               )}
 
               {/* REPORT VIEW: BOOKING DETAILS */}
-              {reportType === 'bookings' && (
+              {activeReportType === 'bookings' && (
                 <div>
                   <div className="no-print" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
                     <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
@@ -733,6 +841,14 @@ export default function Reports() {
                             </tr>
                           );
                         })}
+                        {sortedBookings.length > 0 && (
+                          <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0', fontWeight: 800 }}>
+                            <td colSpan="7" style={{ padding: '0.8rem', textAlign: 'right' }}>TOTAL</td>
+                            <td style={{ padding: '0.8rem', textAlign: 'right', color: 'var(--text-main)' }}>₹{sortedBookings.reduce((sum, b) => sum + Number(b.total_amount || 0), 0).toLocaleString()}</td>
+                            <td style={{ padding: '0.8rem', textAlign: 'right', color: 'var(--success)' }}>₹{sortedBookings.reduce((sum, b) => sum + Number(b.advance_paid || 0), 0).toLocaleString()}</td>
+                            <td style={{ padding: '0.8rem', textAlign: 'right', color: 'var(--danger)' }}>₹{sortedBookings.reduce((sum, b) => sum + (Number(b.total_amount || 0) - Number(b.advance_paid || 0)), 0).toLocaleString()}</td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -740,7 +856,7 @@ export default function Reports() {
               )}
 
               {/* REPORT VIEW: GUEST CONTACTS */}
-              {reportType === 'guests' && (
+              {activeReportType === 'guests' && (
                 <div>
                   <div className="no-print" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
                     <div style={{ flex: 1, position: 'relative' }}>
@@ -787,7 +903,7 @@ export default function Reports() {
               )}
 
               {/* REPORT VIEW: FINANCIAL DETAILS (INCOME & EXPENSES) */}
-              {reportType === 'finance' && (
+              {activeReportType === 'finance' && (
                 <div>
                   {/* Financial Aggregates Row */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2.5rem' }}>
@@ -886,6 +1002,12 @@ export default function Reports() {
                                 <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 700, color: 'var(--success)' }}>+₹{Number(i.amount).toLocaleString()}</td>
                               </tr>
                             ))}
+                            {sortedIncomes.length > 0 && (
+                              <tr style={{ background: 'rgba(5, 150, 105, 0.05)', borderTop: '2px solid rgba(5, 150, 105, 0.2)', fontWeight: 800 }}>
+                                <td colSpan="4" style={{ padding: '0.6rem', textAlign: 'right', color: 'var(--success)' }}>TOTAL COLLECTIONS</td>
+                                <td style={{ padding: '0.6rem', textAlign: 'right', color: 'var(--success)' }}>+₹{sortedIncomes.reduce((sum, i) => sum + Number(i.amount || 0), 0).toLocaleString()}</td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
@@ -923,6 +1045,12 @@ export default function Reports() {
                                 <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>-₹{Number(e.amount).toLocaleString()}</td>
                               </tr>
                             ))}
+                            {sortedExpenses.length > 0 && (
+                              <tr style={{ background: 'rgba(239, 68, 68, 0.05)', borderTop: '2px solid rgba(239, 68, 68, 0.2)', fontWeight: 800 }}>
+                                <td colSpan="4" style={{ padding: '0.6rem', textAlign: 'right', color: 'var(--danger)' }}>TOTAL EXPENSES</td>
+                                <td style={{ padding: '0.6rem', textAlign: 'right', color: 'var(--danger)' }}>-₹{sortedExpenses.reduce((sum, e) => sum + Number(e.amount || 0), 0).toLocaleString()}</td>
+                              </tr>
+                            )}
                           </tbody>
                         </table>
                       </div>
