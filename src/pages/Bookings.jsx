@@ -575,15 +575,14 @@ export default function Bookings() {
         const getPriority = (x) => {
           const displayStatus = (x.status === 'Completed' && x.balance_amount > 0) ? 'Pending Payment' : x.status;
           
-          // Priority 1: Not checked-out (or cancelled) AND received pay (Advance paid > 0)
-          if (x.status !== 'Completed' && x.status !== 'Cancelled' && (x.advance_paid > 0 || (x.total_amount > 0 && x.balance_amount === 0))) return 1;
-          
+          // Custom priority requested by user
+          if (displayStatus === 'Pending Payment' || displayStatus === 'Checked-out') return 1; // "Already Checked-out, But receive pay"
           if (displayStatus === 'Checked-in') return 2;
-          if (displayStatus === 'Pending Payment') return 3;
-          if (displayStatus === 'Confirmed') return 4;
-          if (displayStatus === 'Pending') return 5;
-          if (displayStatus === 'Completed') return 6;
-          if (displayStatus === 'Cancelled') return 7;
+          if (displayStatus === 'Confirmed') return 3;
+          if (displayStatus === 'Pending') return 4;
+          if (displayStatus === 'Completed') return 5;
+          if (displayStatus === 'Cancelled') return 6;
+          
           return 99;
         };
         const pA = getPriority(a);
@@ -591,11 +590,11 @@ export default function Bookings() {
         
         if (pA !== pB) return pA - pB;
         
-        if (pA === 6 || pA === 3) {
-          // For completed/pending payment, sort by check-out date descending
+        // "Completed & Cancelled status bookings should be date sorted as recent one should be on top."
+        if (pA === 5 || pA === 6) {
           return new Date(b.check_out_date) - new Date(a.check_out_date);
         }
-        // For others, sort by check-in date ascending
+        // For others, sort by check-in date ascending (upcoming on top)
         return new Date(a.check_in_date) - new Date(b.check_in_date);
       } else if (sortConfig !== null) {
         let valA = a[sortConfig.key];

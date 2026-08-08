@@ -175,7 +175,7 @@ export default function Reports() {
     return cottageExpenses.filter(e => {
       const matchesSearch = e.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (e.description && e.description.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                            (e.paid_to && e.paid_to.toLowerCase().includes(searchTerm.toLowerCase()));
+                            (e.vendor_name && e.vendor_name.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesCategory = expenseCategoryFilter === 'All' || e.category === expenseCategoryFilter;
       return matchesSearch && matchesCategory;
     });
@@ -314,7 +314,7 @@ export default function Reports() {
           const incomeRows = sortedIncomes.map(i => [
             i.date,
             i.bookings?.reference_number || '-',
-            i.bookings?.guest_name || '-',
+            i.bookings?.guest_name || i.source || '-',
             data.cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General',
             i.payment_method || '-',
             Number(i.amount)
@@ -338,7 +338,7 @@ export default function Reports() {
             e.date,
             e.category,
             data.cottages.find(c => c.id === e.cottage_id)?.name || 'General',
-            e.paid_to || '-',
+            e.vendor_name || '-',
             Number(e.amount)
           ]);
           const totalExpense = expenseRows.reduce((sum, r) => sum + r[4], 0);
@@ -505,7 +505,7 @@ export default function Reports() {
         e.category,
         data.cottages.find(c => c.id === e.cottage_id)?.name || 'General',
         Number(e.amount),
-        e.paid_to || '-',
+        e.vendor_name || '-',
         e.description || '-'
       ]);
       const totalExpenseAmount = expenseRows.reduce((sum, r) => sum + r[3], 0);
@@ -975,7 +975,7 @@ export default function Reports() {
                                <tr key={i.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
                                  <td style={{ padding: '0.6rem' }}>{i.date}</td>
                                  <td style={{ padding: '0.6rem' }}>
-                                   <div style={{ fontWeight: 700 }}>{i.bookings?.guest_name || 'Direct Deposit'}</div>
+                                   <div style={{ fontWeight: 700 }}>{i.bookings?.guest_name || i.source || 'Direct Deposit'}</div>
                                    <div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{i.bookings?.reference_number || '-'}</div>
                                  </td>
                                  <td style={{ padding: '0.6rem' }}>
@@ -1041,7 +1041,7 @@ export default function Reports() {
                                      {data.cottages.find(c => c.id === e.cottage_id)?.name || 'General'}
                                    </span>
                                  </td>
-                                <td style={{ padding: '0.6rem' }}>{e.paid_to || '-'}</td>
+                                <td style={{ padding: '0.6rem' }}>{e.vendor_name || '-'}</td>
                                 <td style={{ padding: '0.6rem', textAlign: 'right', fontWeight: 700, color: 'var(--danger)' }}>-₹{Number(e.amount).toLocaleString()}</td>
                               </tr>
                             ))}

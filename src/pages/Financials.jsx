@@ -375,7 +375,11 @@ export default function Financials() {
                     </select>
                   </div>
                 </div>
-                <div className="form-group"><label className="form-label">Ref #</label><input type="text" className="form-input" placeholder="Booking Ref" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} /></div>
+                {newIncome.source === 'Other' ? (
+                  <div className="form-group"><label className="form-label">Details of Income</label><input type="text" required className="form-input" placeholder="E.g., Event hosting, Extra bed" value={newIncome.custom_source || ''} onChange={e => setNewIncome({...newIncome, custom_source: e.target.value})} /></div>
+                ) : (
+                  <div className="form-group"><label className="form-label">Ref #</label><input type="text" className="form-input" placeholder="Booking Ref" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} /></div>
+                )}
                 <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{editingIncomeId ? 'Update' : 'Save Income'}</button>
               </form>
             </div>
@@ -489,7 +493,21 @@ export default function Financials() {
                     </select>
                   </div>
                 </div>
-                <div className="form-group"><label className="form-label">Vendor</label><input type="text" className="form-input" placeholder="Name" value={newExpense.vendor_name} onChange={e => setNewExpense({...newExpense, vendor_name: e.target.value})} /></div>
+                {newExpense.category === 'Other' && (
+                  <div className="form-group">
+                    <label className="form-label">Details of Expense</label>
+                    <input type="text" required className="form-input" placeholder="Specify expense type" value={newExpense.custom_category || ''} onChange={e => setNewExpense({...newExpense, custom_category: e.target.value})} />
+                  </div>
+                )}
+                <div className="form-group">
+                  <label className="form-label">
+                    {newExpense.category === 'Salary' ? 'Employee Name' : 
+                     newExpense.category === 'Utilities' ? 'Provider Name' : 
+                     newExpense.category === 'Supplies' ? 'Supplier Name' : 
+                     'Vendor Name'}
+                  </label>
+                  <input type="text" className="form-input" placeholder="Name" value={newExpense.vendor_name || ''} onChange={e => setNewExpense({...newExpense, vendor_name: e.target.value})} />
+                </div>
                 <button type="submit" className="btn btn-primary" style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)' }}>{editingExpenseId ? 'Update' : 'Save Expense'}</button>
               </form>
             </div>
