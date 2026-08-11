@@ -117,19 +117,8 @@ export default function Auth() {
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <div style={{ 
-            width: '64px', 
-            height: '64px', 
-            background: 'var(--primary)', 
-            borderRadius: '16px', 
-            display: 'flex', 
-            alignItems: 'center', 
-            justifyContent: 'center', 
-            margin: '0 auto 1.5rem',
-            color: 'white',
-            boxShadow: '0 0 20px rgba(214, 158, 46, 0.3)'
-          }}>
-            {isRecovering ? <KeyRound size={32} /> : <ShieldCheck size={32} />}
+          <div style={{ margin: '0 auto 1.5rem', display: 'flex', justifyContent: 'center' }}>
+            <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: '280px', height: 'auto', objectFit: 'contain' }} />
           </div>
           <h1 style={{ fontSize: '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
             {isRecovering ? 'Set New Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Sign up as Tenant'))}
