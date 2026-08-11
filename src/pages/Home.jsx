@@ -1,10 +1,23 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useSettingsStore } from '../lib/store';
 import { Smartphone, Receipt, FileSpreadsheet, Calculator, ArrowRight } from 'lucide-react';
 
 export default function Home() {
   const { landingPageContent } = useSettingsStore();
+  const location = useLocation();
+
+  useEffect(() => {
+    if (location.hash) {
+      const id = location.hash.replace('#', '');
+      const element = document.getElementById(id);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      }
+    }
+  }, [location]);
 
   const DEFAULT_CONTENT = {
     headline: "Know Your Bookings. Know Your Numbers.",

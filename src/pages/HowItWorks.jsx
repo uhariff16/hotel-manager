@@ -283,7 +283,7 @@ export default function HowItWorks() {
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
           <a href="/#features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</a>
           <Link to="/how-it-works" style={{ color: '#0A9F72', textDecoration: 'none' }}>How It Works</Link>
-          <a href="/#pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</a>
+          <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
         </nav>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -468,7 +468,7 @@ export default function HowItWorks() {
               <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
               <Link to="/#features" style={{ color: '#64748B', textDecoration: 'none' }}>Features</Link>
               <Link to="/how-it-works" style={{ color: '#64748B', textDecoration: 'none' }}>How It Works</Link>
-              <Link to="/#pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</Link>
+              <Link to="/pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</Link>
               <Link to="/auth" style={{ color: '#64748B', textDecoration: 'none' }}>Sign In</Link>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
