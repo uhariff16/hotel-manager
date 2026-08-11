@@ -45,12 +45,17 @@ export default function Subscription() {
       .filter(([id, config]) => config.enabled !== false)
       .map(([id, config]) => {
         const offerActive = isOfferValid(config);
+        const rawActive = offerActive && config.offerPrice !== undefined ? Math.min(Number(config.price || 0), Number(config.offerPrice || 0)) : (config.price === 0 ? 0 : Number(config.price || 0));
+        const rawBase = offerActive && config.price !== undefined ? Math.max(Number(config.price || 0), Number(config.offerPrice || 0)) : null;
+        const discountPercent = rawBase && rawBase > rawActive ? Math.round(((rawBase - rawActive) / rawBase) * 100) : null;
+
         return {
           id,
           name: config.name || id.toUpperCase(),
           description: config.description || '',
-          price: offerActive && config.offerPrice !== undefined ? `₹${config.offerPrice}` : (config.price === 0 ? '₹0' : `₹${config.price}`),
-          basePrice: offerActive && config.price !== undefined ? `₹${config.price}` : null,
+          price: rawActive === 0 ? '₹0' : `₹${rawActive}`,
+          basePrice: rawBase ? `₹${rawBase}` : null,
+          discountPercent,
           offerEndDate: offerActive && config.offerEndDate ? config.offerEndDate : null,
           period: id === 'free' ? '' : '/mo',
           color: config.color || 'var(--primary)',
@@ -186,16 +191,37 @@ export default function Subscription() {
             </div>
 
             <div style={{ marginBottom: '2.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
-                <span style={{ fontSize: '2.5rem', fontWeight: 'bold' }}>{plan.price}</span>
-                {plan.period && <span style={{ color: 'var(--text-muted)' }}>{plan.period}</span>}
-              </div>
               {plan.basePrice && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                    <span style={{ textDecoration: 'line-through' }}>{plan.basePrice}</span>/mo 
-                  </div>
-                  <div className="animated-offer-badge">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                  <span style={{ textDecoration: 'line-through', color: 'var(--danger)', fontSize: '1.25rem', fontWeight: '600', opacity: 0.8 }}>{plan.basePrice}/mo</span>
+                  {plan.discountPercent && (
+                    <span style={{ background: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)', padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Zap size={12} fill="currentColor" /> SAVE {plan.discountPercent}%
+                    </span>
+                  )}
+                </div>
+              )}
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
+                <span style={{ fontSize: '3rem', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.05em' }}>{plan.price}</span>
+                {plan.period && <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500' }}>{plan.period}</span>}
+              </div>
+              
+              {plan.basePrice && (
+                <div style={{ marginTop: '0.75rem' }}>
+                  <div style={{ 
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))',
+                    border: '1px solid rgba(245, 158, 11, 0.2)',
+                    color: '#d97706',
+                    padding: '0.4rem 0.8rem',
+                    borderRadius: '6px',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em'
+                  }}>
                     <Zap size={14} fill="currentColor" />
                     LIMITED TIME OFFER {plan.offerEndDate && `• ENDS ${formatOfferDate(plan.offerEndDate).toUpperCase()}`}
                   </div>

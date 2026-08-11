@@ -83,13 +83,8 @@ export default function AppLayout() {
       {/* Sidebar */}
       <aside className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <div className="brand" style={{ padding: '1rem', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            {activeResort?.logo_url || logoUrl ? (
-              <img src={activeResort?.logo_url || logoUrl} alt="Logo" className="brand-logo" style={{ height: '32px' }} />
-            ) : (
-              <div className="brand-logo" style={{ background: 'var(--primary)', borderRadius: '4px', width: '32px', height: '32px' }}></div>
-            )}
-            <span className="brand-text" style={{ fontWeight: 700, fontSize: '1rem' }}>{activeResort?.name || resortName}</span>
+          <div style={{ display: 'flex', alignItems: 'center', width: '100%', padding: '0.25rem 0' }}>
+            <img src="/stay-pilot-logo.png" alt="Stay Pilot" style={{ height: 'auto', width: '100%', maxWidth: '240px', objectFit: 'contain' }} />
           </div>
           
           <button 
@@ -211,7 +206,10 @@ export default function AppLayout() {
             <button className="menu-toggle" onClick={() => setIsSidebarOpen(true)}>
               <Menu size={24} />
             </button>
-            <h2 style={{ fontSize: '1.25rem' }}>{activeResort?.name || 'Welcome'}</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+              <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800 }}>Stay Pilot</h2>
+              <span style={{ fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 700, fontFamily: "'Dancing Script', cursive", letterSpacing: '0.05em', marginTop: '-4px' }}>Know Your Bookings. Know Your Numbers.</span>
+            </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', fontSize: '0.75rem' }}>

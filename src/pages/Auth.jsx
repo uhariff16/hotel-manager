@@ -132,14 +132,14 @@ export default function Auth() {
             {isRecovering ? <KeyRound size={32} /> : <ShieldCheck size={32} />}
           </div>
           <h1 style={{ fontSize: '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-            {isRecovering ? 'Set New Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome Back' : 'Sign up as Tenant'))}
+            {isRecovering ? 'Set New Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Sign up as Tenant'))}
           </h1>
           <p style={{ color: 'var(--text-muted)' }}>
             {isRecovering 
               ? 'Enter your new secure password below'
               : (isForgotPassword 
                 ? 'Enter your email to receive a reset link' 
-                : (isLogin ? 'Sign in to manage your luxury resorts' : 'Register your hotel owner account to get started'))}
+                : (isLogin ? 'Sign in to manage your property.' : 'Register your hotel owner account to get started'))}
           </p>
         </div>
 

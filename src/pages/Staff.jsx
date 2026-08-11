@@ -12,7 +12,7 @@ const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export default function Staff() {
-  const { profile } = useSettingsStore();
+  const { profile, globalPlans } = useSettingsStore();
   const [staff, setStaff] = useState([]);
   const [cottages, setCottages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -170,7 +170,15 @@ export default function Staff() {
           <p style={{ color: 'var(--text-muted)' }}>Create and oversee the personnel working at your property</p>
         </div>
         {!showForm && (
-          <button className="btn btn-primary" onClick={() => setShowForm(true)}>
+          <button className="btn btn-primary" onClick={() => {
+            const currentPlan = profile?.plan || 'free';
+            const maxStaff = globalPlans?.[currentPlan]?.maxStaff ?? 999999;
+            if (staff.length >= maxStaff) {
+              alert(`You have reached the maximum staff limit (${maxStaff}) for your ${globalPlans?.[currentPlan]?.name || 'current'} plan. Please upgrade your plan to add more staff.`);
+              return;
+            }
+            setShowForm(true);
+          }}>
             <UserPlus size={20} /> Add New Staff
           </button>
         )}

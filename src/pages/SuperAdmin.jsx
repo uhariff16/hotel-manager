@@ -26,6 +26,7 @@ export default function SuperAdmin() {
       price: 0,
       maxResorts: 1,
       maxRooms: 5,
+      maxStaff: 1,
       color: '#a0aec0',
       reports: { summary: false, bookings: true, guests: false, finance: true, exportExcel: false, exportPdf: false },
       features: [
@@ -46,6 +47,7 @@ export default function SuperAdmin() {
       offerEndDate: '',
       maxResorts: 5,
       maxRooms: 999999,
+      maxStaff: 5,
       color: 'var(--primary)',
       popular: true,
       reports: { summary: true, bookings: true, guests: true, finance: false, exportExcel: true, exportPdf: true },
@@ -68,6 +70,7 @@ export default function SuperAdmin() {
       offerEndDate: '',
       maxResorts: 999999,
       maxRooms: 999999,
+      maxStaff: 999999,
       color: '#d4af37',
       reports: { summary: true, bookings: true, guests: true, finance: true, exportExcel: true, exportPdf: true },
       features: [
@@ -425,14 +428,18 @@ export default function SuperAdmin() {
                   <input type="text" className="form-input" value={plan.name || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, name: e.target.value}})} disabled={!plan.enabled} />
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
                   <div className="form-group">
-                    <label className="form-label">Max Properties (Resorts)</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Properties</label>
                     <input type="number" className="form-input" value={plan.maxResorts === 999999 ? '' : plan.maxResorts} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxResorts: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Max Rooms</label>
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Rooms</label>
                     <input type="number" className="form-input" value={plan.maxRooms === 999999 ? '' : plan.maxRooms} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxRooms: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Staff</label>
+                    <input type="number" className="form-input" value={plan.maxStaff === 999999 ? '' : plan.maxStaff} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxStaff: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
                   </div>
                 </div>
 

@@ -5,7 +5,7 @@ export const useSettingsStore = create(
   persist(
     (set) => ({
       theme: 'light',
-      resortName: 'Hotel Manager',
+      resortName: 'Stay Pilot',
       primaryColor: '#2f855a',
       contactPhone: '',
       contactEmail: '',
