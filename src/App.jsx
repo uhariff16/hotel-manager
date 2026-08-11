@@ -19,9 +19,10 @@ const SuperAdmin = React.lazy(() => import('./pages/SuperAdmin'));
 const InvestmentAnalysis = React.lazy(() => import('./pages/InvestmentAnalysis'));
 const Staff = React.lazy(() => import('./pages/Staff'));
 const Auth = React.lazy(() => import('./pages/Auth'));
+const Home = React.lazy(() => import('./pages/Home'));
 
 function App() {
-  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans } = useSettingsStore();
+  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent } = useSettingsStore();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -45,6 +46,23 @@ function App() {
 
   const handleAuthChange = async (session) => {
     setSession(session);
+
+    // Fetch global settings (pricing, landing page) for all users regardless of auth
+    try {
+      const { data: superAdmins } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
+      if (superAdmins && superAdmins.length > 0) {
+        const settings = superAdmins[0].global_settings || {};
+        if (settings.pricing) {
+          setGlobalPlans(settings.pricing);
+        }
+        if (settings.landing_page) {
+          setLandingPageContent(settings.landing_page);
+        }
+      }
+    } catch (err) {
+      console.error("Failed to fetch global settings:", err);
+    }
+
     if (session) {
       // Fetch profile first to get the correct role and tenant_id
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
@@ -66,19 +84,6 @@ function App() {
           setResorts([]);
           setActiveResortId(null);
         }
-        
-        // Fetch global plans (from super_admin) for all users
-        try {
-          const { data: superAdmins } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
-          if (superAdmins && superAdmins.length > 0) {
-            const settings = superAdmins[0].global_settings;
-            if (settings && settings.pricing) {
-              setGlobalPlans(settings.pricing);
-            }
-          }
-        } catch (err) {
-          console.error("Failed to fetch global plans:", err);
-        }
       }
     } else {
       // Clear all state on logout
@@ -86,7 +91,6 @@ function App() {
       setResorts([]);
       setActiveResortId(null);
       setIsRecovering(false);
-      setGlobalPlans(null);
     }
   };
 
@@ -128,8 +132,9 @@ function App() {
             element={session && !isRecovering && !window.location.hash.includes('type=recovery') ? <Navigate to="/dashboard" replace /> : <Auth />} 
           />
           
-          <Route path="/" element={session ? <AppLayout /> : <Navigate to="/auth" replace />}>
-            <Route index element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />} />
+          <Route path="/" element={!session ? <Home /> : (profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
+          
+          <Route element={session ? <AppLayout /> : <Navigate to="/auth" replace />}>
             <Route path="dashboard" element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Dashboard />} />
             <Route path="setup" element={<CottagesRooms />} />
             <Route path="bookings" element={<Bookings />} />

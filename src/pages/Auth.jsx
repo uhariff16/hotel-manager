@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff } from 'lucide-react';
@@ -35,6 +36,14 @@ export default function Auth() {
       }
     }
   }, []);
+
+  const location = useLocation();
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('mode') === 'signup') {
+      setIsLogin(false);
+    }
+  }, [location.search]);
 
   const handleAuth = async (e) => {
     e.preventDefault();

@@ -86,6 +86,17 @@ export default function SuperAdmin() {
   const [pricingConfig, setPricingConfig] = useState(DEFAULT_PLANS);
   const [globalCommEnabled, setGlobalCommEnabled] = useState(true);
   const [globalTemplatesEnabled, setGlobalTemplatesEnabled] = useState(true);
+  
+  const DEFAULT_LANDING_CONTENT = {
+    headline: "Know Your Bookings. Know Your Numbers.",
+    subheadline: "Bookings. Income. Expenses. Simplified. The ultimate property management software for modern hosts.",
+    features: [
+      { title: "Smart Dashboard", description: "All your metrics at a glance." },
+      { title: "Integrated Calendar", description: "Manage all bookings effortlessly." },
+      { title: "Financial Reports", description: "Track income and expenses easily." }
+    ]
+  };
+  const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
 
   // Modal states
   const [showUserForm, setShowUserForm] = useState(false);
@@ -158,6 +169,9 @@ export default function SuperAdmin() {
       if (superAdminProfile?.global_settings) {
         setGlobalCommEnabled(superAdminProfile.global_settings.comm_features_enabled !== false);
         setGlobalTemplatesEnabled(superAdminProfile.global_settings.templates_enabled !== false);
+        if (superAdminProfile.global_settings.landing_page) {
+          setLandingContent(superAdminProfile.global_settings.landing_page);
+        }
       }
 
       setTenants(tenantsWithData.filter(t => t.id !== profile.id));
@@ -623,6 +637,77 @@ export default function SuperAdmin() {
         <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
           <button className="btn btn-primary" onClick={handleSaveGlobalFeatures} disabled={isUpdating} style={{ padding: '0.75rem 2rem' }}>
             {isUpdating ? 'Saving...' : 'Broadcast Feature Controls'}
+          </button>
+        </div>
+      </div>
+
+      {/* Landing Page CMS */}
+      <div className="card" style={{ marginBottom: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+        <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
+          <MessageCircle /> Landing Page Content (CMS)
+        </h3>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Customize the public marketing page seen by unauthenticated visitors.</p>
+        
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+          <div className="form-group">
+            <label className="form-label">Main Headline</label>
+            <input 
+              type="text" 
+              className="form-input" 
+              value={landingContent.headline} 
+              onChange={e => setLandingContent({...landingContent, headline: e.target.value})} 
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Sub-headline / Description</label>
+            <textarea 
+              className="form-input" 
+              style={{ minHeight: '80px', resize: 'vertical' }}
+              value={landingContent.subheadline} 
+              onChange={e => setLandingContent({...landingContent, subheadline: e.target.value})} 
+            />
+          </div>
+          
+          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+            <h4 style={{ marginBottom: '1rem', color: '#1e293b' }}>Feature Highlights</h4>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
+              {landingContent.features.map((feature, idx) => (
+                <div key={idx} style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Title</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={feature.title} 
+                      onChange={e => {
+                        const newFeats = [...landingContent.features];
+                        newFeats[idx].title = e.target.value;
+                        setLandingContent({...landingContent, features: newFeats});
+                      }} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Description</label>
+                    <textarea 
+                      className="form-input" 
+                      style={{ minHeight: '60px' }}
+                      value={feature.description} 
+                      onChange={e => {
+                        const newFeats = [...landingContent.features];
+                        newFeats[idx].description = e.target.value;
+                        setLandingContent({...landingContent, features: newFeats});
+                      }} 
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+          <button className="btn btn-primary" onClick={handleSaveLandingPage} disabled={isUpdating} style={{ padding: '0.75rem 2rem' }}>
+            {isUpdating ? 'Saving...' : 'Save Landing Page Content'}
           </button>
         </div>
       </div>
