@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
 import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle } from 'lucide-react';
+import WebsitePricingTab from '../components/WebsitePricingTab';
 
 // Secondary client for creating users without affecting the admin session
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -12,7 +13,7 @@ const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export default function SuperAdmin() {
-  const { profile } = useSettingsStore();
+  const { profile, setWebsitePricing } = useSettingsStore();
   const [stats, setStats] = useState({ users: 0, properties: 0, bookings: 0, revenue: 0 });
   const [tenants, setTenants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -84,6 +85,17 @@ export default function SuperAdmin() {
   };
 
   const [pricingConfig, setPricingConfig] = useState(DEFAULT_PLANS);
+  const [pricingTab, setPricingTab] = useState('plans'); // 'plans', 'website', 'history'
+  const DEFAULT_WEBSITE_PRICING = {
+    draft: {},
+    published: {},
+    history: [],
+    currentVersion: 0
+  };
+  const [websitePricingConfig, setWebsitePricingConfig] = useState(DEFAULT_WEBSITE_PRICING);
+  const [editingWebsitePlanKey, setEditingWebsitePlanKey] = useState(null);
+  const [showWebsitePublishModal, setShowWebsitePublishModal] = useState(false);
+  
   const [globalCommEnabled, setGlobalCommEnabled] = useState(true);
   const [globalTemplatesEnabled, setGlobalTemplatesEnabled] = useState(true);
   
@@ -166,11 +178,19 @@ export default function SuperAdmin() {
         setPricingConfig(mergedPricing);
       }
 
+      if (superAdminProfile?.global_settings?.website_pricing) {
+        setWebsitePricingConfig(superAdminProfile.global_settings.website_pricing);
+      }
+
       if (superAdminProfile?.global_settings) {
         setGlobalCommEnabled(superAdminProfile.global_settings.comm_features_enabled !== false);
         setGlobalTemplatesEnabled(superAdminProfile.global_settings.templates_enabled !== false);
         if (superAdminProfile.global_settings.landing_page) {
-          setLandingContent(superAdminProfile.global_settings.landing_page);
+          setLandingContent({
+            ...DEFAULT_LANDING_CONTENT,
+            ...superAdminProfile.global_settings.landing_page,
+            features: superAdminProfile.global_settings.landing_page.features || DEFAULT_LANDING_CONTENT.features
+          });
         }
       }
 
@@ -307,6 +327,102 @@ export default function SuperAdmin() {
     }
   };
 
+  const handleSaveWebsiteDraft = async (newDraftData) => {
+    try {
+      setIsUpdating(true);
+      const settings = profile.global_settings || {};
+      const updatedWebsitePricing = {
+        ...websitePricingConfig,
+        draft: newDraftData
+      };
+      settings.website_pricing = updatedWebsitePricing;
+      
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      if (error) throw error;
+      setWebsitePricingConfig(updatedWebsitePricing);
+      setWebsitePricing(updatedWebsitePricing);
+    } catch (err) {
+      alert("Failed to save draft: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handlePublishWebsitePricing = async () => {
+    try {
+      setIsUpdating(true);
+      const settings = profile.global_settings || {};
+      const newVersionNum = (websitePricingConfig.currentVersion || 0) + 1;
+      
+      const historyEntry = {
+        version: newVersionNum,
+        publishedAt: new Date().toISOString(),
+        publishedBy: profile.full_name || 'Super Admin',
+        plans: websitePricingConfig.draft
+      };
+
+      const updatedWebsitePricing = {
+        ...websitePricingConfig,
+        published: websitePricingConfig.draft,
+        history: [historyEntry, ...(websitePricingConfig.history || [])],
+        currentVersion: newVersionNum
+      };
+      
+      settings.website_pricing = updatedWebsitePricing;
+      
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      if (error) throw error;
+      
+      setWebsitePricingConfig(updatedWebsitePricing);
+      setWebsitePricing(updatedWebsitePricing);
+      setShowWebsitePublishModal(false);
+      alert("Website Pricing Published Successfully!");
+    } catch (err) {
+      alert("Failed to publish: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleRollbackWebsitePricing = async (versionIndex) => {
+    if (!confirm("Roll back to this version? This will become the new active draft and immediately publish to the website.")) return;
+    try {
+      setIsUpdating(true);
+      const settings = profile.global_settings || {};
+      const historyVersion = websitePricingConfig.history[versionIndex];
+      const newVersionNum = (websitePricingConfig.currentVersion || 0) + 1;
+      
+      const historyEntry = {
+        version: newVersionNum,
+        publishedAt: new Date().toISOString(),
+        publishedBy: profile.full_name || 'Super Admin',
+        plans: historyVersion.plans,
+        note: `Rolled back from v${historyVersion.version}`
+      };
+
+      const updatedWebsitePricing = {
+        ...websitePricingConfig,
+        draft: historyVersion.plans,
+        published: historyVersion.plans,
+        history: [historyEntry, ...(websitePricingConfig.history || [])],
+        currentVersion: newVersionNum
+      };
+      
+      settings.website_pricing = updatedWebsitePricing;
+      
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      if (error) throw error;
+      
+      setWebsitePricingConfig(updatedWebsitePricing);
+      setWebsitePricing(updatedWebsitePricing);
+      alert(`Successfully rolled back to version ${historyVersion.version}!`);
+    } catch (err) {
+      alert("Failed to roll back: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   const handleSaveGlobalFeatures = async () => {
     try {
       setIsUpdating(true);
@@ -319,6 +435,22 @@ export default function SuperAdmin() {
       alert("Global feature settings updated successfully!");
     } catch (err) {
       alert("Failed to save global features: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveLandingPage = async () => {
+    try {
+      setIsUpdating(true);
+      const settings = profile.global_settings || {};
+      settings.landing_page = landingContent;
+      
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      if (error) throw error;
+      alert("Landing page content updated successfully!");
+    } catch (err) {
+      alert("Failed to save landing page: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -392,30 +524,39 @@ export default function SuperAdmin() {
 
       {/* Global Pricing & Offers Manager */}
       <div className="card" style={{ marginBottom: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b', margin: 0 }}>
-            <DollarSign /> Dynamic Pricing & Offers
-          </h3>
-          <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
-            const newId = `custom_${Date.now()}`;
-            setPricingConfig({
-              ...pricingConfig,
-              [newId]: {
-                name: 'New Custom Plan',
-                description: 'Description here',
-                enabled: true,
-                price: 999,
-                maxResorts: 1,
-                maxRooms: 10,
-                color: 'var(--primary)',
-                features: [{ name: 'New Feature', enabled: true }]
-              }
-            });
-          }}>
-            + Create New Plan
-          </button>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+          <div style={{ display: 'flex', gap: '2rem' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: pricingTab === 'plans' ? '#1e293b' : '#64748b', margin: 0, cursor: 'pointer', borderBottom: pricingTab === 'plans' ? '2px solid var(--primary)' : 'none', paddingBottom: '0.5rem' }} onClick={() => setPricingTab('plans')}>
+              <DollarSign /> Internal Plans
+            </h3>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: pricingTab === 'website' ? '#1e293b' : '#64748b', margin: 0, cursor: 'pointer', borderBottom: pricingTab === 'website' ? '2px solid var(--primary)' : 'none', paddingBottom: '0.5rem' }} onClick={() => setPricingTab('website')}>
+              Website Pricing
+            </h3>
+          </div>
+          {pricingTab === 'plans' && (
+            <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
+              const newId = `custom_${Date.now()}`;
+              setPricingConfig({
+                ...pricingConfig,
+                [newId]: {
+                  name: 'New Custom Plan',
+                  description: 'Description here',
+                  enabled: true,
+                  price: 999,
+                  maxResorts: 1,
+                  maxRooms: 10,
+                  color: 'var(--primary)',
+                  features: [{ name: 'New Feature', enabled: true }]
+                }
+              });
+            }}>
+              + Create New Plan
+            </button>
+          )}
         </div>
         
+        {pricingTab === 'plans' && (
+          <>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
           
           {Object.entries(pricingConfig).map(([planKey, plan]) => {
@@ -597,6 +738,18 @@ export default function SuperAdmin() {
             {isUpdating ? 'Saving Changes...' : 'Broadcast Prices Globally'}
           </button>
         </div>
+          </>
+        )}
+
+        {pricingTab === 'website' && (
+          <WebsitePricingTab 
+            internalPricing={pricingConfig}
+            websitePricingConfig={websitePricingConfig}
+            onSaveDraft={handleSaveWebsiteDraft}
+            onPublish={handlePublishWebsitePricing}
+            onRollback={handleRollbackWebsitePricing}
+          />
+        )}
       </div>
 
       {/* Global Feature Controls */}
@@ -671,7 +824,7 @@ export default function SuperAdmin() {
           <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
             <h4 style={{ marginBottom: '1rem', color: '#1e293b' }}>Feature Highlights</h4>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-              {landingContent.features.map((feature, idx) => (
+              {(landingContent.features || []).map((feature, idx) => (
                 <div key={idx} style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
                   <div className="form-group" style={{ marginBottom: '0.75rem' }}>
                     <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Title</label>

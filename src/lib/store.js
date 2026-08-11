@@ -19,6 +19,7 @@ export const useSettingsStore = create(
       isRecovering: false,
       globalPlans: null,
       landingPageContent: null,
+      websitePricing: null,
       
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
@@ -30,7 +31,8 @@ export const useSettingsStore = create(
       setIsRecovering: (isRecovering) => set({ isRecovering }),
       setGlobalPlans: (globalPlans) => set({ globalPlans }),
       setLandingPageContent: (landingPageContent) => set({ landingPageContent }),
-      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false, globalPlans: null, landingPageContent: null })
+      setWebsitePricing: (websitePricing) => set({ websitePricing }),
+      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false, globalPlans: null, landingPageContent: null, websitePricing: null })
     }),
     {
       name: 'hotel-manager-settings',

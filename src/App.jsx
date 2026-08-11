@@ -20,9 +20,10 @@ const InvestmentAnalysis = React.lazy(() => import('./pages/InvestmentAnalysis')
 const Staff = React.lazy(() => import('./pages/Staff'));
 const Auth = React.lazy(() => import('./pages/Auth'));
 const Home = React.lazy(() => import('./pages/Home'));
-
+const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
+const Pricing = React.lazy(() => import('./pages/Pricing'));
 function App() {
-  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent } = useSettingsStore();
+  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing } = useSettingsStore();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -57,6 +58,9 @@ function App() {
         }
         if (settings.landing_page) {
           setLandingPageContent(settings.landing_page);
+        }
+        if (settings.website_pricing) {
+          setWebsitePricing(settings.website_pricing);
         }
       }
     } catch (err) {
@@ -133,6 +137,8 @@ function App() {
           />
           
           <Route path="/" element={!session ? <Home /> : (profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/pricing" element={<Pricing />} />
           
           <Route element={session ? <AppLayout /> : <Navigate to="/auth" replace />}>
             <Route path="dashboard" element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Dashboard />} />

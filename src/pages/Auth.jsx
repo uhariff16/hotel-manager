@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff } from 'lucide-react';
@@ -127,7 +127,9 @@ export default function Auth() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
           <div style={{ margin: '0 auto 1.5rem', display: 'flex', justifyContent: 'center' }}>
-            <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: '280px', height: 'auto', objectFit: 'contain' }} />
+            <Link to="/">
+              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: '280px', height: 'auto', objectFit: 'contain' }} />
+            </Link>
           </div>
           <h1 style={{ fontSize: '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
             {isRecovering ? 'Set New Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Sign up as Tenant'))}
@@ -343,6 +345,11 @@ export default function Auth() {
               </button>
             </>
           )}
+        </div>
+        <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
+          <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+            &larr; Back to Home
+          </Link>
         </div>
       </div>
     </div>
