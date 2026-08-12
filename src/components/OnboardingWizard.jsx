@@ -125,6 +125,10 @@ export default function OnboardingWizard() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (step < 3) {
+      handleNextStep();
+      return;
+    }
     setLoading(true);
     setError(null);
 
