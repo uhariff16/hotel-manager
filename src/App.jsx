@@ -80,9 +80,22 @@ function App() {
             .select('*')
             .eq('tenant_id', profile.tenant_id);
           
-          setResorts(resorts || []);
-          if (resorts?.length > 0) {
+          if (resorts && resorts.length > 0) {
+            try {
+              const [{ count: cottagesCount }, { count: roomsCount }] = await Promise.all([
+                supabase.from('cottages').select('*', { count: 'exact', head: true }).eq('resort_id', resorts[0].id),
+                supabase.from('rooms').select('*', { count: 'exact', head: true }).eq('resort_id', resorts[0].id)
+              ]);
+              resorts[0].cottagesCount = cottagesCount || 0;
+              resorts[0].roomsCount = roomsCount || 0;
+            } catch (err) {
+              console.error("Error fetching onboarding counts:", err);
+            }
+            setResorts(resorts);
             setActiveResortId(resorts[0].id);
+          } else {
+            setResorts([]);
+            setActiveResortId(null);
           }
         } else {
           setResorts([]);

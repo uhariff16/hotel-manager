@@ -1,14 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 import { Building, Home, Plus, Check, ChevronRight, ChevronLeft, LogOut, Loader2, DollarSign, MapPin, Phone, User, Wifi } from 'lucide-react';
 
 export default function OnboardingWizard() {
-  const { session, profile, setResorts, setActiveResortId } = useSettingsStore();
+  const { session, profile, resorts, setResorts, setActiveResortId } = useSettingsStore();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState(null);
+  const [existingCottages, setExistingCottages] = useState([]);
+
+  useEffect(() => {
+    if (resorts && resorts.length > 0) {
+      supabase.from('cottages')
+        .select('*')
+        .eq('resort_id', resorts[0].id)
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setExistingCottages(data);
+            if (data.length === 0) {
+              setStep(2);
+            } else {
+              setStep(3);
+            }
+          }
+        });
+    } else {
+      setStep(1);
+    }
+  }, [resorts]);
 
   // Step 1: Entity Details
   const [entityForm, setEntityForm] = useState({
@@ -67,45 +88,62 @@ export default function OnboardingWizard() {
     setLoading(true);
     setError(null);
 
+    let createdResortId = null;
+    let createdCottageId = null;
+
     try {
-      // 1. Insert Resort
-      setStatusMessage("Setting up your property profile...");
-      const resortPayload = {
-        ...entityForm,
-        tenant_id: session.user.id
-      };
-      const { data: resortData, error: resortError } = await supabase
-        .from('resorts')
-        .insert([resortPayload])
-        .select();
+      let activeResort = null;
+      
+      // 1. Resolve Resort
+      if (resorts && resorts.length > 0) {
+        activeResort = resorts[0];
+      } else {
+        setStatusMessage("Setting up your property profile...");
+        const resortPayload = {
+          ...entityForm,
+          tenant_id: session.user.id
+        };
+        const { data: resortData, error: resortError } = await supabase
+          .from('resorts')
+          .insert([resortPayload])
+          .select();
 
-      if (resortError) throw new Error("Failed to create resort profile: " + resortError.message);
-      const newResort = resortData[0];
-
-      // 2. Insert Cottage (Property Category)
-      setStatusMessage("Creating property categories...");
-      const cottagePayload = {
-        name: propertyForm.name,
-        max_capacity: Number(propertyForm.max_capacity),
-        weekday_price: Number(propertyForm.weekday_price),
-        weekend_price: Number(propertyForm.weekend_price),
-        status: 'Available',
-        phone: propertyForm.phone,
-        wifi_password: propertyForm.wifi_password,
-        tenant_id: session.user.id,
-        resort_id: newResort.id
-      };
-      const { data: cottageData, error: cottageError } = await supabase
-        .from('cottages')
-        .insert([cottagePayload])
-        .select();
-
-      if (cottageError) {
-        // Rollback resort
-        await supabase.from('resorts').delete().eq('id', newResort.id);
-        throw new Error("Failed to create property category: " + cottageError.message);
+        if (resortError) throw new Error("Failed to create resort profile: " + resortError.message);
+        activeResort = resortData[0];
+        createdResortId = activeResort.id;
       }
-      const newCottage = cottageData[0];
+
+      // 2. Resolve Cottage (Property Category)
+      let activeCottage = null;
+      if (existingCottages && existingCottages.length > 0) {
+        activeCottage = existingCottages[0];
+      } else {
+        setStatusMessage("Creating property categories...");
+        const cottagePayload = {
+          name: propertyForm.name,
+          max_capacity: Number(propertyForm.max_capacity),
+          weekday_price: Number(propertyForm.weekday_price),
+          weekend_price: Number(propertyForm.weekend_price),
+          status: 'Available',
+          phone: propertyForm.phone,
+          wifi_password: propertyForm.wifi_password,
+          tenant_id: session.user.id,
+          resort_id: activeResort.id
+        };
+        const { data: cottageData, error: cottageError } = await supabase
+          .from('cottages')
+          .insert([cottagePayload])
+          .select();
+
+        if (cottageError) {
+          if (createdResortId) {
+            await supabase.from('resorts').delete().eq('id', createdResortId);
+          }
+          throw new Error("Failed to create property category: " + cottageError.message);
+        }
+        activeCottage = cottageData[0];
+        createdCottageId = activeCottage.id;
+      }
 
       // 3. Generate and Insert Rooms
       setStatusMessage("Generating initial rooms...");
@@ -118,14 +156,14 @@ export default function OnboardingWizard() {
 
         for (let i = 0; i < qty; i++) {
           roomsToInsert.push({
-            cottage_id: newCottage.id,
+            cottage_id: activeCottage.id,
             name: String(start + i),
-            capacity: Number(propertyForm.max_capacity),
-            weekday_price: Number(propertyForm.weekday_price),
-            weekend_price: Number(propertyForm.weekend_price),
+            capacity: Number(activeCottage.max_capacity || propertyForm.max_capacity),
+            weekday_price: Number(activeCottage.weekday_price || propertyForm.weekday_price),
+            weekend_price: Number(activeCottage.weekend_price || propertyForm.weekend_price),
             status: 'Available',
             tenant_id: session.user.id,
-            resort_id: newResort.id
+            resort_id: activeResort.id
           });
         }
       } else {
@@ -138,14 +176,14 @@ export default function OnboardingWizard() {
         if (names.length > 50) throw new Error("You can create up to 50 rooms at a time.");
 
         roomsToInsert = names.map(name => ({
-          cottage_id: newCottage.id,
+          cottage_id: activeCottage.id,
           name: name,
-          capacity: Number(propertyForm.max_capacity),
-          weekday_price: Number(propertyForm.weekday_price),
-          weekend_price: Number(propertyForm.weekend_price),
+          capacity: Number(activeCottage.max_capacity || propertyForm.max_capacity),
+          weekday_price: Number(activeCottage.weekday_price || propertyForm.weekday_price),
+          weekend_price: Number(activeCottage.weekend_price || propertyForm.weekend_price),
           status: 'Available',
           tenant_id: session.user.id,
-          resort_id: newResort.id
+          resort_id: activeResort.id
         }));
       }
 
@@ -154,19 +192,21 @@ export default function OnboardingWizard() {
         .insert(roomsToInsert);
 
       if (roomsError) {
-        // Rollback cottage and resort
-        await supabase.from('cottages').delete().eq('id', newCottage.id);
-        await supabase.from('resorts').delete().eq('id', newResort.id);
+        if (createdCottageId) {
+          await supabase.from('cottages').delete().eq('id', createdCottageId);
+        }
+        if (createdResortId) {
+          await supabase.from('resorts').delete().eq('id', createdResortId);
+        }
         throw new Error("Failed to create initial rooms: " + roomsError.message);
       }
 
       setStatusMessage("Finalizing setup...");
       
       // Update global store state
-      setResorts([newResort]);
-      setActiveResortId(newResort.id);
+      setResorts([activeResort]);
+      setActiveResortId(activeResort.id);
 
-      // Small delay for store synchronization and clean transition
       setTimeout(() => {
         window.location.reload();
       }, 500);

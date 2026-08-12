@@ -17,7 +17,12 @@ export default function AppLayout() {
   const isAdmin = profile?.role === 'tenant_admin';
   const isSuper = profile?.role === 'super_admin';
 
-  if (profile?.role === 'tenant_admin' && resorts.length === 0) {
+  const needsOnboarding = profile?.role === 'tenant_admin' && (
+    resorts.length === 0 || 
+    (resorts.length === 1 && (resorts[0].cottagesCount === 0 || resorts[0].roomsCount === 0))
+  );
+
+  if (needsOnboarding) {
     return <OnboardingWizard />;
   }
 
