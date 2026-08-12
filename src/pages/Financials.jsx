@@ -385,7 +385,7 @@ export default function Financials() {
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto' }}>
+              <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto', overflowX: 'auto' }}>
                 <table className="table" style={{ margin: 0, width: '100%', tableLayout: 'fixed' }}>
                   <colgroup>
                     <col style={{ width: isMobile ? '45px' : '110px' }} />
@@ -513,7 +513,7 @@ export default function Financials() {
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto' }}>
+              <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto', overflowX: 'auto' }}>
                 <table className="table" style={{ margin: 0, width: '100%', tableLayout: 'fixed' }}>
                   <colgroup>
                     <col style={{ width: isMobile ? '45px' : '110px' }} />

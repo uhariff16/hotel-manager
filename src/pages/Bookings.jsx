@@ -845,8 +845,8 @@ export default function Bookings() {
       ) : (
         /* DESKTOP TABLE VIEW */
         <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-          <div className="table-container" style={{ maxHeight: '800px', overflowY: 'auto' }}>
-            <table className="table" style={{ margin: 0 }}>
+          <div className="table-container" style={{ maxHeight: '800px', overflowY: 'auto', overflowX: 'auto' }}>
+            <table className="table" style={{ margin: 0, minWidth: '1000px' }}>
               <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zSubstitute: 1, borderBottom: '2px solid var(--border)' }}>
                 <tr>
                   <th style={{ width: '50px' }}>
