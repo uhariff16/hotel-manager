@@ -11,15 +11,15 @@ export default function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const location = useLocation();
 
-  const activeResort = resorts.find(r => r.id === activeResortId);
+  const activeResort = (resorts || []).find(r => r.id === activeResortId) || null;
 
   const isStaff = profile?.role === 'staff';
   const isAdmin = profile?.role === 'tenant_admin';
   const isSuper = profile?.role === 'super_admin';
 
   const needsOnboarding = profile?.role === 'tenant_admin' && (
-    resorts.length === 0 || 
-    (resorts.length === 1 && (resorts[0].cottagesCount === 0 || resorts[0].roomsCount === 0))
+    !resorts || resorts.length === 0 || 
+    (resorts.length === 1 && resorts[0] && (resorts[0].cottagesCount === 0 || resorts[0].roomsCount === 0))
   );
 
   if (needsOnboarding) {
@@ -106,7 +106,7 @@ export default function AppLayout() {
           </button>
         </div>
 
-        {resorts.length > 1 && (
+        {(resorts || []).length > 1 && (
           <div style={{ padding: '0 1rem 1rem' }}>
             <select 
               className="form-select" 
@@ -114,7 +114,7 @@ export default function AppLayout() {
               value={activeResortId || ''}
               onChange={(e) => setActiveResortId(e.target.value)}
             >
-              {resorts.map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
+              {(resorts || []).map(r => <option key={r.id} value={r.id}>{r.name}</option>)}
             </select>
           </div>
         )}
