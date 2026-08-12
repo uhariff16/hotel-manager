@@ -12,6 +12,7 @@ export default function OnboardingWizard() {
   const [existingCottages, setExistingCottages] = useState([]);
 
   useEffect(() => {
+    setStep(1);
     if (resorts && resorts.length > 0) {
       supabase.from('cottages')
         .select('*')
@@ -19,17 +20,39 @@ export default function OnboardingWizard() {
         .then(({ data, error }) => {
           if (!error && data) {
             setExistingCottages(data);
-            if (data.length === 0) {
-              setStep(2);
-            } else {
-              setStep(3);
-            }
           }
         });
-    } else {
-      setStep(1);
     }
   }, [resorts]);
+
+  useEffect(() => {
+    if (resorts && resorts.length > 0 && resorts[0]) {
+      const r = resorts[0];
+      setEntityForm({
+        name: r.name || '',
+        owner_name: r.owner_name || profile?.full_name || '',
+        phone: r.phone || '',
+        email: r.email || session?.user?.email || '',
+        address: r.address || '',
+        currency: r.currency || 'INR',
+        timezone: r.timezone || 'Asia/Kolkata'
+      });
+    }
+  }, [resorts, profile, session]);
+
+  useEffect(() => {
+    if (existingCottages && existingCottages.length > 0 && existingCottages[0]) {
+      const c = existingCottages[0];
+      setPropertyForm({
+        name: c.name || '',
+        max_capacity: c.max_capacity || 2,
+        weekday_price: c.weekday_price || 1500,
+        weekend_price: c.weekend_price || 2000,
+        phone: c.phone || '',
+        wifi_password: c.wifi_password || ''
+      });
+    }
+  }, [existingCottages]);
 
   // Step 1: Entity Details
   const [entityForm, setEntityForm] = useState({
@@ -96,7 +119,24 @@ export default function OnboardingWizard() {
       
       // 1. Resolve Resort
       if (resorts && resorts.length > 0) {
-        activeResort = resorts[0];
+        setStatusMessage("Updating your property profile...");
+        const resortPayload = {
+          name: entityForm.name,
+          owner_name: entityForm.owner_name,
+          phone: entityForm.phone,
+          email: entityForm.email,
+          address: entityForm.address,
+          currency: entityForm.currency,
+          timezone: entityForm.timezone
+        };
+        const { data: resortData, error: resortError } = await supabase
+          .from('resorts')
+          .update(resortPayload)
+          .eq('id', resorts[0].id)
+          .select();
+
+        if (resortError) throw new Error("Failed to update resort profile: " + resortError.message);
+        activeResort = resortData[0];
       } else {
         setStatusMessage("Setting up your property profile...");
         const resortPayload = {
@@ -116,7 +156,25 @@ export default function OnboardingWizard() {
       // 2. Resolve Cottage (Property Category)
       let activeCottage = null;
       if (existingCottages && existingCottages.length > 0) {
-        activeCottage = existingCottages[0];
+        setStatusMessage("Updating property category...");
+        const cottagePayload = {
+          name: propertyForm.name,
+          max_capacity: Number(propertyForm.max_capacity),
+          weekday_price: Number(propertyForm.weekday_price),
+          weekend_price: Number(propertyForm.weekend_price),
+          phone: propertyForm.phone,
+          wifi_password: propertyForm.wifi_password
+        };
+        const { data: cottageData, error: cottageError } = await supabase
+          .from('cottages')
+          .update(cottagePayload)
+          .eq('id', existingCottages[0].id)
+          .select();
+
+        if (cottageError) {
+          throw new Error("Failed to update property category: " + cottageError.message);
+        }
+        activeCottage = cottageData[0];
       } else {
         setStatusMessage("Creating property categories...");
         const cottagePayload = {
