@@ -222,6 +222,7 @@ export default function SuperAdmin() {
     
     try {
       let payload = { 
+        email: editingUser.email,
         plan_type: editingUser.plan_type,
         subscription_status: editingUser.subscription_status,
         feature_investment_enabled: editingUser.feature_investment_enabled,
@@ -267,7 +268,7 @@ export default function SuperAdmin() {
         throw new Error("Staff must be assigned to an existing Tenant.");
       }
 
-      const { error: authError } = await secondarySupabase.auth.signUp({
+      const { data, error: authError } = await secondarySupabase.auth.signUp({
         email: userFormData.email,
         password: userFormData.password,
         options: {
@@ -280,6 +281,13 @@ export default function SuperAdmin() {
       });
 
       if (authError) throw authError;
+
+      if (data?.user?.id) {
+        await supabase
+          .from('profiles')
+          .update({ email: userFormData.email })
+          .eq('id', data.user.id);
+      }
 
       alert(`${userFormData.role === 'tenant_admin' ? 'Tenant' : 'Staff'} account created!`);
       setUserFormData({ email: '', password: '', fullName: '', role: 'tenant_admin', tenantId: '' });
@@ -1168,6 +1176,17 @@ export default function SuperAdmin() {
             </div>
 
             <form onSubmit={handleUpdateUser}>
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label className="form-label">Email Address</label>
+                <input 
+                  type="email" 
+                  className="form-input" 
+                  value={editingUser.email || ''} 
+                  onChange={e => setEditingUser({...editingUser, email: e.target.value})}
+                  placeholder="e.g. email@example.com"
+                />
+              </div>
+
               <div className="form-group" style={{ marginBottom: '1rem' }}>
                 <label className="form-label">Subscription Plan</label>
                 <select 
