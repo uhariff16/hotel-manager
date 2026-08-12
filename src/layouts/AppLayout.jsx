@@ -236,7 +236,7 @@ export default function AppLayout() {
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', fontSize: '0.75rem' }}>
               <span style={{ fontWeight: 'bold' }}>{profile?.full_name}</span>
-              <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>{profile?.role.replace('_', ' ')}</span>
+              <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>{profile?.role?.replace('_', ' ') || ''}</span>
             </div>
             <button 
               className="btn btn-outline" 
