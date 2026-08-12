@@ -1,0 +1,672 @@
+import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { useSettingsStore } from '../lib/store';
+import { Building, Home, Plus, Check, ChevronRight, ChevronLeft, LogOut, Loader2, DollarSign, MapPin, Phone, User, Wifi } from 'lucide-react';
+
+export default function OnboardingWizard() {
+  const { session, profile, setResorts, setActiveResortId } = useSettingsStore();
+  const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [statusMessage, setStatusMessage] = useState('');
+  const [error, setError] = useState(null);
+
+  // Step 1: Entity Details
+  const [entityForm, setEntityForm] = useState({
+    name: '',
+    owner_name: profile?.full_name || '',
+    phone: '',
+    email: session?.user?.email || '',
+    address: '',
+    currency: 'INR',
+    timezone: 'Asia/Kolkata'
+  });
+
+  // Step 2: Property Category
+  const [propertyForm, setPropertyForm] = useState({
+    name: '',
+    max_capacity: 2,
+    weekday_price: 1500,
+    weekend_price: 2000,
+    phone: '',
+    wifi_password: ''
+  });
+
+  // Step 3: Room Generation
+  const [roomGeneration, setRoomGeneration] = useState({
+    mode: 'auto', // 'auto' or 'manual'
+    startNumber: '101',
+    count: 3,
+    manualNames: '101, 102, 103'
+  });
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.reload();
+  };
+
+  const handleNextStep = () => {
+    setError(null);
+    if (step === 1) {
+      if (!entityForm.name.trim()) return setError("Please enter your Property/Entity name.");
+    } else if (step === 2) {
+      if (!propertyForm.name.trim()) return setError("Please enter a category name (e.g. Standard Room).");
+      if (propertyForm.weekday_price < 0 || propertyForm.weekend_price < 0) {
+        return setError("Price cannot be negative.");
+      }
+    }
+    setStep(prev => prev + 1);
+  };
+
+  const handlePrevStep = () => {
+    setError(null);
+    setStep(prev => prev - 1);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      // 1. Insert Resort
+      setStatusMessage("Setting up your property profile...");
+      const resortPayload = {
+        ...entityForm,
+        tenant_id: session.user.id
+      };
+      const { data: resortData, error: resortError } = await supabase
+        .from('resorts')
+        .insert([resortPayload])
+        .select();
+
+      if (resortError) throw new Error("Failed to create resort profile: " + resortError.message);
+      const newResort = resortData[0];
+
+      // 2. Insert Cottage (Property Category)
+      setStatusMessage("Creating property categories...");
+      const cottagePayload = {
+        name: propertyForm.name,
+        max_capacity: Number(propertyForm.max_capacity),
+        weekday_price: Number(propertyForm.weekday_price),
+        weekend_price: Number(propertyForm.weekend_price),
+        status: 'Available',
+        phone: propertyForm.phone,
+        wifi_password: propertyForm.wifi_password,
+        tenant_id: session.user.id,
+        resort_id: newResort.id
+      };
+      const { data: cottageData, error: cottageError } = await supabase
+        .from('cottages')
+        .insert([cottagePayload])
+        .select();
+
+      if (cottageError) {
+        // Rollback resort
+        await supabase.from('resorts').delete().eq('id', newResort.id);
+        throw new Error("Failed to create property category: " + cottageError.message);
+      }
+      const newCottage = cottageData[0];
+
+      // 3. Generate and Insert Rooms
+      setStatusMessage("Generating initial rooms...");
+      let roomsToInsert = [];
+      if (roomGeneration.mode === 'auto') {
+        const start = Number(roomGeneration.startNumber);
+        const qty = Number(roomGeneration.count);
+        if (isNaN(start) || start <= 0) throw new Error("Invalid starting room number.");
+        if (qty <= 0 || qty > 50) throw new Error("Please specify between 1 and 50 rooms to auto-create.");
+
+        for (let i = 0; i < qty; i++) {
+          roomsToInsert.push({
+            cottage_id: newCottage.id,
+            name: String(start + i),
+            capacity: Number(propertyForm.max_capacity),
+            weekday_price: Number(propertyForm.weekday_price),
+            weekend_price: Number(propertyForm.weekend_price),
+            status: 'Available',
+            tenant_id: session.user.id,
+            resort_id: newResort.id
+          });
+        }
+      } else {
+        const names = roomGeneration.manualNames
+          .split(',')
+          .map(n => n.trim())
+          .filter(n => n.length > 0);
+
+        if (names.length === 0) throw new Error("Please enter at least one room number.");
+        if (names.length > 50) throw new Error("You can create up to 50 rooms at a time.");
+
+        roomsToInsert = names.map(name => ({
+          cottage_id: newCottage.id,
+          name: name,
+          capacity: Number(propertyForm.max_capacity),
+          weekday_price: Number(propertyForm.weekday_price),
+          weekend_price: Number(propertyForm.weekend_price),
+          status: 'Available',
+          tenant_id: session.user.id,
+          resort_id: newResort.id
+        }));
+      }
+
+      const { error: roomsError } = await supabase
+        .from('rooms')
+        .insert(roomsToInsert);
+
+      if (roomsError) {
+        // Rollback cottage and resort
+        await supabase.from('cottages').delete().eq('id', newCottage.id);
+        await supabase.from('resorts').delete().eq('id', newResort.id);
+        throw new Error("Failed to create initial rooms: " + roomsError.message);
+      }
+
+      setStatusMessage("Finalizing setup...");
+      
+      // Update global store state
+      setResorts([newResort]);
+      setActiveResortId(newResort.id);
+
+      // Small delay for store synchronization and clean transition
+      setTimeout(() => {
+        window.location.reload();
+      }, 500);
+
+    } catch (err) {
+      setError(err.message);
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%)',
+      padding: '2rem 1rem',
+      fontFamily: "'Plus Jakarta Sans', sans-serif",
+      color: 'white'
+    }}>
+      
+      {/* Top Header Controls */}
+      <div style={{
+        position: 'absolute',
+        top: '1.5rem',
+        left: '2rem',
+        right: '2rem',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.05em', color: '#10b981', fontFamily: "'Outfit', sans-serif" }}>STAY PILOT</span>
+        </div>
+        <button
+          onClick={handleLogout}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            background: 'rgba(255, 255, 255, 0.05)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            padding: '0.5rem 1rem',
+            borderRadius: '8px',
+            color: '#f8fafc',
+            cursor: 'pointer',
+            fontWeight: 600,
+            fontSize: '0.85rem',
+            transition: 'all 0.2s'
+          }}
+          className="btn-logout-hover"
+        >
+          <LogOut size={16} /> Exit & Logout
+        </button>
+      </div>
+
+      <div style={{
+        width: '100%',
+        maxWidth: '650px',
+        background: 'rgba(30, 41, 59, 0.7)',
+        backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '24px',
+        padding: '2.5rem',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+        textAlign: 'center',
+        position: 'relative',
+        zIndex: 1
+      }}>
+        {loading ? (
+          <div style={{ padding: '3rem 1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+            <Loader2 className="animate-spin" size={48} color="#10b981" />
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>{statusMessage}</h3>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Please don't close this window, we are preparing your property dashboard.</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit}>
+            {/* Step Stepper Indicator */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', position: 'relative' }}>
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '10%',
+                right: '10%',
+                height: '2px',
+                background: 'rgba(255, 255, 255, 0.1)',
+                zIndex: -1,
+                transform: 'translateY(-50%)'
+              }}>
+                <div style={{
+                  width: step === 1 ? '0%' : (step === 2 ? '50%' : '100%'),
+                  height: '100%',
+                  background: '#10b981',
+                  transition: 'width 0.3s ease'
+                }} />
+              </div>
+              
+              {[
+                { number: 1, label: 'Profile Setup', icon: <User size={16} /> },
+                { number: 2, label: 'Property Class', icon: <Building size={16} /> },
+                { number: 3, label: 'Create Rooms', icon: <Home size={16} /> }
+              ].map(s => {
+                const isActive = step >= s.number;
+                const isCurrent = step === s.number;
+                return (
+                  <div key={s.number} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem', width: '30%' }}>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      background: isCurrent ? '#10b981' : (isActive ? '#065f46' : '#334155'),
+                      border: isCurrent ? '4px solid rgba(16, 185, 129, 0.2)' : 'none',
+                      color: isActive ? 'white' : '#94a3b8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      transition: 'all 0.3s'
+                    }}>
+                      {step > s.number ? <Check size={16} /> : s.icon}
+                    </div>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: isCurrent ? 700 : 500,
+                      color: isActive ? '#f8fafc' : '#94a3b8'
+                    }}>{s.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Error Callout */}
+            {error && (
+              <div style={{
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
+                color: '#f87171',
+                padding: '0.85rem 1.2rem',
+                borderRadius: '12px',
+                marginBottom: '1.5rem',
+                fontSize: '0.85rem',
+                textAlign: 'left',
+                fontWeight: 600
+              }}>
+                ⚠️ {error}
+              </div>
+            )}
+
+            {/* STEP 1: ENTITY DETAILS */}
+            {step === 1 && (
+              <div style={{ animation: 'fadeIn 0.2s ease-out', textAlign: 'left' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f8fafc', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Welcome to Stay Pilot!</h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem' }}>Let's set up your business identity profile details to configure your accounts.</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Business/Entity Name *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={entityForm.name}
+                      onChange={e => setEntityForm({ ...entityForm, name: e.target.value })}
+                      placeholder="e.g. Greenwood Valley Resort"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Owner's Name</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={entityForm.owner_name}
+                      onChange={e => setEntityForm({ ...entityForm, owner_name: e.target.value })}
+                      placeholder="Your Full Name"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Contact Phone</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={entityForm.phone}
+                      onChange={e => setEntityForm({ ...entityForm, phone: e.target.value })}
+                      placeholder="e.g. +91 98765 43210"
+                    />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Address</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={entityForm.address}
+                      onChange={e => setEntityForm({ ...entityForm, address: e.target.value })}
+                      placeholder="e.g. 12 High Street, Ooty"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Base Currency</label>
+                    <select
+                      className="form-select"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                      value={entityForm.currency}
+                      onChange={e => setEntityForm({ ...entityForm, currency: e.target.value })}
+                    >
+                      <option value="INR">INR (₹)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
+                      <option value="GBP">GBP (£)</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Timezone</label>
+                    <select
+                      className="form-select"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                      value={entityForm.timezone}
+                      onChange={e => setEntityForm({ ...entityForm, timezone: e.target.value })}
+                    >
+                      <option value="Asia/Kolkata">India (IST)</option>
+                      <option value="UTC">UTC</option>
+                      <option value="America/New_York">EST (New York)</option>
+                      <option value="Europe/London">GMT (London)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 2: PROPERTY CATEGORY */}
+            {step === 2 && (
+              <div style={{ animation: 'fadeIn 0.2s ease-out', textAlign: 'left' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f8fafc', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Create First Property Category</h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem' }}>Define the category classification for your rooms or cottages (e.g. Deluxe Room).</p>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Category Name *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={propertyForm.name}
+                      onChange={e => setPropertyForm({ ...propertyForm, name: e.target.value })}
+                      placeholder="e.g. Deluxe Suite, Premium Villa, Standard Room"
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Capacity (Max Guests)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={propertyForm.max_capacity}
+                      onChange={e => setPropertyForm({ ...propertyForm, max_capacity: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Weekday Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={propertyForm.weekday_price}
+                      onChange={e => setPropertyForm({ ...propertyForm, weekday_price: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Weekend Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={propertyForm.weekend_price}
+                      onChange={e => setPropertyForm({ ...propertyForm, weekend_price: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Property Phone Number (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={propertyForm.phone}
+                      onChange={e => setPropertyForm({ ...propertyForm, phone: e.target.value })}
+                      placeholder="e.g. Extension 10"
+                    />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>WiFi Password (Optional)</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={propertyForm.wifi_password}
+                      onChange={e => setPropertyForm({ ...propertyForm, wifi_password: e.target.value })}
+                      placeholder="e.g. guestwifi123"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3: INITIAL ROOMS SETUP */}
+            {step === 3 && (
+              <div style={{ animation: 'fadeIn 0.2s ease-out', textAlign: 'left' }}>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#f8fafc', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Add Initial Rooms / Units</h2>
+                <p style={{ color: '#94a3b8', fontSize: '0.9rem', marginBottom: '2rem' }}>Define the specific room designations that guests will book under this category.</p>
+
+                {/* Generator Mode Switcher */}
+                <div style={{ display: 'flex', gap: '1rem', background: '#1e293b', padding: '0.35rem', borderRadius: '10px', marginBottom: '1.75rem', border: '1px solid #334155' }}>
+                  <button
+                    type="button"
+                    onClick={() => setRoomGeneration({ ...roomGeneration, mode: 'auto' })}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem',
+                      border: 'none',
+                      borderRadius: '8px',
+                      background: roomGeneration.mode === 'auto' ? '#10b981' : 'transparent',
+                      color: roomGeneration.mode === 'auto' ? 'white' : '#94a3b8',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    ⚡ Auto Generator
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRoomGeneration({ ...roomGeneration, mode: 'manual' })}
+                    style={{
+                      flex: 1,
+                      padding: '0.6rem',
+                      border: 'none',
+                      borderRadius: '8px',
+                      background: roomGeneration.mode === 'manual' ? '#10b981' : 'transparent',
+                      color: roomGeneration.mode === 'manual' ? 'white' : '#94a3b8',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    ✍️ Manual Names
+                  </button>
+                </div>
+
+                {roomGeneration.mode === 'auto' ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Starting Room Number</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                        value={roomGeneration.startNumber}
+                        onChange={e => setRoomGeneration({ ...roomGeneration, startNumber: e.target.value })}
+                        placeholder="e.g. 101"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Number of Rooms to Create</label>
+                      <input
+                        type="number"
+                        min={1}
+                        max={50}
+                        className="form-input"
+                        style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                        value={roomGeneration.count}
+                        onChange={e => setRoomGeneration({ ...roomGeneration, count: Number(e.target.value) })}
+                      />
+                    </div>
+                    <p style={{ gridColumn: 'span 2', margin: 0, fontSize: '0.8rem', color: '#94a3b8', background: 'rgba(255,255,255,0.03)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)' }}>
+                      💡 This will automatically create <strong>{roomGeneration.count}</strong> rooms numbered: <strong style={{ color: '#10b981' }}>
+                        {Array.from({ length: Math.min(roomGeneration.count, 6) }).map((_, idx) => Number(roomGeneration.startNumber) + idx).join(', ')}
+                        {roomGeneration.count > 6 && ' ...'}
+                      </strong>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Room Names / Numbers (comma-separated)</label>
+                    <textarea
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', minHeight: '80px', width: '100%', borderRadius: '8px', padding: '0.75rem', resize: 'vertical' }}
+                      value={roomGeneration.manualNames}
+                      onChange={e => setRoomGeneration({ ...roomGeneration, manualNames: e.target.value })}
+                      placeholder="e.g. 101, 102, 201, Suite A"
+                    />
+                    <small style={{ color: '#94a3b8', display: 'block', marginTop: '0.5rem' }}>Create individual designations by typing names separated by commas.</small>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Stepper Navigation Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
+              {step > 1 ? (
+                <button
+                  type="button"
+                  onClick={handlePrevStep}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '10px',
+                    color: '#f8fafc',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <ChevronLeft size={16} /> Back
+                </button>
+              ) : (
+                <div /> /* spacing spacer */
+              )}
+
+              {step < 3 ? (
+                <button
+                  type="button"
+                  onClick={handleNextStep}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    background: '#10b981',
+                    border: 'none',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '10px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Continue <ChevronRight size={16} />
+                </button>
+              ) : (
+                <button
+                  type="submit"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    background: '#10b981',
+                    border: 'none',
+                    padding: '0.75rem 1.75rem',
+                    borderRadius: '10px',
+                    color: 'white',
+                    cursor: 'pointer',
+                    fontWeight: 700,
+                    fontSize: '0.9rem',
+                    boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  Complete Setup <Check size={16} />
+                </button>
+              )}
+            </div>
+          </form>
+        )}
+      </div>
+
+      {/* Styled custom transitions in JS */}
+      <style dangerouslySetInnerHTML={{__html: `
+        .animate-spin {
+          animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .btn-logout-hover:hover {
+          background: rgba(239, 68, 68, 0.1) !important;
+          border-color: rgba(239, 68, 68, 0.3) !important;
+          color: #ef4444 !important;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(8px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}} />
+    </div>
+  );
+}

@@ -4,6 +4,7 @@ import { LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, 
 import { useSettingsStore } from '../lib/store';
 import { useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
+import OnboardingWizard from '../components/OnboardingWizard';
 
 export default function AppLayout() {
   const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout } = useSettingsStore();
@@ -15,6 +16,10 @@ export default function AppLayout() {
   const isStaff = profile?.role === 'staff';
   const isAdmin = profile?.role === 'tenant_admin';
   const isSuper = profile?.role === 'super_admin';
+
+  if (profile?.role === 'tenant_admin' && resorts.length === 0) {
+    return <OnboardingWizard />;
+  }
 
   let navLinks = [];
 
