@@ -20,6 +20,10 @@ export default function AppLayout() {
     }
   }, [location.pathname]);
 
+  React.useEffect(() => {
+    setIsSidebarOpen(false);
+  }, [location.pathname]);
+
   const activeResort = (resorts || []).find(r => r.id === activeResortId) || null;
 
   const isStaff = profile?.role === 'staff';
@@ -77,10 +81,7 @@ export default function AppLayout() {
     navLinks.push({ to: '/admin', label: 'System Admin', icon: <ShieldAlert size={20} color="var(--danger)" /> });
   }
 
-  // Close sidebar on navigation change (for mobile)
-  React.useEffect(() => {
-    setIsSidebarOpen(false);
-  }, [location.pathname]);
+
 
   return (
     <div className="app-container">
