@@ -54,6 +54,20 @@ export default function OnboardingWizard() {
     }
   }, [existingCottages]);
 
+  useEffect(() => {
+    if (step === 3) {
+      const cap = propertyForm.max_capacity || (existingCottages[0]?.max_capacity) || 2;
+      const wDay = propertyForm.weekday_price || (existingCottages[0]?.weekday_price) || 1500;
+      const wEnd = propertyForm.weekend_price || (existingCottages[0]?.weekend_price) || 2000;
+      setRoomGeneration(prev => ({
+        ...prev,
+        capacity: Number(cap),
+        weekday_price: Number(wDay),
+        weekend_price: Number(wEnd)
+      }));
+    }
+  }, [step, propertyForm, existingCottages]);
+
   // Step 1: Entity Details
   const [entityForm, setEntityForm] = useState({
     name: '',
@@ -80,7 +94,10 @@ export default function OnboardingWizard() {
     mode: 'auto', // 'auto' or 'manual'
     startNumber: '101',
     count: 3,
-    manualNames: '101, 102, 103'
+    manualNames: '101, 102, 103',
+    capacity: 2,
+    weekday_price: 1500,
+    weekend_price: 2000
   });
 
   const handleLogout = async () => {
@@ -620,6 +637,42 @@ export default function OnboardingWizard() {
                   >
                     ✍️ Manual Names
                   </button>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.25rem', marginBottom: '1.75rem' }}>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Guest Capacity</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={roomGeneration.capacity}
+                      onChange={e => setRoomGeneration({ ...roomGeneration, capacity: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Weekday Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={roomGeneration.weekday_price}
+                      onChange={e => setRoomGeneration({ ...roomGeneration, weekday_price: Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label" style={{ color: '#cbd5e1', fontSize: '0.85rem', fontWeight: 600 }}>Weekend Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="form-input"
+                      style={{ background: '#1e293b', border: '1px solid #475569', color: 'white', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      value={roomGeneration.weekend_price}
+                      onChange={e => setRoomGeneration({ ...roomGeneration, weekend_price: Number(e.target.value) })}
+                    />
+                  </div>
                 </div>
 
                 {roomGeneration.mode === 'auto' ? (
