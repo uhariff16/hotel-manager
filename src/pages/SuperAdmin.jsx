@@ -124,6 +124,7 @@ export default function SuperAdmin() {
   // Management modal states
   const [editingUser, setEditingUser] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [adminActiveTab, setAdminActiveTab] = useState('overview');
 
   useEffect(() => {
     if (profile?.role !== 'super_admin') return;
@@ -135,7 +136,7 @@ export default function SuperAdmin() {
     try {
       const [{ data: u }, { data: r }, { data: b }, { data: inc }] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('resorts').select('id, tenant_id'),
+        supabase.from('resorts').select('id, tenant_id, name'),
         supabase.from('bookings').select('id, tenant_id'),
         supabase.from('incomes').select('amount')
       ]);
@@ -145,10 +146,14 @@ export default function SuperAdmin() {
           ? (u || []).find(p => p.id === user.tenant_id) 
           : null;
           
+        const tenantResorts = user.role === 'tenant_admin' ? (r || []).filter(res => res.tenant_id === user.id) : [];
+        const resortNamesList = tenantResorts.map(res => res.name || 'Unnamed Resort');
+
         return {
           ...user,
           ownerName: owner ? owner.full_name : 'Self',
-          propertyCount: user.role === 'tenant_admin' ? (r || []).filter(res => res.tenant_id === user.id).length : 0,
+          propertyCount: resortNamesList.length,
+          propertyNames: resortNamesList,
           bookingCount: user.role === 'tenant_admin' ? (b || []).filter(book => book.tenant_id === user.id).length : 0
         };
       });
@@ -470,408 +475,694 @@ export default function SuperAdmin() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem' }}>
+      {/* Page Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
         <div>
-          <h1 style={{ marginBottom: '0.25rem' }}>Global Control Panel</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Oversee all platform Tenants and Staff ({tenants.length} total accounts)</p>
+          <h1 style={{ marginBottom: '0.25rem', fontSize: '1.75rem', fontWeight: 800, color: '#0F2C59', fontFamily: "'Outfit', sans-serif" }}>Global Control Panel</h1>
+          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Oversee all platform Tenants, Staff, Plans, and Website configuration.</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button className="btn btn-primary" onClick={() => setShowUserForm(true)}>
-            <UserPlus size={20} /> Create New Account
+      </div>
+
+      {/* Elegant Sub-navigation Tabs */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '0.5rem', 
+        borderBottom: '1px solid #cbd5e1', 
+        marginBottom: '2rem', 
+        paddingBottom: '0.1rem',
+        overflowX: 'auto',
+        flexWrap: 'nowrap'
+      }}>
+        {[
+          { id: 'overview', label: 'Dashboard Overview', icon: <TrendingUp size={16} /> },
+          { id: 'accounts', label: `Accounts & Tenants (${tenants.length})`, icon: <Users size={16} /> },
+          { id: 'plans', label: 'Subscription Plans', icon: <DollarSign size={16} /> },
+          { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} /> }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setAdminActiveTab(tab.id)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              padding: '0.75rem 1.5rem',
+              background: 'transparent',
+              border: 'none',
+              borderBottom: adminActiveTab === tab.id ? '3px solid #059669' : '3px solid transparent',
+              color: adminActiveTab === tab.id ? '#0F2C59' : '#64748B',
+              fontWeight: 700,
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.2s',
+              fontFamily: "'Outfit', sans-serif"
+            }}
+          >
+            {tab.icon}
+            {tab.label}
           </button>
-        </div>
+        ))}
       </div>
 
-      {/* Global Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Tenants / Staff</p>
-              <h2 style={{ margin: '0.25rem 0' }}>{stats.users} / {stats.staffCount}</h2>
+      {/* TAB 1: OVERVIEW & STATS */}
+      {adminActiveTab === 'overview' && (
+        <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          {/* Global Stats Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '2.5rem' }}>
+            <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>Tenants / Staff</p>
+                  <h2 style={{ margin: '0.25rem 0', color: '#0F2C59', fontWeight: 800 }}>{stats.users} / {stats.staffCount}</h2>
+                </div>
+                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)' }}>
+                  <Users size={24} />
+                </div>
+              </div>
             </div>
-            <Users color="var(--primary)" size={24} />
-          </div>
-        </div>
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Global Properties</p>
-              <h2 style={{ margin: '0.25rem 0' }}>{stats.properties}</h2>
+            <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>Global Properties</p>
+                  <h2 style={{ margin: '0.25rem 0', color: '#0F2C59', fontWeight: 800 }}>{stats.properties}</h2>
+                </div>
+                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
+                  <Hotel size={24} />
+                </div>
+              </div>
             </div>
-            <Hotel color="var(--primary)" size={24} />
-          </div>
-        </div>
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Global Bookings</p>
-              <h2 style={{ margin: '0.25rem 0' }}>{stats.bookings}</h2>
+            <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>Global Bookings</p>
+                  <h2 style={{ margin: '0.25rem 0', color: '#0F2C59', fontWeight: 800 }}>{stats.bookings}</h2>
+                </div>
+                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(14, 165, 233, 0.1)', color: '#0ea5e9' }}>
+                  <TrendingUp size={24} />
+                </div>
+              </div>
             </div>
-            <TrendingUp color="var(--primary)" size={24} />
-          </div>
-        </div>
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>Platform Revenue</p>
-              <h2 style={{ margin: '0.25rem 0' }}>₹{stats.revenue.toLocaleString()}</h2>
+            <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>Platform Revenue</p>
+                  <h2 style={{ margin: '0.25rem 0', color: '#059669', fontWeight: 800 }}>₹{stats.revenue.toLocaleString()}</h2>
+                </div>
+                <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
+                  <DollarSign size={24} />
+                </div>
+              </div>
             </div>
-            <DollarSign color="var(--success)" size={24} />
           </div>
-        </div>
-      </div>
 
-      {/* Global Pricing & Offers Manager */}
-      <div className="card" style={{ marginBottom: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
-          <div style={{ display: 'flex', gap: '2rem' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: pricingTab === 'plans' ? '#1e293b' : '#64748b', margin: 0, cursor: 'pointer', borderBottom: pricingTab === 'plans' ? '2px solid var(--primary)' : 'none', paddingBottom: '0.5rem' }} onClick={() => setPricingTab('plans')}>
-              <DollarSign /> Internal Plans
-            </h3>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: pricingTab === 'website' ? '#1e293b' : '#64748b', margin: 0, cursor: 'pointer', borderBottom: pricingTab === 'website' ? '2px solid var(--primary)' : 'none', paddingBottom: '0.5rem' }} onClick={() => setPricingTab('website')}>
-              Website Pricing
-            </h3>
+          {/* Quick Start Card */}
+          <div className="card" style={{ padding: '2.5rem', background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', textAlign: 'left' }}>
+            <h3 style={{ color: '#0F2C59', fontWeight: 800, marginBottom: '1rem', fontFamily: "'Outfit', sans-serif" }}>Platform Overview & Activities</h3>
+            <p style={{ color: '#475569', lineHeight: 1.6, marginBottom: '1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Welcome back to your Stay Pilot administrative hub. From this dashboard, you can control the subscription plans, adjust pricing drafts for the landing page, enable/disable system-wide integrations, and oversee all active accounts.
+            </p>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginTop: '2rem' }}>
+              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ color: '#0F2C59', fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.5rem' }}>Accounts Hub</h4>
+                <p style={{ color: '#64748B', fontSize: '0.85rem', margin: 0 }}>Review registrations, edit permissions, change packages, or create accounts.</p>
+                <button type="button" className="btn btn-link" style={{ padding: 0, marginTop: '0.75rem', fontSize: '0.85rem', color: '#059669', fontWeight: 700 }} onClick={() => setAdminActiveTab('accounts')}>Manage Accounts &rarr;</button>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ color: '#0F2C59', fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.5rem' }}>Plans & Pricing</h4>
+                <p style={{ color: '#64748B', fontSize: '0.85rem', margin: 0 }}>Configure platform subscription tiers, features list, and edit public marketing rates.</p>
+                <button type="button" className="btn btn-link" style={{ padding: 0, marginTop: '0.75rem', fontSize: '0.85rem', color: '#059669', fontWeight: 700 }} onClick={() => setAdminActiveTab('plans')}>Update Plans &rarr;</button>
+              </div>
+              <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ color: '#0F2C59', fontWeight: 700, fontSize: '0.95rem', marginBottom: '0.5rem' }}>Global Settings</h4>
+                <p style={{ color: '#64748B', fontSize: '0.85rem', margin: 0 }}>Toggle platform feature locks and edit landing page headlines and features.</p>
+                <button type="button" className="btn btn-link" style={{ padding: 0, marginTop: '0.75rem', fontSize: '0.85rem', color: '#059669', fontWeight: 700 }} onClick={() => setAdminActiveTab('settings')}>Modify Settings &rarr;</button>
+              </div>
+            </div>
           </div>
-          {pricingTab === 'plans' && (
-            <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => {
-              const newId = `custom_${Date.now()}`;
-              setPricingConfig({
-                ...pricingConfig,
-                [newId]: {
-                  name: 'New Custom Plan',
-                  description: 'Description here',
-                  enabled: true,
-                  price: 999,
-                  maxResorts: 1,
-                  maxRooms: 10,
-                  color: 'var(--primary)',
-                  features: [{ name: 'New Feature', enabled: true }]
-                }
-              });
-            }}>
-              + Create New Plan
-            </button>
-          )}
         </div>
-        
-        {pricingTab === 'plans' && (
-          <>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
+      )}
+
+      {/* TAB 2: ACCOUNTS & TENANTS */}
+      {adminActiveTab === 'accounts' && (
+        <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
           
-          {Object.entries(pricingConfig).map(([planKey, plan]) => {
-            const titleColor = plan.color || 'var(--primary)';
-            const titleName = plan.name || planKey.toUpperCase();
-            
-            return (
-              <div key={planKey} style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', opacity: plan.enabled ? 1 : 0.6, transition: 'all 0.3s' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-                  <h4 style={{ color: titleColor, margin: 0 }}>{titleName}</h4>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <input 
-                      type="checkbox" 
-                      id={`enable-${planKey}`}
-                      checked={plan.enabled}
-                      onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, enabled: e.target.checked}})}
-                    />
-                    <label htmlFor={`enable-${planKey}`} style={{ fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>Enabled</label>
-                  </div>
-                </div>
+          {/* Header Controls for accounts list */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Platform User Accounts</h3>
+            </div>
+            <button className="btn btn-primary" onClick={() => setShowUserForm(!showUserForm)}>
+              <UserPlus size={20} /> {showUserForm ? 'Hide Creator' : 'Create New Account'}
+            </button>
+          </div>
 
-                <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label">Plan Name</label>
-                  <input type="text" className="form-input" value={plan.name || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, name: e.target.value}})} disabled={!plan.enabled} />
+          {/* Account Creator Form Card */}
+          {showUserForm && (
+            <div className="card" style={{ marginBottom: '2rem', animation: 'slideDown 0.3s ease-out', border: '1px solid rgba(5, 150, 105, 0.15)', background: 'rgba(255, 255, 255, 0.95)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <h2 style={{ fontSize: '1.25rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Create New {userFormData.role === 'tenant_admin' ? 'Tenant' : 'Staff'} Account</h2>
+              </div>
+              
+              {formError && <div style={{ color: 'var(--danger)', marginBottom: '1rem', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px', fontWeight: 600 }}>{formError}</div>}
+
+              <form onSubmit={handleCreateUser} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1.5rem', textAlign: 'left' }}>
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input type="text" className="form-input" required value={userFormData.fullName} onChange={e => setUserFormData({...userFormData, fullName: e.target.value})} placeholder="e.g. Michael Smith" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input type="email" className="form-input" required value={userFormData.email} onChange={e => setUserFormData({...userFormData, email: e.target.value})} placeholder="email@example.com" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Default Password</label>
+                  <input type="password" minLength={6} className="form-input" required value={userFormData.password} onChange={e => setUserFormData({...userFormData, password: e.target.value})} placeholder="••••••••" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Account Role</label>
+                  <select className="form-select" value={userFormData.role} onChange={e => setUserFormData({...userFormData, role: e.target.value, tenantId: ''})}>
+                    <option value="tenant_admin">Tenant (Property Owner)</option>
+                    <option value="staff">Staff (Operational)</option>
+                  </select>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Properties</label>
-                    <input type="number" className="form-input" value={plan.maxResorts === 999999 ? '' : plan.maxResorts} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxResorts: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                {userFormData.role === 'staff' && (
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Assign to Tenant (Owner)</label>
+                    <select className="form-select" required value={userFormData.tenantId} onChange={e => setUserFormData({...userFormData, tenantId: e.target.value})}>
+                      <option value="">-- Select Tenant --</option>
+                      {tenants.filter(t => t.role === 'tenant_admin').map(t => (
+                        <option key={t.id} value={t.id}>{t.full_name} ({t.id.split('-')[0]})</option>
+                      ))}
+                    </select>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Rooms</label>
-                    <input type="number" className="form-input" value={plan.maxRooms === 999999 ? '' : plan.maxRooms} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxRooms: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Staff</label>
-                    <input type="number" className="form-input" value={plan.maxStaff === 999999 ? '' : plan.maxStaff} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxStaff: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
-                  </div>
-                </div>
-
-                {planKey !== 'free' && (
-                  <>
-                    <div className="form-group">
-                      <label className="form-label">Base Rate (₹/month)</label>
-                      <input type="number" className="form-input" value={plan.price} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, price: Number(e.target.value)}})} disabled={!plan.enabled} />
-                    </div>
-                    <div className="form-group" style={{ marginTop: '1rem' }}>
-                      <label className="form-label">Promotional Offer Rate (₹/month)</label>
-                      <input type="number" className="form-input" value={plan.offerPrice} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerPrice: Number(e.target.value)}})} disabled={!plan.enabled} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                      <div className="form-group">
-                        <label className="form-label">Offer Starts</label>
-                        <input type="date" className="form-input" value={plan.offerStartDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerStartDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Offer Ends</label>
-                        <input type="date" className="form-input" value={plan.offerEndDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerEndDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', background: plan.offerActive ? 'rgba(34, 197, 94, 0.1)' : 'transparent', padding: '0.5rem', borderRadius: '4px' }}>
-                      <input type="checkbox" id={`offer-${planKey}`} checked={plan.offerActive} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerActive: e.target.checked}})} style={{ width: '18px', height: '18px' }} disabled={!plan.enabled} />
-                      <label htmlFor={`offer-${planKey}`} style={{ fontWeight: 'bold', color: plan.offerActive ? 'var(--success)' : 'var(--text-muted)', cursor: 'pointer' }}>Activate Offer</label>
-                    </div>
-                  </>
                 )}
-                
-                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
-                  <h5 style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.85rem', textTransform: 'uppercase' }}>Enabled Reports</h5>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {[
-                      { id: 'summary', label: 'Performance Summary' },
-                      { id: 'bookings', label: 'Booking Details' },
-                      { id: 'guests', label: 'Guest Contacts' },
-                      { id: 'finance', label: 'Income & Expenses' }
-                    ].map(report => (
-                      <div key={report.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input 
-                          type="checkbox" 
-                          id={`report-${planKey}-${report.id}`}
-                          checked={plan.reports?.[report.id] ?? true}
-                          onChange={(e) => {
-                            const newReports = { ...(plan.reports || {}), [report.id]: e.target.checked };
-                            setPricingConfig({...pricingConfig, [planKey]: {...plan, reports: newReports}});
-                          }}
-                          disabled={!plan.enabled}
-                        />
-                        <label htmlFor={`report-${planKey}-${report.id}`} style={{ fontSize: '0.85rem', cursor: 'pointer' }}>{report.label}</label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
 
-                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
-                  <h5 style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.85rem', textTransform: 'uppercase' }}>Export Permissions</h5>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {[
-                      { id: 'exportExcel', label: 'Allow Export to Excel' },
-                      { id: 'exportPdf', label: 'Allow Export to PDF' }
-                    ].map(exportOption => (
-                      <div key={exportOption.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input 
-                          type="checkbox" 
-                          id={`export-${planKey}-${exportOption.id}`}
-                          checked={plan.reports?.[exportOption.id] ?? true}
-                          onChange={(e) => {
-                            const newReports = { ...(plan.reports || {}), [exportOption.id]: e.target.checked };
-                            setPricingConfig({...pricingConfig, [planKey]: {...plan, reports: newReports}});
-                          }}
-                          disabled={!plan.enabled}
-                        />
-                        <label htmlFor={`export-${planKey}-${exportOption.id}`} style={{ fontSize: '0.85rem', cursor: 'pointer' }}>{exportOption.label}</label>
-                      </div>
-                    ))}
-                  </div>
+                <div style={{ gridColumn: 'span 2', marginTop: '0.5rem' }}>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '48px', fontWeight: 700 }} disabled={loading}>
+                    {loading ? 'Creating...' : `Create ${userFormData.role === 'tenant_admin' ? 'Tenant' : 'Staff'} Account`}
+                  </button>
                 </div>
+              </form>
+            </div>
+          )}
 
-                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #f1f5f9' }}>
-                  <h5 style={{ marginBottom: '1rem', color: '#475569', fontSize: '0.85rem', textTransform: 'uppercase' }}>Included Features</h5>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {plan.features.map((feat, idx) => (
-                      <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={feat.enabled} 
-                          onChange={(e) => {
-                            const newFeats = [...plan.features];
-                            newFeats[idx] = { ...newFeats[idx], enabled: e.target.checked };
-                            setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
-                          }}
-                          disabled={!plan.enabled}
-                        />
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          value={feat.name}
-                          onChange={(e) => {
-                            const newFeats = [...plan.features];
-                            newFeats[idx] = { ...newFeats[idx], name: e.target.value };
-                            setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
-                          }}
-                          style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
-                          disabled={!plan.enabled}
-                        />
+          {/* Accounts Search & List Table Card */}
+          <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h4 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Registered Accounts List</h4>
+              <div style={{ position: 'relative' }}>
+                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Search tenants or staff..." 
+                  style={{ paddingLeft: '2.5rem', width: '300px' }} 
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </div>
+            
+            <div className="table-container" style={{ overflowX: 'auto' }}>
+              <table className="table" style={{ width: '100%', minWidth: '1000px', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead>
+                  <tr>
+                    <th>User Details</th>
+                    <th>Role & Associated Properties</th>
+                    <th>Sub Plan & Stats</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {tenants.filter(t => 
+                    t.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    t.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    t.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    t.role?.toLowerCase().includes(searchTerm.toLowerCase())
+                  ).map(tenant => (
+                    <tr key={tenant.id}>
+                      <td style={{ verticalAlign: 'top' }}>
+                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0F2C59' }}>{tenant.full_name}</div>
+                        <div style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, marginTop: '0.1rem' }}>{tenant.email}</div>
+                        {tenant.created_at && (
+                          <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.2rem', fontWeight: 500 }}>
+                            Joined: {new Date(tenant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                          </div>
+                        )}
+                        <small style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginTop: '0.25rem' }}>ID: {tenant.id}</small>
+                      </td>
+                      <td style={{ verticalAlign: 'top' }}>
+                        <span style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '0.4rem', 
+                          fontSize: '0.7rem', 
+                          fontWeight: '800',
+                          padding: '0.25rem 0.65rem',
+                          borderRadius: '20px',
+                          background: tenant.role === 'tenant_admin' ? 'rgba(5, 150, 105, 0.08)' : 'rgba(107, 114, 128, 0.08)',
+                          color: tenant.role === 'tenant_admin' ? '#059669' : '#64748B',
+                          border: tenant.role === 'tenant_admin' ? '1px solid rgba(5, 150, 105, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)'
+                        }}>
+                          {tenant.role === 'tenant_admin' ? <Hotel size={12} /> : <Users size={12} />}
+                          {tenant.role === 'tenant_admin' ? 'TENANT' : 'STAFF'}
+                        </span>
+                        
+                        {tenant.role === 'staff' && (
+                          <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#475569' }}>
+                            Under: <strong>{tenant.ownerName}</strong>
+                          </div>
+                        )}
+
+                        {tenant.role === 'tenant_admin' && (
+                          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#475569', lineHeight: 1.4 }}>
+                            <strong style={{ color: '#0F2C59' }}>Resorts:</strong> {tenant.propertyNames && tenant.propertyNames.length > 0 ? (
+                              <span style={{ color: '#059669', fontWeight: 600 }}>{tenant.propertyNames.join(', ')}</span>
+                            ) : (
+                              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No properties created</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ verticalAlign: 'top' }}>
+                        {tenant.role === 'tenant_admin' ? (
+                          <>
+                            <span className={`badge ${tenant.plan_type === 'premium' ? 'badge-primary' : (tenant.plan_type === 'pro' ? 'badge-success' : 'badge-outline')}`}>
+                              {pricingConfig[tenant.plan_type]?.name?.toUpperCase() || tenant.plan_type?.toUpperCase() || 'FREE'}
+                            </span>
+                            <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+                              Props Count: <strong>{tenant.propertyCount}</strong> <br />
+                              Bookings Count: <strong>{tenant.bookingCount}</strong>
+                            </div>
+                          </>
+                        ) : (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>Operational account</span>
+                        )}
+                      </td>
+                      <td style={{ verticalAlign: 'top' }}>
+                        <div style={{ 
+                          display: 'inline-flex', 
+                          alignItems: 'center', 
+                          gap: '0.35rem', 
+                          color: tenant.subscription_status === 'active' ? '#059669' : '#ef4444', 
+                          fontSize: '0.8rem',
+                          fontWeight: 700,
+                          background: tenant.subscription_status === 'active' ? 'rgba(5, 150, 105, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                          padding: '0.25rem 0.65rem',
+                          borderRadius: '20px',
+                          border: tenant.subscription_status === 'active' ? '1px solid rgba(5, 150, 105, 0.15)' : '1px solid rgba(239, 68, 68, 0.15)'
+                        }}>
+                          {tenant.subscription_status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
+                          {tenant.subscription_status === 'active' ? 'Active' : 'Suspended'}
+                        </div>
+                      </td>
+                      <td style={{ verticalAlign: 'top' }}>
                         <button 
-                          className="btn-outline" 
-                          style={{ padding: '0.35rem', color: 'var(--danger)', border: 'none' }}
+                          className="btn btn-outline" 
+                          style={{ padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px' }} 
                           onClick={() => {
-                            const newFeats = plan.features.filter((_, i) => i !== idx);
+                            console.log("Manage button clicked. Setting editingUser to:", tenant);
+                            setEditingUser(tenant);
+                          }}
+                        >
+                          Manage
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 3: PLANS & PRICING */}
+      {adminActiveTab === 'plans' && (
+        <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          
+          <div className="card" style={{ marginBottom: '2.5rem', background: 'white', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #cbd5e1', paddingBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '2rem' }}>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: pricingTab === 'plans' ? '#0F2C59' : '#64748b', margin: 0, cursor: 'pointer', borderBottom: pricingTab === 'plans' ? '3px solid var(--primary)' : '3px solid transparent', paddingBottom: '0.5rem', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} onClick={() => setPricingTab('plans')}>
+                  <DollarSign size={18} /> Internal Pricing Tiers
+                </h3>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: pricingTab === 'website' ? '#0F2C59' : '#64748b', margin: 0, cursor: 'pointer', borderBottom: pricingTab === 'website' ? '3px solid var(--primary)' : '3px solid transparent', paddingBottom: '0.5rem', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} onClick={() => setPricingTab('website')}>
+                  Website Pricing (Marketing)
+                </h3>
+              </div>
+              {pricingTab === 'plans' && (
+                <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }} onClick={() => {
+                  const newId = `custom_${Date.now()}`;
+                  setPricingConfig({
+                    ...pricingConfig,
+                    [newId]: {
+                      name: 'New Custom Plan',
+                      description: 'Description here',
+                      enabled: true,
+                      price: 999,
+                      maxResorts: 1,
+                      maxRooms: 10,
+                      color: 'var(--primary)',
+                      features: [{ name: 'New Feature', enabled: true }]
+                    }
+                  });
+                }}>
+                  + Create New Plan
+                </button>
+              )}
+            </div>
+            
+            {pricingTab === 'plans' && (
+              <>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', textAlign: 'left' }}>
+              
+              {Object.entries(pricingConfig).map(([planKey, plan]) => {
+                const titleColor = plan.color || 'var(--primary)';
+                const titleName = plan.name || planKey.toUpperCase();
+                
+                return (
+                  <div key={planKey} style={{ background: '#f8fafc', padding: '2rem 1.5rem', borderRadius: '12px', border: '1px solid #cbd5e1', opacity: plan.enabled ? 1 : 0.6, transition: 'all 0.3s' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #cbd5e1', paddingBottom: '0.75rem' }}>
+                      <h4 style={{ color: titleColor, margin: 0, fontSize: '1.2rem', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>{titleName}</h4>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <input 
+                          type="checkbox" 
+                          id={`enable-${planKey}`}
+                          checked={plan.enabled}
+                          onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, enabled: e.target.checked}})}
+                        />
+                        <label htmlFor={`enable-${planKey}`} style={{ fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>Enabled</label>
+                      </div>
+                    </div>
+
+                    <div className="form-group" style={{ marginBottom: '1rem' }}>
+                      <label className="form-label">Plan Name</label>
+                      <input type="text" className="form-input" value={plan.name || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, name: e.target.value}})} disabled={!plan.enabled} />
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Properties</label>
+                        <input type="number" className="form-input" value={plan.maxResorts === 999999 ? '' : plan.maxResorts} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxResorts: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Rooms</label>
+                        <input type="number" className="form-input" value={plan.maxRooms === 999999 ? '' : plan.maxRooms} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxRooms: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Staff</label>
+                        <input type="number" className="form-input" value={plan.maxStaff === 999999 ? '' : plan.maxStaff} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxStaff: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                      </div>
+                    </div>
+
+                    {planKey !== 'free' && (
+                      <>
+                        <div className="form-group">
+                          <label className="form-label">Base Rate (₹/month)</label>
+                          <input type="number" className="form-input" value={plan.price} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, price: Number(e.target.value)}})} disabled={!plan.enabled} />
+                        </div>
+                        <div className="form-group" style={{ marginTop: '1rem' }}>
+                          <label className="form-label">Promotional Offer Rate (₹/month)</label>
+                          <input type="number" className="form-input" value={plan.offerPrice} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerPrice: Number(e.target.value)}})} disabled={!plan.enabled} />
+                        </div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                          <div className="form-group">
+                            <label className="form-label">Offer Starts</label>
+                            <input type="date" className="form-input" value={plan.offerStartDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerStartDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Offer Ends</label>
+                            <input type="date" className="form-input" value={plan.offerEndDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerEndDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.25rem', background: plan.offerActive ? 'rgba(5, 150, 105, 0.08)' : 'transparent', padding: '0.5rem', borderRadius: '6px', border: plan.offerActive ? '1px solid rgba(5, 150, 105, 0.15)' : 'none' }}>
+                          <input type="checkbox" id={`offer-${planKey}`} checked={plan.offerActive} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerActive: e.target.checked}})} style={{ width: '18px', height: '18px' }} disabled={!plan.enabled} />
+                          <label htmlFor={`offer-${planKey}`} style={{ fontWeight: 'bold', color: plan.offerActive ? '#059669' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>Activate Offer</label>
+                        </div>
+                      </>
+                    )}
+                    
+                    <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #cbd5e1' }}>
+                      <h5 style={{ marginBottom: '1rem', color: '#0F2C59', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 800 }}>Enabled Reports</h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {[
+                          { id: 'summary', label: 'Performance Summary' },
+                          { id: 'bookings', label: 'Booking Details' },
+                          { id: 'guests', label: 'Guest Contacts' },
+                          { id: 'finance', label: 'Income & Expenses' }
+                        ].map(report => (
+                          <div key={report.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                              type="checkbox" 
+                              id={`report-${planKey}-${report.id}`}
+                              checked={plan.reports?.[report.id] ?? true}
+                              onChange={(e) => {
+                                const newReports = { ...(plan.reports || {}), [report.id]: e.target.checked };
+                                setPricingConfig({...pricingConfig, [planKey]: {...plan, reports: newReports}});
+                              }}
+                              disabled={!plan.enabled}
+                            />
+                            <label htmlFor={`report-${planKey}-${report.id}`} style={{ fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>{report.label}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #cbd5e1' }}>
+                      <h5 style={{ marginBottom: '1rem', color: '#0F2C59', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 800 }}>Export Permissions</h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {[
+                          { id: 'exportExcel', label: 'Allow Export to Excel' },
+                          { id: 'exportPdf', label: 'Allow Export to PDF' }
+                        ].map(exportOption => (
+                          <div key={exportOption.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                              type="checkbox" 
+                              id={`export-${planKey}-${exportOption.id}`}
+                              checked={plan.reports?.[exportOption.id] ?? true}
+                              onChange={(e) => {
+                                const newReports = { ...(plan.reports || {}), [exportOption.id]: e.target.checked };
+                                setPricingConfig({...pricingConfig, [planKey]: {...plan, reports: newReports}});
+                              }}
+                              disabled={!plan.enabled}
+                            />
+                            <label htmlFor={`export-${planKey}-${exportOption.id}`} style={{ fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>{exportOption.label}</label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #cbd5e1' }}>
+                      <h5 style={{ marginBottom: '1rem', color: '#0F2C59', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 800 }}>Included Features</h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        {plan.features.map((feat, idx) => (
+                          <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <input 
+                              type="checkbox" 
+                              checked={feat.enabled} 
+                              onChange={(e) => {
+                                const newFeats = [...plan.features];
+                                newFeats[idx] = { ...newFeats[idx], enabled: e.target.checked };
+                                setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                              }}
+                              disabled={!plan.enabled}
+                            />
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              value={feat.name}
+                              onChange={(e) => {
+                                const newFeats = [...plan.features];
+                                newFeats[idx] = { ...newFeats[idx], name: e.target.value };
+                                setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                              }}
+                              style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
+                              disabled={!plan.enabled}
+                            />
+                            <button 
+                              type="button"
+                              className="btn-outline" 
+                              style={{ padding: '0.35rem', color: 'var(--danger)', border: 'none', background: 'transparent' }}
+                              onClick={() => {
+                                const newFeats = plan.features.filter((_, i) => i !== idx);
+                                setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                              }}
+                              disabled={!plan.enabled}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ))}
+                        <button 
+                          type="button"
+                          className="btn btn-outline" 
+                          style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem', fontWeight: 700 }}
+                          onClick={() => {
+                            const newFeats = [...plan.features, { name: 'New Feature', enabled: true }];
                             setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
                           }}
                           disabled={!plan.enabled}
                         >
-                          <Trash2 size={14} />
+                          + Add Feature
                         </button>
                       </div>
-                    ))}
-                    <button 
-                      className="btn btn-outline" 
-                      style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem' }}
-                      onClick={() => {
-                        const newFeats = [...plan.features, { name: 'New Feature', enabled: true }];
-                        setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
-                      }}
-                      disabled={!plan.enabled}
-                    >
-                      + Add Feature
-                    </button>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button className="btn btn-primary" onClick={handleSavePricing} disabled={isUpdating} style={{ padding: '0.75rem 2rem', fontWeight: 700 }}>
+                {isUpdating ? 'Saving Changes...' : 'Broadcast Prices Globally'}
+              </button>
+            </div>
+              </>
+            )}
+
+            {pricingTab === 'website' && (
+              <WebsitePricingTab 
+                internalPricing={pricingConfig}
+                websitePricingConfig={websitePricingConfig}
+                onSaveDraft={handleSaveWebsiteDraft}
+                onPublish={handlePublishWebsitePricing}
+                onRollback={handleRollbackWebsitePricing}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* TAB 4: PLATFORM CONFIGURATION */}
+      {adminActiveTab === 'settings' && (
+        <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          {/* Global Feature Controls */}
+          <div className="card" style={{ marginBottom: '2.5rem', background: 'white', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)', textAlign: 'left' }}>
+            <h3 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+              <Shield size={20} /> Global Feature Toggles
+            </h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Enable or disable system features platform-wide for all resorts.</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#f8fafc', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <input 
+                  type="checkbox" 
+                  id="global_comm" 
+                  checked={globalCommEnabled} 
+                  onChange={e => setGlobalCommEnabled(e.target.checked)} 
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <label htmlFor="global_comm" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  {"Enable General Setting -> Communications & Automations Globally"}
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#f8fafc', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <input 
+                  type="checkbox" 
+                  id="global_templates" 
+                  checked={globalTemplatesEnabled} 
+                  onChange={e => setGlobalTemplatesEnabled(e.target.checked)} 
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <label htmlFor="global_templates" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  {"Enable Settings -> Template Management Globally"}
+                </label>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button className="btn btn-primary" onClick={handleSaveGlobalFeatures} disabled={isUpdating} style={{ padding: '0.75rem 2rem', fontWeight: 700 }}>
+                {isUpdating ? 'Saving...' : 'Broadcast Feature Controls'}
+              </button>
+            </div>
+          </div>
+
+          {/* Landing Page CMS */}
+          <div className="card" style={{ marginBottom: '2.5rem', background: 'white', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)', textAlign: 'left' }}>
+            <h3 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+              <MessageCircle size={20} /> Landing Page Content (CMS)
+            </h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Customize the public marketing page content seen by unauthenticated visitors.</p>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
+              <div className="form-group">
+                <label className="form-label">Main Headline</label>
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  value={landingContent.headline} 
+                  onChange={e => setLandingContent({...landingContent, headline: e.target.value})} 
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">Sub-headline / Description</label>
+                <textarea 
+                  className="form-input" 
+                  style={{ minHeight: '80px', resize: 'vertical' }}
+                  value={landingContent.subheadline} 
+                  onChange={e => setLandingContent({...landingContent, subheadline: e.target.value})} 
+                />
+              </div>
+              
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
+                <h4 style={{ marginBottom: '1.25rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Feature Highlights</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                  {(landingContent.features || []).map((feature, idx) => (
+                    <div key={idx} style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Title</label>
+                        <input 
+                          type="text" 
+                          className="form-input" 
+                          value={feature.title} 
+                          onChange={e => {
+                            const newFeats = [...landingContent.features];
+                            newFeats[idx].title = e.target.value;
+                            setLandingContent({...landingContent, features: newFeats});
+                          }} 
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Description</label>
+                        <textarea 
+                          className="form-input" 
+                          style={{ minHeight: '60px' }}
+                          value={feature.description} 
+                          onChange={e => {
+                            const newFeats = [...landingContent.features];
+                            newFeats[idx].description = e.target.value;
+                            setLandingContent({...landingContent, features: newFeats});
+                          }} 
+                        />
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
-            );
-          })}
-        </div>
+            </div>
 
-        <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
-          <button className="btn btn-primary" onClick={handleSavePricing} disabled={isUpdating} style={{ padding: '0.75rem 2rem' }}>
-            {isUpdating ? 'Saving Changes...' : 'Broadcast Prices Globally'}
-          </button>
-        </div>
-          </>
-        )}
-
-        {pricingTab === 'website' && (
-          <WebsitePricingTab 
-            internalPricing={pricingConfig}
-            websitePricingConfig={websitePricingConfig}
-            onSaveDraft={handleSaveWebsiteDraft}
-            onPublish={handlePublishWebsitePricing}
-            onRollback={handleRollbackWebsitePricing}
-          />
-        )}
-      </div>
-
-      {/* Global Feature Controls */}
-      <div className="card" style={{ marginBottom: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
-          <Shield /> Global Feature Toggles
-        </h3>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Enable or disable system features platform-wide.</p>
-        
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-            <input 
-              type="checkbox" 
-              id="global_comm" 
-              checked={globalCommEnabled} 
-              onChange={e => setGlobalCommEnabled(e.target.checked)} 
-              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-            />
-            <label htmlFor="global_comm" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer' }}>
-              {"Enable General Setting -> Communications & Automations Globally"}
-            </label>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-            <input 
-              type="checkbox" 
-              id="global_templates" 
-              checked={globalTemplatesEnabled} 
-              onChange={e => setGlobalTemplatesEnabled(e.target.checked)} 
-              style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-            />
-            <label htmlFor="global_templates" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer' }}>
-              {"Enable Settings -> Template Management Globally"}
-            </label>
-          </div>
-        </div>
-
-        <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
-          <button className="btn btn-primary" onClick={handleSaveGlobalFeatures} disabled={isUpdating} style={{ padding: '0.75rem 2rem' }}>
-            {isUpdating ? 'Saving...' : 'Broadcast Feature Controls'}
-          </button>
-        </div>
-      </div>
-
-      {/* Landing Page CMS */}
-      <div className="card" style={{ marginBottom: '2.5rem', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
-        <h3 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#1e293b' }}>
-          <MessageCircle /> Landing Page Content (CMS)
-        </h3>
-        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Customize the public marketing page seen by unauthenticated visitors.</p>
-        
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-          <div className="form-group">
-            <label className="form-label">Main Headline</label>
-            <input 
-              type="text" 
-              className="form-input" 
-              value={landingContent.headline} 
-              onChange={e => setLandingContent({...landingContent, headline: e.target.value})} 
-            />
-          </div>
-          <div className="form-group">
-            <label className="form-label">Sub-headline / Description</label>
-            <textarea 
-              className="form-input" 
-              style={{ minHeight: '80px', resize: 'vertical' }}
-              value={landingContent.subheadline} 
-              onChange={e => setLandingContent({...landingContent, subheadline: e.target.value})} 
-            />
-          </div>
-          
-          <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
-            <h4 style={{ marginBottom: '1rem', color: '#1e293b' }}>Feature Highlights</h4>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1rem' }}>
-              {(landingContent.features || []).map((feature, idx) => (
-                <div key={idx} style={{ background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                  <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Title</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={feature.title} 
-                      onChange={e => {
-                        const newFeats = [...landingContent.features];
-                        newFeats[idx].title = e.target.value;
-                        setLandingContent({...landingContent, features: newFeats});
-                      }} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Description</label>
-                    <textarea 
-                      className="form-input" 
-                      style={{ minHeight: '60px' }}
-                      value={feature.description} 
-                      onChange={e => {
-                        const newFeats = [...landingContent.features];
-                        newFeats[idx].description = e.target.value;
-                        setLandingContent({...landingContent, features: newFeats});
-                      }} 
-                    />
-                  </div>
-                </div>
-              ))}
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button className="btn btn-primary" onClick={handleSaveLandingPage} disabled={isUpdating} style={{ padding: '0.75rem 2rem', fontWeight: 700 }}>
+                {isUpdating ? 'Saving...' : 'Save Landing Page Content'}
+              </button>
             </div>
           </div>
         </div>
-
-        <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
-          <button className="btn btn-primary" onClick={handleSaveLandingPage} disabled={isUpdating} style={{ padding: '0.75rem 2rem' }}>
-            {isUpdating ? 'Saving...' : 'Save Landing Page Content'}
-          </button>
-        </div>
-      </div>
+      )}
 
       {/* Account Management Modal */}
       {editingUser && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card" style={{ width: '400px', maxWidth: '90%', animation: 'scaleUp 0.2s ease-out' }}>
-            <h2 style={{ marginBottom: '1.5rem' }}>Manage Account</h2>
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(59, 130, 246, 0.1)', borderRadius: '8px' }}>
-              <p style={{ margin: 0, fontWeight: 700 }}>{editingUser.full_name}</p>
+          <div className="card" style={{ width: '420px', maxWidth: '90%', animation: 'scaleUp 0.2s ease-out', textAlign: 'left', borderRadius: '16px', padding: '2rem' }}>
+            <h2 style={{ marginBottom: '1.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Manage Account</h2>
+            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(15, 44, 89, 0.05)', borderRadius: '8px', border: '1px solid rgba(15, 44, 89, 0.1)' }}>
+              <p style={{ margin: 0, fontWeight: 800, color: '#0F2C59' }}>{editingUser.full_name}</p>
               <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>{editingUser.email}</p>
               <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {editingUser.id}</p>
             </div>
@@ -904,206 +1195,51 @@ export default function SuperAdmin() {
                 </select>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.8rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px' }}>
+              <div className="form-group" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.8rem', background: 'rgba(5, 150, 105, 0.04)', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.1)' }}>
                 <input 
                   type="checkbox" 
                   id="feat_inv" 
                   checked={!!editingUser.feature_investment_enabled} 
                   onChange={e => setEditingUser({...editingUser, feature_investment_enabled: e.target.checked})} 
-                  style={{ width: '20px', height: '20px' }}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                 />
-                <label htmlFor="feat_inv" style={{ fontWeight: 600, cursor: 'pointer' }}>Enable Investment Analysis</label>
+                <label htmlFor="feat_inv" style={{ fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', color: '#0F2C59' }}>Enable Investment Analysis</label>
               </div>
 
-              <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.8rem', background: 'rgba(59, 130, 246, 0.05)', borderRadius: '8px' }}>
+              <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.8rem', background: 'rgba(5, 150, 105, 0.04)', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.1)' }}>
                 <input 
                   type="checkbox" 
                   id="feat_comm" 
                   checked={editingUser.feature_comm_enabled !== false} 
                   onChange={e => setEditingUser({...editingUser, feature_comm_enabled: e.target.checked})} 
-                  style={{ width: '20px', height: '20px' }}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
                 />
-                <label htmlFor="feat_comm" style={{ fontWeight: 600, cursor: 'pointer' }}>Enable Communications & Automations</label>
+                <label htmlFor="feat_comm" style={{ fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', color: '#0F2C59' }}>Enable Communications & Automations</label>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <button 
                   type="button" 
                   className={`btn ${confirmingDelete ? 'btn-primary' : 'btn-outline'}`} 
-                  style={{ color: confirmingDelete ? 'white' : 'var(--danger)', background: confirmingDelete ? 'var(--danger)' : 'transparent' }} 
+                  style={{ color: confirmingDelete ? 'white' : 'var(--danger)', background: confirmingDelete ? 'var(--danger)' : 'transparent', fontSize: '0.9rem', fontWeight: 700 }} 
                   onClick={() => deleteAccount(editingUser.id, editingUser.full_name)}
                 >
-                  {confirmingDelete ? 'Click to Confirm DELETE' : 'Delete Account'}
+                  {confirmingDelete ? 'Confirm Delete' : 'Delete Account'}
                 </button>
-                <button type="submit" className="btn btn-primary" disabled={isUpdating || confirmingDelete}>
+                <button type="submit" className="btn btn-primary" style={{ fontSize: '0.9rem', fontWeight: 700 }} disabled={isUpdating || confirmingDelete}>
                   {isUpdating ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
-              <button type="button" className="btn btn-link" style={{ width: '100%', marginTop: '1rem' }} onClick={() => setEditingUser(null)}>
+              <button type="button" className="btn btn-link" style={{ width: '100%', marginTop: '1rem', fontWeight: 600 }} onClick={() => {
+                setEditingUser(null);
+                setConfirmingDelete(false);
+              }}>
                 Cancel
               </button>
             </form>
           </div>
         </div>
       )}
-
-      {showUserForm && (
-        <div className="card" style={{ marginBottom: '2rem', animation: 'slideDown 0.3s ease-out' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem' }}>Create New {userFormData.role === 'tenant_admin' ? 'Tenant' : 'Staff'}</h2>
-            <button className="btn btn-outline" onClick={() => setShowUserForm(false)}>Cancel</button>
-          </div>
-          
-          {formError && <div style={{ color: 'var(--danger)', marginBottom: '1rem', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>{formError}</div>}
-
-          <form onSubmit={handleCreateUser} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <div className="form-group">
-              <label className="form-label">Full Name</label>
-              <input type="text" className="form-input" required value={userFormData.fullName} onChange={e => setUserFormData({...userFormData, fullName: e.target.value})} placeholder="e.g. Michael Smith" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Email Address</label>
-              <input type="email" className="form-input" required value={userFormData.email} onChange={e => setUserFormData({...userFormData, email: e.target.value})} placeholder="email@example.com" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Default Password</label>
-              <input type="password" minLength={6} className="form-input" required value={userFormData.password} onChange={e => setUserFormData({...userFormData, password: e.target.value})} placeholder="••••••••" />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Account Role</label>
-              <select className="form-select" value={userFormData.role} onChange={e => setUserFormData({...userFormData, role: e.target.value, tenantId: ''})}>
-                <option value="tenant_admin">Tenant (Property Owner)</option>
-                <option value="staff">Staff (Operational)</option>
-              </select>
-            </div>
-            
-            {userFormData.role === 'staff' && (
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label className="form-label">Assign to Tenant (Owner)</label>
-                <select className="form-select" required value={userFormData.tenantId} onChange={e => setUserFormData({...userFormData, tenantId: e.target.value})}>
-                  <option value="">-- Select Tenant --</option>
-                  {tenants.filter(t => t.role === 'tenant_admin').map(t => (
-                    <option key={t.id} value={t.id}>{t.full_name} ({t.id.split('-')[0]})</option>
-                  ))}
-                </select>
-              </div>
-            )}
-
-            <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px' }} disabled={loading}>
-                {loading ? 'Creating...' : `Create ${userFormData.role === 'tenant_admin' ? 'Tenant' : 'Staff'} Account`}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Tenants Table */}
-      <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h3>All Platform Accounts</h3>
-          <div style={{ position: 'relative' }}>
-            <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-            <input 
-              type="text" 
-              className="form-input" 
-              placeholder="Search users..." 
-              style={{ paddingLeft: '2.5rem', width: '300px' }} 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-        
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>User Details</th>
-                <th>Role & Ownership</th>
-                <th>Plan & Scale</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tenants.filter(t => 
-                t.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                t.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                t.role?.toLowerCase().includes(searchTerm.toLowerCase())
-              ).map(tenant => (
-                <tr key={tenant.id}>
-                  <td>
-                    <div style={{ fontWeight: 700, fontSize: '0.9rem' }}>{tenant.full_name}</div>
-                    <div style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600 }}>{tenant.email}</div>
-                    <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>{tenant.id}</small>
-                  </td>
-                  <td>
-                    <span style={{ 
-                      display: 'inline-flex', 
-                      alignItems: 'center', 
-                      gap: '0.4rem', 
-                      fontSize: '0.75rem', 
-                      fontWeight: '700',
-                      padding: '0.2rem 0.6rem',
-                      borderRadius: '12px',
-                      background: tenant.role === 'tenant_admin' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(107, 114, 128, 0.1)',
-                      color: tenant.role === 'tenant_admin' ? 'var(--primary)' : 'var(--text-muted)'
-                    }}>
-                      {tenant.role === 'tenant_admin' ? <Hotel size={14} /> : <Users size={14} />}
-                      {tenant.role === 'tenant_admin' ? 'TENANT' : 'STAFF'}
-                    </span>
-                    {tenant.role === 'staff' && (
-                      <div style={{ marginTop: '0.4rem', fontSize: '0.75rem' }}>
-                        Under: <strong>{tenant.ownerName}</strong>
-                      </div>
-                    )}
-                  </td>
-                  <td>
-                    {tenant.role === 'tenant_admin' ? (
-                      <>
-                        <span className={`badge ${tenant.plan_type === 'premium' ? 'badge-primary' : (tenant.plan_type === 'pro' ? 'badge-success' : 'badge-outline')}`}>
-                          {pricingConfig[tenant.plan_type]?.name?.toUpperCase() || tenant.plan_type?.toUpperCase() || 'FREE'}
-                        </span>
-                        <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          Props: <strong>{tenant.propertyCount}</strong> | Books: <strong>{tenant.bookingCount}</strong>
-                        </div>
-                      </>
-                    ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Operational</span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      gap: '0.4rem', 
-                      color: tenant.subscription_status === 'active' ? 'var(--success)' : 'var(--danger)', 
-                      fontSize: '0.85rem' 
-                    }}>
-                      {tenant.subscription_status === 'active' ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                      {tenant.subscription_status === 'active' ? 'Active' : 'Suspended'}
-                    </div>
-                  </td>
-                  <td>
-                    <button 
-                      className="btn btn-outline" 
-                      style={{ padding: '0.25rem 0.8rem', fontSize: '0.75rem' }} 
-                      onClick={() => {
-                        console.log("Manage button clicked. Setting editingUser to:", tenant);
-                        setEditingUser(tenant);
-                      }}
-                    >
-                      Manage
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
     </div>
   );
 }
