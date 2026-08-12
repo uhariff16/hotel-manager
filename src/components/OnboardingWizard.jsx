@@ -11,6 +11,38 @@ export default function OnboardingWizard() {
   const [error, setError] = useState(null);
   const [existingCottages, setExistingCottages] = useState([]);
 
+  // Step 1: Entity Details
+  const [entityForm, setEntityForm] = useState({
+    name: '',
+    owner_name: profile?.full_name || '',
+    phone: '',
+    email: session?.user?.email || '',
+    address: '',
+    currency: 'INR',
+    timezone: 'Asia/Kolkata'
+  });
+
+  // Step 2: Property Category
+  const [propertyForm, setPropertyForm] = useState({
+    name: '',
+    max_capacity: 2,
+    weekday_price: 1500,
+    weekend_price: 2000,
+    phone: '',
+    wifi_password: ''
+  });
+
+  // Step 3: Room Generation
+  const [roomGeneration, setRoomGeneration] = useState({
+    mode: 'auto', // 'auto' or 'manual'
+    startNumber: '101',
+    count: 3,
+    manualNames: '101, 102, 103',
+    capacity: 2,
+    weekday_price: 1500,
+    weekend_price: 2000
+  });
+
   useEffect(() => {
     setStep(1);
     if (resorts && resorts.length > 0) {
@@ -67,38 +99,6 @@ export default function OnboardingWizard() {
       }));
     }
   }, [step, propertyForm, existingCottages]);
-
-  // Step 1: Entity Details
-  const [entityForm, setEntityForm] = useState({
-    name: '',
-    owner_name: profile?.full_name || '',
-    phone: '',
-    email: session?.user?.email || '',
-    address: '',
-    currency: 'INR',
-    timezone: 'Asia/Kolkata'
-  });
-
-  // Step 2: Property Category
-  const [propertyForm, setPropertyForm] = useState({
-    name: '',
-    max_capacity: 2,
-    weekday_price: 1500,
-    weekend_price: 2000,
-    phone: '',
-    wifi_password: ''
-  });
-
-  // Step 3: Room Generation
-  const [roomGeneration, setRoomGeneration] = useState({
-    mode: 'auto', // 'auto' or 'manual'
-    startNumber: '101',
-    count: 3,
-    manualNames: '101, 102, 103',
-    capacity: 2,
-    weekday_price: 1500,
-    weekend_price: 2000
-  });
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
