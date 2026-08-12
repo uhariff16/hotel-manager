@@ -321,7 +321,7 @@ export default function Dashboard() {
                                 <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '6px' }}>Out: {format(new Date(b.check_out_date), 'MMM dd')}</div>
                             </div>
                             <div style={{ textAlign: 'right' }}>
-                                <div style={{ fontSize: '0.85rem', fontWeight: '900', color: b.balance_amount > 0 ? 'var(--danger)' : 'var(--success)' }}>₹{b.balance_amount.toLocaleString()}</div>
+                                <div style={{ fontSize: '0.85rem', fontWeight: '900', color: b.balance_amount > 0 ? 'var(--danger)' : 'var(--success)' }}>₹{(b.balance_amount || 0).toLocaleString()}</div>
                                 <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: '800', opacity: 0.6 }}>Balance</span>
                             </div>
                         </div>
@@ -357,7 +357,7 @@ export default function Dashboard() {
                             </div>
                         </div>
                         <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>₹{b.total_amount.toLocaleString()}</div>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 'bold' }}>₹{(b.total_amount || 0).toLocaleString()}</div>
                             <span style={{ fontSize: '0.6rem', textTransform: 'uppercase', fontWeight: '700', opacity: 0.6 }}>Total</span>
                         </div>
                     </div>
