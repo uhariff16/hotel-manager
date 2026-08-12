@@ -124,6 +124,7 @@ export default function OnboardingWizard() {
           max_capacity: Number(propertyForm.max_capacity),
           weekday_price: Number(propertyForm.weekday_price),
           weekend_price: Number(propertyForm.weekend_price),
+          seasonal_price: 0,
           status: 'Available',
           phone: propertyForm.phone,
           wifi_password: propertyForm.wifi_password,
@@ -161,6 +162,7 @@ export default function OnboardingWizard() {
             capacity: Number(activeCottage.max_capacity || propertyForm.max_capacity),
             weekday_price: Number(activeCottage.weekday_price || propertyForm.weekday_price),
             weekend_price: Number(activeCottage.weekend_price || propertyForm.weekend_price),
+            seasonal_price: 0,
             status: 'Available',
             tenant_id: session.user.id,
             resort_id: activeResort.id
@@ -181,6 +183,7 @@ export default function OnboardingWizard() {
           capacity: Number(activeCottage.max_capacity || propertyForm.max_capacity),
           weekday_price: Number(activeCottage.weekday_price || propertyForm.weekday_price),
           weekend_price: Number(activeCottage.weekend_price || propertyForm.weekend_price),
+          seasonal_price: 0,
           status: 'Available',
           tenant_id: session.user.id,
           resort_id: activeResort.id
