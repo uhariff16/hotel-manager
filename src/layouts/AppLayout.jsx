@@ -206,9 +206,21 @@ export default function AppLayout() {
             <button className="menu-toggle" onClick={() => setIsSidebarOpen(true)}>
               <Menu size={24} />
             </button>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-              <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800 }}>Stay Pilot</h2>
-              <span style={{ fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 700, fontFamily: "'Dancing Script', cursive", letterSpacing: '0.05em', marginTop: '-4px' }}>Know Your Bookings. Know Your Numbers.</span>
+            <div className="header-brand-wrap" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <style dangerouslySetInnerHTML={{__html: `
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+                
+                @media (max-width: 640px) {
+                  .header-brand-sep, .header-brand-tag {
+                    display: none !important;
+                  }
+                }
+              `}} />
+              <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800, color: '#0F2C59', fontFamily: "'Outfit', sans-serif" }}>Stay Pilot</h2>
+              <span className="header-brand-sep" style={{ color: '#cbd5e1', fontWeight: 300 }}>|</span>
+              <span className="header-brand-tag" style={{ fontSize: '0.9rem', color: '#059669', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '0.02em', marginTop: '2px' }}>
+                Know Your Bookings. Know Your Numbers.
+              </span>
             </div>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
