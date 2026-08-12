@@ -124,7 +124,7 @@ export default function OnboardingWizard() {
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (step < 3) {
       handleNextStep();
       return;
@@ -238,9 +238,9 @@ export default function OnboardingWizard() {
           roomsToInsert.push({
             cottage_id: activeCottage.id,
             name: String(start + i),
-            capacity: Number(activeCottage.max_capacity || propertyForm.max_capacity),
-            weekday_price: Number(activeCottage.weekday_price || propertyForm.weekday_price),
-            weekend_price: Number(activeCottage.weekend_price || propertyForm.weekend_price),
+            capacity: Number(roomGeneration.capacity),
+            weekday_price: Number(roomGeneration.weekday_price),
+            weekend_price: Number(roomGeneration.weekend_price),
             seasonal_price: 0,
             status: 'Available',
             tenant_id: session.user.id,
@@ -259,9 +259,9 @@ export default function OnboardingWizard() {
         roomsToInsert = names.map(name => ({
           cottage_id: activeCottage.id,
           name: name,
-          capacity: Number(activeCottage.max_capacity || propertyForm.max_capacity),
-          weekday_price: Number(activeCottage.weekday_price || propertyForm.weekday_price),
-          weekend_price: Number(activeCottage.weekend_price || propertyForm.weekend_price),
+          capacity: Number(roomGeneration.capacity),
+          weekday_price: Number(roomGeneration.weekday_price),
+          weekend_price: Number(roomGeneration.weekend_price),
           seasonal_price: 0,
           status: 'Available',
           tenant_id: session.user.id,
@@ -362,7 +362,7 @@ export default function OnboardingWizard() {
             <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Please don't close this window, we are preparing your property dashboard.</p>
           </div>
         ) : (
-          <form onSubmit={handleSubmit}>
+          <div style={{ width: '100%' }}>
             {/* Step Stepper Indicator */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', position: 'relative' }}>
               <div style={{
@@ -777,7 +777,8 @@ export default function OnboardingWizard() {
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={handleSubmit}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -798,7 +799,7 @@ export default function OnboardingWizard() {
                 </button>
               )}
             </div>
-          </form>
+          </div>
         )}
       </div>
 
