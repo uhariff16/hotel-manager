@@ -145,12 +145,9 @@ export default function Home() {
         zIndex: 50,
         boxShadow: '0 4px 30px rgba(0, 0, 0, 0.02)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '32px', width: 'auto', marginRight: '0.5rem' }} />
-          <span style={{ fontSize: '1.35rem', fontWeight: 800, letterSpacing: '0.05em', color: '#0F2C59', fontFamily: "'Outfit', sans-serif" }}>
-            STAY PILOT
-          </span>
-        </div>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+          <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '36px', width: 'auto', display: 'block' }} />
+        </Link>
         
         {/* Desktop Navigation (Center) */}
         <nav style={{ gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="d-md-flex">

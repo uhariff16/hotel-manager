@@ -49,10 +49,19 @@ export default function Pricing() {
   const plans = getPlansToDisplay();
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", color: '#172033', background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 50%, #f8fafc 100%)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ 
+      fontFamily: "'Outfit', 'Inter', system-ui, sans-serif", 
+      color: '#475569', 
+      background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 35%, #eef2ff 70%, #faf5ff 100%)', 
+      minHeight: '100vh', 
+      display: 'flex', 
+      flexDirection: 'column' 
+    }}>
       
       <style>
         {`
+          @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+          
           @keyframes flash {
             0% { opacity: 1; transform: scale(1); }
             50% { opacity: 0.5; transform: scale(1.05); }
@@ -73,47 +82,51 @@ export default function Pricing() {
       {/* HEADER */}
       <header style={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-        padding: '1rem 2rem', background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.3)', position: 'sticky', top: isPreview ? '44px' : '0', zIndex: 100 
+        padding: '1.25rem 2rem', background: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.4)', position: 'sticky', top: isPreview ? '44px' : '0', zIndex: 100,
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.02)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-            <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.05em', color: '#123B6D' }}>
-              STAY PILOT
-            </span>
-          </Link>
-        </div>
+        <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+          <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '36px', width: 'auto', display: 'block' }} />
+        </Link>
         
-        <nav style={{ display: 'flex', gap: '2rem', fontWeight: 600, color: '#64748B' }}>
+        <nav style={{ display: 'flex', gap: '2.5rem', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
           <a href="/#features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</a>
           <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</Link>
-          <Link to="/pricing" style={{ color: '#0A9F72', textDecoration: 'none' }}>Pricing</Link>
+          <Link to="/pricing" style={{ color: '#059669', textDecoration: 'none' }}>Pricing</Link>
         </nav>
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link to="/auth" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#123B6D', textDecoration: 'none' }}>Sign In</Link>
+          <Link to="/auth" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#0F2C59', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sign In</Link>
           <Link to="/auth?mode=signup" style={{ 
-            padding: '0.6rem 1.2rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
-            color: 'white', borderRadius: '8px', fontWeight: 600, textDecoration: 'none' 
+            padding: '0.65rem 1.6rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
+            color: 'white', borderRadius: '8px', fontWeight: 700, textDecoration: 'none',
+            boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)', fontFamily: "'Plus Jakarta Sans', sans-serif"
           }}>Get Started Free</Link>
         </div>
       </header>
 
+      {/* Background ambient blobs */}
+      <div style={{ position: 'relative' }}>
+        <div style={{ position: 'absolute', top: '100px', left: '10%', width: '350px', height: '350px', background: 'rgba(5, 150, 105, 0.1)', filter: 'blur(90px)', borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }}></div>
+        <div style={{ position: 'absolute', top: '300px', right: '10%', width: '400px', height: '400px', background: 'rgba(56, 189, 248, 0.1)', filter: 'blur(90px)', borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }}></div>
+      </div>
+
       {/* MAIN CONTENT */}
-      <main style={{ flex: 1, padding: '5rem 2rem 8rem', textAlign: 'center', position: 'relative' }}>
+      <main style={{ flex: 1, padding: '5rem 2rem 8rem', textAlign: 'center', position: 'relative', zIndex: 1 }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', marginBottom: '4rem' }}>
-          <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', fontWeight: 800, color: '#123B6D', lineHeight: 1.1, marginBottom: '1.5rem' }}>
+          <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 3.8rem)', fontWeight: 800, color: '#0F2C59', lineHeight: 1.15, marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.025em' }}>
             Simple Pricing. No Complications.
           </h1>
-          <p style={{ fontSize: '1.25rem', color: '#334155', lineHeight: 1.6 }}>
+          <p style={{ fontSize: '1.25rem', color: '#475569', lineHeight: 1.6, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Choose a plan that fits your property and manage your bookings, income and expenses with confidence.
           </p>
         </div>
 
         {plans.length === 0 ? (
-          <div style={{ padding: '4rem', background: 'rgba(255,255,255,0.5)', borderRadius: '16px' }}>
-            <p style={{ fontSize: '1.2rem', color: '#64748B' }}>Pricing information is currently being updated.</p>
+          <div style={{ padding: '4rem', background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(10px)', borderRadius: '16px', border: '1px solid rgba(255,255,255,0.4)', maxWidth: '600px', margin: '0 auto' }}>
+            <p style={{ fontSize: '1.2rem', color: '#64748B', fontWeight: 600 }}>Pricing information is currently being updated.</p>
           </div>
         ) : (
           <div style={{ 
@@ -135,35 +148,37 @@ export default function Pricing() {
                 <div key={plan.key} style={{ 
                   flex: '1 1 300px',
                   maxWidth: '380px',
-                  background: plan.highlightPlan ? '#123B6D' : 'rgba(255, 255, 255, 0.9)', 
+                  background: plan.highlightPlan ? 'linear-gradient(135deg, #0F2C59 0%, #173b75 100%)' : 'rgba(255, 255, 255, 0.75)', 
                   backdropFilter: 'blur(10px)',
                   borderRadius: '24px', 
                   padding: '2.5rem 2rem', 
-                  border: plan.highlightPlan ? 'none' : '1px solid rgba(255, 255, 255, 0.5)', 
-                  boxShadow: plan.highlightPlan ? '0 20px 40px rgba(18, 59, 109, 0.2)' : '0 10px 30px rgba(0,0,0,0.02)',
+                  border: plan.highlightPlan ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(255, 255, 255, 0.4)', 
+                  boxShadow: plan.highlightPlan ? '0 20px 45px rgba(15, 44, 89, 0.18)' : '0 10px 30px rgba(15, 44, 89, 0.02)',
                   display: 'flex',
                   flexDirection: 'column',
                   position: 'relative',
-                  transform: plan.highlightPlan ? 'scale(1.05)' : 'none',
-                  zIndex: plan.highlightPlan ? 2 : 1
+                  transform: plan.highlightPlan ? 'scale(1.03)' : 'none',
+                  zIndex: plan.highlightPlan ? 2 : 1,
+                  transition: 'transform 0.3s ease'
                 }}>
                   
                   {plan.pricingLabel && (
                     <div style={{ 
                       position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
-                      background: plan.highlightPlan ? '#0A9F72' : '#123B6D', color: 'white',
-                      padding: '0.4rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.05em'
+                      background: plan.highlightPlan ? '#059669' : '#0F2C59', color: 'white',
+                      padding: '0.4rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.05em',
+                      boxShadow: '0 4px 10px rgba(0,0,0,0.1)'
                     }}>
                       {plan.pricingLabel.toUpperCase()}
                     </div>
                   )}
 
                   <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: plan.highlightPlan ? 'white' : '#123B6D', margin: '0 0 0.5rem 0' }}>
+                    <h3 style={{ fontSize: '1.5rem', fontWeight: 800, color: plan.highlightPlan ? 'white' : '#0F2C59', margin: '0 0 0.5rem 0', fontFamily: "'Outfit', sans-serif" }}>
                       {plan.displayPlanName}
                     </h3>
                     {plan.shortDescription && (
-                      <p style={{ color: plan.highlightPlan ? '#cbd5e1' : '#64748B', fontSize: '0.95rem', margin: 0 }}>
+                      <p style={{ color: plan.highlightPlan ? '#cbd5e1' : '#64748B', fontSize: '0.95rem', margin: 0, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 500 }}>
                         {plan.shortDescription}
                       </p>
                     )}
@@ -201,28 +216,29 @@ export default function Pricing() {
                       <span style={{ 
                         fontSize: '3.5rem', 
                         fontWeight: 900, 
-                        color: plan.highlightPlan ? 'white' : '#123B6D', 
+                        color: plan.highlightPlan ? 'white' : '#0F2C59', 
                         lineHeight: 1,
                         letterSpacing: '-0.02em',
-                        textShadow: plan.highlightPlan ? '0 2px 10px rgba(0,0,0,0.1)' : 'none'
+                        textShadow: plan.highlightPlan ? '0 2px 10px rgba(0,0,0,0.1)' : 'none',
+                        fontFamily: "'Outfit', sans-serif"
                       }}>
                         ₹{currentPrice}
                       </span>
-                      <span style={{ color: plan.highlightPlan ? '#cbd5e1' : '#64748B', fontWeight: 600, fontSize: '1.1rem' }}>/mo</span>
+                      <span style={{ color: plan.highlightPlan ? '#cbd5e1' : '#64748B', fontWeight: 600, fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>/mo</span>
                     </div>
 
                     {/* SAVE % BADGE */}
                     {promoActive && offerText && (
                       <div className="flash-animation" style={{ 
                         marginTop: '1rem', 
-                        color: plan.highlightPlan ? '#065f46' : '#047857', 
-                        fontWeight: 900, 
-                        fontSize: '1.1rem',
+                        color: 'white', 
+                        fontWeight: 800, 
+                        fontSize: '0.95rem',
                         display: 'inline-block',
                         padding: '0.4rem 1rem',
-                        background: plan.highlightPlan ? '#34d399' : '#10b981',
+                        background: '#059669',
                         borderRadius: '20px',
-                        boxShadow: '0 4px 10px rgba(16, 185, 129, 0.2)',
+                        boxShadow: '0 4px 10px rgba(5, 150, 105, 0.25)',
                         textTransform: 'uppercase',
                         letterSpacing: '0.05em'
                       }}>
@@ -246,8 +262,8 @@ export default function Pricing() {
                   <div style={{ flex: 1, marginBottom: '2.5rem' }}>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
                       {plan.publicFeatures?.map((feat, idx) => (
-                        <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', color: plan.highlightPlan ? '#f1f5f9' : '#334155', fontSize: '0.95rem' }}>
-                          <Check size={18} color={plan.highlightPlan ? '#10b981' : '#0A9F72'} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', color: plan.highlightPlan ? '#f1f5f9' : '#334155', fontSize: '0.95rem', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 500 }}>
+                          <Check size={18} color={plan.highlightPlan ? '#10b981' : '#059669'} style={{ flexShrink: 0, marginTop: '2px' }} />
                           <span>{feat}</span>
                         </li>
                       ))}
@@ -259,10 +275,12 @@ export default function Pricing() {
                     style={{ 
                       display: 'block', width: '100%', padding: '1rem', textAlign: 'center', borderRadius: '12px',
                       background: plan.highlightPlan ? 'white' : 'transparent',
-                      color: plan.highlightPlan ? '#123B6D' : '#0A9F72',
-                      border: plan.highlightPlan ? 'none' : '2px solid #0A9F72',
+                      color: plan.highlightPlan ? '#0F2C59' : '#059669',
+                      border: plan.highlightPlan ? 'none' : '2px solid #059669',
                       fontWeight: 700, textDecoration: 'none', fontSize: '1.05rem',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.2s',
+                      fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      boxShadow: plan.highlightPlan ? '0 4px 15px rgba(0,0,0,0.1)' : 'none'
                     }}
                   >
                     {plan.ctaButtonText || 'Choose Plan'}
@@ -275,25 +293,34 @@ export default function Pricing() {
       </main>
 
       {/* FOOTER */}
-      <footer style={{ padding: '4rem 2rem 2rem', background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)', borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', justifyContent: 'space-between', marginBottom: '3rem' }}>
+      <footer style={{ 
+        padding: '4rem 2rem 2rem', 
+        borderTop: '1px solid rgba(255,255,255,0.4)',
+        background: 'rgba(255, 255, 255, 0.7)',
+        backdropFilter: 'blur(10px)',
+        color: '#64748b',
+        fontSize: '0.95rem',
+        fontFamily: "'Plus Jakarta Sans', sans-serif"
+      }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', justifyContent: 'space-between', marginBottom: '3rem', alignItems: 'center' }}>
           <div>
-            <div style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.05em', color: '#123B6D', marginBottom: '1rem' }}>
-              STAY PILOT
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+              <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '24px', width: 'auto', marginRight: '0.5rem' }} />
+              <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F2C59', letterSpacing: '0.05em' }}>STAY PILOT</span>
             </div>
-            <p style={{ color: '#0A9F72', fontWeight: 600, marginBottom: '0.25rem' }}>Know Your Bookings. Know Your Numbers.</p>
+            <p style={{ color: '#059669', fontWeight: 600, marginBottom: '0.25rem' }}>Know Your Bookings. Know Your Numbers.</p>
             <p style={{ color: '#64748B', margin: 0 }}>Bookings. Income. Expenses. Simplified.</p>
           </div>
           
           <div style={{ display: 'flex', gap: '3rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontWeight: 600 }}>
               <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
               <a href="/#features" style={{ color: '#64748B', textDecoration: 'none' }}>Features</a>
               <Link to="/how-it-works" style={{ color: '#64748B', textDecoration: 'none' }}>How It Works</Link>
               <Link to="/pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</Link>
               <Link to="/auth" style={{ color: '#64748B', textDecoration: 'none' }}>Sign In</Link>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontWeight: 600 }}>
               <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy Policy</a>
               <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Terms of Service</a>
             </div>
