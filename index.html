@@ -5,6 +5,47 @@
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Hotel Manager</title>
+    <script>
+      window.onerror = function(message, source, lineno, colno, error) {
+        var div = document.createElement('div');
+        div.style.position = 'fixed';
+        div.style.top = '0';
+        div.style.left = '0';
+        div.style.width = '100%';
+        div.style.background = '#fee2e2';
+        div.style.color = '#991b1b';
+        div.style.padding = '1.5rem';
+        div.style.borderBottom = '2px solid #f87171';
+        div.style.fontFamily = 'monospace';
+        div.style.zIndex = '999999';
+        div.style.whiteSpace = 'pre-wrap';
+        div.style.boxSizing = 'border-box';
+        div.innerHTML = '<h3>Uncaught Runtime Error:</h3>' + 
+                        '<p><strong>Message:</strong> ' + message + '</p>' +
+                        '<p><strong>Source:</strong> ' + source + ' (Line ' + lineno + ', Col ' + colno + ')</p>' +
+                        '<p><strong>Stack:</strong> ' + (error && error.stack ? error.stack : 'N/A') + '</p>';
+        document.body.appendChild(div);
+        return false;
+      };
+      window.onunhandledrejection = function(event) {
+        var div = document.createElement('div');
+        div.style.position = 'fixed';
+        div.style.top = '0';
+        div.style.left = '0';
+        div.style.width = '100%';
+        div.style.background = '#ffedd5';
+        div.style.color = '#9a3412';
+        div.style.padding = '1.5rem';
+        div.style.borderBottom = '2px solid #fb923c';
+        div.style.fontFamily = 'monospace';
+        div.style.zIndex = '999999';
+        div.style.whiteSpace = 'pre-wrap';
+        div.style.boxSizing = 'border-box';
+        div.innerHTML = '<h3>Unhandled Promise Rejection:</h3>' + 
+                        '<p><strong>Reason:</strong> ' + event.reason + '</p>';
+        document.body.appendChild(div);
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>
