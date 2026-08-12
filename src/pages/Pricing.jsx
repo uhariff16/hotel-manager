@@ -92,7 +92,7 @@ export default function Pricing() {
         
         <nav style={{ display: 'flex', gap: '2.5rem', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
-          <a href="/#features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</a>
+          <Link to="/#features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</Link>
           <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</Link>
           <Link to="/pricing" style={{ color: '#059669', textDecoration: 'none' }}>Pricing</Link>
         </nav>

@@ -267,7 +267,7 @@ export default function HowItWorks() {
         
         <nav className="desktop-links" style={{ gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
-          <a href="/#features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</a>
+          <Link to="/#features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</Link>
           <Link to="/how-it-works" style={{ color: '#059669', textDecoration: 'none' }}>How It Works</Link>
           <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
         </nav>
