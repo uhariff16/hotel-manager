@@ -11,6 +11,15 @@ export default function AppLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const location = useLocation();
 
+  const isManagementActive = ['/resorts', '/setup', '/staff'].includes(location.pathname);
+  const [isManagementOpen, setIsManagementOpen] = React.useState(isManagementActive);
+
+  React.useEffect(() => {
+    if (isManagementActive) {
+      setIsManagementOpen(true);
+    }
+  }, [location.pathname]);
+
   const activeResort = (resorts || []).find(r => r.id === activeResortId) || null;
 
   const isStaff = profile?.role === 'staff';
@@ -27,15 +36,6 @@ export default function AppLayout() {
   }
 
   let navLinks = [];
-
-  const isManagementActive = ['/resorts', '/setup', '/staff'].includes(location.pathname);
-  const [isManagementOpen, setIsManagementOpen] = React.useState(isManagementActive);
-
-  React.useEffect(() => {
-    if (isManagementActive) {
-      setIsManagementOpen(true);
-    }
-  }, [location.pathname]);
 
   if (isStaff) {
     // Staff only see Bookings, Calendar, and Settings
