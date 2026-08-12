@@ -293,32 +293,58 @@ export default function Home() {
               zIndex: 0
             }}></div>
 
-            {/* Central glass panel displaying Stay Pilot logo */}
+            {/* Central mockup window displaying Stay Pilot full logo */}
             <div style={{ 
-              width: '320px', 
-              height: '320px', 
-              borderRadius: '50%', 
+              width: '360px', 
               background: 'rgba(255, 255, 255, 0.75)', 
               backdropFilter: 'blur(20px)',
               border: '1px solid rgba(255, 255, 255, 0.6)', 
-              boxShadow: '0 20px 50px rgba(15, 44, 89, 0.08)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+              borderRadius: '20px',
+              boxShadow: '0 25px 50px rgba(15, 44, 89, 0.08)',
               zIndex: 1,
               animation: 'float 6s ease-in-out infinite, pulse-glow 6s infinite',
-              padding: '2rem'
+              overflow: 'hidden'
             }}>
-              <img 
-                src="/stay-pilot-logo.png" 
-                alt="Stay Pilot Logo Logo" 
-                style={{ 
-                  width: '85%', 
-                  height: 'auto',
-                  objectFit: 'contain',
-                  display: 'block'
-                }} 
-              />
+              {/* Mock Browser Header Bar */}
+              <div style={{ 
+                background: 'rgba(241, 245, 249, 0.8)', 
+                borderBottom: '1px solid rgba(226, 232, 240, 0.8)',
+                padding: '0.75rem 1rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.4rem' 
+              }}>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ff5f56' }}></div>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ffbd2e' }}></div>
+                <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#27c93f' }}></div>
+                <div style={{ 
+                  margin: '0 auto', 
+                  background: 'white', 
+                  borderRadius: '6px', 
+                  padding: '0.15rem 2rem', 
+                  fontSize: '0.65rem', 
+                  color: '#64748b', 
+                  fontWeight: 600,
+                  border: '1px solid #e2e8f0',
+                  letterSpacing: '0.02em'
+                }}>
+                  staypilot.co.in
+                </div>
+              </div>
+              {/* Logo Frame */}
+              <div style={{ padding: '1.25rem', display: 'flex', justifyContent: 'center', alignItems: 'center', background: 'white' }}>
+                <img 
+                  src="/stay-pilot-logo-full.jpg" 
+                  alt="Stay Pilot Full Logo" 
+                  style={{ 
+                    width: '100%', 
+                    height: 'auto',
+                    objectFit: 'contain',
+                    display: 'block',
+                    borderRadius: '8px'
+                  }} 
+                />
+              </div>
             </div>
 
             {/* Floating Card 1: Mock Reservation (Top-Left) */}
