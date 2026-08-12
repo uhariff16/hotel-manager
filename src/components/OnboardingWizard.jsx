@@ -204,15 +204,11 @@ export default function OnboardingWizard() {
         throw new Error("Failed to create initial rooms: " + roomsError.message);
       }
 
-      setStatusMessage("Finalizing setup...");
+      setStatusMessage("Setup complete! Redirecting to your dashboard...");
       
-      // Update global store state
-      setResorts([activeResort]);
-      setActiveResortId(activeResort.id);
-
       setTimeout(() => {
         window.location.reload();
-      }, 500);
+      }, 1000);
 
     } catch (err) {
       setError(err.message);
