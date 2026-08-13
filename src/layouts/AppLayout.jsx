@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import OnboardingWizard from '../components/OnboardingWizard';
 
 export default function AppLayout() {
-  const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout } = useSettingsStore();
+  const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled } = useSettingsStore();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const location = useLocation();
 
@@ -30,7 +30,7 @@ export default function AppLayout() {
   const isAdmin = profile?.role === 'tenant_admin';
   const isSuper = profile?.role === 'super_admin';
 
-  const needsOnboarding = profile?.role === 'tenant_admin' && (
+  const needsOnboarding = onboardingWizardEnabled !== false && profile?.role === 'tenant_admin' && (
     !resorts || resorts.length === 0 || 
     (resorts.length === 1 && resorts[0] && (resorts[0].cottagesCount === 0 || resorts[0].roomsCount === 0))
   );

@@ -10,6 +10,7 @@ export default function OnboardingWizard() {
   const [statusMessage, setStatusMessage] = useState('');
   const [error, setError] = useState(null);
   const [existingCottages, setExistingCottages] = useState([]);
+  const [startedOnboarding, setStartedOnboarding] = useState(false);
 
   // Step 1: Entity Details
   const [entityForm, setEntityForm] = useState({
@@ -360,6 +361,92 @@ export default function OnboardingWizard() {
             <Loader2 className="animate-spin" size={48} color="#10b981" />
             <h3 style={{ fontSize: '1.25rem', fontWeight: 700, fontFamily: "'Outfit', sans-serif" }}>{statusMessage}</h3>
             <p style={{ color: '#94a3b8', fontSize: '0.9rem' }}>Please don't close this window, we are preparing your property dashboard.</p>
+          </div>
+        ) : !startedOnboarding ? (
+          <div style={{ animation: 'fadeIn 0.25s ease-out', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '1.5rem', padding: '1rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '0.5rem' }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+                <Building size={32} color="#10b981" />
+              </div>
+              <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: '#f8fafc', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Welcome to Stay Pilot!</h1>
+              <p style={{ color: '#94a3b8', fontSize: '0.95rem' }}>Let's set up your property platform so you can manage bookings and tracking numbers.</p>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'rgba(255, 255, 255, 0.03)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(255, 255, 255, 0.05)', marginBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#e2e8f0', margin: '0 0 0.5rem 0' }}>The Setup Process:</h3>
+              
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>1</div>
+                <div>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>Business Profile Setup</h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>Fill in your property name, owner identity, timezone, and base currency.</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>2</div>
+                <div>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>Create Property Class</h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>Define your primary room type/category (e.g. Deluxe Suite) with weekday & weekend pricing.</p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#6d28d9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'white' }}>3</div>
+                <div>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: '#f8fafc' }}>Add Initial Rooms</h4>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: '#94a3b8' }}>Specify individual room numbers (auto-generated or manually typed) to populate your booking inventory.</p>
+                </div>
+              </div>
+            </div>
+
+            <p style={{ fontSize: '0.8rem', color: '#64748b', textAlign: 'center', margin: '0 0 0.5rem 0' }}>
+              ⏱️ Total setup time is less than 2 minutes. All configurations can be modified later.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setStartedOnboarding(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                background: '#10b981',
+                border: 'none',
+                padding: '0.9rem 2rem',
+                borderRadius: '10px',
+                color: 'white',
+                cursor: 'pointer',
+                fontWeight: 700,
+                fontSize: '1rem',
+                boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.2s',
+                width: '100%'
+              }}
+            >
+              Let's Get Started <ChevronRight size={18} />
+            </button>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              style={{
+                background: 'transparent',
+                border: '1px solid rgba(255,255,255,0.1)',
+                padding: '0.6rem 1.5rem',
+                borderRadius: '10px',
+                color: '#94a3b8',
+                cursor: 'pointer',
+                fontWeight: 600,
+                fontSize: '0.85rem',
+                transition: 'all 0.2s',
+                alignSelf: 'center',
+                marginTop: '0.5rem'
+              }}
+            >
+              Exit & Logout
+            </button>
           </div>
         ) : (
           <div style={{ width: '100%' }}>

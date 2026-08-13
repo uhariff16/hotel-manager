@@ -20,6 +20,7 @@ export const useSettingsStore = create(
       globalPlans: null,
       landingPageContent: null,
       websitePricing: null,
+      onboardingWizardEnabled: true,
       
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
@@ -32,7 +33,8 @@ export const useSettingsStore = create(
       setGlobalPlans: (globalPlans) => set({ globalPlans }),
       setLandingPageContent: (landingPageContent) => set({ landingPageContent }),
       setWebsitePricing: (websitePricing) => set({ websitePricing }),
-      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false, globalPlans: null, landingPageContent: null, websitePricing: null })
+      setOnboardingWizardEnabled: (enabled) => set({ onboardingWizardEnabled: enabled }),
+      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false, globalPlans: null, landingPageContent: null, websitePricing: null, onboardingWizardEnabled: true })
     }),
     {
       name: 'hotel-manager-settings',

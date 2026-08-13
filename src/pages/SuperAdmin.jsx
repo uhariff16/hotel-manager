@@ -98,6 +98,7 @@ export default function SuperAdmin() {
   
   const [globalCommEnabled, setGlobalCommEnabled] = useState(true);
   const [globalTemplatesEnabled, setGlobalTemplatesEnabled] = useState(true);
+  const [globalOnboardingWizardEnabled, setGlobalOnboardingWizardEnabled] = useState(true);
   
   const DEFAULT_LANDING_CONTENT = {
     headline: "Know Your Bookings. Know Your Numbers.",
@@ -190,6 +191,7 @@ export default function SuperAdmin() {
       if (superAdminProfile?.global_settings) {
         setGlobalCommEnabled(superAdminProfile.global_settings.comm_features_enabled !== false);
         setGlobalTemplatesEnabled(superAdminProfile.global_settings.templates_enabled !== false);
+        setGlobalOnboardingWizardEnabled(superAdminProfile.global_settings.onboarding_wizard_enabled !== false);
         if (superAdminProfile.global_settings.landing_page) {
           setLandingContent({
             ...DEFAULT_LANDING_CONTENT,
@@ -442,6 +444,7 @@ export default function SuperAdmin() {
       const settings = profile.global_settings || {};
       settings.comm_features_enabled = globalCommEnabled;
       settings.templates_enabled = globalTemplatesEnabled;
+      settings.onboarding_wizard_enabled = globalOnboardingWizardEnabled;
       
       const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
       if (error) throw error;
@@ -1080,6 +1083,19 @@ export default function SuperAdmin() {
                 />
                 <label htmlFor="global_templates" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer', fontSize: '0.9rem' }}>
                   {"Enable Settings -> Template Management Globally"}
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#f8fafc', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <input 
+                  type="checkbox" 
+                  id="global_onboarding" 
+                  checked={globalOnboardingWizardEnabled} 
+                  onChange={e => setGlobalOnboardingWizardEnabled(e.target.checked)} 
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <label htmlFor="global_onboarding" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  {"Enable Onboarding Wizard for New Tenants"}
                 </label>
               </div>
             </div>

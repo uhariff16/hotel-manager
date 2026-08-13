@@ -23,7 +23,7 @@ const Home = React.lazy(() => import('./pages/Home'));
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
 function App() {
-  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing } = useSettingsStore();
+  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setOnboardingWizardEnabled } = useSettingsStore();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -61,6 +61,9 @@ function App() {
         }
         if (settings.website_pricing) {
           setWebsitePricing(settings.website_pricing);
+        }
+        if (settings.onboarding_wizard_enabled !== undefined) {
+          setOnboardingWizardEnabled(settings.onboarding_wizard_enabled !== false);
         }
       }
     } catch (err) {
