@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import OnboardingWizard from '../components/OnboardingWizard';
 
 export default function AppLayout() {
-  const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled } = useSettingsStore();
+  const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled, isDataLoaded } = useSettingsStore();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const location = useLocation();
 
@@ -34,6 +34,15 @@ export default function AppLayout() {
     !resorts || resorts.length === 0 || 
     (resorts.length === 1 && resorts[0] && (resorts[0].cottagesCount === 0 || resorts[0].roomsCount === 0))
   );
+
+  if (!isDataLoaded) {
+    return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+      <style>{`
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+      `}</style>
+    </div>;
+  }
 
   if (needsOnboarding) {
     return <OnboardingWizard />;

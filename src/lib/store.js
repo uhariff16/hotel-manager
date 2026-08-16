@@ -21,8 +21,10 @@ export const useSettingsStore = create(
       landingPageContent: null,
       websitePricing: null,
       onboardingWizardEnabled: true,
+      isDataLoaded: false,
       
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
+      setIsDataLoaded: (loaded) => set({ isDataLoaded: loaded }),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
       
       setSession: (session) => set({ session }),

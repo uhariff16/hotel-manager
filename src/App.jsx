@@ -23,7 +23,7 @@ const Home = React.lazy(() => import('./pages/Home'));
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
 function App() {
-  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setOnboardingWizardEnabled } = useSettingsStore();
+  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setOnboardingWizardEnabled, setIsDataLoaded } = useSettingsStore();
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -31,6 +31,7 @@ function App() {
 
   useEffect(() => {
     // Auth Listener
+    setIsDataLoaded(false);
     supabase.auth.getSession().then(({ data: { session } }) => {
       handleAuthChange(session);
     });
@@ -39,7 +40,10 @@ function App() {
       if (event === 'PASSWORD_RECOVERY' || window.location.hash.includes('type=recovery')) {
         setIsRecovering(true);
       }
-      handleAuthChange(session);
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
+        setIsDataLoaded(false);
+        handleAuthChange(session);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -111,7 +115,10 @@ function App() {
       setResorts([]);
       setActiveResortId(null);
       setIsRecovering(false);
+      setSession(null);
     }
+    
+    setIsDataLoaded(true);
   };
 
   if (session && profile?.subscription_status === 'suspended') {

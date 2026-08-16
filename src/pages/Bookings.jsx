@@ -274,11 +274,11 @@ export default function Bookings() {
       .replace(/{wifi_password}/g, wifiPasswordVal)
       .replace(/{agent_name}/g, (() => {
         const { isAgent, name } = parseAgentSource(booking.booking_source);
-        return isAgent ? name : 'N/A';
+        return isAgent ? name : (booking.booking_source || 'Direct');
       })())
       .replace(/{agent_phone}/g, (() => {
         const { isAgent, phone } = parseAgentSource(booking.booking_source);
-        return isAgent && phone ? phone : 'N/A';
+        return isAgent && phone ? phone : '';
       })())
       .replace(/{booking_source}/g, (() => {
         const { isAgent, name, phone } = parseAgentSource(booking.booking_source);
@@ -633,6 +633,10 @@ export default function Bookings() {
 
   return (
     <div className="container" style={{ padding: isMobile ? '1rem' : '2rem' }}>
+      {/* <div style={{ background: 'red', color: 'white', padding: '20px', fontSize: '14px', marginBottom: '20px' }}>
+        <h3>DEBUG: BK-260708-9140</h3>
+        <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(bookings.find(x => x.reference_number === 'BK-260708-9140'), null, 2)}</pre>
+      </div> */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '1.5rem' : '2rem' }}>
         <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 800 }}>Bookings</h1>
         <button className="btn btn-primary" onClick={() => navigate('/bookings/new')} style={{ padding: isMobile ? '0.6rem 1rem' : '0.8rem 1.6rem', borderRadius: 'var(--radius-md)', fontWeight: 700 }}>
