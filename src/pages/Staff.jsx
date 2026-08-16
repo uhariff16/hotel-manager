@@ -12,7 +12,7 @@ const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export default function Staff() {
-  const { profile, globalPlans } = useSettingsStore();
+  const { profile, session, activeResortId, globalPlans } = useSettingsStore();
   const [staff, setStaff] = useState([]);
   const [cottages, setCottages] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -100,6 +100,18 @@ export default function Staff() {
         if (error) throw error;
         alert("Staff updated successfully!");
       } else {
+        // Plan Gate Check
+        const currentPlanId = profile?.plan_type || 'free';
+        const planConfig = globalPlans?.[currentPlanId] || { maxStaff: 1, name: 'Free Starter' };
+        const staffLimit = planConfig.maxStaff || 1;
+        const planName = planConfig.name || currentPlanId.toUpperCase();
+
+        if (staff.length >= staffLimit) {
+          alert(`Limit Reached: Your current ${planName} plan allows only ${staffLimit} staff accounts. Please upgrade on our website for more.`);
+          setLoading(false);
+          return;
+        }
+
         // 1. Sign up the new user using the secondary client
         const syntheticEmail = `${formData.username.trim()}@staff.local`;
         const { data, error: authError } = await secondarySupabase.auth.signUp({

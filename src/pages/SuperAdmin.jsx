@@ -381,6 +381,9 @@ export default function SuperAdmin() {
           offerStartDate: internal.offerStartDate || '',
           offerEndDate: internal.offerEndDate || '',
           offerActive: internal.offerActive || false,
+          publicFeatures: internal.features 
+            ? internal.features.filter(f => f.enabled !== false).map(f => f.name)
+            : websitePricingConfig.draft[key].publicFeatures,
         };
       });
 

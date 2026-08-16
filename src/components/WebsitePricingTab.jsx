@@ -208,23 +208,9 @@ export default function WebsitePricingTab({
 // Sub-component for editing a specific plan
 function WebsitePlanEditor({ planKey, planData, internalPlan, onSave, onCancel }) {
   const [data, setData] = useState({ ...planData });
-  const [newFeature, setNewFeature] = useState('');
 
   const handleSave = () => {
     onSave(data);
-  };
-
-  const addFeature = () => {
-    if (newFeature.trim()) {
-      setData({ ...data, publicFeatures: [...(data.publicFeatures || []), newFeature.trim()] });
-      setNewFeature('');
-    }
-  };
-
-  const removeFeature = (idx) => {
-    const updated = [...(data.publicFeatures || [])];
-    updated.splice(idx, 1);
-    setData({ ...data, publicFeatures: updated });
   };
 
   return (
@@ -316,27 +302,23 @@ function WebsitePlanEditor({ planKey, planData, internalPlan, onSave, onCancel }
             <label htmlFor="markPopular" style={{ fontWeight: 600, margin: 0, cursor: 'pointer' }}>Mark as Highlighted / Most Popular</label>
           </div>
 
-          <div style={{ marginTop: '1rem' }}>
-            <label className="form-label">Public Feature List (Manually Defined)</label>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1rem' }}>
-              {(data.publicFeatures || []).map((feat, idx) => (
+          <div style={{ marginTop: '1rem', background: '#f8fafc', padding: '1.25rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+            <h5 style={{ margin: '0 0 1rem 0', color: '#0F2C59', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.1rem' }}>✨</span> Features (Synced from Internal)
+            </h5>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.5rem' }}>
+              {(internalPlan.features || []).filter(f => f.enabled !== false).map((feat, idx) => (
                 <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f1f5f9', padding: '0.5rem 1rem', borderRadius: '6px' }}>
                   <CheckCircle size={16} color="#059669" />
-                  <span style={{ flex: 1, fontSize: '0.9rem' }}>{feat}</span>
-                  <button onClick={() => removeFeature(idx)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
+                  <span style={{ flex: 1, fontSize: '0.85rem', color: '#334155' }}>{feat.name}</span>
                 </div>
               ))}
+              {(!internalPlan.features || internalPlan.features.filter(f => f.enabled !== false).length === 0) && (
+                <div style={{ fontSize: '0.85rem', color: '#64748b', fontStyle: 'italic' }}>No features defined in Internal Pricing Tier.</div>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="e.g. Up to 5 Rooms" 
-                value={newFeature} 
-                onChange={e => setNewFeature(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && addFeature()}
-              />
-              <button className="btn btn-outline" onClick={addFeature}>Add</button>
+            <div style={{ fontSize: '0.75rem', color: '#64748b', fontStyle: 'italic', marginTop: '1rem' }}>
+              * To edit this list, go to the Internal Pricing Tiers tab.
             </div>
           </div>
         </div>

@@ -219,8 +219,13 @@ export default function CottagesRooms() {
     const roomLimit = planConfig.maxRooms || 5;
     const planName = planConfig.name || currentPlanId.toUpperCase();
 
-    if (rooms.length >= roomLimit) {
-      return alert(`Limit Reached: Your current ${planName} plan allows only ${roomLimit} rooms. Please upgrade on our website for more.`);
+    const { count: totalRooms } = await supabase
+      .from('rooms')
+      .select('*', { count: 'exact', head: true })
+      .eq('tenant_id', session.user.id);
+
+    if (totalRooms >= roomLimit) {
+      return alert(`Limit Reached: Your current ${planName} plan allows only ${roomLimit} total rooms across all properties. Please upgrade on our website for more.`);
     }
 
     try {

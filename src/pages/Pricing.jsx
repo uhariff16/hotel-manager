@@ -35,6 +35,9 @@ export default function Pricing() {
             offerStartDate: internal.offerStartDate || '',
             offerEndDate: internal.offerEndDate || '',
             offerActive: internal.offerActive || false,
+            publicFeatures: internal.features 
+              ? internal.features.filter(f => f.enabled !== false).map(f => f.name)
+              : plan.publicFeatures,
           };
         }
         return { key, ...plan };
