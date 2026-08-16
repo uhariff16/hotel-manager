@@ -86,6 +86,7 @@ export default function WebsitePricingTab({
       offerText: defaultData.offerPrice && defaultData.price ? `Save ${Math.round(((defaultData.price - defaultData.offerPrice) / defaultData.price) * 100)}%` : '',
       offerStartDate: defaultData.offerStartDate || '',
       offerEndDate: defaultData.offerEndDate || '',
+      offerActive: defaultData.offerActive || false,
       ctaButtonText: 'Get Started Free',
       publicFeatures: defaultData.features?.map(f => f.name) || [],
       highlightPlan: false,
@@ -97,6 +98,7 @@ export default function WebsitePricingTab({
       <WebsitePlanEditor 
         planKey={editingPlanKey}
         planData={currentData}
+        internalPlan={defaultData}
         onSave={(data) => handleSavePlanToDraft(editingPlanKey, data)}
         onCancel={() => setEditingPlanKey(null)}
       />
@@ -204,7 +206,7 @@ export default function WebsitePricingTab({
 }
 
 // Sub-component for editing a specific plan
-function WebsitePlanEditor({ planKey, planData, onSave, onCancel }) {
+function WebsitePlanEditor({ planKey, planData, internalPlan, onSave, onCancel }) {
   const [data, setData] = useState({ ...planData });
   const [newFeature, setNewFeature] = useState('');
 
@@ -254,37 +256,40 @@ function WebsitePlanEditor({ planKey, planData, onSave, onCancel }) {
             <input type="text" className="form-input" value={data.shortDescription || ''} onChange={e => setData({...data, shortDescription: e.target.value})} placeholder="e.g. Perfect for small properties" />
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Monthly Price (₹)</label>
-              <input type="number" className="form-input" value={data.monthlyPrice || ''} onChange={e => setData({...data, monthlyPrice: Number(e.target.value)})} />
+          <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+            <h5 style={{ margin: '0 0 1rem 0', color: '#0F2C59', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '1.1rem' }}>💰</span> Synced from Internal Pricing
+            </h5>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', fontSize: '0.9rem' }}>
+              <div>
+                <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Base Rate</div>
+                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#1e293b' }}>₹{internalPlan.price || 0}/mo</div>
+              </div>
+              <div>
+                <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Promotional Rate</div>
+                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: internalPlan.offerActive && internalPlan.offerPrice ? '#059669' : '#94a3b8' }}>
+                  {internalPlan.offerActive && internalPlan.offerPrice ? `₹${internalPlan.offerPrice}/mo` : 'N/A'}
+                </div>
+              </div>
+              
+              {internalPlan.offerActive && (
+                <>
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Offer Starts</div>
+                    <div style={{ fontWeight: 600, color: '#475569' }}>{internalPlan.offerStartDate || 'Not Set'}</div>
+                  </div>
+                  <div>
+                    <div style={{ color: '#64748b', fontSize: '0.75rem', fontWeight: 700, textTransform: 'uppercase', marginBottom: '0.25rem' }}>Offer Ends</div>
+                    <div style={{ fontWeight: 600, color: '#475569' }}>{internalPlan.offerEndDate || 'Not Set'}</div>
+                  </div>
+                </>
+              )}
             </div>
-            <div className="form-group">
-              <label className="form-label">Original Price (optional)</label>
-              <input type="number" className="form-input" value={data.originalPrice || ''} onChange={e => setData({...data, originalPrice: Number(e.target.value)})} placeholder="e.g. 4999" />
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Promotional Price (optional)</label>
-              <input type="number" className="form-input" value={data.promotionalPrice || ''} onChange={e => setData({...data, promotionalPrice: Number(e.target.value)})} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Offer Text</label>
-              <input type="text" className="form-input" value={data.offerText || ''} onChange={e => setData({...data, offerText: e.target.value})} placeholder="e.g. Save 40%" />
-            </div>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group">
-              <label className="form-label">Offer Start Date (optional)</label>
-              <input type="date" className="form-input" value={data.offerStartDate || ''} onChange={e => setData({...data, offerStartDate: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Offer End Date (optional)</label>
-              <input type="date" className="form-input" value={data.offerEndDate || ''} onChange={e => setData({...data, offerEndDate: e.target.value})} />
-            </div>
+            {!internalPlan.offerActive && (
+              <div style={{ marginTop: '1rem', fontSize: '0.8rem', color: '#64748b', fontStyle: 'italic' }}>
+                * Activate the offer in the Internal Pricing tab to display promotional pricing on the website.
+              </div>
+            )}
           </div>
         </div>
 

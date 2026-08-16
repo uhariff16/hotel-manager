@@ -24,7 +24,7 @@ const formatOfferDate = (dateString) => {
 };
 
 export default function Subscription() {
-  const { profile, setProfile, globalPlans } = useSettingsStore();
+  const { profile, setProfile, globalPlans, websitePricing } = useSettingsStore();
   const [loading, setLoading] = useState(null);
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
@@ -65,6 +65,11 @@ export default function Subscription() {
             ? config.features.filter(f => f.enabled !== false).map(f => f.name)
             : []
         };
+      })
+      .sort((a, b) => {
+        const orderA = websitePricing?.published?.[a.id]?.displayOrder || 99;
+        const orderB = websitePricing?.published?.[b.id]?.displayOrder || 99;
+        return orderA - orderB;
       });
   };
 
@@ -130,10 +135,10 @@ export default function Subscription() {
             flexDirection: 'column',
             padding: '2.5rem',
             position: 'relative',
-            border: profile?.plan_type === plan.id ? '2px solid var(--success)' : (plan.popular ? '2px solid var(--primary)' : '1px solid var(--border)'),
+            border: profile?.plan_type === plan.id ? '2px solid #3b82f6' : (plan.popular ? '2px solid var(--primary)' : '1px solid var(--border)'),
             transform: profile?.plan_type === plan.id || plan.popular ? 'scale(1.05)' : 'none',
             zIndex: profile?.plan_type === plan.id || plan.popular ? 2 : 1,
-            boxShadow: profile?.plan_type === plan.id || plan.popular ? '0 20px 25px -5px rgba(0, 0, 0, 0.4)' : ''
+            boxShadow: profile?.plan_type === plan.id ? '0 20px 25px -5px rgba(59, 130, 246, 0.25)' : (plan.popular ? '0 20px 25px -5px rgba(0, 0, 0, 0.4)' : '')
           }}>
             {profile?.plan_type === plan.id ? (
               <div style={{ 
@@ -141,16 +146,17 @@ export default function Subscription() {
                 top: '-15px', 
                 left: '50%', 
                 transform: 'translateX(-50%)',
-                background: 'var(--success)',
+                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
                 color: 'white',
                 padding: '0.35rem 1.5rem',
                 borderRadius: '20px',
                 fontSize: '0.8rem',
                 fontWeight: 'bold',
-                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.4rem'
+                gap: '0.4rem',
+                whiteSpace: 'nowrap'
               }}>
                 <Check size={14} /> YOUR CURRENT PLAN
               </div>

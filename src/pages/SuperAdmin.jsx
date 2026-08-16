@@ -369,16 +369,31 @@ export default function SuperAdmin() {
       const settings = profile.global_settings || {};
       const newVersionNum = (websitePricingConfig.currentVersion || 0) + 1;
       
+      const mergedDraft = {};
+      Object.keys(websitePricingConfig.draft || {}).forEach(key => {
+        const internal = pricingConfig[key] || {};
+        mergedDraft[key] = {
+          ...websitePricingConfig.draft[key],
+          monthlyPrice: internal.price || 0,
+          originalPrice: internal.offerPrice ? internal.price : '',
+          promotionalPrice: internal.offerPrice || '',
+          offerText: internal.offerPrice && internal.price ? `Save ${Math.round(((internal.price - internal.offerPrice) / internal.price) * 100)}%` : '',
+          offerStartDate: internal.offerStartDate || '',
+          offerEndDate: internal.offerEndDate || '',
+          offerActive: internal.offerActive || false,
+        };
+      });
+
       const historyEntry = {
         version: newVersionNum,
         publishedAt: new Date().toISOString(),
         publishedBy: profile.full_name || 'Super Admin',
-        plans: websitePricingConfig.draft
+        plans: mergedDraft
       };
 
       const updatedWebsitePricing = {
         ...websitePricingConfig,
-        published: websitePricingConfig.draft,
+        published: mergedDraft,
         history: [historyEntry, ...(websitePricingConfig.history || [])],
         currentVersion: newVersionNum
       };
@@ -852,7 +867,7 @@ export default function SuperAdmin() {
               <>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem', textAlign: 'left' }}>
               
-              {Object.entries(pricingConfig).map(([planKey, plan]) => {
+              {Object.entries(pricingConfig).sort(([a], [b]) => { const order = ['free', 'pro', 'luxury']; const idxA = order.indexOf(a); const idxB = order.indexOf(b); return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB); }).map(([planKey, plan]) => {
                 const titleColor = plan.color || 'var(--primary)';
                 const titleName = plan.name || planKey.toUpperCase();
                 
@@ -891,32 +906,28 @@ export default function SuperAdmin() {
                       </div>
                     </div>
 
-                    {planKey !== 'free' && (
-                      <>
-                        <div className="form-group">
-                          <label className="form-label">Base Rate (₹/month)</label>
-                          <input type="number" className="form-input" value={plan.price} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, price: Number(e.target.value)}})} disabled={!plan.enabled} />
-                        </div>
-                        <div className="form-group" style={{ marginTop: '1rem' }}>
-                          <label className="form-label">Promotional Offer Rate (₹/month)</label>
-                          <input type="number" className="form-input" value={plan.offerPrice} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerPrice: Number(e.target.value)}})} disabled={!plan.enabled} />
-                        </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
-                          <div className="form-group">
-                            <label className="form-label">Offer Starts</label>
-                            <input type="date" className="form-input" value={plan.offerStartDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerStartDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">Offer Ends</label>
-                            <input type="date" className="form-input" value={plan.offerEndDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerEndDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.25rem', background: plan.offerActive ? 'rgba(5, 150, 105, 0.08)' : 'transparent', padding: '0.5rem', borderRadius: '6px', border: plan.offerActive ? '1px solid rgba(5, 150, 105, 0.15)' : 'none' }}>
-                          <input type="checkbox" id={`offer-${planKey}`} checked={plan.offerActive} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerActive: e.target.checked}})} style={{ width: '18px', height: '18px' }} disabled={!plan.enabled} />
-                          <label htmlFor={`offer-${planKey}`} style={{ fontWeight: 'bold', color: plan.offerActive ? '#059669' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>Activate Offer</label>
-                        </div>
-                      </>
-                    )}
+                    <div className="form-group">
+                      <label className="form-label">Base Rate (₹/month)</label>
+                      <input type="number" className="form-input" value={plan.price || 0} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, price: Number(e.target.value)}})} disabled={!plan.enabled} />
+                    </div>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                      <label className="form-label">Promotional Offer Rate (₹/month)</label>
+                      <input type="number" className="form-input" value={plan.offerPrice || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerPrice: Number(e.target.value)}})} disabled={!plan.enabled} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
+                      <div className="form-group">
+                        <label className="form-label">Offer Starts</label>
+                        <input type="date" className="form-input" value={plan.offerStartDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerStartDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Offer Ends</label>
+                        <input type="date" className="form-input" value={plan.offerEndDate || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerEndDate: e.target.value}})} disabled={!plan.offerActive || !plan.enabled} />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.25rem', background: plan.offerActive ? 'rgba(5, 150, 105, 0.08)' : 'transparent', padding: '0.5rem', borderRadius: '6px', border: plan.offerActive ? '1px solid rgba(5, 150, 105, 0.15)' : 'none' }}>
+                      <input type="checkbox" id={`offer-${planKey}`} checked={plan.offerActive || false} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerActive: e.target.checked}})} style={{ width: '18px', height: '18px' }} disabled={!plan.enabled} />
+                      <label htmlFor={`offer-${planKey}`} style={{ fontWeight: 'bold', color: plan.offerActive ? '#059669' : 'var(--text-muted)', cursor: 'pointer', fontSize: '0.85rem' }}>Activate Offer</label>
+                    </div>
                     
                     <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #cbd5e1' }}>
                       <h5 style={{ marginBottom: '1rem', color: '#0F2C59', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 800 }}>Enabled Reports</h5>
@@ -1211,7 +1222,7 @@ export default function SuperAdmin() {
                   onChange={e => setEditingUser({...editingUser, plan_type: e.target.value})}
                   disabled={editingUser.role === 'staff'}
                 >
-                  {Object.entries(pricingConfig).map(([planKey, planVal]) => (
+                  {Object.entries(pricingConfig).sort(([a], [b]) => { const order = ['free', 'pro', 'luxury']; const idxA = order.indexOf(a); const idxB = order.indexOf(b); return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB); }).map(([planKey, planVal]) => (
                     <option key={planKey} value={planKey}>{planVal.name?.toUpperCase() || planKey.toUpperCase()}</option>
                   ))}
                 </select>

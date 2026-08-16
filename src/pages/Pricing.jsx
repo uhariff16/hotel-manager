@@ -4,7 +4,7 @@ import { Check } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 
 export default function Pricing() {
-  const { websitePricing, profile } = useSettingsStore();
+  const { websitePricing, profile, globalPlans } = useSettingsStore();
   const location = useLocation();
   const searchParams = new URLSearchParams(location.search);
   const isPreviewParam = searchParams.get('preview') === 'true';
@@ -22,7 +22,23 @@ export default function Pricing() {
     
     // Filter and sort plans
     const activePlans = Object.entries(sourceData)
-      .map(([key, plan]) => ({ key, ...plan }))
+      .map(([key, plan]) => {
+        if (isPreview && globalPlans) {
+          const internal = globalPlans[key] || {};
+          return {
+            key,
+            ...plan,
+            monthlyPrice: internal.price || 0,
+            originalPrice: internal.offerPrice ? internal.price : '',
+            promotionalPrice: internal.offerPrice || '',
+            offerText: internal.offerPrice && internal.price ? `Save ${Math.round(((internal.price - internal.offerPrice) / internal.price) * 100)}%` : '',
+            offerStartDate: internal.offerStartDate || '',
+            offerEndDate: internal.offerEndDate || '',
+            offerActive: internal.offerActive || false,
+          };
+        }
+        return { key, ...plan };
+      })
       .filter(plan => plan.showOnWebsite !== false)
       .sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
 
@@ -30,19 +46,35 @@ export default function Pricing() {
   };
 
   const isPromoActive = (plan) => {
-    if (!plan.promotionalPrice) return false;
+    console.log("Checking promo for", plan.key, plan);
+    if (!plan.promotionalPrice) {
+      console.log("Failed: no promotionalPrice");
+      return false;
+    }
+    if (plan.offerActive === false) {
+      console.log("Failed: offerActive is false");
+      return false;
+    }
+    
     const now = new Date().setHours(0,0,0,0);
     
     if (plan.offerStartDate) {
       const start = new Date(plan.offerStartDate).setHours(0,0,0,0);
-      if (now < start) return false;
+      if (now < start) {
+        console.log("Failed: now < start", new Date(now), new Date(start));
+        return false;
+      }
     }
     
     if (plan.offerEndDate) {
       const end = new Date(plan.offerEndDate).setHours(23,59,59,999);
-      if (now > end) return false;
+      if (now > end) {
+        console.log("Failed: now > end", new Date(now), new Date(end));
+        return false;
+      }
     }
     
+    console.log("Success: Promo is active!");
     return true;
   };
 
