@@ -192,9 +192,8 @@ export default function Pricing() {
                   display: 'flex',
                   flexDirection: 'column',
                   position: 'relative',
-                  transform: plan.highlightPlan ? 'scale(1.03)' : 'none',
                   zIndex: plan.highlightPlan ? 2 : 1,
-                  transition: 'transform 0.3s ease'
+                  transition: 'all 0.3s ease'
                 }}>
                   
                   {plan.pricingLabel && (

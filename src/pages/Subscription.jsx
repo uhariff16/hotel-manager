@@ -309,9 +309,7 @@ export default function Subscription() {
             </div>
           )}
         </div>
-      )}
-
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', alignItems: 'stretch' }}>
         {plansList.map((plan) => (
           <div key={plan.id} className="card" style={{ 
             display: 'flex', 
@@ -321,8 +319,8 @@ export default function Subscription() {
             padding: '2.5rem',
             position: 'relative',
             border: profile?.plan_type === plan.id ? '2px solid #3b82f6' : (plan.popular ? '2px solid var(--primary)' : '1px solid var(--border)'),
-            transform: profile?.plan_type === plan.id || plan.popular ? 'scale(1.05)' : 'none',
             zIndex: profile?.plan_type === plan.id || plan.popular ? 2 : 1,
+            transition: 'all 0.3s ease',
             boxShadow: profile?.plan_type === plan.id ? '0 20px 25px -5px rgba(59, 130, 246, 0.25)' : (plan.popular ? '0 20px 25px -5px rgba(0, 0, 0, 0.4)' : '')
           }}>
             {profile?.plan_type === plan.id ? (
