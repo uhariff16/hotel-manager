@@ -434,14 +434,28 @@ export default function Subscription() {
               </ul>
             </div>
 
-            <button 
-              className={`btn ${plan.popular ? 'btn-primary' : 'btn-outline'}`}
-              style={{ width: '100%', height: '50px', fontSize: '1rem' }}
-              onClick={() => handleSubscribe(plan.id)}
-              disabled={loading === plan.id || profile?.plan_type === plan.id}
-            >
-              {profile?.plan_type === plan.id ? 'Active Plan' : (loading === plan.id ? 'Connecting...' : 'Upgrade Now')}
-            </button>
+            <div style={{ marginTop: 'auto' }}>
+              <button 
+                className={`btn`}
+                style={{ 
+                  width: '100%', 
+                  height: '50px', 
+                  fontSize: '1rem',
+                  fontWeight: 700,
+                  border: profile?.plan_type === plan.id ? '2px solid var(--success)' : (plan.popular ? 'none' : '2px solid var(--primary)'),
+                  background: profile?.plan_type === plan.id ? 'rgba(16, 185, 129, 0.1)' : (plan.popular ? 'var(--primary)' : 'transparent'),
+                  color: profile?.plan_type === plan.id ? 'var(--success)' : (plan.popular ? 'white' : 'var(--primary)'),
+                  opacity: loading === plan.id ? 0.7 : 1,
+                  cursor: (loading === plan.id || profile?.plan_type === plan.id) ? 'not-allowed' : 'pointer'
+                }}
+                onClick={() => {
+                  if (profile?.plan_type !== plan.id) handleSubscribe(plan.id);
+                }}
+                disabled={loading === plan.id || profile?.plan_type === plan.id}
+              >
+                {profile?.plan_type === plan.id ? 'Active Plan' : (loading === plan.id ? 'Connecting...' : 'Upgrade Now')}
+              </button>
+            </div>
           </div>
         ))}
       </div>

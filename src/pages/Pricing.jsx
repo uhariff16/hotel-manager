@@ -305,21 +305,23 @@ export default function Pricing() {
                     </ul>
                   </div>
 
-                  <Link 
-                    to={plan.highlightPlan ? "/auth?mode=signup" : "/auth"} 
-                    style={{ 
-                      display: 'block', width: '100%', padding: '1rem', textAlign: 'center', borderRadius: '12px',
-                      background: plan.highlightPlan ? 'white' : 'transparent',
-                      color: plan.highlightPlan ? '#0F2C59' : '#059669',
-                      border: plan.highlightPlan ? 'none' : '2px solid #059669',
-                      fontWeight: 700, textDecoration: 'none', fontSize: '1.05rem',
-                      transition: 'all 0.2s',
-                      fontFamily: "'Plus Jakarta Sans', sans-serif",
-                      boxShadow: plan.highlightPlan ? '0 4px 15px rgba(0,0,0,0.1)' : 'none'
-                    }}
-                  >
-                    {plan.ctaButtonText || 'Choose Plan'}
-                  </Link>
+                  <div style={{ marginTop: 'auto' }}>
+                    <Link 
+                      to={plan.highlightPlan ? "/auth?mode=signup" : "/auth"} 
+                      style={{ 
+                        display: 'block', width: '100%', padding: '1rem', textAlign: 'center', borderRadius: '12px',
+                        background: plan.highlightPlan ? 'white' : 'transparent',
+                        color: plan.highlightPlan ? '#0F2C59' : '#059669',
+                        border: plan.highlightPlan ? 'none' : '2px solid #059669',
+                        fontWeight: 700, textDecoration: 'none', fontSize: '1.05rem',
+                        transition: 'all 0.2s',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif",
+                        boxShadow: plan.highlightPlan ? '0 4px 15px rgba(0,0,0,0.1)' : 'none'
+                      }}
+                    >
+                      {plan.ctaButtonText || 'Choose Plan'}
+                    </Link>
+                  </div>
                 </div>
               );
             })}
