@@ -306,6 +306,7 @@ export default function Subscription() {
                   </tbody>
                 </table>
               </div>
+            </div>
           )}
         </div>
       )}
