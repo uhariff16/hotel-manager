@@ -29,6 +29,55 @@ export default function Subscription() {
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
   const [paymentForm, setPaymentForm] = useState({ cardNumber: '', expiry: '', cvc: '', name: '' });
+  
+  const [activeSubscription, setActiveSubscription] = useState(null);
+  const [paymentHistory, setPaymentHistory] = useState([]);
+
+  useEffect(() => {
+    if (profile?.id && profile?.plan_type !== 'free') {
+       fetchSubscriptionData();
+    } else {
+       setActiveSubscription(null);
+       setPaymentHistory([]);
+    }
+  }, [profile?.id, profile?.plan_type]);
+
+  const fetchSubscriptionData = async () => {
+     try {
+       const { data: subData } = await supabase.from('saas_subscriptions')
+         .select('*').eq('tenant_id', profile.id).eq('status', 'active').maybeSingle();
+       if (subData) setActiveSubscription(subData);
+
+       const { data: payData } = await supabase.from('saas_payments')
+         .select('*').eq('tenant_id', profile.id).order('created_at', { ascending: false });
+       if (payData) setPaymentHistory(payData);
+     } catch (e) {
+       console.error("Failed to load subscription data", e);
+     }
+  };
+
+  const handleCancelSubscription = async () => {
+     if (!window.confirm("Are you sure you want to cancel your subscription? You will be reverted to the Free Starter plan.")) return;
+     
+     setLoading('cancel');
+      try {
+        const { data, error } = await supabase.functions.invoke('razorpay-cancel-subscription');
+        
+        if (error || data?.error) {
+          throw new Error(error?.message || data?.error || "Unknown error occurred");
+        }
+
+        alert("Subscription cancelled successfully.");
+        
+        // Optimistic update
+        setProfile({...profile, plan_type: 'free'});
+        window.location.reload();
+      } catch (err) {
+        alert("Failed to cancel subscription: " + err.message);
+      } finally {
+        setLoading(null);
+     }
+  };
 
   const isOfferValid = (planConfig) => {
     if (!planConfig || !planConfig.offerActive) return false;
@@ -75,36 +124,114 @@ export default function Subscription() {
 
   const plansList = getPlansList();
 
-  const handleSubscribe = (planId) => {
-    if (planId === profile?.plan_type) return;
-    setCheckoutModal({ isOpen: true, planId });
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
   };
 
-  const handlePaymentSubmit = async (e) => {
-    e.preventDefault();
-    const planId = checkoutModal.planId;
+  const handleSubscribe = async (planId) => {
+    if (planId === profile?.plan_type) return;
+
+    if (window.location.protocol === 'capacitor:') {
+       setCheckoutModal({ isOpen: true, planId });
+       return;
+    }
+
+    if (planId === 'free') {
+       if (window.confirm("Are you sure you want to downgrade to Free Starter? This will remove access to paid features.")) {
+          setLoading(planId);
+          try {
+             await supabase.from('profiles').update({ plan_type: 'free' }).eq('id', profile.id);
+             setProfile({...profile, plan_type: 'free'});
+             alert("Account downgraded to Free.");
+          } catch (e) {
+             alert(e.message);
+          } finally {
+             setLoading(null);
+          }
+       }
+       return;
+    }
+
     setLoading(planId);
-    
-    // Simulate payment process
-    setTimeout(async () => {
-      try {
-        const { data, error } = await supabase
-          .from('profiles')
-          .update({ plan_type: planId })
-          .eq('id', profile.id)
-          .select();
-        
-        if (error) throw error;
-        setProfile(data[0]);
-        alert(`Payment Success! Your account has been upgraded to the ${planId.toUpperCase()} plan.`);
-        setCheckoutModal({ isOpen: false, planId: null });
-        setPaymentForm({ cardNumber: '', expiry: '', cvc: '', name: '' });
-      } catch (err) {
-        alert("Payment processing failed: " + err.message);
-      } finally {
-        setLoading(null);
-      }
-    }, 2000);
+    try {
+      const res = await loadRazorpayScript();
+      if (!res) throw new Error("Razorpay SDK failed to load. Are you online?");
+
+      const { data, error } = await supabase.functions.invoke('razorpay-create-subscription', {
+        body: { plan_type: planId }
+      });
+
+      if (error || (data && data.error)) throw new Error(error?.message || data?.error || 'Unknown error');
+
+      const options = {
+        key: data.key_id,
+        subscription_id: data.subscription_id,
+        name: "Stay Pilot",
+        description: `Subscription for ${planId}`,
+        handler: async function (response) {
+          try {
+            // Instant Verify using direct fetch to capture 400 errors
+            const { data: { session } } = await supabase.auth.getSession();
+            const token = session?.access_token || '';
+            const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://lubkdxhqnnghnjhrebat.supabase.co';
+            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
+
+            const res = await fetch(`${supabaseUrl}/functions/v1/razorpay-verify`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+              },
+              body: JSON.stringify({ 
+                subscription_id: response.razorpay_subscription_id,
+                payment_id: response.razorpay_payment_id,
+                signature: response.razorpay_signature
+              })
+            });
+
+            const verifyData = await res.json();
+
+            if (!res.ok || verifyData.error) {
+              throw new Error(verifyData.error || "Verification failed");
+            }
+
+            alert("Payment successful! Your plan has been upgraded.");
+            // Optimistic update
+            setProfile({...profile, plan_type: planId});
+            
+            // Reload page to ensure all components pick up the new plan
+            window.location.reload();
+          } catch (err) {
+            console.error(err);
+            alert("Verification error: " + err.message);
+          }
+        },
+        prefill: {
+          name: profile?.full_name || '',
+          email: '',
+        },
+        theme: {
+          color: "#0F2C59"
+        }
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        alert("Payment failed: " + response.error.description);
+      });
+      rzp.open();
+    } catch (err) {
+      alert("Failed to initialize checkout: " + err.message);
+    } finally {
+      setLoading(null);
+    }
   };
 
   if (!globalPlans) {
@@ -127,6 +254,62 @@ export default function Subscription() {
           <span className={`badge ${profile?.plan_type === 'free' ? 'badge-success' : ''}`} style={{ padding: '0.5rem 1rem' }}>Current: {profile?.plan_type.toUpperCase()} Account</span>
         </div>
       </div>
+
+      {activeSubscription && (
+        <div className="card" style={{ marginBottom: '3rem', padding: '2rem', border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.03)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.5rem', margin: '0 0 0.5rem 0', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Check size={24} /> Active Subscription
+              </h2>
+              <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>
+                You are currently subscribed to the <strong>{activeSubscription.staypilot_plan_type.toUpperCase()}</strong> plan.
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.9rem' }}>
+                <div style={{ color: 'var(--text-muted)' }}>Status:</div>
+                <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>{activeSubscription.status.toUpperCase()}</div>
+                <div style={{ color: 'var(--text-muted)' }}>Period Ends:</div>
+                <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString() : 'Pending (Updates shortly)'}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: '200px' }}>
+              <button className="btn btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={handleCancelSubscription} disabled={loading === 'cancel'}>
+                {loading === 'cancel' ? 'Cancelling...' : 'Cancel Subscription'}
+              </button>
+            </div>
+          </div>
+          
+          {paymentHistory.length > 0 && (
+            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+              <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Recent Payments</h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
+                      <th style={{ padding: '0.5rem 0' }}>Date</th>
+                      <th style={{ padding: '0.5rem 0' }}>Amount</th>
+                      <th style={{ padding: '0.5rem 0' }}>Status</th>
+                      <th style={{ padding: '0.5rem 0' }}>Transaction ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paymentHistory.slice(0,5).map(payment => (
+                      <tr key={payment.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                        <td style={{ padding: '0.75rem 0' }}>{new Date(payment.created_at).toLocaleDateString()}</td>
+                        <td style={{ padding: '0.75rem 0' }}>₹{payment.amount / 100}</td>
+                        <td style={{ padding: '0.75rem 0' }}>
+                          <span className={`badge ${payment.status === 'captured' ? 'badge-success' : 'badge-danger'}`}>{payment.status}</span>
+                        </td>
+                        <td style={{ padding: '0.75rem 0', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{payment.razorpay_payment_id}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
         {plansList.map((plan) => (
@@ -298,7 +481,7 @@ export default function Subscription() {
               </div>
             </div>
 
-            {window.location.protocol === 'capacitor:' ? (
+            {window.location.protocol === 'capacitor:' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
                 <p style={{ lineHeight: 1.5, margin: 0 }}>
                   To comply with Play Store guidelines, native in-app purchases are not supported inside the app. You can easily upgrade your account from our web portal.
@@ -323,60 +506,6 @@ export default function Subscription() {
                   Got It
                 </button>
               </div>
-            ) : (
-              <form onSubmit={handlePaymentSubmit}>
-                <div className="form-group">
-                  <label className="form-label">Name on Card</label>
-                  <input type="text" className="form-input" required 
-                    placeholder="e.g. John Doe"
-                    value={paymentForm.name} onChange={e => setPaymentForm({...paymentForm, name: e.target.value})} 
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Card Number</label>
-                  <div style={{ position: 'relative' }}>
-                    <input type="text" className="form-input" style={{ paddingLeft: '2.5rem' }} required 
-                      placeholder="0000 0000 0000 0000" maxLength="19"
-                      value={paymentForm.cardNumber} 
-                      onChange={e => {
-                        const val = e.target.value.replace(/\D/g, '').replace(/(\d{4})/g, '$1 ').trim();
-                        setPaymentForm({...paymentForm, cardNumber: val});
-                      }}
-                    />
-                    <CreditCard size={18} style={{ position: 'absolute', left: '0.8rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  </div>
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">Expiry (MM/YY)</label>
-                    <input type="text" className="form-input" required 
-                      placeholder="MM/YY" maxLength="5"
-                      value={paymentForm.expiry} onChange={e => {
-                        let val = e.target.value.replace(/\D/g, '');
-                        if (val.length >= 2) val = val.slice(0,2) + '/' + val.slice(2,4);
-                        setPaymentForm({...paymentForm, expiry: val})
-                      }} 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">CVC</label>
-                    <input type="text" className="form-input" required 
-                      placeholder="123" maxLength="4"
-                      value={paymentForm.cvc} onChange={e => setPaymentForm({...paymentForm, cvc: e.target.value.replace(/\D/g, '')})} 
-                    />
-                  </div>
-                </div>
-
-                <div style={{ marginTop: '2rem' }}>
-                  <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px', fontSize: '1.1rem' }} disabled={loading}>
-                    {loading ? 'Processing Payment...' : 'Confirm Payment'}
-                  </button>
-                  <div style={{ textAlign: 'center', marginTop: '1rem', fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }}>
-                    <Shield size={14} /> Mock Mode (Cards not charged)
-                  </div>
-                </div>
-              </form>
             )}
           </div>
         </div>

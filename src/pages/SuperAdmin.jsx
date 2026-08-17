@@ -85,7 +85,15 @@ export default function SuperAdmin() {
   };
 
   const [pricingConfig, setPricingConfig] = useState(DEFAULT_PLANS);
-  const [pricingTab, setPricingTab] = useState('plans'); // 'plans', 'website', 'history'
+  const [pricingTab, setPricingTab] = useState('plans'); // 'plans', 'website', 'razorpay', 'history'
+  const [razorpayConfig, setRazorpayConfig] = useState({
+    mode: 'test',
+    testKeyId: '',
+    testKeySecret: '',
+    liveKeyId: '',
+    liveKeySecret: '',
+    webhookSecret: ''
+  });
   const DEFAULT_WEBSITE_PRICING = {
     draft: {},
     published: {},
@@ -192,6 +200,10 @@ export default function SuperAdmin() {
         setGlobalCommEnabled(superAdminProfile.global_settings.comm_features_enabled !== false);
         setGlobalTemplatesEnabled(superAdminProfile.global_settings.templates_enabled !== false);
         setGlobalOnboardingWizardEnabled(superAdminProfile.global_settings.onboarding_wizard_enabled !== false);
+        
+        if (superAdminProfile.global_settings.razorpay_settings) {
+          setRazorpayConfig(superAdminProfile.global_settings.razorpay_settings);
+        }
         if (superAdminProfile.global_settings.landing_page) {
           setLandingContent({
             ...DEFAULT_LANDING_CONTENT,
@@ -411,7 +423,24 @@ export default function SuperAdmin() {
       setShowWebsitePublishModal(false);
       alert("Website Pricing Published Successfully!");
     } catch (err) {
-      alert("Failed to publish: " + err.message);
+      alert("Failed to publish website pricing: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveRazorpaySettings = async () => {
+    try {
+      setIsUpdating(true);
+      const settings = profile.global_settings || {};
+      settings.razorpay_settings = razorpayConfig;
+      
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      if (error) throw error;
+      
+      alert("Razorpay Settings Saved Successfully!");
+    } catch (err) {
+      alert("Failed to save Razorpay settings: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -843,6 +872,9 @@ export default function SuperAdmin() {
                 <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: pricingTab === 'website' ? '#0F2C59' : '#64748b', margin: 0, cursor: 'pointer', borderBottom: pricingTab === 'website' ? '3px solid var(--primary)' : '3px solid transparent', paddingBottom: '0.5rem', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} onClick={() => setPricingTab('website')}>
                   Website Pricing (Marketing)
                 </h3>
+                <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: pricingTab === 'razorpay' ? '#0F2C59' : '#64748b', margin: 0, cursor: 'pointer', borderBottom: pricingTab === 'razorpay' ? '3px solid var(--primary)' : '3px solid transparent', paddingBottom: '0.5rem', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }} onClick={() => setPricingTab('razorpay')}>
+                  Razorpay Gateway Settings
+                </h3>
               </div>
               {pricingTab === 'plans' && (
                 <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }} onClick={() => {
@@ -1058,6 +1090,73 @@ export default function SuperAdmin() {
                 onPublish={handlePublishWebsitePricing}
                 onRollback={handleRollbackWebsitePricing}
               />
+            )}
+            {/* RAZORPAY TAB CONTENT */}
+            {pricingTab === 'razorpay' && (
+              <div style={{ padding: '2rem' }}>
+                <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: '#0F2C59' }}>Razorpay Configuration</h2>
+                <div style={{ display: 'grid', gap: '1.5rem', maxWidth: '600px' }}>
+                  
+                  <div className="form-group" style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold', fontSize: '1.1rem', marginBottom: '1rem', color: '#1e293b' }}>
+                      Operating Mode
+                    </label>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="radio" name="razorpayMode" checked={razorpayConfig.mode === 'test'} onChange={() => setRazorpayConfig({...razorpayConfig, mode: 'test'})} style={{ width: '18px', height: '18px' }} />
+                        <span style={{ fontWeight: 600 }}>TEST Mode</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input type="radio" name="razorpayMode" checked={razorpayConfig.mode === 'live'} onChange={() => setRazorpayConfig({...razorpayConfig, mode: 'live'})} style={{ width: '18px', height: '18px' }} />
+                        <span style={{ fontWeight: 600, color: '#ef4444' }}>LIVE Mode</span>
+                      </label>
+                    </div>
+                    <p style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>
+                      {razorpayConfig.mode === 'test' ? 'Currently using Test credentials. No real charges will be made.' : 'WARNING: Live mode is active. Real transactions will be processed.'}
+                    </p>
+                  </div>
+
+                  <div className="card" style={{ padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ marginBottom: '1rem', color: '#334155' }}>Test Credentials</h4>
+                    <div className="form-group">
+                      <label className="form-label">Test Key ID</label>
+                      <input type="text" className="form-input" value={razorpayConfig.testKeyId} onChange={e => setRazorpayConfig({...razorpayConfig, testKeyId: e.target.value})} placeholder="rzp_test_..." />
+                    </div>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                      <label className="form-label">Test Key Secret</label>
+                      <input type="password" className="form-input" value={razorpayConfig.testKeySecret} onChange={e => setRazorpayConfig({...razorpayConfig, testKeySecret: e.target.value})} placeholder="••••••••••••••••" />
+                    </div>
+                  </div>
+
+                  <div className="card" style={{ padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ marginBottom: '1rem', color: '#ef4444' }}>Live Credentials</h4>
+                    <div className="form-group">
+                      <label className="form-label">Live Key ID</label>
+                      <input type="text" className="form-input" value={razorpayConfig.liveKeyId} onChange={e => setRazorpayConfig({...razorpayConfig, liveKeyId: e.target.value})} placeholder="rzp_live_..." />
+                    </div>
+                    <div className="form-group" style={{ marginTop: '1rem' }}>
+                      <label className="form-label">Live Key Secret</label>
+                      <input type="password" className="form-input" value={razorpayConfig.liveKeySecret} onChange={e => setRazorpayConfig({...razorpayConfig, liveKeySecret: e.target.value})} placeholder="••••••••••••••••" />
+                    </div>
+                  </div>
+
+                  <div className="card" style={{ padding: '1.5rem', border: '1px solid #e2e8f0' }}>
+                    <h4 style={{ marginBottom: '1rem', color: '#334155' }}>Webhook Settings</h4>
+                    <div className="form-group">
+                      <label className="form-label">Webhook Secret</label>
+                      <input type="password" className="form-input" value={razorpayConfig.webhookSecret} onChange={e => setRazorpayConfig({...razorpayConfig, webhookSecret: e.target.value})} placeholder="••••••••••••••••" />
+                      <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>Used to verify incoming Razorpay webhook signatures.</p>
+                    </div>
+                  </div>
+                  
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
+                    <button className="btn btn-primary" onClick={handleSaveRazorpaySettings} disabled={isUpdating}>
+                      {isUpdating ? 'Saving...' : 'Save Razorpay Settings'}
+                    </button>
+                  </div>
+
+                </div>
+              </div>
             )}
           </div>
         </div>

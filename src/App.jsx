@@ -40,9 +40,20 @@ function App() {
       if (event === 'PASSWORD_RECOVERY' || window.location.hash.includes('type=recovery')) {
         setIsRecovering(true);
       }
-      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT') {
-        setIsDataLoaded(false);
+      
+      const { profile } = useSettingsStore.getState();
+      
+      if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+        if (!profile) setIsDataLoaded(false);
         handleAuthChange(session);
+      } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        // If we already have a profile, DO ABSOLUTELY NOTHING.
+        // Updating the Zustand store causes a full app re-render (shivering).
+        // The Supabase client internally manages the refreshed token anyway.
+        if (!profile) {
+           setIsDataLoaded(false);
+           handleAuthChange(session);
+        }
       }
     });
 
