@@ -167,9 +167,9 @@ export default function Pricing() {
           <div style={{ 
             display: 'flex', 
             flexWrap: 'wrap', 
-            gap: '2rem', 
+            gap: '1.5rem', 
             justifyContent: 'center', 
-            maxWidth: '1200px', 
+            maxWidth: '1400px', 
             margin: '0 auto',
             alignItems: 'stretch'
           }}>
@@ -181,7 +181,7 @@ export default function Pricing() {
               
               return (
                 <div key={plan.key} style={{ 
-                  flex: '1 1 300px',
+                  flex: '1 1 250px',
                   maxWidth: '380px',
                   background: plan.highlightPlan ? 'linear-gradient(135deg, #0F2C59 0%, #173b75 100%)' : 'rgba(255, 255, 255, 0.75)', 
                   backdropFilter: 'blur(10px)',

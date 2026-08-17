@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown } from 'lucide-react';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 
 // Secondary client for creating users without affecting the admin session
@@ -910,14 +910,32 @@ export default function SuperAdmin() {
                   <div key={planKey} style={{ background: '#f8fafc', padding: '2rem 1.5rem', borderRadius: '12px', border: '1px solid #cbd5e1', opacity: plan.enabled ? 1 : 0.6, transition: 'all 0.3s' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #cbd5e1', paddingBottom: '0.75rem' }}>
                       <h4 style={{ color: titleColor, margin: 0, fontSize: '1.2rem', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>{titleName}</h4>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <input 
-                          type="checkbox" 
-                          id={`enable-${planKey}`}
-                          checked={plan.enabled}
-                          onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, enabled: e.target.checked}})}
-                        />
-                        <label htmlFor={`enable-${planKey}`} style={{ fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>Enabled</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <input 
+                            type="checkbox" 
+                            id={`enable-${planKey}`}
+                            checked={plan.enabled}
+                            onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, enabled: e.target.checked}})}
+                          />
+                          <label htmlFor={`enable-${planKey}`} style={{ fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>Enabled</label>
+                        </div>
+                        {!['free', 'pro', 'luxury'].includes(planKey) && (
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              if (window.confirm(`Are you sure you want to permanently delete the ${plan.name} plan?`)) {
+                                const newConfig = { ...pricingConfig };
+                                delete newConfig[planKey];
+                                setPricingConfig(newKey => newConfig);
+                              }
+                            }}
+                            style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', padding: '0.25rem' }}
+                            title="Delete Plan"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -1038,21 +1056,76 @@ export default function SuperAdmin() {
                                 newFeats[idx] = { ...newFeats[idx], name: e.target.value };
                                 setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
                               }}
-                              style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem' }}
+                              style={{ padding: '0.35rem 0.5rem', fontSize: '0.85rem', flex: 1 }}
                               disabled={!plan.enabled}
                             />
-                            <button 
-                              type="button"
-                              className="btn-outline" 
-                              style={{ padding: '0.35rem', color: 'var(--danger)', border: 'none', background: 'transparent' }}
-                              onClick={() => {
-                                const newFeats = plan.features.filter((_, i) => i !== idx);
-                                setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
-                              }}
-                              disabled={!plan.enabled}
-                            >
-                              <Trash2 size={14} />
-                            </button>
+                            
+                            <div style={{ display: 'flex', gap: '0.1rem' }}>
+                              <button 
+                                type="button"
+                                className="btn-outline" 
+                                style={{ padding: '0.25rem', color: 'var(--primary)', border: 'none', background: 'transparent' }}
+                                onClick={() => {
+                                  const newFeats = [...plan.features];
+                                  newFeats.splice(idx + 1, 0, { name: 'New Feature', enabled: true });
+                                  setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                                }}
+                                disabled={!plan.enabled}
+                                title="Insert feature below"
+                              >
+                                <Plus size={14} />
+                              </button>
+                              
+                              <button 
+                                type="button"
+                                className="btn-outline" 
+                                style={{ padding: '0.25rem', color: 'var(--text-muted)', border: 'none', background: 'transparent' }}
+                                onClick={() => {
+                                  if (idx === 0) return;
+                                  const newFeats = [...plan.features];
+                                  const temp = newFeats[idx - 1];
+                                  newFeats[idx - 1] = newFeats[idx];
+                                  newFeats[idx] = temp;
+                                  setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                                }}
+                                disabled={!plan.enabled || idx === 0}
+                                title="Move up"
+                              >
+                                <ArrowUp size={14} />
+                              </button>
+                              
+                              <button 
+                                type="button"
+                                className="btn-outline" 
+                                style={{ padding: '0.25rem', color: 'var(--text-muted)', border: 'none', background: 'transparent' }}
+                                onClick={() => {
+                                  if (idx === plan.features.length - 1) return;
+                                  const newFeats = [...plan.features];
+                                  const temp = newFeats[idx + 1];
+                                  newFeats[idx + 1] = newFeats[idx];
+                                  newFeats[idx] = temp;
+                                  setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                                }}
+                                disabled={!plan.enabled || idx === plan.features.length - 1}
+                                title="Move down"
+                              >
+                                <ArrowDown size={14} />
+                              </button>
+
+                              <button 
+                                type="button"
+                                className="btn-outline" 
+                                style={{ padding: '0.25rem', color: 'var(--danger)', border: 'none', background: 'transparent' }}
+                                onClick={() => {
+                                  const newFeats = plan.features.filter((_, i) => i !== idx);
+                                  setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
+                                }}
+                                disabled={!plan.enabled}
+                                title="Delete feature"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
                           </div>
                         ))}
                         <button 
@@ -1074,7 +1147,35 @@ export default function SuperAdmin() {
               })}
             </div>
 
-            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => {
+                  const newKey = 'plan_' + Date.now();
+                  setPricingConfig({
+                    ...pricingConfig,
+                    [newKey]: {
+                      name: 'New Custom Plan',
+                      description: 'Custom plan description',
+                      enabled: true,
+                      price: 0,
+                      maxResorts: 1,
+                      maxRooms: 10,
+                      maxStaff: 1,
+                      color: '#0ea5e9',
+                      reports: { summary: true, bookings: true, guests: true, finance: true, exportExcel: true, exportPdf: true },
+                      features: [
+                        { name: 'Basic feature', enabled: true }
+                      ]
+                    }
+                  });
+                }}
+                disabled={isUpdating}
+                style={{ fontWeight: 700 }}
+              >
+                + Add New Pricing Tier
+              </button>
+              
               <button className="btn btn-primary" onClick={handleSavePricing} disabled={isUpdating} style={{ padding: '0.75rem 2rem', fontWeight: 700 }}>
                 {isUpdating ? 'Saving Changes...' : 'Broadcast Prices Globally'}
               </button>

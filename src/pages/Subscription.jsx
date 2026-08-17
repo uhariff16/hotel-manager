@@ -244,7 +244,7 @@ export default function Subscription() {
   }
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 0' }}>
+    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 0' }}>
       <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
         <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Choose Your Plan</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>
@@ -311,11 +311,13 @@ export default function Subscription() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center' }}>
         {plansList.map((plan) => (
           <div key={plan.id} className="card" style={{ 
             display: 'flex', 
             flexDirection: 'column',
+            flex: '1 1 250px',
+            maxWidth: '380px',
             padding: '2.5rem',
             position: 'relative',
             border: profile?.plan_type === plan.id ? '2px solid #3b82f6' : (plan.popular ? '2px solid var(--primary)' : '1px solid var(--border)'),
