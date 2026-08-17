@@ -306,9 +306,10 @@ export default function Subscription() {
                   </tbody>
                 </table>
               </div>
-            </div>
           )}
         </div>
+      )}
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', alignItems: 'stretch' }}>
         {plansList.map((plan) => (
           <div key={plan.id} className="card" style={{ 
