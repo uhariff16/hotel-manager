@@ -131,6 +131,15 @@ export default function Home() {
           50% { box-shadow: 0 0 30px rgba(5, 150, 105, 0.3); }
           100% { box-shadow: 0 0 15px rgba(5, 150, 105, 0.15); }
         }
+
+        @media (max-width: 992px) {
+          .desktop-nav {
+            display: none !important;
+          }
+          .desktop-btn {
+            display: none !important;
+          }
+        }
       `}} />
 
       {/* Header */}
@@ -152,7 +161,7 @@ export default function Home() {
         </Link>
         
         {/* Desktop Navigation (Center) */}
-        <nav style={{ gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }} className="d-md-flex">
+        <nav className="desktop-nav" style={{ display: 'flex', gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Link to="/" style={{ color: '#059669', textDecoration: 'none' }}>Home</Link>
           <Link to="/#features" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Features</Link>
           <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>How It Works</Link>
@@ -160,7 +169,7 @@ export default function Home() {
         </nav>
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link to="/auth" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#0F2C59', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sign In</Link>
+          <Link to="/auth" className="desktop-btn" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#0F2C59', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sign In</Link>
           <Link to="/auth?mode=signup" className="btn" style={{ padding: '0.65rem 1.6rem', fontWeight: 700, borderRadius: '8px', color: 'white', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', border: 'none', boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Get Started</Link>
         </div>
       </header>
