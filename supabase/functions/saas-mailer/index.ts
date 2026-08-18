@@ -165,32 +165,29 @@ serve(async (req) => {
       throw new Error("No recipients found to send emails to.");
     }
 
-    const results = [];
-    
-    // Loop through and send each email via Resend
-    for (const email of emailsToSend) {
-      console.log(`Sending email to ${email.to} with subject: ${email.subject}`);
+    // Format for Resend Batch API
+    const batchData = emailsToSend.map(email => ({
+      from: `StayPilot <${fromAddress}>`,
+      to: [email.to],
+      subject: email.subject,
+      html: email.html,
+    }));
+
+    console.log(`Sending ${batchData.length} emails via Resend Batch API`);
       
-      const res = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${resendApiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: `StayPilot <${fromAddress}>`,
-          to: [email.to],
-          subject: email.subject,
-          html: email.html,
-        }),
-      });
+    const res = await fetch("https://api.resend.com/emails/batch", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${resendApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(batchData),
+    });
 
-      const resJson = await res.json();
-      console.log("Resend API Response:", resJson);
-      results.push(resJson);
-    }
+    const resJson = await res.json();
+    console.log("Resend Batch API Response:", resJson);
 
-    return new Response(JSON.stringify({ success: true, results }), {
+    return new Response(JSON.stringify({ success: true, results: resJson }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     })
