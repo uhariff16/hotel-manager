@@ -85,6 +85,14 @@ serve(async (req) => {
     }
 
     const tenantId = saasSub.tenant_id
+    
+    // Fetch tenant email for notifications
+    const { data: tenantProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('email')
+      .eq('id', tenantId)
+      .single()
+    const tenantEmail = tenantProfile?.email;
 
     // 3. Process Events
     if (event === 'subscription.activated' || event === 'subscription.authenticated') {
@@ -97,6 +105,19 @@ serve(async (req) => {
       await supabaseAdmin.from('profiles').update({
         plan_type: saasSub.staypilot_plan_type
       }).eq('id', tenantId)
+
+      if (tenantEmail) {
+        supabaseAdmin.functions.invoke('saas-mailer', {
+          body: {
+            type: 'subscription_activated',
+            event_data: {
+              tenant_email: tenantEmail,
+              plan_type: saasSub.staypilot_plan_type,
+              period_end: new Date(subEntity.current_end * 1000).toISOString()
+            }
+          }
+        }).catch(err => console.error("Failed to send activation email", err));
+      }
 
     } else if (event === 'subscription.charged') {
       await supabaseAdmin.from('saas_subscriptions').update({
@@ -117,6 +138,19 @@ serve(async (req) => {
           status: paymentEntity.status,
           payment_method: paymentEntity.method
         }, { onConflict: 'razorpay_payment_id' })
+        
+        if (tenantEmail) {
+          supabaseAdmin.functions.invoke('saas-mailer', {
+            body: {
+              type: 'payment_receipt',
+              event_data: {
+                tenant_email: tenantEmail,
+                amount: paymentEntity.amount,
+                payment_id: paymentEntity.id
+              }
+            }
+          }).catch(err => console.error("Failed to send receipt email", err));
+        }
       }
 
     } else if (event === 'subscription.cancelled' || event === 'subscription.halted' || event === 'subscription.completed') {
@@ -132,6 +166,17 @@ serve(async (req) => {
       await supabaseAdmin.from('profiles').update({
         plan_type: 'free'
       }).eq('id', tenantId)
+      
+      if (tenantEmail && (newStatus === 'cancelled' || newStatus === 'completed')) {
+        supabaseAdmin.functions.invoke('saas-mailer', {
+          body: {
+            type: 'subscription_cancelled',
+            event_data: {
+              tenant_email: tenantEmail
+            }
+          }
+        }).catch(err => console.error("Failed to send cancellation email", err));
+      }
     }
 
     return new Response(JSON.stringify({ status: 'success' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
