@@ -717,7 +717,15 @@ export default function BookingForm() {
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
             <div className="form-group">
               <label className="form-label">ID Proof Type</label>
-              <select className="form-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => setBookingForm({...bookingForm, id_proof_type: e.target.value})}>
+              <select className="form-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => {
+                const type = e.target.value;
+                let val = bookingForm.id_proof_number || '';
+                if (type === 'Aadhar') {
+                  val = val.replace(/\D/g, '').substring(0, 12);
+                  val = val.match(/.{1,4}/g)?.join(' ') || val;
+                }
+                setBookingForm({...bookingForm, id_proof_type: type, id_proof_number: val});
+              }}>
                 <option value="Aadhar">Aadhar</option>
                 <option value="Pan Card">Pan Card</option>
                 <option value="Driving License">Driving License</option>
@@ -727,7 +735,14 @@ export default function BookingForm() {
             </div>
             <div className="form-group">
               <label className="form-label">ID Proof Number</label>
-              <input type="text" className="form-input" placeholder="Enter ID number" value={bookingForm.id_proof_number || ''} onChange={e => setBookingForm({...bookingForm, id_proof_number: e.target.value})} />
+              <input type="text" className="form-input" placeholder="Enter ID number" value={bookingForm.id_proof_number || ''} onChange={e => {
+                let val = e.target.value;
+                if (bookingForm.id_proof_type === 'Aadhar') {
+                  val = val.replace(/\D/g, '').substring(0, 12);
+                  val = val.match(/.{1,4}/g)?.join(' ') || val;
+                }
+                setBookingForm({...bookingForm, id_proof_number: val});
+              }} />
             </div>
           </div>
 
