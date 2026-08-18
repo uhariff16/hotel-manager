@@ -86,13 +86,16 @@ serve(async (req) => {
 
     const tenantId = saasSub.tenant_id
     
-    // Fetch tenant email for notifications
-    const { data: tenantProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('email')
-      .eq('id', tenantId)
-      .single()
-    const tenantEmail = tenantProfile?.email;
+    // Fetch tenant email securely from auth.users
+    let tenantEmail = null;
+    try {
+      const { data: userResponse, error: userError } = await supabaseAdmin.auth.admin.getUserById(tenantId);
+      if (!userError && userResponse.user) {
+        tenantEmail = userResponse.user.email;
+      }
+    } catch (e) {
+      console.error("Failed to fetch tenant email", e);
+    }
 
     // 3. Process Events
     if (event === 'subscription.activated' || event === 'subscription.authenticated') {

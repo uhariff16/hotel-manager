@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.3"
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,93 +16,162 @@ serve(async (req) => {
     }
     const fromAddress = "hello@staypilot.co.in";
     
-    // Parse the payload
+    // Admin client to fetch user details securely
+    const supabaseAdmin = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    )
+    
     const payload = await req.json();
     const { type, record, event_data } = payload;
     
     console.log(`Processing saas-mailer event: ${type}`);
 
-    let to = "";
-    let subject = "";
-    let html = "";
+    const emailsToSend = [];
+    const superAdminEmail = "uhariff@gmail.com";
 
-    // 1. New Tenant Registration Notification (To Super Admin)
+    // 1. New Tenant Registration
     if (type === "new_tenant_alert") {
-      to = "uhariff@gmail.com";
-      subject = "New Tenant Registration: StayPilot";
-      
-      // Determine if the event came directly from a DB trigger (record)
       const tenantData = record || event_data;
-      html = `
-        <h1>New Tenant Registered!</h1>
-        <p>A new user has registered as a Tenant on the platform.</p>
-        <p><strong>Name:</strong> ${tenantData.full_name || 'Not provided'}</p>
-        <p><strong>Email:</strong> ${tenantData.email || 'Not provided'}</p>
-        <p><strong>Plan:</strong> ${tenantData.plan_type || 'free'}</p>
-      `;
+      let tenantEmail = tenantData.email;
+      
+      // If email isn't in profiles table, fetch from auth
+      if (!tenantEmail && tenantData.id) {
+        const { data: userResponse } = await supabaseAdmin.auth.admin.getUserById(tenantData.id);
+        if (userResponse?.user) {
+          tenantEmail = userResponse.user.email;
+        }
+      }
+      
+      // Email 1: Alert to Super Admin
+      emailsToSend.push({
+        to: superAdminEmail,
+        subject: "New Tenant Registration: StayPilot",
+        html: `
+          <h1>New Tenant Registered!</h1>
+          <p>A new user has registered as a Tenant on the platform.</p>
+          <p><strong>Name:</strong> ${tenantData.full_name || 'Not provided'}</p>
+          <p><strong>Email:</strong> ${tenantEmail || 'Not provided'}</p>
+          <p><strong>Plan:</strong> ${tenantData.plan_type || 'free'}</p>
+        `
+      });
+
+      // Email 2: Welcome to the Customer (Tenant)
+      if (tenantEmail) {
+        emailsToSend.push({
+          to: tenantEmail,
+          subject: "Welcome to StayPilot!",
+          html: `
+            <h1>Welcome to StayPilot!</h1>
+            <p>Hi ${tenantData.full_name || 'there'},</p>
+            <p>Thank you for choosing StayPilot to manage your property! We are thrilled to have you onboard.</p>
+            <p>If you need any help getting set up, feel free to reply directly to this email.</p>
+          `
+        });
+      }
     } 
     // 2. Subscription Upgrade/Activation
     else if (type === "subscription_activated") {
-      to = event_data.tenant_email;
-      subject = "Your Subscription is Active: StayPilot";
-      html = `
-        <h1>Subscription Activated</h1>
-        <p>Hello,</p>
-        <p>Your subscription for the <strong>${event_data.plan_type}</strong> plan is now active!</p>
-        <p>Your period runs until ${new Date(event_data.period_end).toLocaleDateString()}. Enjoy using StayPilot.</p>
-      `;
+      // Email 1: Notification to Super Admin
+      emailsToSend.push({
+        to: superAdminEmail,
+        subject: `Plan Upgraded: ${event_data.tenant_email}`,
+        html: `
+          <h1>Tenant Upgraded Plan</h1>
+          <p>Tenant <strong>${event_data.tenant_email}</strong> has activated the <strong>${event_data.plan_type}</strong> plan.</p>
+        `
+      });
+      
+      // Email 2: Confirmation to Customer (Tenant)
+      if (event_data.tenant_email) {
+        emailsToSend.push({
+          to: event_data.tenant_email,
+          subject: "Your Subscription is Active: StayPilot",
+          html: `
+            <h1>Subscription Activated</h1>
+            <p>Hello,</p>
+            <p>Your subscription for the <strong>${event_data.plan_type}</strong> plan is now active!</p>
+            <p>Your period runs until ${new Date(event_data.period_end).toLocaleDateString()}. Enjoy using StayPilot.</p>
+          `
+        });
+      }
     }
     // 3. Subscription Cancellation
     else if (type === "subscription_cancelled") {
-      to = event_data.tenant_email;
-      subject = "Subscription Cancelled: StayPilot";
-      html = `
-        <h1>Subscription Cancelled</h1>
-        <p>Hello,</p>
-        <p>Your subscription has been successfully cancelled. Your account has been reverted to the Free plan.</p>
-        <p>We're sorry to see you go!</p>
-      `;
+      // Email 1: Notification to Super Admin
+      emailsToSend.push({
+        to: superAdminEmail,
+        subject: `Plan Cancelled: ${event_data.tenant_email}`,
+        html: `
+          <h1>Tenant Cancelled Plan</h1>
+          <p>Tenant <strong>${event_data.tenant_email}</strong> has cancelled their subscription and reverted to the Free plan.</p>
+        `
+      });
+
+      // Email 2: Confirmation to Customer (Tenant)
+      if (event_data.tenant_email) {
+        emailsToSend.push({
+          to: event_data.tenant_email,
+          subject: "Subscription Cancelled: StayPilot",
+          html: `
+            <h1>Subscription Cancelled</h1>
+            <p>Hello,</p>
+            <p>Your subscription has been successfully cancelled. Your account has been reverted to the Free plan.</p>
+            <p>We're sorry to see you go!</p>
+          `
+        });
+      }
     }
     // 4. Payment Receipt
     else if (type === "payment_receipt") {
-      to = event_data.tenant_email;
-      subject = "Payment Receipt: StayPilot";
-      html = `
-        <h1>Payment Receipt</h1>
-        <p>Hello,</p>
-        <p>We have successfully received your payment of <strong>₹${(event_data.amount / 100).toFixed(2)}</strong>.</p>
-        <p>Transaction ID: ${event_data.payment_id}</p>
-        <p>Thank you for your business!</p>
-      `;
+      // Receipt goes only to Customer (Tenant)
+      if (event_data.tenant_email) {
+        emailsToSend.push({
+          to: event_data.tenant_email,
+          subject: "Payment Receipt: StayPilot",
+          html: `
+            <h1>Payment Receipt</h1>
+            <p>Hello,</p>
+            <p>We have successfully received your payment of <strong>₹${(event_data.amount / 100).toFixed(2)}</strong>.</p>
+            <p>Transaction ID: ${event_data.payment_id}</p>
+            <p>Thank you for your business!</p>
+          `
+        });
+      }
     } else {
       throw new Error("Unknown email type: " + type);
     }
 
-    if (!to) {
-      throw new Error("Recipient email address (to) is missing.");
+    if (emailsToSend.length === 0) {
+      throw new Error("No recipients found to send emails to.");
     }
 
-    console.log(`Sending email to ${to} with subject: ${subject}`);
+    const results = [];
+    
+    // Loop through and send each email via Resend
+    for (const email of emailsToSend) {
+      console.log(`Sending email to ${email.to} with subject: ${email.subject}`);
+      
+      const res = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: `StayPilot <${fromAddress}>`,
+          to: [email.to],
+          subject: email.subject,
+          html: email.html,
+        }),
+      });
 
-    // Call Resend API
-    const res = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${resendApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        from: `StayPilot <${fromAddress}>`,
-        to: [to],
-        subject: subject,
-        html: html,
-      }),
-    });
+      const resJson = await res.json();
+      console.log("Resend API Response:", resJson);
+      results.push(resJson);
+    }
 
-    const result = await res.json();
-    console.log("Resend API Response:", result);
-
-    return new Response(JSON.stringify({ success: true, result }), {
+    return new Response(JSON.stringify({ success: true, results }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     })
