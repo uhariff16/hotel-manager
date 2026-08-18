@@ -147,7 +147,8 @@ export default function Subscription() {
        if (window.confirm("Are you sure you want to downgrade to Free Starter? This will remove access to paid features.")) {
           setLoading(planId);
           try {
-             await supabase.from('profiles').update({ plan_type: 'free' }).eq('id', profile.id);
+             const { data, error } = await supabase.functions.invoke('razorpay-cancel-subscription');
+             if (error || data?.error) throw new Error(error?.message || data?.error || "Unknown error");
              setProfile({...profile, plan_type: 'free'});
              alert("Account downgraded to Free.");
           } catch (e) {

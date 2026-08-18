@@ -86,6 +86,18 @@ serve(async (req) => {
       plan_type: 'free'
     }).eq('id', user.id)
 
+    // Send cancellation emails to Admin and Tenant
+    if (user.email) {
+      supabaseAdmin.functions.invoke('saas-mailer', {
+        body: {
+          type: 'subscription_cancelled',
+          event_data: {
+            tenant_email: user.email
+          }
+        }
+      }).catch(err => console.error("Failed to send cancel email", err));
+    }
+
     return new Response(JSON.stringify({ status: 'success' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {

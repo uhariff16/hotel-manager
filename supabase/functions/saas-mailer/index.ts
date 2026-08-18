@@ -42,43 +42,44 @@ serve(async (req) => {
           tenantEmail = userResponse.user.email;
         }
       }
-      
+
       // Email 1: Alert to Super Admin
       emailsToSend.push({
         to: superAdminEmail,
-        subject: "New Tenant Registration: StayPilot",
+        subject: `New Customer Registration: ${tenantEmail}`,
         html: `
-          <h1>New Tenant Registered!</h1>
-          <p>A new user has registered as a Tenant on the platform.</p>
-          <p><strong>Name:</strong> ${tenantData.full_name || 'Not provided'}</p>
-          <p><strong>Email:</strong> ${tenantEmail || 'Not provided'}</p>
-          <p><strong>Plan:</strong> ${tenantData.plan_type || 'free'}</p>
+          <h1>New Customer Signed Up!</h1>
+          <p>A new customer has registered for the platform.</p>
+          <ul>
+            <li><strong>Email:</strong> ${tenantEmail}</li>
+            <li><strong>Name:</strong> ${tenantData.full_name || 'N/A'}</li>
+          </ul>
         `
       });
 
-      // Email 2: Welcome to the Customer (Tenant)
+      // Email 2: Welcome to Customer
       if (tenantEmail) {
         emailsToSend.push({
           to: tenantEmail,
           subject: "Welcome to StayPilot!",
           html: `
-            <h1>Welcome to StayPilot!</h1>
+            <h1>Welcome to StayPilot</h1>
             <p>Hi ${tenantData.full_name || 'there'},</p>
-            <p>Thank you for choosing StayPilot to manage your property! We are thrilled to have you onboard.</p>
-            <p>If you need any help getting set up, feel free to reply directly to this email.</p>
+            <p>Thank you for registering with StayPilot. We are thrilled to have you on board!</p>
+            <p>You can now log in to your dashboard and start managing your properties.</p>
           `
         });
       }
     } 
-    // 2. Subscription Upgrade/Activation
+    // 2. Subscription Activation/Upgrade
     else if (type === "subscription_activated") {
-      // Email 1: Notification to Super Admin
+      // Email 1: Alert to Super Admin
       emailsToSend.push({
         to: superAdminEmail,
-        subject: `Plan Upgraded: ${event_data.tenant_email}`,
+        subject: `Plan Upgrade: ${event_data.tenant_email}`,
         html: `
           <h1>Tenant Upgraded Plan</h1>
-          <p>Tenant <strong>${event_data.tenant_email}</strong> has activated the <strong>${event_data.plan_type}</strong> plan.</p>
+          <p>Tenant <strong>${event_data.tenant_email}</strong> has activated the <strong>${nicePlanName}</strong> plan.</p>
         `
       });
       
@@ -90,7 +91,7 @@ serve(async (req) => {
           html: `
             <h1>Subscription Activated</h1>
             <p>Hello,</p>
-            <p>Your subscription for the <strong>${event_data.plan_type}</strong> plan is now active!</p>
+            <p>Your subscription for the <strong>${nicePlanName}</strong> plan is now active!</p>
             <p>Your period runs until ${new Date(event_data.period_end).toLocaleDateString()}. Enjoy using StayPilot.</p>
           `
         });
@@ -104,7 +105,7 @@ serve(async (req) => {
         subject: `Plan Cancelled: ${event_data.tenant_email}`,
         html: `
           <h1>Tenant Cancelled Plan</h1>
-          <p>Tenant <strong>${event_data.tenant_email}</strong> has cancelled their subscription and reverted to the Free plan.</p>
+          <p>Tenant <strong>${event_data.tenant_email}</strong> has cancelled their subscription and reverted to the Free Starter plan.</p>
         `
       });
 
@@ -116,7 +117,7 @@ serve(async (req) => {
           html: `
             <h1>Subscription Cancelled</h1>
             <p>Hello,</p>
-            <p>Your subscription has been successfully cancelled. Your account has been reverted to the Free plan.</p>
+            <p>Your subscription has been successfully cancelled. Your account has been reverted to the Free Starter plan.</p>
             <p>We're sorry to see you go!</p>
           `
         });
