@@ -723,6 +723,9 @@ export default function BookingForm() {
                 if (type === 'Aadhar') {
                   val = val.replace(/\D/g, '').substring(0, 12);
                   val = val.match(/.{1,4}/g)?.join('-') || val;
+                } else if (type === 'Driving License') {
+                  val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                  if (val.length > 4) val = val.substring(0, 4) + '-' + val.substring(4);
                 }
                 setBookingForm({...bookingForm, id_proof_type: type, id_proof_number: val});
               }}>
@@ -740,6 +743,9 @@ export default function BookingForm() {
                 if (bookingForm.id_proof_type === 'Aadhar') {
                   val = val.replace(/\D/g, '').substring(0, 12);
                   val = val.match(/.{1,4}/g)?.join('-') || val;
+                } else if (bookingForm.id_proof_type === 'Driving License') {
+                  val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                  if (val.length > 4) val = val.substring(0, 4) + '-' + val.substring(4);
                 }
                 setBookingForm({...bookingForm, id_proof_number: val});
               }} />
