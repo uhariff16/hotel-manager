@@ -99,6 +99,9 @@ serve(async (req) => {
 
     // 3. Process Events
     if (event === 'subscription.activated' || event === 'subscription.authenticated') {
+      
+      const wasAlreadyActive = saasSub.status === 'active';
+
       await supabaseAdmin.from('saas_subscriptions').update({
         status: 'active',
         current_period_start: new Date(subEntity.current_start * 1000).toISOString(),
@@ -109,7 +112,9 @@ serve(async (req) => {
         plan_type: saasSub.staypilot_plan_type
       }).eq('id', tenantId)
 
-      if (tenantEmail) {
+      // Only invoke mailer if this is the FIRST time it's being marked active
+      // (razorpay-verify might have already done this on the frontend)
+      if (tenantEmail && !wasAlreadyActive) {
         supabaseAdmin.functions.invoke('saas-mailer', {
           body: {
             type: 'subscription_activated',
@@ -121,7 +126,6 @@ serve(async (req) => {
           }
         }).catch(err => console.error("Failed to send activation email", err));
       }
-
     } else if (event === 'subscription.charged') {
       await supabaseAdmin.from('saas_subscriptions').update({
         status: 'active',
