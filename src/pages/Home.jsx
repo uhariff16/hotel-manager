@@ -478,8 +478,82 @@ export default function Home() {
           </div>
         </section>
 
+        {/* DEEP DIVE FEATURE SECTIONS */}
+        <section style={{ width: '100%', maxWidth: '1200px', padding: '2rem 2rem 6rem', display: 'flex', flexDirection: 'column', gap: '8rem', position: 'relative', zIndex: 1 }}>
+          
+          {/* Booking Management */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4rem', flexDirection: 'row' }}>
+            <div style={{ flex: '1 1 400px' }}>
+              <img src="/booking_management.png" alt="Booking Management Dashboard" style={{ width: '100%', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 20px 40px rgba(15, 44, 89, 0.12)' }} />
+            </div>
+            <div style={{ flex: '1 1 400px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', background: 'rgba(5, 150, 105, 0.08)', borderRadius: '20px', color: '#059669', fontWeight: 700, fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase' }}>
+                <BookOpenCheck size={14} /> Reservation Control
+              </div>
+              <h3 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1rem', fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
+                Seamless Booking Management, Zero Friction.
+              </h3>
+              <p style={{ fontSize: '1.1rem', color: '#475569', marginBottom: '1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.6 }}>
+                Say goodbye to scattered notebooks and messy spreadsheets. Manage every guest reservation centrally, track check-ins, and keep your property running smoothly. Ensure nothing ever falls through the cracks again.
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#059669" /> Live status tracking (Pending, Confirmed)</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#059669" /> Centralized guest overview</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#059669" /> Effortless room assignments</li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Calendar (Reversed) */}
+          <div style={{ display: 'flex', flexWrap: 'wrap-reverse', alignItems: 'center', gap: '4rem', flexDirection: 'row' }}>
+            <div style={{ flex: '1 1 400px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', background: 'rgba(14, 165, 233, 0.08)', borderRadius: '20px', color: '#0ea5e9', fontWeight: 700, fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase' }}>
+                <CalendarDays size={14} /> Visual Timeline
+              </div>
+              <h3 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1rem', fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
+                Never Double Book Again.
+              </h3>
+              <p style={{ fontSize: '1.1rem', color: '#475569', marginBottom: '1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.6 }}>
+                Get an instant, visual overview of your property's availability. Our elegant timeline calendar lets you spot open rooms in seconds, map out upcoming weeks, and prevent costly scheduling errors effortlessly.
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#0ea5e9" /> Color-coded booking statuses</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#0ea5e9" /> Multi-room & multi-property views</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#0ea5e9" /> Instant availability tracking</li>
+              </ul>
+            </div>
+            <div style={{ flex: '1 1 400px' }}>
+              <img src="/calendar.png" alt="Calendar Timeline View" style={{ width: '100%', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 20px 40px rgba(15, 44, 89, 0.12)' }} />
+            </div>
+          </div>
+
+          {/* Financial Management */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '4rem', flexDirection: 'row' }}>
+            <div style={{ flex: '1 1 400px' }}>
+              <img src="/financials.png" alt="Financial Tracking Dashboard" style={{ width: '100%', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 20px 40px rgba(15, 44, 89, 0.12)' }} />
+            </div>
+            <div style={{ flex: '1 1 400px' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', background: 'rgba(245, 158, 11, 0.08)', borderRadius: '20px', color: '#f59e0b', fontWeight: 700, fontSize: '0.75rem', marginBottom: '1rem', textTransform: 'uppercase' }}>
+                <Wallet size={14} /> Revenue Intelligence
+              </div>
+              <h3 style={{ fontSize: '2.2rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1rem', fontFamily: "'Outfit', sans-serif", lineHeight: 1.2 }}>
+                Turn Operations into Profitability.
+              </h3>
+              <p style={{ fontSize: '1.1rem', color: '#475569', marginBottom: '1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.6 }}>
+                Understand exactly how much money your property is making. Track all income sources, log operational expenses automatically, and let Stay Pilot calculate your net profit with laser precision.
+              </p>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#f59e0b" /> Automated revenue & profit charting</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#f59e0b" /> Clean expense category breakdowns</li>
+                <li style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#334155', fontWeight: 600 }}><CheckCircle2 size={18} color="#f59e0b" /> Real-time occupancy metrics</li>
+              </ul>
+            </div>
+          </div>
+
+        </section>
+
         {/* FEATURES GRID SECTION */}
-        <div id="features" style={{ width: '100%', maxWidth: '1150px', marginTop: '6rem', position: 'relative', zIndex: 1, scrollMarginTop: '120px' }}>
+        <div id="features" style={{ width: '100%', maxWidth: '1150px', marginTop: '4rem', position: 'relative', zIndex: 1, scrollMarginTop: '120px' }}>
           
           <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
             
