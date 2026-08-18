@@ -34,7 +34,7 @@ serve(async (req) => {
     try {
       if (event_data?.plan_type) {
         const { data: adminProfiles } = await supabaseAdmin.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
-        const globalPlans = adminProfiles?.[0]?.global_settings?.plans || {};
+        const globalPlans = adminProfiles?.[0]?.global_settings?.pricing || {};
         if (globalPlans[event_data.plan_type]) {
           nicePlanName = globalPlans[event_data.plan_type].name || event_data.plan_type;
         } else {
