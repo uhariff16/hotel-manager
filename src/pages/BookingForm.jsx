@@ -138,7 +138,7 @@ export default function BookingForm() {
     booking_type: 'Entire Property', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
-    reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_number: '',
+    reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_other_type: '', id_proof_number: '',
     addon_selections: [], addon_others: '',
     room_type: 'Deluxe Room',
     room_types_map: {},
@@ -304,7 +304,8 @@ export default function BookingForm() {
             status: b.status,
             reference_number: b.reference_number || '',
             vehicle_number: b.vehicle_number || '',
-            id_proof_type: b.id_proof_type || 'Aadhar',
+            id_proof_type: ['Aadhar', 'Pan Card', 'Driving License', 'Voter ID', 'Passport'].includes(b.id_proof_type || 'Aadhar') ? (b.id_proof_type || 'Aadhar') : 'Other',
+            id_proof_other_type: ['Aadhar', 'Pan Card', 'Driving License', 'Voter ID', 'Passport'].includes(b.id_proof_type || 'Aadhar') ? '' : (b.id_proof_type || ''),
             id_proof_number: b.id_proof_number || '',
             price_type: b.price_type || 'Calculated',
             addon_selections: selections,
@@ -488,7 +489,7 @@ export default function BookingForm() {
         status: bookingForm.status,
         reference_number: bookingForm.reference_number,
         vehicle_number: bookingForm.vehicle_number,
-        id_proof_type: bookingForm.id_proof_type,
+        id_proof_type: bookingForm.id_proof_type === 'Other' ? bookingForm.id_proof_other_type : bookingForm.id_proof_type,
         id_proof_number: bookingForm.id_proof_number,
         addon_details: bookingForm.addon_selections.map(s => s === 'Others' ? bookingForm.addon_others : s).filter(Boolean).join(', '),
         booking_source: bookingForm.booking_source === 'Other' ? bookingForm.custom_booking_source 
@@ -714,7 +715,7 @@ export default function BookingForm() {
             </div>
           </div>
 
-          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem' }}>
+          <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: bookingForm.id_proof_type === 'Other' ? '1fr 1fr 2fr' : '1fr 2fr', gap: '1.5rem' }}>
             <div className="form-group">
               <label className="form-label">ID Proof Type</label>
               <select className="form-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => {
@@ -734,8 +735,15 @@ export default function BookingForm() {
                 <option value="Driving License">Driving License</option>
                 <option value="Voter ID">Voter ID</option>
                 <option value="Passport">Passport</option>
+                <option value="Other">Other</option>
               </select>
             </div>
+            {bookingForm.id_proof_type === 'Other' && (
+              <div className="form-group">
+                <label className="form-label">Type of ID</label>
+                <input type="text" className="form-input" placeholder="E.g. Company ID" value={bookingForm.id_proof_other_type || ''} onChange={e => setBookingForm({...bookingForm, id_proof_other_type: e.target.value})} />
+              </div>
+            )}
             <div className="form-group">
               <label className="form-label">ID Proof Number</label>
               <input type="text" className="form-input" placeholder="Enter ID number" value={bookingForm.id_proof_number || ''} onChange={e => {
