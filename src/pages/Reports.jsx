@@ -267,6 +267,11 @@ export default function Reports() {
           const bookingsRows = sortedBookings.map(b => [
             b.reference_number,
             b.guest_name,
+            b.guest_phone || '-',
+            `${b.adults_count || 1}/${b.kids_count || 0}`,
+            b.vehicle_number || '-',
+            b.id_proof_type ? `${b.id_proof_type}: ${b.id_proof_number || 'N/A'}` : '-',
+            Array.isArray(b.additional_guests) && b.additional_guests.length > 0 ? b.additional_guests.map(g => g.name).filter(Boolean).join(', ') : '-',
             data.cottages.find(c => c.id === b.cottage_id)?.name || '-',
             b.status,
             b.check_in_date,
@@ -275,11 +280,11 @@ export default function Reports() {
             Number(b.advance_paid || 0),
             Number(b.total_amount || 0) - Number(b.advance_paid || 0)
           ]);
-          const totalBookingValue = bookingsRows.reduce((sum, r) => sum + r[6], 0);
-          const totalBookingPaid = bookingsRows.reduce((sum, r) => sum + r[7], 0);
-          const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[8], 0);
+          const totalBookingValue = bookingsRows.reduce((sum, r) => sum + r[11], 0);
+          const totalBookingPaid = bookingsRows.reduce((sum, r) => sum + r[12], 0);
+          const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[13], 0);
           bookingsRows.push([
-            { content: 'TOTAL', colSpan: 6, styles: { halign: 'right', fontStyle: 'bold' } },
+            { content: 'TOTAL', colSpan: 11, styles: { halign: 'right', fontStyle: 'bold' } },
             { content: totalBookingValue, styles: { fontStyle: 'bold' } },
             { content: totalBookingPaid, styles: { fontStyle: 'bold' } },
             { content: totalBookingBalance, styles: { fontStyle: 'bold' } }
@@ -287,10 +292,10 @@ export default function Reports() {
           
           autoTable(doc, {
             startY: 32,
-            head: [["Ref #", "Guest", "Property", "Status", "Check-in", "Check-out", "Total (₹)", "Paid (₹)", "Balance (₹)"]],
+            head: [["Ref #", "Guest", "Phone", "A/K", "Vehicle", "ID Details", "Add'l Guests", "Property", "Status", "Check-in", "Check-out", "Total", "Paid", "Bal"]],
             body: bookingsRows,
-            styles: { fontSize: 8 },
-            headStyles: { fillColor: [5, 150, 105] },
+            styles: { fontSize: 6, cellPadding: 1 },
+            headStyles: { fillColor: [5, 150, 105], fontSize: 6 },
             theme: 'grid'
           });
         } else if (activeReportType === 'guests') {
@@ -447,13 +452,21 @@ export default function Reports() {
       XLSX.writeFile(workbook, `${resortStr}_Summary_Report_${periodStr}.xlsx`);
 
     } else if (activeReportType === 'bookings') {
-      const bookingsHeaders = ["Ref #", "Guest Name", "Property", "Source", "Status", "Check-in", "Check-out", "Total Value", "Paid", "Balance"];
+      const bookingsHeaders = ["Ref #", "Guest Name", "Phone", "Email", "Adults", "Kids", "Vehicle No", "ID Type", "ID Number", "Add'l Guests", "Property", "Source", "Status", "Check-in", "Check-out", "Total Value", "Paid", "Balance"];
       const bookingsRows = sortedBookings.map(b => {
         const total = Number(b.total_amount || 0);
         const paid = Number(b.advance_paid || 0);
         return [
           b.reference_number,
           b.guest_name,
+          b.guest_phone || '-',
+          b.guest_email || '-',
+          b.adults_count || 1,
+          b.kids_count || 0,
+          b.vehicle_number || '-',
+          b.id_proof_type || '-',
+          b.id_proof_number || '-',
+          Array.isArray(b.additional_guests) && b.additional_guests.length > 0 ? b.additional_guests.map(g => g.name).filter(Boolean).join(', ') : '-',
           data.cottages.find(c => c.id === b.cottage_id)?.name || '-',
           b.booking_source || 'Direct',
           b.status,
@@ -464,11 +477,11 @@ export default function Reports() {
           total - paid
         ];
       });
-      const totalBookingValue = bookingsRows.reduce((sum, r) => sum + r[7], 0);
-      const totalBookingPaid = bookingsRows.reduce((sum, r) => sum + r[8], 0);
-      const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[9], 0);
-      const bookingsAOA = [bookingsHeaders, ...bookingsRows, ["", "", "", "", "", "", "TOTAL", totalBookingValue, totalBookingPaid, totalBookingBalance]];
-      XLSX.utils.book_append_sheet(workbook, createStyledSheet(bookingsAOA, [{wch:15}, {wch:25}, {wch:15}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}], true), "Bookings");
+      const totalBookingValue = bookingsRows.reduce((sum, r) => sum + r[15], 0);
+      const totalBookingPaid = bookingsRows.reduce((sum, r) => sum + r[16], 0);
+      const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[17], 0);
+      const bookingsAOA = [bookingsHeaders, ...bookingsRows, ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "TOTAL", totalBookingValue, totalBookingPaid, totalBookingBalance]];
+      XLSX.utils.book_append_sheet(workbook, createStyledSheet(bookingsAOA, [{wch:15}, {wch:25}, {wch:15}, {wch:25}, {wch:8}, {wch:8}, {wch:15}, {wch:12}, {wch:15}, {wch:25}, {wch:15}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}], true), "Bookings");
       XLSX.writeFile(workbook, `${resortStr}_Bookings_Report_${periodStr}.xlsx`);
 
     } else if (activeReportType === 'guests') {
@@ -800,6 +813,12 @@ export default function Reports() {
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
                           <th onClick={() => requestSort('reference_number')} style={{ padding: '0.8rem', textAlign: 'left', cursor: 'pointer' }}>REF # <SortIcon column="reference_number"/></th>
                           <th onClick={() => requestSort('guest_name')} style={{ padding: '0.8rem', textAlign: 'left', cursor: 'pointer' }}>GUEST NAME <SortIcon column="guest_name"/></th>
+                          <th onClick={() => requestSort('guest_phone')} style={{ padding: '0.8rem', textAlign: 'left', cursor: 'pointer' }}>PHONE <SortIcon column="guest_phone"/></th>
+                          <th onClick={() => requestSort('guest_email')} style={{ padding: '0.8rem', textAlign: 'left', cursor: 'pointer' }}>EMAIL <SortIcon column="guest_email"/></th>
+                          <th style={{ padding: '0.8rem', textAlign: 'center' }}>GUESTS (A/K)</th>
+                          <th style={{ padding: '0.8rem', textAlign: 'left' }}>VEHICLE</th>
+                          <th style={{ padding: '0.8rem', textAlign: 'left' }}>ID DETAILS</th>
+                          <th style={{ padding: '0.8rem', textAlign: 'left' }}>ADD'L GUESTS</th>
                           <th style={{ padding: '0.8rem', textAlign: 'left' }}>PROPERTY</th>
                           <th style={{ padding: '0.8rem', textAlign: 'left' }}>SOURCE</th>
                           <th style={{ padding: '0.8rem', textAlign: 'center' }}>STATUS</th>
@@ -820,6 +839,16 @@ export default function Reports() {
                             <tr key={b.id} style={{ borderBottom: '1px solid #f9f9f9' }}>
                               <td style={{ padding: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>{b.reference_number}</td>
                               <td style={{ padding: '0.8rem' }}>{b.guest_name}</td>
+                              <td style={{ padding: '0.8rem' }}>{b.guest_phone || '-'}</td>
+                              <td style={{ padding: '0.8rem' }}>{b.guest_email || '-'}</td>
+                              <td style={{ padding: '0.8rem', textAlign: 'center' }}>{b.adults_count || 1} / {b.kids_count || 0}</td>
+                              <td style={{ padding: '0.8rem' }}>{b.vehicle_number || '-'}</td>
+                              <td style={{ padding: '0.8rem', fontSize: '0.7rem' }}>{b.id_proof_type ? `${b.id_proof_type}: ${b.id_proof_number || 'N/A'}` : '-'}</td>
+                              <td style={{ padding: '0.8rem', fontSize: '0.7rem' }}>
+                                {Array.isArray(b.additional_guests) && b.additional_guests.length > 0 
+                                  ? b.additional_guests.map(g => g.name).filter(Boolean).join(', ') 
+                                  : '-'}
+                              </td>
                               <td style={{ padding: '0.8rem' }}>
                                 <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700 }}>
                                   {data.cottages.find(c => c.id === b.cottage_id)?.name || '-'}
@@ -843,7 +872,7 @@ export default function Reports() {
                         })}
                         {sortedBookings.length > 0 && (
                           <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0', fontWeight: 800 }}>
-                            <td colSpan="7" style={{ padding: '0.8rem', textAlign: 'right' }}>TOTAL</td>
+                            <td colSpan="13" style={{ padding: '0.8rem', textAlign: 'right' }}>TOTAL</td>
                             <td style={{ padding: '0.8rem', textAlign: 'right', color: 'var(--text-main)' }}>₹{sortedBookings.reduce((sum, b) => sum + Number(b.total_amount || 0), 0).toLocaleString()}</td>
                             <td style={{ padding: '0.8rem', textAlign: 'right', color: 'var(--success)' }}>₹{sortedBookings.reduce((sum, b) => sum + Number(b.advance_paid || 0), 0).toLocaleString()}</td>
                             <td style={{ padding: '0.8rem', textAlign: 'right', color: 'var(--danger)' }}>₹{sortedBookings.reduce((sum, b) => sum + (Number(b.total_amount || 0) - Number(b.advance_paid || 0)), 0).toLocaleString()}</td>
