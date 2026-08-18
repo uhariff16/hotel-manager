@@ -289,7 +289,7 @@ function WebsitePlanEditor({ planKey, planData, internalPlan, onSave, onCancel }
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
             <div className="form-group">
               <label className="form-label">Display Order</label>
-              <input type="number" className="form-input" value={data.displayOrder || ''} onChange={e => setData({...data, displayOrder: Number(e.target.value)})} />
+              <input type="number" className="form-input" value={data.displayOrder || ''} onChange={e => setData({...data, displayOrder: e.target.value === '' ? '' : Number(e.target.value)})} />
             </div>
             <div className="form-group">
               <label className="form-label">CTA Button Text</label>

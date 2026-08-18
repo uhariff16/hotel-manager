@@ -990,7 +990,7 @@ export default function Bookings() {
                 className="form-input" 
                 max={settlingBooking.balance_amount}
                 value={settlementData.amountPaid} 
-                onChange={e => setSettlementData({ ...settlementData, amountPaid: Number(e.target.value) })} 
+                onChange={e => setSettlementData({ ...settlementData, amountPaid: e.target.value === '' ? '' : Number(e.target.value) })} 
               />
             </div>
             
@@ -1000,7 +1000,7 @@ export default function Bookings() {
                 type="number" 
                 className="form-input" 
                 value={settlementData.discount} 
-                onChange={e => setSettlementData({ ...settlementData, discount: Number(e.target.value) })} 
+                onChange={e => setSettlementData({ ...settlementData, discount: e.target.value === '' ? '' : Number(e.target.value) })} 
               />
             </div>
 

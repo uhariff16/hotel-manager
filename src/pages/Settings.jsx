@@ -1046,7 +1046,7 @@ export default function Settings() {
                       <select 
                         className="form-control" 
                         value={cleanupYear} 
-                        onChange={(e) => { setCleanupYear(Number(e.target.value)); setCleanupStats(null); }}
+                        onChange={(e) => { setCleanupYear(e.target.value === '' ? '' : Number(e.target.value)); setCleanupStats(null); }}
                       >
                         {[...Array(10)].map((_, i) => {
                           const year = new Date().getFullYear() - i;

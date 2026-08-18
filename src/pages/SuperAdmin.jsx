@@ -981,25 +981,25 @@ export default function SuperAdmin() {
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
                       <div className="form-group">
                         <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Properties</label>
-                        <input type="number" className="form-input" value={plan.maxResorts === 999999 ? '' : plan.maxResorts} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxResorts: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                        <input type="number" className="form-input" value={plan.maxResorts === 999999 ? '' : plan.maxResorts} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxResorts: e.target.value ? e.target.value === '' ? '' : Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
                       </div>
                       <div className="form-group">
                         <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Rooms</label>
-                        <input type="number" className="form-input" value={plan.maxRooms === 999999 ? '' : plan.maxRooms} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxRooms: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                        <input type="number" className="form-input" value={plan.maxRooms === 999999 ? '' : plan.maxRooms} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxRooms: e.target.value ? e.target.value === '' ? '' : Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
                       </div>
                       <div className="form-group">
                         <label className="form-label" style={{ fontSize: '0.75rem' }}>Max Staff</label>
-                        <input type="number" className="form-input" value={plan.maxStaff === 999999 ? '' : plan.maxStaff} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxStaff: e.target.value ? Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
+                        <input type="number" className="form-input" value={plan.maxStaff === 999999 ? '' : plan.maxStaff} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, maxStaff: e.target.value ? e.target.value === '' ? '' : Number(e.target.value) : 999999}})} placeholder="Unlimited" disabled={!plan.enabled} />
                       </div>
                     </div>
 
                     <div className="form-group">
                       <label className="form-label">Base Rate (₹/month)</label>
-                      <input type="number" className="form-input" value={plan.price || 0} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, price: Number(e.target.value)}})} disabled={!plan.enabled} />
+                      <input type="number" className="form-input" value={plan.price || 0} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, price: e.target.value === '' ? '' : Number(e.target.value)}})} disabled={!plan.enabled} />
                     </div>
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                       <label className="form-label">Promotional Offer Rate (₹/month)</label>
-                      <input type="number" className="form-input" value={plan.offerPrice || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerPrice: Number(e.target.value)}})} disabled={!plan.enabled} />
+                      <input type="number" className="form-input" value={plan.offerPrice || ''} onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, offerPrice: e.target.value === '' ? '' : Number(e.target.value)}})} disabled={!plan.enabled} />
                     </div>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '1rem' }}>
                       <div className="form-group">

@@ -1294,7 +1294,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                   className="form-input" 
                   placeholder="e.g. +919876543210" 
                   value={whatsappNumber}
-                  onChange={e => setWhatsappNumber(e.target.value)}
+                  onChange={e => setWhatsappe.target.value === '' ? '' : Number(e.target.value)}
                   style={{ paddingLeft: '2.5rem', height: '40px', fontSize: '0.85rem' }}
                 />
               </div>

@@ -664,7 +664,7 @@ export default function OnboardingWizard() {
                       className="form-input"
                       style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={propertyForm.max_capacity}
-                      onChange={e => setPropertyForm({ ...propertyForm, max_capacity: Number(e.target.value) })}
+                      onChange={e => setPropertyForm({ ...propertyForm, max_capacity: e.target.value === '' ? '' : Number(e.target.value) })}
                     />
                   </div>
                   <div className="form-group">
@@ -678,7 +678,7 @@ export default function OnboardingWizard() {
                       className="form-input"
                       style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={propertyForm.number_of_rooms}
-                      onChange={e => setPropertyForm({ ...propertyForm, number_of_rooms: Number(e.target.value) })}
+                      onChange={e => setPropertyForm({ ...propertyForm, number_of_rooms: e.target.value === '' ? '' : Number(e.target.value) })}
                     />
                   </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
@@ -693,7 +693,7 @@ export default function OnboardingWizard() {
                           className="form-input"
                           style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                           value={propertyForm.weekday_price}
-                          onChange={e => setPropertyForm({ ...propertyForm, weekday_price: Number(e.target.value) })}
+                          onChange={e => setPropertyForm({ ...propertyForm, weekday_price: e.target.value === '' ? '' : Number(e.target.value) })}
                         />
                       </div>
                       <div>
@@ -704,7 +704,7 @@ export default function OnboardingWizard() {
                           className="form-input"
                           style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                           value={propertyForm.weekend_price}
-                          onChange={e => setPropertyForm({ ...propertyForm, weekend_price: Number(e.target.value) })}
+                          onChange={e => setPropertyForm({ ...propertyForm, weekend_price: e.target.value === '' ? '' : Number(e.target.value) })}
                         />
                       </div>
                     </div>
@@ -815,7 +815,7 @@ export default function OnboardingWizard() {
                           className="form-input"
                           style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.capacity}
-                          onChange={e => updateRoom(room.id, 'capacity', Number(e.target.value))}
+                          onChange={e => updateRoom(room.id, 'capacity', e.target.value === '' ? '' : Number(e.target.value))}
                         />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
@@ -826,7 +826,7 @@ export default function OnboardingWizard() {
                           className="form-input"
                           style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.weekday_price}
-                          onChange={e => updateRoom(room.id, 'weekday_price', Number(e.target.value))}
+                          onChange={e => updateRoom(room.id, 'weekday_price', e.target.value === '' ? '' : Number(e.target.value))}
                         />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
@@ -837,7 +837,7 @@ export default function OnboardingWizard() {
                           className="form-input"
                           style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.weekend_price}
-                          onChange={e => updateRoom(room.id, 'weekend_price', Number(e.target.value))}
+                          onChange={e => updateRoom(room.id, 'weekend_price', e.target.value === '' ? '' : Number(e.target.value))}
                         />
                       </div>
                       <button 

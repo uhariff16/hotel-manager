@@ -704,8 +704,8 @@ export default function BookingForm() {
             <div className="form-group">
               <label className="form-label">Occupants (Adults / Kids)</label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                <input type="number" min="1" placeholder="Adults" className="form-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: Number(e.target.value) || 1})} />
-                <input type="number" min="0" placeholder="Kids" className="form-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: Number(e.target.value) || 0})} />
+                <input type="number" min="1" placeholder="Adults" className="form-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: e.target.value === '' ? '' : Number(e.target.value)})} />
+                <input type="number" min="0" placeholder="Kids" className="form-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
             </div>
             <div className="form-group">
@@ -966,11 +966,11 @@ export default function BookingForm() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Base Amount (₹)</label>
-                <input type="number" className="form-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: Number(e.target.value)})} />
+                <input type="number" className="form-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Advance Paid</label>
-                <input type="number" className="form-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: Number(e.target.value)})} />
+                <input type="number" className="form-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Status</label>
@@ -989,11 +989,11 @@ export default function BookingForm() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Add-ons Cost (₹)</label>
-                <input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: Number(e.target.value)})} />
+                <input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label">Extra Guest Charges (₹)</label>
-                <input type="number" className="form-input" value={bookingForm.extra_guest_charges} onChange={e => setBookingForm({...bookingForm, extra_guest_charges: Number(e.target.value)})} />
+                <input type="number" className="form-input" value={bookingForm.extra_guest_charges} onChange={e => setBookingForm({...bookingForm, extra_guest_charges: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
             </div>
 

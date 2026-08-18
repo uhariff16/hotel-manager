@@ -172,7 +172,7 @@ export default function PriceAnalysis() {
               <label className="form-label" style={{ fontSize: '0.8rem' }}>Annual Investment/Lease (₹)</label>
               <div style={{ position: 'relative' }}>
                 <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>₹</div>
-                <input type="number" className="form-input" style={{ paddingLeft: '35px' }} value={data.total_investment} onChange={e => setData({...data, total_investment: Number(e.target.value)})} />
+                <input type="number" className="form-input" style={{ paddingLeft: '35px' }} value={data.total_investment} onChange={e => setData({...data, total_investment: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Annual cost for this year</small>
             </div>
@@ -181,7 +181,7 @@ export default function PriceAnalysis() {
               <label className="form-label" style={{ fontSize: '0.8rem' }}>Unit Count</label>
               <div style={{ position: 'relative' }}>
                 <Home size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input type="number" className="form-input" style={{ paddingLeft: '35px' }} value={data.total_rooms} onChange={e => setData({...data, total_rooms: Number(e.target.value)})} />
+                <input type="number" className="form-input" style={{ paddingLeft: '35px' }} value={data.total_rooms} onChange={e => setData({...data, total_rooms: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <small style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Defaults to current configured count</small>
             </div>
@@ -189,22 +189,22 @@ export default function PriceAnalysis() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="form-label" style={{ fontSize: '0.8rem' }}>Monthly OpExp</label>
-                <input type="number" className="form-input" value={data.monthly_operating_expenses} onChange={e => setData({...data, monthly_operating_expenses: Number(e.target.value)})} />
+                <input type="number" className="form-input" value={data.monthly_operating_expenses} onChange={e => setData({...data, monthly_operating_expenses: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group">
                 <label className="form-label" style={{ fontSize: '0.8rem' }}>Annual Fixed</label>
-                <input type="number" className="form-input" value={data.annual_fixed_expenses} onChange={e => setData({...data, annual_fixed_expenses: Number(e.target.value)})} />
+                <input type="number" className="form-input" value={data.annual_fixed_expenses} onChange={e => setData({...data, annual_fixed_expenses: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
               <div className="form-group">
                 <label className="form-label" style={{ fontSize: '0.8rem' }}>Target ROI (%)</label>
-                <input type="number" className="form-input" value={data.target_roi_percentage} onChange={e => setData({...data, target_roi_percentage: Number(e.target.value)})} />
+                <input type="number" className="form-input" value={data.target_roi_percentage} onChange={e => setData({...data, target_roi_percentage: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group">
                 <label className="form-label" style={{ fontSize: '0.8rem' }}>Occupancy Goal (%)</label>
-                <input type="number" className="form-input" value={data.expected_occupancy_rate} onChange={e => setData({...data, expected_occupancy_rate: Number(e.target.value)})} />
+                <input type="number" className="form-input" value={data.expected_occupancy_rate} onChange={e => setData({...data, expected_occupancy_rate: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
             </div>
           </section>
