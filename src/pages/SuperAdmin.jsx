@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard } from 'lucide-react';
 import WebsitePricingTab from '../components/WebsitePricingTab';
+import WebsiteManagerTab from '../components/WebsiteManagerTab';
 
 // Secondary client for creating users without affecting the admin session
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -110,11 +111,43 @@ export default function SuperAdmin() {
   
   const DEFAULT_LANDING_CONTENT = {
     headline: "Know Your Bookings. Know Your Numbers.",
-    subheadline: "Bookings. Income. Expenses. Simplified. The ultimate property management software for modern hosts.",
+    subheadline: "Bookings. Income. Expenses. Simplified.",
+    description: "Stay Pilot makes it simple to manage your property bookings, track income and expenses, and understand your business — all in one place.",
+    target: "Built for cottages, homestays, villas, guest houses and independent stays.",
+    comparisonHeadline: "Stop Managing Your Property in Pieces.",
+    comparisonDescription: "Move away from scattered notebooks, messy spreadsheets, and payment records. Stay Pilot provides you with one clean, unified environment to manage your bookings and understand your numbers.",
+    deepDives: [
+      {
+        image: 'booking_management.png',
+        tagline: 'Reservation Control',
+        title: 'Seamless Booking Management, Zero Friction.',
+        description: 'Say goodbye to scattered notebooks and messy spreadsheets. Manage every guest reservation centrally, track check-ins, and keep your property running smoothly. Ensure nothing ever falls through the cracks again.',
+        bullets: ['Live status tracking (Pending, Confirmed)', 'Centralized guest overview', 'Effortless room assignments']
+      },
+      {
+        image: 'calendar.png',
+        tagline: 'Visual Timeline',
+        title: 'Never Double Book Again.',
+        description: "Get an instant, visual overview of your property's availability. Our elegant timeline calendar lets you spot open rooms in seconds, map out upcoming weeks, and prevent costly scheduling errors effortlessly.",
+        bullets: ['Color-coded booking statuses', 'Multi-room & multi-property views', 'Instant availability tracking']
+      },
+      {
+        image: 'financials.png',
+        tagline: 'Revenue Intelligence',
+        title: 'Turn Operations into Profitability.',
+        description: 'Understand exactly how much money your property is making. Track all income sources, log operational expenses automatically, and let Stay Pilot calculate your net profit with laser precision.',
+        bullets: ['Automated revenue & profit charting', 'Clean expense category breakdowns', 'Real-time occupancy metrics']
+      }
+    ],
     features: [
-      { title: "Smart Dashboard", description: "All your metrics at a glance." },
-      { title: "Integrated Calendar", description: "Manage all bookings effortlessly." },
-      { title: "Financial Reports", description: "Track income and expenses easily." }
+      { title: "Smart Dashboard", description: "Real-time metrics, monthly performance, and revenue breakdowns at a glance." },
+      { title: "Booking Management", description: "Track, manage, and organize all your guest reservations effortlessly." },
+      { title: "Integrated Calendar", description: "Visual calendar to instantly see property availability and upcoming stays." },
+      { title: "Financial Tracking", description: "Monitor collections, log expenses, and automatically calculate your profit." },
+      { title: "Comprehensive Reports", description: "Generate deep insights and exportable reports to understand business growth." },
+      { title: "Investment Analysis", description: "Specialized tools to analyze property ROI and track investment health." },
+      { title: "Property & Staff Management", description: "Oversee multiple properties and manage staff access from one central hub." },
+      { title: "Plans & Billing", description: "Built-in subscription management and automated billing features." }
     ]
   };
   const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
@@ -555,7 +588,8 @@ export default function SuperAdmin() {
           { id: 'overview', label: 'Dashboard Overview', icon: <TrendingUp size={16} /> },
           { id: 'accounts', label: `Accounts & Tenants (${tenants.length})`, icon: <Users size={16} /> },
           { id: 'plans', label: 'Subscription Plans', icon: <DollarSign size={16} /> },
-          { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} /> }
+          { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} /> },
+          { id: 'website_manager', label: 'Website Manager', icon: <LayoutDashboard size={16} /> }
         ].map(tab => (
           <button
             key={tab.id}
@@ -989,7 +1023,8 @@ export default function SuperAdmin() {
                           { id: 'summary', label: 'Performance Summary' },
                           { id: 'bookings', label: 'Booking Details' },
                           { id: 'guests', label: 'Guest Contacts' },
-                          { id: 'finance', label: 'Income & Expenses' }
+                          { id: 'finance', label: 'Income & Expenses' },
+                          { id: 'investment', label: 'Investment Analysis' }
                         ].map(report => (
                           <div key={report.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <input 
@@ -1320,78 +1355,16 @@ export default function SuperAdmin() {
               </button>
             </div>
           </div>
-
-          {/* Landing Page CMS */}
-          <div className="card" style={{ marginBottom: '2.5rem', background: 'white', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)', textAlign: 'left' }}>
-            <h3 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
-              <MessageCircle size={20} /> Landing Page Content (CMS)
-            </h3>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Customize the public marketing page content seen by unauthenticated visitors.</p>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.5rem' }}>
-              <div className="form-group">
-                <label className="form-label">Main Headline</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={landingContent.headline} 
-                  onChange={e => setLandingContent({...landingContent, headline: e.target.value})} 
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Sub-headline / Description</label>
-                <textarea 
-                  className="form-input" 
-                  style={{ minHeight: '80px', resize: 'vertical' }}
-                  value={landingContent.subheadline} 
-                  onChange={e => setLandingContent({...landingContent, subheadline: e.target.value})} 
-                />
-              </div>
-              
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1.5rem', marginTop: '0.5rem' }}>
-                <h4 style={{ marginBottom: '1.25rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Feature Highlights</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-                  {(landingContent.features || []).map((feature, idx) => (
-                    <div key={idx} style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-                      <div className="form-group" style={{ marginBottom: '0.75rem' }}>
-                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Title</label>
-                        <input 
-                          type="text" 
-                          className="form-input" 
-                          value={feature.title} 
-                          onChange={e => {
-                            const newFeats = [...landingContent.features];
-                            newFeats[idx].title = e.target.value;
-                            setLandingContent({...landingContent, features: newFeats});
-                          }} 
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label" style={{ fontSize: '0.75rem' }}>Feature {idx + 1} Description</label>
-                        <textarea 
-                          className="form-input" 
-                          style={{ minHeight: '60px' }}
-                          value={feature.description} 
-                          onChange={e => {
-                            const newFeats = [...landingContent.features];
-                            newFeats[idx].description = e.target.value;
-                            setLandingContent({...landingContent, features: newFeats});
-                          }} 
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
-              <button className="btn btn-primary" onClick={handleSaveLandingPage} disabled={isUpdating} style={{ padding: '0.75rem 2rem', fontWeight: 700 }}>
-                {isUpdating ? 'Saving...' : 'Save Landing Page Content'}
-              </button>
-            </div>
-          </div>
         </div>
+      )}
+
+      {adminActiveTab === 'website_manager' && (
+        <WebsiteManagerTab 
+          landingContent={landingContent} 
+          setLandingContent={setLandingContent} 
+          onSave={handleSaveLandingPage}
+          isUpdating={isUpdating}
+        />
       )}
 
       {/* Account Management Modal */}

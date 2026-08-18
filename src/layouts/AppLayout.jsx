@@ -7,7 +7,7 @@ import { supabase } from '../lib/supabase';
 import OnboardingWizard from '../components/OnboardingWizard';
 
 export default function AppLayout() {
-  const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled, isDataLoaded } = useSettingsStore();
+  const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled, isDataLoaded, globalPlans } = useSettingsStore();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const location = useLocation();
 
@@ -81,7 +81,10 @@ export default function AppLayout() {
   // Settings is shared but will be simplified in its own page logic
   navLinks.push({ to: '/settings', label: 'Settings', icon: <SettingsIcon size={20} /> });
 
-  if (profile?.feature_investment_enabled) {
+  const userPlan = profile?.plan_type || 'free';
+  const hasInvestmentAccess = globalPlans?.[userPlan]?.reports?.investment;
+
+  if (profile?.feature_investment_enabled || hasInvestmentAccess) {
     navLinks.push({ to: '/investment-analysis', label: 'Investment Analysis', icon: <TrendingUp size={20} /> });
   }
 
