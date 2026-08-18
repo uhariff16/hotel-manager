@@ -722,7 +722,7 @@ export default function BookingForm() {
                 let val = bookingForm.id_proof_number || '';
                 if (type === 'Aadhar') {
                   val = val.replace(/\D/g, '').substring(0, 12);
-                  val = val.match(/.{1,4}/g)?.join(' ') || val;
+                  val = val.match(/.{1,4}/g)?.join('-') || val;
                 }
                 setBookingForm({...bookingForm, id_proof_type: type, id_proof_number: val});
               }}>
@@ -739,7 +739,7 @@ export default function BookingForm() {
                 let val = e.target.value;
                 if (bookingForm.id_proof_type === 'Aadhar') {
                   val = val.replace(/\D/g, '').substring(0, 12);
-                  val = val.match(/.{1,4}/g)?.join(' ') || val;
+                  val = val.match(/.{1,4}/g)?.join('-') || val;
                 }
                 setBookingForm({...bookingForm, id_proof_number: val});
               }} />
