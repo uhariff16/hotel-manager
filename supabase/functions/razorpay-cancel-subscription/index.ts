@@ -88,7 +88,7 @@ serve(async (req) => {
 
     // Send cancellation emails to Admin and Tenant
     if (user.email) {
-      supabaseAdmin.functions.invoke('saas-mailer', {
+      await supabaseAdmin.functions.invoke('saas-mailer', {
         body: {
           type: 'subscription_cancelled',
           event_data: {

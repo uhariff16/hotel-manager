@@ -88,7 +88,7 @@ serve(async (req) => {
 
     // Send instant upgrade emails to both Customer and Admin
     if (user && user.email) {
-      supabaseAdmin.functions.invoke('saas-mailer', {
+      await supabaseAdmin.functions.invoke('saas-mailer', {
         body: {
           type: 'subscription_activated',
           event_data: {

@@ -115,7 +115,7 @@ serve(async (req) => {
       // Only invoke mailer if this is the FIRST time it's being marked active
       // (razorpay-verify might have already done this on the frontend)
       if (tenantEmail && !wasAlreadyActive) {
-        supabaseAdmin.functions.invoke('saas-mailer', {
+        await supabaseAdmin.functions.invoke('saas-mailer', {
           body: {
             type: 'subscription_activated',
             event_data: {
@@ -147,7 +147,7 @@ serve(async (req) => {
         }, { onConflict: 'razorpay_payment_id' })
         
         if (tenantEmail) {
-          supabaseAdmin.functions.invoke('saas-mailer', {
+          await supabaseAdmin.functions.invoke('saas-mailer', {
             body: {
               type: 'payment_receipt',
               event_data: {
@@ -175,7 +175,7 @@ serve(async (req) => {
       }).eq('id', tenantId)
       
       if (tenantEmail && (newStatus === 'cancelled' || newStatus === 'completed')) {
-        supabaseAdmin.functions.invoke('saas-mailer', {
+        await supabaseAdmin.functions.invoke('saas-mailer', {
           body: {
             type: 'subscription_cancelled',
             event_data: {
