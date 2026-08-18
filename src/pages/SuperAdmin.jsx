@@ -151,6 +151,25 @@ export default function SuperAdmin() {
     ]
   };
   const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
+  const DEFAULT_EMAIL_TEMPLATES = {
+    welcome: {
+      subject: "Welcome to StayPilot!",
+      html: `<h1>Welcome to StayPilot!</h1>\n<p>Hi {{tenant_name}},</p>\n<p>Thank you for choosing StayPilot to manage your property! We are thrilled to have you onboard.</p>\n<p>If you need any help getting set up, feel free to reply directly to this email.</p>`
+    },
+    subscription_activated: {
+      subject: "Your Subscription is Active: StayPilot",
+      html: `<h1>Subscription Activated</h1>\n<p>Hello,</p>\n<p>Your subscription for the <strong>{{plan_name}}</strong> plan is now active!</p>\n<p>Your period runs until {{period_end}}. Enjoy using StayPilot.</p>`
+    },
+    subscription_cancelled: {
+      subject: "Subscription Cancelled: StayPilot",
+      html: `<h1>Subscription Cancelled</h1>\n<p>Hello,</p>\n<p>Your subscription has been successfully cancelled. Your account has been reverted to the Free Starter plan.</p>\n<p>We're sorry to see you go!</p>`
+    },
+    payment_receipt: {
+      subject: "Payment Receipt: StayPilot",
+      html: `<h1>Payment Receipt</h1>\n<p>Hello,</p>\n<p>We have successfully received your payment of <strong>₹{{amount}}</strong>.</p>\n<p>Transaction ID: {{payment_id}}</p>\n<p>Thank you for your business!</p>`
+    }
+  };
+  const [emailTemplates, setEmailTemplates] = useState(DEFAULT_EMAIL_TEMPLATES);
 
   // Modal states
   const [showUserForm, setShowUserForm] = useState(false);
@@ -242,6 +261,12 @@ export default function SuperAdmin() {
             ...DEFAULT_LANDING_CONTENT,
             ...superAdminProfile.global_settings.landing_page,
             features: superAdminProfile.global_settings.landing_page.features || DEFAULT_LANDING_CONTENT.features
+          });
+        }
+        if (superAdminProfile.global_settings.email_templates) {
+          setEmailTemplates({
+            ...DEFAULT_EMAIL_TEMPLATES,
+            ...superAdminProfile.global_settings.email_templates
           });
         }
       }
@@ -382,6 +407,22 @@ export default function SuperAdmin() {
       alert("Global pricing configuration updated successfully!");
     } catch (err) {
       alert("Failed to save pricing: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveEmailTemplates = async () => {
+    try {
+      setIsUpdating(true);
+      const settings = profile.global_settings || {};
+      settings.email_templates = emailTemplates;
+      
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      if (error) throw error;
+      alert("Email templates updated successfully!");
+    } catch (err) {
+      alert("Failed to save email templates: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -589,6 +630,7 @@ export default function SuperAdmin() {
           { id: 'accounts', label: `Accounts & Tenants (${tenants.length})`, icon: <Users size={16} /> },
           { id: 'plans', label: 'Subscription Plans', icon: <DollarSign size={16} /> },
           { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} /> },
+          { id: 'emails', label: 'Email Templates', icon: <Mail size={16} /> },
           { id: 'website_manager', label: 'Website Manager', icon: <LayoutDashboard size={16} /> }
         ].map(tab => (
           <button
@@ -1462,6 +1504,52 @@ export default function SuperAdmin() {
           </div>
         </div>
       )}
+      
+      {/* TAB: EMAIL TEMPLATES */}
+      {adminActiveTab === 'emails' && (
+        <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Email Template Builder</h2>
+              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Customize the exact HTML sent to customers and admins for various lifecycle events.</p>
+            </div>
+            <button className="btn btn-primary" onClick={handleSaveEmailTemplates} disabled={isUpdating}>
+              <Save size={18} /> {isUpdating ? 'Saving...' : 'Save All Templates'}
+            </button>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
+            {Object.entries(emailTemplates).map(([key, template]) => (
+              <div key={key} className="card" style={{ padding: '2rem', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <h3 style={{ margin: 0, color: '#0F2C59', fontWeight: 700, textTransform: 'capitalize' }}>
+                    {key.replace('_', ' ')}
+                  </h3>
+                  <div style={{ fontSize: '0.85rem', color: '#64748B', background: '#f8fafc', padding: '0.25rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                    Variables: <code>{key === 'welcome' ? '{{tenant_name}}, {{tenant_email}}' : key === 'payment_receipt' ? '{{amount}}, {{payment_id}}' : '{{plan_name}}, {{period_end}}, {{tenant_email}}'}</code>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email Subject</label>
+                  <input type="text" className="form-input" value={template.subject} onChange={(e) => setEmailTemplates({...emailTemplates, [key]: {...template, subject: e.target.value}})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">HTML Body Template</label>
+                  <textarea 
+                    className="form-input" 
+                    rows={8} 
+                    style={{ fontFamily: 'monospace', fontSize: '0.9rem', background: '#1e293b', color: '#e2e8f0' }}
+                    value={template.html} 
+                    onChange={(e) => setEmailTemplates({...emailTemplates, [key]: {...template, html: e.target.value}})} 
+                  />
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>Use standard HTML tags like &lt;h1&gt;, &lt;p&gt;, &lt;strong&gt;, etc. Variables wrapped in double braces will be replaced dynamically.</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
