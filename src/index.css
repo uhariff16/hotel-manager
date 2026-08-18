@@ -821,3 +821,10 @@ input:checked + .slider:before {
 .slider.round:before {
   border-radius: 50%;
 }
+
+
+/* Landing Page Global Responsive Classes */
+@media (max-width: 992px) {
+  .desktop-nav { display: none !important; }
+  .desktop-btn { display: none !important; }
+}
