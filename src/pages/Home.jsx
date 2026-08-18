@@ -409,74 +409,7 @@ export default function Home() {
 
         </div>
 
-        {/* COMPARISON VALUE PROPOSITION SECTION */}
-        <section style={{ 
-          padding: '6rem 2rem 4rem', 
-          background: 'transparent', 
-          textAlign: 'center', 
-          position: 'relative', 
-          zIndex: 1, 
-          width: '100%' 
-        }}>
-          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1rem', fontFamily: "'Outfit', sans-serif" }}>
-              Stop Managing Your Property in Pieces.
-            </h2>
-            <p style={{ fontSize: '1.15rem', color: '#475569', marginBottom: '4rem', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.6 }}>
-              Move away from scattered notebooks, messy spreadsheets, and payment records. Stay Pilot provides you with one clean, unified environment to manage your bookings and understand your numbers.
-            </p>
 
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-              
-              {/* Scattered Pieces Row */}
-              <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
-                  <Smartphone size={18} color="#25D366" /> WhatsApp Chats
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
-                  <Receipt size={18} color="#f59e0b" /> Paper Notebooks
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
-                  <FileSpreadsheet size={18} color="#10b981" /> Spreadsheets
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
-                  <Calculator size={18} color="#0ea5e9" /> Physical Calculators
-                </div>
-              </div>
-
-              {/* Animated/Arrow transition */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', color: '#cbd5e1' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Replaced By</span>
-                <ArrowRight size={28} color="#059669" style={{ transform: 'rotate(90deg)', animation: 'float 3s infinite' }} />
-              </div>
-
-              {/* STAY PILOT Unified Box */}
-              <div style={{ 
-                padding: '2.5rem 4rem', 
-                background: 'linear-gradient(135deg, #0F2C59 0%, #173b75 100%)', 
-                borderRadius: '24px', 
-                color: 'white', 
-                boxShadow: '0 25px 50px rgba(15, 44, 89, 0.15)',
-                border: '1px solid rgba(255,255,255,0.08)',
-                width: '100%',
-                maxWidth: '650px'
-              }}>
-                <div style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>STAY PILOT</div>
-                <div style={{ fontSize: '0.9rem', color: '#a5f3fc', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>One Unified System</div>
-                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.05rem', fontWeight: 600 }}>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><LayoutDashboard size={16} color="#059669" /> Dashboard</span>
-                  <span>&bull;</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CalendarDays size={16} color="#0ea5e9" /> Calendar</span>
-                  <span>&bull;</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Wallet size={16} color="#f59e0b" /> Financials</span>
-                  <span>&bull;</span>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} color="#10b981" /> Reports</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
 
         {/* DEEP DIVE FEATURE SECTIONS */}
         <section style={{ width: '100%', maxWidth: '1200px', padding: '2rem 2rem 6rem', display: 'flex', flexDirection: 'column', gap: '8rem', position: 'relative', zIndex: 1 }}>
@@ -651,6 +584,75 @@ export default function Home() {
           </div>
 
         </div>
+
+        {/* COMPARISON VALUE PROPOSITION SECTION */}
+        <section style={{ 
+          padding: '6rem 2rem 4rem', 
+          background: 'transparent', 
+          textAlign: 'center', 
+          position: 'relative', 
+          zIndex: 1, 
+          width: '100%' 
+        }}>
+          <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+            <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1rem', fontFamily: "'Outfit', sans-serif" }}>
+              Stop Managing Your Property in Pieces.
+            </h2>
+            <p style={{ fontSize: '1.15rem', color: '#475569', marginBottom: '4rem', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.6 }}>
+              Move away from scattered notebooks, messy spreadsheets, and payment records. Stay Pilot provides you with one clean, unified environment to manage your bookings and understand your numbers.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
+              
+              {/* Scattered Pieces Row */}
+              <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
+                  <Smartphone size={18} color="#25D366" /> WhatsApp Chats
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
+                  <Receipt size={18} color="#f59e0b" /> Paper Notebooks
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
+                  <FileSpreadsheet size={18} color="#10b981" /> Spreadsheets
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
+                  <Calculator size={18} color="#0ea5e9" /> Physical Calculators
+                </div>
+              </div>
+
+              {/* Animated/Arrow transition */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.25rem', color: '#cbd5e1' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Replaced By</span>
+                <ArrowRight size={28} color="#059669" style={{ transform: 'rotate(90deg)', animation: 'float 3s infinite' }} />
+              </div>
+
+              {/* STAY PILOT Unified Box */}
+              <div style={{ 
+                padding: '2.5rem 4rem', 
+                background: 'linear-gradient(135deg, #0F2C59 0%, #173b75 100%)', 
+                borderRadius: '24px', 
+                color: 'white', 
+                boxShadow: '0 25px 50px rgba(15, 44, 89, 0.15)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                width: '100%',
+                maxWidth: '650px'
+              }}>
+                <div style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>STAY PILOT</div>
+                <div style={{ fontSize: '0.9rem', color: '#a5f3fc', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '1.5rem' }}>One Unified System</div>
+                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.05rem', fontWeight: 600 }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><LayoutDashboard size={16} color="#059669" /> Dashboard</span>
+                  <span>&bull;</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><CalendarDays size={16} color="#0ea5e9" /> Calendar</span>
+                  <span>&bull;</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Wallet size={16} color="#f59e0b" /> Financials</span>
+                  <span>&bull;</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><FileText size={16} color="#10b981" /> Reports</span>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
 
       </main>
 
