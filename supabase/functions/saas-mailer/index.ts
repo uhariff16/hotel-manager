@@ -30,6 +30,24 @@ serve(async (req) => {
     const emailsToSend = [];
     const superAdminEmail = "uhariff@gmail.com";
 
+    let nicePlanName = event_data?.plan_type || 'Free Starter';
+    try {
+      if (event_data?.plan_type) {
+        const { data: adminProfiles } = await supabaseAdmin.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
+        const globalPlans = adminProfiles?.[0]?.global_settings?.plans || {};
+        if (globalPlans[event_data.plan_type]) {
+          nicePlanName = globalPlans[event_data.plan_type].name || event_data.plan_type;
+        } else {
+          if (event_data.plan_type === 'solo') nicePlanName = 'Stay Pilot Solo';
+          if (event_data.plan_type === 'premium') nicePlanName = 'Stay Pilot Luxury Premium';
+          if (event_data.plan_type === 'pro') nicePlanName = 'Stay Pilot Pro Manager';
+          if (event_data.plan_type === 'free') nicePlanName = 'Free Starter';
+        }
+      }
+    } catch (e) {
+      console.warn('Could not fetch global plans for formatting name', e);
+    }
+
     // 1. New Tenant Registration
     if (type === "new_tenant_alert") {
       const tenantData = record || event_data;
