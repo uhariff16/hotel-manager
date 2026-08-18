@@ -252,7 +252,7 @@ export default function Subscription() {
           Flexible pricing designed to scale with your hotel business.
         </p>
         <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-          <span className={`badge ${profile?.plan_type === 'free' ? 'badge-success' : ''}`} style={{ padding: '0.5rem 1rem' }}>Current: {profile?.plan_type.toUpperCase()} Account</span>
+          <span className={`badge ${profile?.plan_type === 'free' ? 'badge-success' : ''}`} style={{ padding: '0.5rem 1rem' }}>Current: {plansList.find(p => p.id === profile?.plan_type)?.name || profile?.plan_type.toUpperCase()} Account</span>
         </div>
       </div>
 
@@ -264,7 +264,7 @@ export default function Subscription() {
                 <Check size={24} /> Active Subscription
               </h2>
               <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>
-                You are currently subscribed to the <strong>{activeSubscription.staypilot_plan_type.toUpperCase()}</strong> plan.
+                You are currently subscribed to the <strong>{plansList.find(p => p.id === activeSubscription.staypilot_plan_type)?.name || activeSubscription.staypilot_plan_type.toUpperCase()}</strong> plan.
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.9rem' }}>
                 <div style={{ color: 'var(--text-muted)' }}>Status:</div>
