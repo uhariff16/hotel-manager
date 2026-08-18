@@ -13,7 +13,7 @@ serve(async (req) => {
     if (!resendApiKey) {
       throw new Error("RESEND_API_KEY is not configured in Edge Function secrets.");
     }
-    const fromAddress = "onboarding@resend.dev";
+    const fromAddress = "hello@staypilot.co.in";
     
     // Parse the payload
     const payload = await req.json();
