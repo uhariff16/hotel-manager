@@ -297,7 +297,7 @@ export default function SuperAdmin() {
           ownerName: owner ? owner.full_name : 'Self',
           propertyCount: resortNamesList.length,
           propertyNames: resortNamesList,
-          bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length : 0
+          bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length
         };
       });
 
