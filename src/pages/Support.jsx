@@ -120,14 +120,6 @@ const TenantSupport = () => {
       is_from_admin: false
     };
 
-    // Create initial message
-    const msg = {
-      ticket_id: ticket.id,
-      sender_id: profile.id,
-      message: newTicketMessage,
-      is_from_admin: false
-    };
-
     const { error: msgError } = await supabase.from('support_messages').insert(msg);
     if (msgError) {
       console.error("Error saving message", msgError);

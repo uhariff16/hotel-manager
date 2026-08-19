@@ -125,8 +125,6 @@ const SupportInbox = ({ superAdminProfile }) => {
 
       // Trigger email notification
       try {
-        await supabase.functions.invoke('saas-mailer', {
-          body: {
         const payloadBody = {
           type: 'ticket_reply',
           event_data: {
