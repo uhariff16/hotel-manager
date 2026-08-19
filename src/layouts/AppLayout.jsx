@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import { Capacitor } from '@capacitor/core';
 
 import { supabase } from '../lib/supabase';
 import OnboardingWizard from '../components/OnboardingWizard';
@@ -178,7 +179,9 @@ export default function AppLayout() {
       navLinks.push(managementMenu);
     }
     
-    navLinks.push({ to: '/subscription', label: 'Plans & Billing', icon: <CreditCard size={20} /> });
+    if (!Capacitor.isNativePlatform()) {
+      navLinks.push({ to: '/subscription', label: 'Plans & Billing', icon: <CreditCard size={20} /> });
+    }
     navLinks.push({ to: '/support', label: `Help & Support ${supportUnreadCount > 0 ? `(${supportUnreadCount})` : ''}`, icon: <LifeBuoy size={20} /> });
   }
 

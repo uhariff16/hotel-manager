@@ -640,7 +640,7 @@ export default function Bookings() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '1.5rem' : '2rem' }}>
         <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 800 }}>Bookings</h1>
         <button className="btn btn-primary" onClick={() => navigate('/bookings/new')} style={{ padding: isMobile ? '0.6rem 1rem' : '0.8rem 1.6rem', borderRadius: 'var(--radius-md)', fontWeight: 700 }}>
-          <Plus size={20} /> <span className="desktop-only">New Booking</span>
+          <Plus size={20} /> <span className={window.Capacitor?.isNativePlatform() ? "" : "desktop-only"}>New Booking</span>
         </button>
       </div>
 

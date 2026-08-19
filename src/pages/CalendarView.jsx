@@ -906,7 +906,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                                 {dayBookings.slice(0, isMobile ? 2 : 3).map(b => (
                                   <div key={b.id} 
                                        onClick={() => setSelectedBooking(b)} 
-                                       onMouseEnter={(e) => { setHoveredBooking(b); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
+                                       onMouseEnter={(e) => { if (window.Capacitor?.isNativePlatform()) return; setHoveredBooking(b); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
                                        onMouseLeave={() => setHoveredBooking(null)}
                                        style={{ 
                                           fontSize: isMobile ? '0.55rem' : '0.75rem', padding: isMobile ? '0.15rem' : '0.35rem 0.6rem', borderRadius: '4px', 

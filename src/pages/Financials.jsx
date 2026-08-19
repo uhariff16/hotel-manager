@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Trash2, ArrowUpRight, ArrowDownRight, Edit2, Filter, CalendarCheck } from 'lucide-react';
+import { Trash2, ArrowUpRight, ArrowDownRight, Edit2, Filter, CalendarCheck, Plus, X } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
 
@@ -343,9 +343,9 @@ export default function Financials() {
         <div style={{ display: (activeMobileTab === 'income' || !isMobile) ? 'block' : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--success)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowUpRight size={isMobile ? 20 : 28} /> Incomes</h2>
-            <button className="mobile-only btn btn-outline" style={{ height: '32px', padding: '0 0.75rem', fontSize: '0.75rem' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
-              {showIncomeForm ? 'Close Form' : '+ Add New'}
-            </button>
+              <button className="mobile-only btn btn-primary" style={{ height: '36px', width: '36px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
+                {showIncomeForm ? <X size={20} /> : <Plus size={20} />}
+              </button>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -461,9 +461,9 @@ export default function Financials() {
         <div style={{ display: (activeMobileTab === 'expense' || !isMobile) ? 'block' : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--danger)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowDownRight size={isMobile ? 20 : 28} /> Expenses</h2>
-            <button className="mobile-only btn btn-outline" style={{ height: '32px', padding: '0 0.75rem', fontSize: '0.75rem' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
-              {showExpenseForm ? 'Close Form' : '+ Add New'}
-            </button>
+              <button className="mobile-only btn btn-primary" style={{ height: '36px', width: '36px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
+                {showExpenseForm ? <X size={20} /> : <Plus size={20} />}
+              </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
