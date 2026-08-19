@@ -7,11 +7,13 @@ const key = env.match(/VITE_SUPABASE_ANON_KEY=(.*)/)[1].trim();
 const supabase = createClient(url, key);
 
 async function test() {
-  const { data: profile } = await supabase.from('profiles').select('id, email, role, tenant_id').eq('email', 'uhariff@gmail.com').single();
-  console.log('Admin Profile:', profile);
+  const { count: propertiesCount, error: pErr } = await supabase.from('resorts').select('*', { count: 'exact', head: true });
+  const { count: bookingsCount, error: bErr } = await supabase.from('bookings').select('*', { count: 'exact', head: true });
   
-  const { data: rooms, error } = await supabase.from('rooms').select('id, name, tenant_id, resort_id, cottage_id');
-  if (error) console.error(error);
-  else console.log('Rooms:', rooms);
+  if (pErr) console.error(pErr);
+  if (bErr) console.error(bErr);
+  
+  console.log('Total Properties:', propertiesCount);
+  console.log('Total Bookings:', bookingsCount);
 }
 test();

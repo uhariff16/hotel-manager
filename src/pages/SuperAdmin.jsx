@@ -904,13 +904,15 @@ export default function SuperAdmin() {
                   className="btn btn-outline" 
                   style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: '#0F2C59', borderColor: '#cbd5e1' }}
                   onClick={() => {
-                    const headers = ['ID', 'Full Name', 'Email', 'Role', 'Properties', 'Plan', 'Status', 'Joined Date'];
+                    const headers = ['ID', 'Full Name', 'Email', 'Role', 'Properties (Names)', 'Property Count', 'Booking Count', 'Plan', 'Status', 'Joined Date'];
                     const rows = tenants.map(t => [
                       t.id,
                       t.full_name,
                       t.email,
                       t.role === 'tenant_admin' ? 'Tenant Admin' : 'Staff',
                       (t.propertyNames || []).join('; '),
+                      t.role === 'tenant_admin' ? (t.propertyCount || 0) : 'N/A',
+                      t.role === 'tenant_admin' ? (t.bookingCount || 0) : 'N/A',
                       pricingConfig[t.plan_type]?.name || t.plan_type || 'Free Starter',
                       t.subscription_status === 'active' ? 'Active' : 'Suspended',
                       t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : ''
@@ -925,6 +927,8 @@ export default function SuperAdmin() {
                       { wch: 30 }, // Email
                       { wch: 15 }, // Role
                       { wch: 40 }, // Properties
+                      { wch: 15 }, // Property Count
+                      { wch: 15 }, // Booking Count
                       { wch: 20 }, // Plan
                       { wch: 10 }, // Status
                       { wch: 15 }  // Joined Date
