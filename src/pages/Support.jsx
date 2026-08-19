@@ -224,7 +224,7 @@ const TenantSupport = () => {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '1.5rem', height: isMobile ? 'auto' : 'calc(100vh - 200px)', flexDirection: isMobile ? 'column' : 'row' }}>
+      <div style={{ display: 'flex', gap: '1.5rem', height: isMobile ? 'auto' : 'calc(100vh - 200px)', flexDirection: isMobile ? 'column-reverse' : 'row' }}>
         {/* Left side: Ticket List */}
         <div style={{ width: isMobile ? '100%' : '300px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '1.2rem', borderBottom: '1px solid #e2e8f0' }}>

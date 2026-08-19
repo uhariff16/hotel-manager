@@ -1101,7 +1101,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
         )}
       </div>
 
-      {hoveredBooking && (
+      {hoveredBooking && !window.Capacitor?.isNativePlatform() && (
         <CalendarTooltip 
             booking={hoveredBooking} 
             cottageName={cottages.find(c => c.id === hoveredBooking.cottage_id)?.name} 

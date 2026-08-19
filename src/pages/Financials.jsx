@@ -343,9 +343,16 @@ export default function Financials() {
         <div style={{ display: (activeMobileTab === 'income' || !isMobile) ? 'block' : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--success)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowUpRight size={isMobile ? 20 : 28} /> Incomes</h2>
-              <button className="mobile-only btn btn-primary" style={{ height: '36px', width: '36px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
-                {showIncomeForm ? <X size={20} /> : <Plus size={20} />}
+            {!isMobile && (
+              <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
+                {showIncomeForm ? 'Close Form' : '+ Add New'}
               </button>
+            )}
+            {isMobile && activeMobileTab === 'income' && (
+              <button className="btn btn-primary" style={{ position: 'fixed', bottom: '80px', right: '20px', height: '56px', width: '56px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
+                {showIncomeForm ? <X size={24} /> : <Plus size={24} />}
+              </button>
+            )}
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -461,9 +468,16 @@ export default function Financials() {
         <div style={{ display: (activeMobileTab === 'expense' || !isMobile) ? 'block' : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--danger)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowDownRight size={isMobile ? 20 : 28} /> Expenses</h2>
-              <button className="mobile-only btn btn-primary" style={{ height: '36px', width: '36px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
-                {showExpenseForm ? <X size={20} /> : <Plus size={20} />}
+            {!isMobile && (
+              <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
+                {showExpenseForm ? 'Close Form' : '+ Add New'}
               </button>
+            )}
+            {isMobile && activeMobileTab === 'expense' && (
+              <button className="btn btn-primary" style={{ position: 'fixed', bottom: '80px', right: '20px', height: '56px', width: '56px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
+                {showExpenseForm ? <X size={24} /> : <Plus size={24} />}
+              </button>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
