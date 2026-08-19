@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw } from 'lucide-react';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
 
@@ -153,20 +153,99 @@ export default function SuperAdmin() {
   const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
   const DEFAULT_EMAIL_TEMPLATES = {
     welcome: {
-      subject: "Welcome to StayPilot!",
-      html: `<h1>Welcome to StayPilot!</h1>\n<p>Hi {{tenant_name}},</p>\n<p>Thank you for choosing StayPilot to manage your property! We are thrilled to have you onboard.</p>\n<p>If you need any help getting set up, feel free to reply directly to this email.</p>`
+      subject: "Welcome to StayPilot! 🚀",
+      html: `<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+  <div style="background: linear-gradient(135deg, #0F2C59 0%, #1a4a8f 100%); padding: 40px 20px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Welcome to StayPilot! 🚀</h1>
+  </div>
+  <div style="padding: 40px 30px; color: #334155;">
+    <p style="font-size: 18px; margin-top: 0;">Hi <strong>{{tenant_name}}</strong>,</p>
+    <p style="font-size: 16px; line-height: 1.6; color: #475569;">Thank you for choosing StayPilot to manage your property! We are thrilled to have you onboard. Our platform is designed to help you increase bookings, manage staff, and analyze your investments effortlessly.</p>
+    
+    <div style="text-align: center; margin: 35px 0;">
+      <a href="https://staypilot.co.in/dashboard" style="background-color: #10b981; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);">Go to your Dashboard</a>
+    </div>
+    
+    <p style="font-size: 16px; line-height: 1.6; color: #475569;">If you need any help getting set up, feel free to reply directly to this email. We're always here to help you grow.</p>
+  </div>
+  <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0;">
+    &copy; 2026 StayPilot Inc. | All rights reserved.<br>
+    Transforming Property Management.
+  </div>
+</div>`
     },
     subscription_activated: {
-      subject: "Your Subscription is Active: StayPilot",
-      html: `<h1>Subscription Activated</h1>\n<p>Hello,</p>\n<p>Your subscription for the <strong>{{plan_name}}</strong> plan is now active!</p>\n<p>Your period runs until {{period_end}}. Enjoy using StayPilot.</p>`
+      subject: "Your Subscription is Active: StayPilot ✨",
+      html: `<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+  <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Subscription Upgraded! ✨</h1>
+  </div>
+  <div style="padding: 40px 30px; color: #334155;">
+    <p style="font-size: 18px; margin-top: 0;">Hello,</p>
+    <p style="font-size: 16px; line-height: 1.6; color: #475569;">Great news! Your account has been successfully upgraded to the <strong style="color: #0F2C59;">{{plan_name}}</strong> plan.</p>
+    
+    <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 25px 0;">
+      <p style="margin: 0; color: #166534; font-size: 15px;"><strong>Plan:</strong> {{plan_name}}</p>
+      <p style="margin: 10px 0 0 0; color: #166534; font-size: 15px;"><strong>Valid Until:</strong> {{period_end}}</p>
+    </div>
+
+    <p style="font-size: 16px; line-height: 1.6; color: #475569;">You now have access to premium features to take your hospitality business to the next level. Let's maximize your revenue!</p>
+    
+    <div style="text-align: center; margin: 35px 0;">
+      <a href="https://staypilot.co.in/dashboard" style="background-color: #0F2C59; color: white; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block;">Explore New Features</a>
+    </div>
+  </div>
+  <div style="background-color: #f8fafc; padding: 20px; text-align: center; font-size: 13px; color: #64748b; border-top: 1px solid #e2e8f0;">
+    &copy; 2026 StayPilot Inc.
+  </div>
+</div>`
     },
     subscription_cancelled: {
       subject: "Subscription Cancelled: StayPilot",
-      html: `<h1>Subscription Cancelled</h1>\n<p>Hello,</p>\n<p>Your subscription has been successfully cancelled. Your account has been reverted to the Free Starter plan.</p>\n<p>We're sorry to see you go!</p>`
+      html: `<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+  <div style="background: linear-gradient(135deg, #475569 0%, #1e293b 100%); padding: 40px 20px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800;">Subscription Cancelled</h1>
+  </div>
+  <div style="padding: 40px 30px; color: #334155;">
+    <p style="font-size: 18px; margin-top: 0;">Hello,</p>
+    <p style="font-size: 16px; line-height: 1.6; color: #475569;">Your subscription has been successfully cancelled. Your account has been reverted to the <strong>Free Starter</strong> plan.</p>
+    
+    <p style="font-size: 16px; line-height: 1.6; color: #475569;">You will no longer be charged, but you will lose access to premium features at the end of your current billing cycle.</p>
+    
+    <div style="text-align: center; margin: 35px 0;">
+      <a href="https://staypilot.co.in/dashboard/pricing" style="background-color: #f8fafc; color: #0F2C59; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 16px; display: inline-block; border: 1px solid #cbd5e1;">Reactivate Anytime</a>
+    </div>
+
+    <p style="font-size: 14px; color: #64748b; text-align: center;">We're sorry to see you go. We hope to welcome you back soon!</p>
+  </div>
+</div>`
     },
     payment_receipt: {
-      subject: "Payment Receipt: StayPilot",
-      html: `<h1>Payment Receipt</h1>\n<p>Hello,</p>\n<p>We have successfully received your payment of <strong>₹{{amount}}</strong>.</p>\n<p>Transaction ID: {{payment_id}}</p>\n<p>Thank you for your business!</p>`
+      subject: "Payment Receipt: StayPilot 🧾",
+      html: `<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
+  <div style="background: #0F2C59; padding: 30px 20px; text-align: center;">
+    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 800;">Payment Receipt 🧾</h1>
+  </div>
+  <div style="padding: 40px 30px; color: #334155;">
+    <p style="font-size: 16px; margin-top: 0; color: #475569;">Hello,</p>
+    <p style="font-size: 16px; line-height: 1.6; color: #475569;">We have successfully received your recent payment. Thank you for your continued trust in StayPilot.</p>
+    
+    <div style="margin: 30px 0; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+      <table style="width: 100%; border-collapse: collapse;">
+        <tr style="background-color: #f8fafc;">
+          <td style="padding: 15px 20px; color: #64748b; font-size: 14px; border-bottom: 1px solid #e2e8f0;">Amount Paid</td>
+          <td style="padding: 15px 20px; text-align: right; font-size: 18px; font-weight: bold; color: #10b981; border-bottom: 1px solid #e2e8f0;">₹{{amount}}</td>
+        </tr>
+        <tr>
+          <td style="padding: 15px 20px; color: #64748b; font-size: 14px;">Transaction ID</td>
+          <td style="padding: 15px 20px; text-align: right; font-size: 14px; font-family: monospace; color: #334155;">{{payment_id}}</td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="font-size: 14px; line-height: 1.6; color: #64748b; text-align: center;">You can download a PDF invoice directly from your billing dashboard.</p>
+  </div>
+</div>`
     }
   };
   const [emailTemplates, setEmailTemplates] = useState(DEFAULT_EMAIL_TEMPLATES);
@@ -1514,9 +1593,17 @@ export default function SuperAdmin() {
               <h2 style={{ fontSize: '1.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Email Template Builder</h2>
               <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Customize the exact HTML sent to customers and admins for various lifecycle events.</p>
             </div>
-            <button className="btn btn-primary" onClick={handleSaveEmailTemplates} disabled={isUpdating}>
-              <Save size={18} /> {isUpdating ? 'Saving...' : 'Save All Templates'}
-            </button>
+            <div style={{ display: 'flex', gap: '0.8rem' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => setEmailTemplates(DEFAULT_EMAIL_TEMPLATES)}
+              >
+                <RefreshCw size={18} /> Reset to Elegant Defaults
+              </button>
+              <button className="btn btn-primary" onClick={handleSaveEmailTemplates} disabled={isUpdating}>
+                <Save size={18} /> {isUpdating ? 'Saving...' : 'Save All Templates'}
+              </button>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem' }}>
