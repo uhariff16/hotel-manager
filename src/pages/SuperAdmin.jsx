@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye } from 'lucide-react';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
 
@@ -170,6 +170,7 @@ export default function SuperAdmin() {
     }
   };
   const [emailTemplates, setEmailTemplates] = useState(DEFAULT_EMAIL_TEMPLATES);
+  const [previewTemplate, setPreviewTemplate] = useState(null);
 
   // Modal states
   const [showUserForm, setShowUserForm] = useState(false);
@@ -1525,8 +1526,17 @@ export default function SuperAdmin() {
                   <h3 style={{ margin: 0, color: '#0F2C59', fontWeight: 700, textTransform: 'capitalize' }}>
                     {key.replace('_', ' ')}
                   </h3>
-                  <div style={{ fontSize: '0.85rem', color: '#64748B', background: '#f8fafc', padding: '0.25rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
-                    Variables: <code>{key === 'welcome' ? '{{tenant_name}}, {{tenant_email}}' : key === 'payment_receipt' ? '{{amount}}, {{payment_id}}' : '{{plan_name}}, {{period_end}}, {{tenant_email}}'}</code>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                    <div style={{ fontSize: '0.85rem', color: '#64748B', background: '#f8fafc', padding: '0.25rem 0.75rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                      Variables: <code>{key === 'welcome' ? '{{tenant_name}}, {{tenant_email}}' : key === 'payment_receipt' ? '{{amount}}, {{payment_id}}' : '{{plan_name}}, {{period_end}}, {{tenant_email}}'}</code>
+                    </div>
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                      onClick={() => setPreviewTemplate({ key, ...template })}
+                    >
+                      <Eye size={14} /> Preview
+                    </button>
                   </div>
                 </div>
                 <div className="form-group">
@@ -1538,7 +1548,7 @@ export default function SuperAdmin() {
                   <textarea 
                     className="form-input" 
                     rows={8} 
-                    style={{ fontFamily: 'monospace', fontSize: '0.9rem', background: '#1e293b', color: '#e2e8f0' }}
+                    style={{ fontFamily: 'monospace', fontSize: '0.9rem', background: '#1e293b', color: '#e2e8f0', minHeight: '200px', height: 'auto', resize: 'vertical' }}
                     value={template.html} 
                     onChange={(e) => setEmailTemplates({...emailTemplates, [key]: {...template, html: e.target.value}})} 
                   />
@@ -1546,6 +1556,35 @@ export default function SuperAdmin() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Email Template Preview Modal */}
+      {previewTemplate && (
+        <div className="modal-overlay" style={{ display: 'flex', zIndex: 1000 }} onClick={() => setPreviewTemplate(null)}>
+          <div className="modal-content" style={{ maxWidth: '800px', width: '90%', padding: 0, overflow: 'hidden' }} onClick={e => e.stopPropagation()}>
+            <div style={{ padding: '1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ margin: 0, color: '#0F2C59', fontWeight: 800 }}>Preview: {previewTemplate.key.replace('_', ' ')}</h3>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748B', marginTop: '0.25rem' }}>Subject: <strong>{previewTemplate.subject}</strong></p>
+              </div>
+              <button className="btn btn-outline" style={{ padding: '0.5rem' }} onClick={() => setPreviewTemplate(null)}>
+                <XCircle size={20} />
+              </button>
+            </div>
+            <div style={{ padding: '2rem', background: 'white', minHeight: '300px', maxHeight: '60vh', overflowY: 'auto' }}>
+              <div 
+                dangerouslySetInnerHTML={{ __html: previewTemplate.html
+                  .replace(/{{tenant_name}}/g, 'John Doe')
+                  .replace(/{{tenant_email}}/g, 'john@example.com')
+                  .replace(/{{plan_name}}/g, 'Stay Pilot Premium')
+                  .replace(/{{period_end}}/g, new Date().toLocaleDateString())
+                  .replace(/{{amount}}/g, '2999.00')
+                  .replace(/{{payment_id}}/g, 'pay_ABC123XYZ') 
+                }} 
+              />
+            </div>
           </div>
         </div>
       )}
