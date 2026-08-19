@@ -18,6 +18,7 @@ const Subscription = React.lazy(() => import('./pages/Subscription'));
 const SuperAdmin = React.lazy(() => import('./pages/SuperAdmin'));
 const InvestmentAnalysis = React.lazy(() => import('./pages/InvestmentAnalysis'));
 const Staff = React.lazy(() => import('./pages/Staff'));
+const Support = React.lazy(() => import('./pages/Support'));
 const Auth = React.lazy(() => import('./pages/Auth'));
 const Home = React.lazy(() => import('./pages/Home'));
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
@@ -185,6 +186,7 @@ function App() {
             <Route path="reports" element={<Reports />} />
             <Route path="resorts" element={<Resorts />} />
             <Route path="staff" element={<Staff />} />
+            <Route path="support" element={<Support />} />
             <Route path="subscription" element={<Subscription />} />
             <Route path="admin" element={<SuperAdmin />} />
             <Route path="investment-analysis" element={<InvestmentAnalysis />} />

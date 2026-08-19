@@ -6,6 +6,7 @@ import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle,
 import * as XLSX from 'xlsx';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
+import SupportInbox from '../components/SupportInbox';
 
 // Secondary client for creating users without affecting the admin session
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -713,6 +714,7 @@ export default function SuperAdmin() {
           { id: 'plans', label: 'Subscription Plans', icon: <DollarSign size={16} /> },
           { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} /> },
           { id: 'emails', label: 'Email Templates', icon: <Mail size={16} /> },
+          { id: 'support', label: 'Support Inbox', icon: <MessageSquare size={16} /> },
           { id: 'website_manager', label: 'Website Manager', icon: <LayoutDashboard size={16} /> }
         ].map(tab => (
           <button
@@ -1576,6 +1578,10 @@ export default function SuperAdmin() {
           onSave={handleSaveLandingPage}
           isUpdating={isUpdating}
         />
+      )}
+
+      {adminActiveTab === 'support' && (
+        <SupportInbox superAdminProfile={profile} />
       )}
 
       {/* Account Management Modal */}

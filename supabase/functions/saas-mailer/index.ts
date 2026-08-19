@@ -133,6 +133,39 @@ serve(async (req) => {
         );
         emailsToSend.push({ to: event_data.tenant_email, subject, html });
       }
+    }
+    // 5. Support Tickets
+    else if (type === "new_ticket") {
+      emailsToSend.push({
+        to: superAdminEmail,
+        subject: `New Support Ticket: ${event_data.subject}`,
+        html: `<h1>New Support Ticket Opened</h1><p>Tenant <strong>${event_data.tenant_email}</strong> has opened a new support ticket.</p><p><strong>Subject:</strong> ${event_data.subject}</p><p><strong>Message:</strong> ${event_data.message}</p><p>You can reply directly from the StayPilot Super Admin Dashboard.</p>`
+      });
+      
+      if (event_data.tenant_email) {
+        emailsToSend.push({
+          to: event_data.tenant_email,
+          subject: `Support Ticket Received: ${event_data.subject}`,
+          html: `<h1>Support Ticket Received</h1><p>Hi,</p><p>We have received your support ticket regarding <strong>${event_data.subject}</strong>.</p><p>Our team will review your message and reply shortly. You can view updates in the Help & Support tab of your dashboard.</p>`
+        });
+      }
+    }
+    else if (type === "ticket_reply") {
+      if (event_data.is_from_admin) {
+        // Admin replied, send email to tenant
+        emailsToSend.push({
+          to: event_data.tenant_email,
+          subject: `Reply to your ticket: ${event_data.subject}`,
+          html: `<h1>Support Ticket Update</h1><p>Hi,</p><p>An administrator has replied to your support ticket (<strong>${event_data.subject}</strong>).</p><p><strong>Reply:</strong><br/>${event_data.message}</p><p>Please log in to your StayPilot dashboard to view the full conversation or reply.</p>`
+        });
+      } else {
+        // Tenant replied, send email to admin
+        emailsToSend.push({
+          to: superAdminEmail,
+          subject: `Ticket Update from Tenant: ${event_data.subject}`,
+          html: `<h1>New Reply on Support Ticket</h1><p>Tenant <strong>${event_data.tenant_email}</strong> has replied to a support ticket.</p><p><strong>Subject:</strong> ${event_data.subject}</p><p><strong>Message:</strong><br/>${event_data.message}</p>`
+        });
+      }
     } else {
       throw new Error("Unknown email type: " + type);
     }
