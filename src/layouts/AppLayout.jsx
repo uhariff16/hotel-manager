@@ -30,6 +30,73 @@ export default function AppLayout() {
       };
     }
   }, [profile]);
+  useEffect(() => {
+    const autoMigrateTemplates = async () => {
+      if (profile && profile.role === 'super_admin' && profile.global_settings) {
+        const settings = profile.global_settings || {};
+        const emailTemplates = settings.email_templates || {};
+        let updated = false;
+
+        const cleanTemplate = (html) => {
+          if (!html) return html;
+          let newHtml = html;
+          
+          if (newHtml.includes('linear-gradient')) {
+            newHtml = newHtml
+              .replace(/background-color:\s*#0F2C59;\s*background:\s*linear-gradient\([^)]+\);?/gi, 'background-color: #0F2C59;')
+              .replace(/background-color:\s*#10b981;\s*background:\s*linear-gradient\([^)]+\);?/gi, 'background-color: #10b981;')
+              .replace(/background-color:\s*#475569;\s*background:\s*linear-gradient\([^)]+\);?/gi, 'background-color: #475569;')
+              .replace(/background:\s*linear-gradient\(135deg,\s*#0F2C59\s+0%,\s*#1a4a8f\s+100%\);?/gi, 'background-color: #0F2C59;')
+              .replace(/background:\s*linear-gradient\(135deg,\s*#10b981\s+0%,\s*#059669\s+100%\);?/gi, 'background-color: #10b981;')
+              .replace(/background:\s*linear-gradient\(135deg,\s*#475569\s+0%,\s*#1e293b\s+100%\);?/gi, 'background-color: #475569;')
+              .replace(/background:\s*linear-gradient\([^)]+\);?/gi, 'background-color: #0F2C59;');
+            updated = true;
+          }
+          return newHtml;
+        };
+
+        if (emailTemplates.welcome) {
+          const oldHtml = emailTemplates.welcome.html;
+          const newHtml = cleanTemplate(oldHtml);
+          if (oldHtml !== newHtml) {
+            emailTemplates.welcome.html = newHtml;
+            updated = true;
+          }
+        }
+        if (emailTemplates.subscription_activated) {
+          const oldHtml = emailTemplates.subscription_activated.html;
+          const newHtml = cleanTemplate(oldHtml);
+          if (oldHtml !== newHtml) {
+            emailTemplates.subscription_activated.html = newHtml;
+            updated = true;
+          }
+        }
+        if (emailTemplates.subscription_cancelled) {
+          const oldHtml = emailTemplates.subscription_cancelled.html;
+          const newHtml = cleanTemplate(oldHtml);
+          if (oldHtml !== newHtml) {
+            emailTemplates.subscription_cancelled.html = newHtml;
+            updated = true;
+          }
+        }
+
+        if (updated) {
+          settings.email_templates = emailTemplates;
+          const { error } = await supabase
+            .from('profiles')
+            .update({ global_settings: settings })
+            .eq('id', profile.id);
+          
+          if (!error) {
+            console.log("Successfully migrated email templates to solid backgrounds via auto-updater!");
+          } else {
+            console.error("Auto-migration of templates failed:", error);
+          }
+        }
+      }
+    };
+    autoMigrateTemplates();
+  }, [profile]);
 
   const fetchUnreadTickets = async () => {
     if (!profile) return;

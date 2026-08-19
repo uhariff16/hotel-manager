@@ -100,10 +100,10 @@ export default function OnboardingWizard() {
     const initialRooms = Array.from({ length: numRooms }).map((_, i) => ({
       id: Date.now() + i,
       name: String(101 + i),
-      room_type: 'Standard Room',
+      room_type: 'Standard room',
       capacity: 2,
-      weekday_price: 1500,
-      weekend_price: 2000
+      weekday_price: 1200,
+      weekend_price: 1500
     }));
     setRooms(initialRooms);
     setRoomMode('auto');
@@ -119,16 +119,24 @@ export default function OnboardingWizard() {
     setRooms([...rooms, {
       id: Date.now(),
       name: '',
-      room_type: 'Standard Room',
+      room_type: 'Standard room',
       capacity: 2,
-      weekday_price: 1500,
-      weekend_price: 2000
+      weekday_price: 1200,
+      weekend_price: 1500
     }]);
     setRoomMode('manual');
   };
 
   const updateRoom = (id, field, value) => {
-    setRooms(rooms.map(r => r.id === id ? { ...r, [field]: value } : r));
+    if (field === 'room_type') {
+      let cap = 2, w = 1200, we = 1500;
+      if (value === 'Suite Room') { cap = 2; w = 3000; we = 3500; }
+      else if (value === 'Deluxe') { cap = 2; w = 2000; we = 2500; }
+      else if (value === 'Standard room') { cap = 2; w = 1200; we = 1500; }
+      setRooms(rooms.map(r => r.id === id ? { ...r, room_type: value, capacity: cap, weekday_price: w, weekend_price: we } : r));
+    } else {
+      setRooms(rooms.map(r => r.id === id ? { ...r, [field]: value } : r));
+    }
   };
 
   const removeRoom = (id) => {
@@ -296,6 +304,20 @@ export default function OnboardingWizard() {
         throw new Error("Failed to create initial rooms: " + roomsError.message);
       }
 
+      // Write default room pricing categories to tenant_integrations
+      const defaultCategories = [
+        { name: 'Suite Room', weekday_price: 3000, weekend_price: 3500, capacity: 2 },
+        { name: 'Deluxe', weekday_price: 2000, weekend_price: 2500, capacity: 2 },
+        { name: 'Standard room', weekday_price: 1200, weekend_price: 1500, capacity: 2 }
+      ];
+      const tags = [{ key: 'room_pricing_categories', value: JSON.stringify(defaultCategories) }];
+      await supabase.from('tenant_integrations').upsert({
+        tenant_id: session.user.id,
+        resort_id: activeResort.id,
+        whatsapp_custom_tags: tags,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'resort_id' });
+
       setStatusMessage("Setup complete successfully! You can add more properties or rooms from the Property Management tab in your dashboard. Redirecting...");
       
       setTimeout(() => {
@@ -309,8 +331,7 @@ export default function OnboardingWizard() {
   };
 
   const roomTypes = [
-    "Standard Room", "Deluxe Room", "Super Deluxe Room", "Suite Room", 
-    "Family Room", "Premium Villa", "Cottage", "Dormitory", "Tent / Glamping"
+    "Standard room", "Deluxe", "Suite Room"
   ];
 
   return (
@@ -404,7 +425,7 @@ export default function OnboardingWizard() {
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>2</div>
                 <div>
-                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>Property Class</h4>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>Property Details</h4>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: '#475569' }}>Define the overarching property, max capacity, and full property pricing.</p>
                 </div>
               </div>
@@ -490,7 +511,7 @@ export default function OnboardingWizard() {
               
               {[
                 { number: 1, label: 'Profile Setup', icon: <User size={16} /> },
-                { number: 2, label: 'Property Class', icon: <Building size={16} /> },
+                { number: 2, label: 'Property Details', icon: <Building size={16} /> },
                 { number: 3, label: 'Create Rooms', icon: <Home size={16} /> }
               ].map(s => {
                 const isActive = step >= s.number;
@@ -637,11 +658,11 @@ export default function OnboardingWizard() {
               </div>
             )}
 
-            {/* STEP 2: PROPERTY CLASS */}
+            {/* STEP 2: PROPERTY DETAILS */}
             {step === 2 && (
               <div style={{ animation: 'fadeIn 0.2s ease-out', textAlign: 'left' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Property Class</h2>
-                <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '2rem' }}>Define the overarching property. This represents the entire bookable estate.</p>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Property Details (Entire Property Booking)</h2>
+                <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '2rem' }}>Define the overarching property and the pricing for booking the entire property/estate.</p>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
@@ -811,33 +832,30 @@ export default function OnboardingWizard() {
                         <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Capacity</label>
                         <input
                           type="number"
-                          min={1}
+                          disabled
                           className="form-input"
-                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                          style={{ background: '#e2e8f0', border: '1px solid #cbd5e1', color: '#64748b', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.capacity}
-                          onChange={e => updateRoom(room.id, 'capacity', e.target.value === '' ? '' : Number(e.target.value))}
                         />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Weekday (₹)</label>
                         <input
                           type="number"
-                          min={0}
+                          disabled
                           className="form-input"
-                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                          style={{ background: '#e2e8f0', border: '1px solid #cbd5e1', color: '#64748b', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.weekday_price}
-                          onChange={e => updateRoom(room.id, 'weekday_price', e.target.value === '' ? '' : Number(e.target.value))}
                         />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Weekend (₹)</label>
                         <input
                           type="number"
-                          min={0}
+                          disabled
                           className="form-input"
-                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                          style={{ background: '#e2e8f0', border: '1px solid #cbd5e1', color: '#64748b', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.weekend_price}
-                          onChange={e => updateRoom(room.id, 'weekend_price', e.target.value === '' ? '' : Number(e.target.value))}
                         />
                       </div>
                       <button 

@@ -157,7 +157,7 @@ export default function SuperAdmin() {
     welcome: {
       subject: "Welcome to StayPilot! 🚀",
       html: `<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-  <div style="background: linear-gradient(135deg, #0F2C59 0%, #1a4a8f 100%); padding: 40px 20px; text-align: center;">
+  <div style="background-color: #0F2C59; padding: 40px 20px; text-align: center;">
     <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Welcome to StayPilot! 🚀</h1>
   </div>
   <div style="padding: 40px 30px; color: #334155;">
@@ -179,7 +179,7 @@ export default function SuperAdmin() {
     subscription_activated: {
       subject: "Your Subscription is Active: StayPilot ✨",
       html: `<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-  <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 40px 20px; text-align: center;">
+  <div style="background-color: #10b981; padding: 40px 20px; text-align: center;">
     <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Subscription Upgraded! ✨</h1>
   </div>
   <div style="padding: 40px 30px; color: #334155;">
@@ -205,7 +205,7 @@ export default function SuperAdmin() {
     subscription_cancelled: {
       subject: "Subscription Cancelled: StayPilot",
       html: `<div style="font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;">
-  <div style="background: linear-gradient(135deg, #475569 0%, #1e293b 100%); padding: 40px 20px; text-align: center;">
+  <div style="background-color: #475569; padding: 40px 20px; text-align: center;">
     <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800;">Subscription Cancelled</h1>
   </div>
   <div style="padding: 40px 30px; color: #334155;">

@@ -140,7 +140,7 @@ export default function BookingForm() {
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
     reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_other_type: '', id_proof_number: '',
     addon_selections: [], addon_others: '',
-    room_type: 'Deluxe Room',
+    room_type: 'Deluxe',
     room_types_map: {},
     breakfast: 'NA',
     agent_name: '',
@@ -246,7 +246,7 @@ export default function BookingForm() {
           const roomTypeParts = (b.room_type || '').split(',').map(s => s.trim()).filter(Boolean);
           const initialMap = {};
           selectedRoomIds.forEach((rid, index) => {
-            initialMap[rid] = roomTypeParts[index] || b.room_type || 'Deluxe Room';
+            initialMap[rid] = roomTypeParts[index] || b.room_type || 'Deluxe';
           });
 
           const parsedPhone = parsePhone(b.phone_number);
@@ -311,7 +311,7 @@ export default function BookingForm() {
             addon_selections: selections,
             addon_others: othersText.join(', '),
             is_loading_edit: true,
-            room_type: b.room_type || 'Deluxe Room',
+            room_type: b.room_type || 'Deluxe',
             room_types_map: initialMap,
             breakfast: b.breakfast || 'NA',
             additional_guests: rawAdditionalGuests
@@ -805,46 +805,28 @@ export default function BookingForm() {
           <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div className="form-group">
               <label className="form-label">Room Type</label>
-              {bookingForm.booking_type === 'Room' && bookingForm.room_ids.length > 0 ? (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.25rem' }}>
-                  {bookingForm.room_ids.map(rid => {
-                    const r = rooms.find(room => room.id === rid);
-                    if (!r) return null;
-                    const currentVal = bookingForm.room_types_map?.[rid] || 'Deluxe Room';
-                    return (
-                      <div key={rid} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: '500', minWidth: '80px' }}>{r.name}:</span>
-                        <select 
-                          className="form-select" 
-                          style={{ padding: '0.25rem 0.5rem', height: 'auto' }}
-                          value={currentVal} 
-                          onChange={e => {
-                            const newMap = { ...bookingForm.room_types_map, [rid]: e.target.value };
-                            const roomTypesString = bookingForm.room_ids.map(id => newMap[id] || 'Deluxe Room').join(', ');
-                            setBookingForm({
-                              ...bookingForm,
-                              room_types_map: newMap,
-                              room_type: roomTypesString
-                            });
-                          }}
-                        >
-                          <option value="Deluxe Room">Deluxe Room</option>
-                          <option value="Super Deluxe">Super Deluxe</option>
-                          <option value="Suite">Suite</option>
-                          <option value="Standard Room">Standard Room</option>
-                        </select>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <select className="form-select" value={bookingForm.room_type} onChange={e => setBookingForm({...bookingForm, room_type: e.target.value})}>
-                  <option value="Deluxe Room">Deluxe Room</option>
-                  <option value="Super Deluxe">Super Deluxe</option>
-                  <option value="Suite">Suite</option>
-                  <option value="Standard Room">Standard Room</option>
-                </select>
-              )}
+              <div style={{ marginTop: '0.5rem' }}>
+                {bookingForm.booking_type === 'Room' ? (
+                  bookingForm.room_ids.length > 0 ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {bookingForm.room_ids.map(rid => {
+                        const r = rooms.find(room => room.id === rid);
+                        if (!r) return null;
+                        return (
+                          <div key={rid} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>{r.name}:</span>
+                            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--primary)' }}>{r.room_type || 'Deluxe'}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No rooms selected</span>
+                  )
+                ) : (
+                  <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--primary)' }}>Entire Property</span>
+                )}
+              </div>
             </div>
             <div className="form-group">
               <label className="form-label">Breakfast Option</label>
@@ -865,16 +847,19 @@ export default function BookingForm() {
                       const newIds = e.target.checked ? [...bookingForm.room_ids, r.id] : bookingForm.room_ids.filter(id => id !== r.id);
                       const newMap = { ...bookingForm.room_types_map };
                       if (e.target.checked) {
-                        newMap[r.id] = 'Deluxe Room';
+                        newMap[r.id] = r.room_type || 'Deluxe';
                       } else {
                         delete newMap[r.id];
                       }
-                      const roomTypesString = newIds.map(id => newMap[id] || 'Deluxe Room').join(', ');
+                      const roomTypesString = newIds.map(id => {
+                        const roomObj = rooms.find(room => room.id === id);
+                        return roomObj ? (roomObj.room_type || 'Deluxe') : 'Deluxe';
+                      }).join(', ');
                       setBookingForm({
                         ...bookingForm,
                         room_ids: newIds,
                         room_types_map: newMap,
-                        room_type: roomTypesString || 'Deluxe Room'
+                        room_type: roomTypesString || 'Deluxe'
                       });
                     }} />
                     {r.name}

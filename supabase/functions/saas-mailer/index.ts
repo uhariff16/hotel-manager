@@ -56,6 +56,18 @@ serve(async (req) => {
       let html = emailTemplates[templateKey]?.html || defaultHtml;
       let subject = emailTemplates[templateKey]?.subject || defaultSubject;
       
+      if (html) {
+        // Strip linear-gradients and use solid fallbacks to satisfy clients like Yahoo Mail that strip the whole style attribute when a gradient is encountered
+        html = html
+          .replace(/background:\s*linear-gradient\(135deg,\s*#0F2C59\s+0%,\s*#1a4a8f\s+100%\);?/gi, 'background-color: #0F2C59;')
+          .replace(/background:\s*linear-gradient\(135deg,\s*#10b981\s+0%,\s*#059669\s+100%\);?/gi, 'background-color: #10b981;')
+          .replace(/background:\s*linear-gradient\(135deg,\s*#475569\s+0%,\s*#1e293b\s+100%\);?/gi, 'background-color: #475569;')
+          .replace(/background-color:\s*#0F2C59;\s*background:\s*linear-gradient\([^)]+\);?/gi, 'background-color: #0F2C59;')
+          .replace(/background-color:\s*#10b981;\s*background:\s*linear-gradient\([^)]+\);?/gi, 'background-color: #10b981;')
+          .replace(/background-color:\s*#475569;\s*background:\s*linear-gradient\([^)]+\);?/gi, 'background-color: #475569;')
+          .replace(/background:\s*linear-gradient\([^)]+\);?/gi, 'background-color: #0F2C59;');
+      }
+
       for (const [key, value] of Object.entries(variables)) {
         const regex = new RegExp(`{{${key}}}`, 'g');
         html = html.replace(regex, value || '');
