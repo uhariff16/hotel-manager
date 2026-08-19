@@ -387,7 +387,7 @@ export default function SuperAdmin() {
         }
       }
 
-      setTenants(tenantsWithData.filter(t => t.id !== profile.id));
+      setTenants(tenantsWithData);
       
       setStats({
         users: u?.filter(u => u.role === 'tenant_admin').length || 0,
