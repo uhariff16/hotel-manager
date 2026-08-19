@@ -288,7 +288,8 @@ export default function SuperAdmin() {
           ? (u || []).find(p => p.id === user.tenant_id) 
           : null;
           
-        const tenantResorts = user.role === 'tenant_admin' ? (r || []).filter(res => res.tenant_id === user.id) : [];
+        const activeTenantId = user.role === 'staff' ? user.tenant_id : user.id;
+        const tenantResorts = (r || []).filter(res => res.tenant_id === activeTenantId);
         const resortNamesList = tenantResorts.map(res => res.name || 'Unnamed Resort');
 
         return {
@@ -296,7 +297,7 @@ export default function SuperAdmin() {
           ownerName: owner ? owner.full_name : 'Self',
           propertyCount: resortNamesList.length,
           propertyNames: resortNamesList,
-          bookingCount: user.role === 'tenant_admin' ? (b || []).filter(book => book.tenant_id === user.id).length : 0
+          bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length : 0
         };
       });
 
@@ -904,15 +905,16 @@ export default function SuperAdmin() {
                   className="btn btn-outline" 
                   style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: '#0F2C59', borderColor: '#cbd5e1' }}
                   onClick={() => {
-                    const headers = ['ID', 'Full Name', 'Email', 'Role', 'Properties (Names)', 'Property Count', 'Booking Count', 'Plan', 'Status', 'Joined Date'];
+                    const headers = ['ID', 'Full Name', 'Email', 'Role', 'Owner (Tenant)', 'Properties (Names)', 'Property Count', 'Booking Count', 'Plan', 'Status', 'Joined Date'];
                     const rows = tenants.map(t => [
                       t.id,
                       t.full_name,
                       t.email,
                       t.role === 'tenant_admin' ? 'Tenant Admin' : 'Staff',
+                      t.role === 'staff' ? t.ownerName : 'N/A',
                       (t.propertyNames || []).join('; '),
-                      t.role === 'tenant_admin' ? (t.propertyCount || 0) : 'N/A',
-                      t.role === 'tenant_admin' ? (t.bookingCount || 0) : 'N/A',
+                      t.propertyCount || 0,
+                      t.bookingCount || 0,
                       pricingConfig[t.plan_type]?.name || t.plan_type || 'Free Starter',
                       t.subscription_status === 'active' ? 'Active' : 'Suspended',
                       t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : ''
@@ -926,6 +928,7 @@ export default function SuperAdmin() {
                       { wch: 25 }, // Full Name
                       { wch: 30 }, // Email
                       { wch: 15 }, // Role
+                      { wch: 20 }, // Owner
                       { wch: 40 }, // Properties
                       { wch: 15 }, // Property Count
                       { wch: 15 }, // Booking Count
@@ -980,6 +983,7 @@ export default function SuperAdmin() {
                       </td>
                       <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
                         <div style={{ color: '#475569', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                             <Mail size={13} style={{ color: '#94a3b8' }} /> {tenant.email}
                           </div>
@@ -1013,8 +1017,16 @@ export default function SuperAdmin() {
                           </span>
                           
                           {tenant.role === 'staff' && (
-                            <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                              <Briefcase size={13} /> Under: <strong>{tenant.ownerName}</strong>
+                            <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxWidth: '200px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <Briefcase size={13} /> Under: <strong>{tenant.ownerName}</strong>
+                              </div>
+                              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.3rem' }}>
+                                <Hotel size={13} style={{ marginTop: '0.15rem', flexShrink: 0 }} />
+                                <span style={{ lineHeight: 1.4, color: '#0F2C59', fontWeight: 600 }}>
+                                  {tenant.propertyNames && tenant.propertyNames.length > 0 ? tenant.propertyNames.join(', ') : <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>No properties assigned</span>}
+                                </span>
+                              </div>
                             </div>
                           )}
 
