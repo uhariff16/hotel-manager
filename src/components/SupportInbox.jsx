@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../lib/supabase';
 import { Mail, MessageSquare, Send, CheckCircle, X, Search, Clock, User } from 'lucide-react';
 
 const SupportInbox = ({ superAdminProfile }) => {
