@@ -713,11 +713,12 @@ export default function Reports() {
               </h2>
             </div>
           </div>
-        </aside>
+          </aside>
 
-        <main>
-          {loading ? (
-            <div className="card" style={{ textAlign: 'center', padding: '5rem', border: 'none' }}>
+          {!window.Capacitor?.isNativePlatform() && (
+            <main>
+              {loading ? (
+                <div className="card" style={{ textAlign: 'center', padding: '5rem', border: 'none' }}>
               <div className="animate-spin" style={{ width: '40px', height: '40px', border: '4px solid var(--primary)', borderTopColor: 'transparent', borderRadius: '50%', margin: '0 auto 1rem' }}></div>
               <p style={{ color: 'var(--text-muted)' }}>Generating report data...</p>
             </div>
@@ -1098,8 +1099,9 @@ export default function Reports() {
               </div>
 
             </div>
-          )}
-        </main>
+            )}
+          </main>
+        )}
       </div>
     </div>
   );

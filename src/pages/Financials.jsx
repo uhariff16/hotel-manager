@@ -386,12 +386,12 @@ export default function Financials() {
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto', overflowX: 'auto' }}>
-                <table className="table" style={{ margin: 0, width: '100%', tableLayout: 'fixed' }}>
+                <table className="table" style={{ margin: 0, width: '100%', tableLayout: isMobile ? 'auto' : 'fixed', minWidth: isMobile ? '350px' : '100%' }}>
                   <colgroup>
-                    <col style={{ width: isMobile ? '45px' : '110px' }} />
-                    <col style={{ width: 'auto' }} />
-                    <col style={{ width: isMobile ? '70px' : '120px' }} />
-                    <col style={{ width: isMobile ? '45px' : '100px' }} />
+                    <col style={{ width: isMobile ? '15%' : '110px' }} />
+                    <col style={{ width: isMobile ? '45%' : 'auto' }} />
+                    <col style={{ width: isMobile ? '25%' : '120px' }} />
+                    <col style={{ width: isMobile ? '15%' : '100px' }} />
                   </colgroup>
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
                     <tr style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>
@@ -514,12 +514,12 @@ export default function Financials() {
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto', overflowX: 'auto' }}>
-                <table className="table" style={{ margin: 0, width: '100%', tableLayout: 'fixed' }}>
+                <table className="table" style={{ margin: 0, width: '100%', tableLayout: isMobile ? 'auto' : 'fixed', minWidth: isMobile ? '350px' : '100%' }}>
                   <colgroup>
-                    <col style={{ width: isMobile ? '45px' : '110px' }} />
-                    <col style={{ width: 'auto' }} />
-                    <col style={{ width: isMobile ? '70px' : '120px' }} />
-                    <col style={{ width: isMobile ? '45px' : '100px' }} />
+                    <col style={{ width: isMobile ? '15%' : '110px' }} />
+                    <col style={{ width: isMobile ? '45%' : 'auto' }} />
+                    <col style={{ width: isMobile ? '25%' : '120px' }} />
+                    <col style={{ width: isMobile ? '15%' : '100px' }} />
                   </colgroup>
                   <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
                     <tr style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>

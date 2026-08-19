@@ -63,6 +63,13 @@ Thank you again, and we look forward to welcoming you back soon!
 export default function Settings() {
   const { profile, setProfile, theme, toggleTheme, session, activeResortId } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [globalCommEnabled, setGlobalCommEnabled] = useState(true);
   const [globalTemplatesEnabled, setGlobalTemplatesEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
@@ -482,7 +489,7 @@ export default function Settings() {
   return (
     <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: '2rem' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '300px 1fr', gap: '2rem' }}>
         {/* Sidebar Nav */}
         <aside style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <button 

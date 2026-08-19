@@ -6,7 +6,14 @@ import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff }
 
 export default function Auth() {
   const { isRecovering, setIsRecovering } = useSettingsStore();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isLogin, setIsLogin] = useState(true);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -116,12 +123,12 @@ export default function Auth() {
       alignItems: 'center', 
       justifyContent: 'center', 
       background: 'linear-gradient(135deg, #111418 0%, #1e2329 100%)',
-      padding: '1.5rem'
+      padding: isMobile ? '1rem' : '1.5rem'
     }}>
       <div className="card" style={{ 
         width: '100%', 
         maxWidth: '450px', 
-        padding: '2.5rem', 
+        padding: isMobile ? '1.5rem' : '2.5rem', 
         border: '1px solid var(--border)',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
       }}>

@@ -6,7 +6,14 @@ import toast from 'react-hot-toast';
 
 const TenantSupport = () => {
   const { profile } = useSettingsStore();
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [tickets, setTickets] = useState([]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [messages, setMessages] = useState([]);
@@ -217,9 +224,9 @@ const TenantSupport = () => {
         </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '1.5rem', height: 'calc(100vh - 200px)' }}>
+      <div style={{ display: 'flex', gap: '1.5rem', height: isMobile ? 'auto' : 'calc(100vh - 200px)', flexDirection: isMobile ? 'column' : 'row' }}>
         {/* Left side: Ticket List */}
-        <div style={{ width: '300px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ width: isMobile ? '100%' : '300px', background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '1.2rem', borderBottom: '1px solid #e2e8f0' }}>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>Your Tickets</h3>
           </div>
@@ -278,7 +285,7 @@ const TenantSupport = () => {
         </div>
 
         {/* Right side: Content Area */}
-        <div style={{ flex: 1, background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ flex: 1, background: 'white', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: isMobile ? '500px' : 'auto' }}>
           
           {showNewTicketForm ? (
             <div style={{ padding: '2rem', flex: 1, overflowY: 'auto' }}>

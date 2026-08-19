@@ -649,14 +649,14 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
     }}>
       
       {/* HEADER SECTION */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', flexWrap: 'wrap', gap: '1.5rem' }}>
-        <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'flex-end', flexWrap: 'wrap', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', gap: isMobile ? '1rem' : '2rem', alignItems: isMobile ? 'flex-start' : 'center', flexDirection: isMobile ? 'column' : 'row', width: '100%' }}>
           <div>
-            <h1 style={{ fontSize: '2.25rem', marginBottom: '0.5rem', fontWeight: 800 }}>Availability Calendar</h1>
-            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Monitor and manage resort occupancy across all units</p>
+            <h1 style={{ fontSize: isMobile ? '1.5rem' : '2.25rem', marginBottom: '0.5rem', fontWeight: 800 }}>Availability Calendar</h1>
+            <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: isMobile ? '0.85rem' : '1rem' }}>Monitor and manage resort occupancy across all units</p>
           </div>
           
-          <div style={{ display: 'flex', gap: '1rem', padding: '0.75rem 1.5rem', background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{ display: 'flex', gap: '1rem', padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.5rem', background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', alignSelf: isMobile ? 'stretch' : 'auto', justifyContent: isMobile ? 'space-around' : 'flex-start' }}>
              <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Occupancy</div>
                 <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--primary)' }}>{occupancyStats.percent}%</div>
