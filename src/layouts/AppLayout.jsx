@@ -142,44 +142,50 @@ export default function AppLayout() {
     return <OnboardingWizard />;
   }
 
+  const userPlan = profile?.plan_type || 'free';
+  const planData = globalPlans?.[userPlan] || {};
+  const enabledFeatures = (planData.features || []).filter(f => f.enabled).map(f => f.name.toLowerCase());
+  const hasFeature = (keyword) => enabledFeatures.some(f => f.includes(keyword.toLowerCase()));
+  const hasInvestmentAccess = planData.reports?.investment || profile?.feature_investment_enabled;
+
   let navLinks = [];
 
   if (isStaff) {
     // Staff only see Bookings, Calendar, and Settings
-    navLinks = [
-      { to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> },
-      { to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> },
-    ];
+    if (hasFeature('booking')) navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> });
+    if (hasFeature('booking') || hasFeature('calendar')) navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> });
   } else {
-    // Tenants and Super Admins see the full dashboard
-    navLinks = [
-      { to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> },
-      { to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> },
-      { to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> },
-      { to: '/financials', label: 'Financials', icon: <Wallet size={20} /> },
-      { to: '/reports', label: 'Reports', icon: <FileText size={20} /> },
-      { 
-        label: 'Management', 
-        icon: <Activity size={20} />, 
-        isSubmenu: true,
-        children: [
-          { to: '/resorts', label: 'Tenant Management', icon: <Hotel size={16} /> },
-          { to: '/setup', label: 'Property Management', icon: <Home size={16} /> },
-          { to: '/staff', label: 'Staff Management', icon: <Users size={16} /> },
-        ]
-      },
-      { to: '/subscription', label: 'Plans & Billing', icon: <CreditCard size={20} /> },
-      { to: '/support', label: `Help & Support ${supportUnreadCount > 0 ? `(${supportUnreadCount})` : ''}`, icon: <LifeBuoy size={20} /> },
-    ];
+    // Tenants and Super Admins
+    if (hasFeature('dashboard') || isSuper) navLinks.push({ to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> });
+    if (hasFeature('booking') || isSuper) {
+      navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> });
+      navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> });
+    }
+    if (hasFeature('financial') || isSuper) navLinks.push({ to: '/financials', label: 'Financials', icon: <Wallet size={20} /> });
+    if (hasFeature('report') || isSuper) navLinks.push({ to: '/reports', label: 'Reports', icon: <FileText size={20} /> });
+    const managementMenu = { 
+      label: 'Management', 
+      icon: <Activity size={20} />, 
+      isSubmenu: true,
+      children: [
+        { to: '/resorts', label: 'Tenant Management', icon: <Hotel size={16} /> },
+        { to: '/setup', label: 'Property Management', icon: <Home size={16} /> },
+        { to: '/staff', label: 'Staff Management', icon: <Users size={16} /> },
+      ]
+    };
+
+    if (hasFeature('tenant') || hasFeature('staff') || isSuper) {
+      navLinks.push(managementMenu);
+    }
+    
+    navLinks.push({ to: '/subscription', label: 'Plans & Billing', icon: <CreditCard size={20} /> });
+    navLinks.push({ to: '/support', label: `Help & Support ${supportUnreadCount > 0 ? `(${supportUnreadCount})` : ''}`, icon: <LifeBuoy size={20} /> });
   }
 
   // Settings is shared but will be simplified in its own page logic
   navLinks.push({ to: '/settings', label: 'Settings', icon: <SettingsIcon size={20} /> });
 
-  const userPlan = profile?.plan_type || 'free';
-  const hasInvestmentAccess = globalPlans?.[userPlan]?.reports?.investment;
-
-  if (profile?.feature_investment_enabled || hasInvestmentAccess) {
+  if (hasInvestmentAccess || isSuper) {
     navLinks.push({ to: '/investment-analysis', label: 'Investment Analysis', icon: <TrendingUp size={20} /> });
   }
 
@@ -363,21 +369,25 @@ export default function AppLayout() {
 
         {/* Mobile Bottom Navigation */}
         <nav className="mobile-bottom-nav">
-          {!isStaff && (
+          {!isStaff && (hasFeature('dashboard') || isSuper) && (
             <NavLink to="/dashboard" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
               <LayoutDashboard size={24} />
               <span>Dashboard</span>
             </NavLink>
           )}
-          <NavLink to="/bookings" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
-            <BookOpenCheck size={24} />
-            <span>Bookings</span>
-          </NavLink>
-          <NavLink to="/calendar" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
-            <CalendarDays size={24} />
-            <span>Calendar</span>
-          </NavLink>
-          {!isStaff && (
+          {(hasFeature('booking') || isSuper) && (
+            <NavLink to="/bookings" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+              <BookOpenCheck size={24} />
+              <span>Bookings</span>
+            </NavLink>
+          )}
+          {(hasFeature('booking') || isSuper) && (
+            <NavLink to="/calendar" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+              <CalendarDays size={24} />
+              <span>Calendar</span>
+            </NavLink>
+          )}
+          {!isStaff && (hasFeature('financial') || isSuper) && (
             <NavLink to="/financials" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
               <Wallet size={24} />
               <span>Finance</span>
