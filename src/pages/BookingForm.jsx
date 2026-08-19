@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet } from 'lucide-react';
 import { eachDayOfInterval, isWeekend } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
