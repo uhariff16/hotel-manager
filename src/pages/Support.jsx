@@ -113,9 +113,19 @@ const TenantSupport = () => {
       is_from_admin: false
     };
 
+    // Create initial message
+    const msg = {
+      ticket_id: ticket.id,
+      sender_id: profile.id,
+      message: newTicketMessage,
+      is_from_admin: false
+    };
+
     const { error: msgError } = await supabase.from('support_messages').insert(msg);
     if (msgError) {
       console.error("Error saving message", msgError);
+    } else {
+      toast.success("Ticket created!");
     }
 
     setTickets([ticket, ...tickets]);
@@ -126,16 +136,18 @@ const TenantSupport = () => {
 
     // Trigger email notification
     try {
-      await supabase.functions.invoke('saas-mailer', {
-        body: {
-          type: 'new_ticket',
-          event_data: {
-            tenant_email: profile.email,
-            subject: ticket.subject,
-            message: newTicketMessage
-          }
+      const payloadBody = {
+        type: 'new_ticket',
+        event_data: {
+          tenant_email: profile.email,
+          subject: ticket.subject,
+          message: newTicketMessage
         }
+      };
+      const res = await supabase.functions.invoke('saas-mailer', {
+        body: payloadBody
       });
+      console.log("Mailer response:", res);
     } catch (err) {
       console.warn("Failed to send email notification", err);
     }
@@ -159,6 +171,7 @@ const TenantSupport = () => {
     if (error) {
       alert("Error sending message: " + error.message);
     } else {
+      toast.success("Message sent!");
       setMessages([...messages, data]);
       setNewMessage('');
       
@@ -167,19 +180,23 @@ const TenantSupport = () => {
 
       // Trigger email notification
       try {
-        await supabase.functions.invoke('saas-mailer', {
-          body: {
-            type: 'ticket_reply',
-            event_data: {
-              tenant_email: profile.email,
-              subject: selectedTicket.subject,
-              message: newMessage,
-              is_from_admin: false
-            }
+        const payloadBody = {
+          type: 'ticket_reply',
+          event_data: {
+            tenant_email: profile.email,
+            subject: selectedTicket.subject,
+            message: newMessage,
+            is_from_admin: false
           }
+        };
+        const res = await supabase.functions.invoke('saas-mailer', {
+          body: payloadBody
         });
+        console.log("Mailer response:", res);
+        toast.success("Notification sent to support");
       } catch (err) {
-        console.warn("Failed to send email notification", err);
+        console.error("Failed to send email notification", err);
+        toast.error("Failed to send email notification");
       }
     }
     setIsSending(false);

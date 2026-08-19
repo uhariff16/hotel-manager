@@ -109,6 +109,7 @@ const SupportInbox = ({ superAdminProfile }) => {
     if (error) {
       alert("Error sending message: " + error.message);
     } else {
+      toast.success("Message sent!");
       setMessages([...messages, data]);
       setNewMessage('');
       
@@ -119,17 +120,23 @@ const SupportInbox = ({ superAdminProfile }) => {
       try {
         await supabase.functions.invoke('saas-mailer', {
           body: {
-            type: 'ticket_reply',
-            event_data: {
-              tenant_email: selectedTicket.profiles?.email,
-              subject: selectedTicket.subject,
-              message: newMessage,
-              is_from_admin: true
-            }
+        const payloadBody = {
+          type: 'ticket_reply',
+          event_data: {
+            tenant_email: selectedTicket.profiles?.email,
+            subject: selectedTicket.subject,
+            message: newMessage,
+            is_from_admin: true
           }
+        };
+        const res = await supabase.functions.invoke('saas-mailer', {
+          body: payloadBody
         });
+        console.log("Mailer response:", res);
+        toast.success("Notification email sent successfully!");
       } catch (err) {
-        console.warn("Failed to send email notification", err);
+        console.error("Failed to send email notification", err);
+        toast.error("Failed to send email notification");
       }
     }
     setIsSending(false);
