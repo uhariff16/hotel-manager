@@ -914,8 +914,8 @@ export default function SuperAdmin() {
                       t.subscription_status || 'active',
                       t.created_at ? new Date(t.created_at).toLocaleDateString() : ''
                     ]);
-                    const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))].join('\\n');
-                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))].join('\r\n');
+                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
