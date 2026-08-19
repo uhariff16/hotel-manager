@@ -67,7 +67,7 @@ function App() {
 
     // Fetch global settings (pricing, landing page) for all users regardless of auth
     try {
-      const { data: superAdmins } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
+      const { data: superAdmins } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').order('created_at', { ascending: true }).limit(1);
       if (superAdmins && superAdmins.length > 0) {
         const settings = superAdmins[0].global_settings || {};
         if (settings.pricing) {

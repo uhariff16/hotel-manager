@@ -267,23 +267,33 @@ export default function SuperAdmin() {
   // Management modal states
   const [editingUser, setEditingUser] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [adminActiveTab, setAdminActiveTab] = useState('overview');
+  const [adminActiveTab, setAdminActiveTab] = useState(
+    profile?.role === 'support_admin' ? 'support' : 
+    profile?.role === 'billing_admin' ? 'overview' : 'overview'
+  );
   const [supportUnreadCount, setSupportUnreadCount] = useState(0);
 
+  const isPlatformAdmin = ['super_admin', 'support_admin', 'billing_admin'].includes(profile?.role);
+
+  const getMasterSuperAdmin = () => {
+    const superAdmins = tenants.filter(u => u.role === 'super_admin').sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    return superAdmins.length > 0 ? superAdmins[0] : profile;
+  };
+
   useEffect(() => {
-    if (profile?.role !== 'super_admin') return;
+    if (!isPlatformAdmin) return;
     fetchGlobalData();
     fetchUnreadTickets();
     
-    const unreadSub = supabase
-      .channel('super-admin-unread')
+    // Subscribe to support tickets changes
+    const ticketsSubscription = supabase.channel('superadmin-tickets')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, () => {
         fetchUnreadTickets();
       })
       .subscribe();
-      
+
     return () => {
-      supabase.removeChannel(unreadSub);
+      supabase.removeChannel(ticketsSubscription);
     };
   }, [profile]);
 
@@ -324,7 +334,8 @@ export default function SuperAdmin() {
         };
       });
 
-      const superAdminProfile = (u || []).find(user => user.id === profile.id);
+      const superAdmins = (u || []).filter(user => user.role === 'super_admin').sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+      const superAdminProfile = superAdmins.length > 0 ? superAdmins[0] : (u || []).find(user => user.id === profile.id);
       if (superAdminProfile?.global_settings?.pricing) {
         const loaded = superAdminProfile.global_settings.pricing;
         
@@ -504,10 +515,11 @@ export default function SuperAdmin() {
   const handleSavePricing = async () => {
     try {
       setIsUpdating(true);
-      const settings = profile.global_settings || {};
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
       settings.pricing = pricingConfig;
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
       alert("Global pricing configuration updated successfully!");
     } catch (err) {
@@ -520,10 +532,11 @@ export default function SuperAdmin() {
   const handleSaveEmailTemplates = async () => {
     try {
       setIsUpdating(true);
-      const settings = profile.global_settings || {};
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
       settings.email_templates = emailTemplates;
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
       alert("Email templates updated successfully!");
     } catch (err) {
@@ -536,14 +549,15 @@ export default function SuperAdmin() {
   const handleSaveWebsiteDraft = async (newDraftData) => {
     try {
       setIsUpdating(true);
-      const settings = profile.global_settings || {};
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
       const updatedWebsitePricing = {
         ...websitePricingConfig,
         draft: newDraftData
       };
       settings.website_pricing = updatedWebsitePricing;
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
       setWebsitePricingConfig(updatedWebsitePricing);
       setWebsitePricing(updatedWebsitePricing);
@@ -557,7 +571,8 @@ export default function SuperAdmin() {
   const handlePublishWebsitePricing = async () => {
     try {
       setIsUpdating(true);
-      const settings = profile.global_settings || {};
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
       const newVersionNum = (websitePricingConfig.currentVersion || 0) + 1;
       
       const mergedDraft = {};
@@ -594,7 +609,7 @@ export default function SuperAdmin() {
       
       settings.website_pricing = updatedWebsitePricing;
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
       
       setWebsitePricingConfig(updatedWebsitePricing);
@@ -611,10 +626,11 @@ export default function SuperAdmin() {
   const handleSaveRazorpaySettings = async () => {
     try {
       setIsUpdating(true);
-      const settings = profile.global_settings || {};
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
       settings.razorpay_settings = razorpayConfig;
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
       
       alert("Razorpay Settings Saved Successfully!");
@@ -629,7 +645,8 @@ export default function SuperAdmin() {
     if (!confirm("Roll back to this version? This will become the new active draft and immediately publish to the website.")) return;
     try {
       setIsUpdating(true);
-      const settings = profile.global_settings || {};
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
       const historyVersion = websitePricingConfig.history[versionIndex];
       const newVersionNum = (websitePricingConfig.currentVersion || 0) + 1;
       
@@ -651,7 +668,7 @@ export default function SuperAdmin() {
       
       settings.website_pricing = updatedWebsitePricing;
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
       
       setWebsitePricingConfig(updatedWebsitePricing);
@@ -667,12 +684,13 @@ export default function SuperAdmin() {
   const handleSaveGlobalFeatures = async () => {
     try {
       setIsUpdating(true);
-      const settings = profile.global_settings || {};
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
       settings.comm_features_enabled = globalCommEnabled;
       settings.templates_enabled = globalTemplatesEnabled;
       settings.onboarding_wizard_enabled = globalOnboardingWizardEnabled;
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
       alert("Global feature settings updated successfully!");
     } catch (err) {
@@ -685,10 +703,11 @@ export default function SuperAdmin() {
   const handleSaveLandingPage = async () => {
     try {
       setIsUpdating(true);
-      const settings = profile.global_settings || {};
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
       settings.landing_page = landingContent;
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', profile.id);
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
       alert("Landing page content updated successfully!");
     } catch (err) {
@@ -698,7 +717,10 @@ export default function SuperAdmin() {
     }
   };
 
-  if (profile?.role !== 'super_admin') {
+  if (!profile) return null;
+  
+  const isPlatformAdminRender = ['super_admin', 'support_admin', 'billing_admin'].includes(profile?.role);
+  if (!isPlatformAdminRender) {
     return (
       <div style={{ textAlign: 'center', padding: '100px 20px' }}>
         <ShieldAlert size={64} color="var(--danger)" style={{ marginBottom: '1.5rem' }} />
@@ -731,14 +753,15 @@ export default function SuperAdmin() {
         flexWrap: 'nowrap'
       }}>
         {[
-          { id: 'overview', label: 'Dashboard Overview', icon: <TrendingUp size={16} /> },
-          { id: 'accounts', label: `Accounts & Tenants (${tenants.length})`, icon: <Users size={16} /> },
-          { id: 'plans', label: 'Subscription Plans', icon: <DollarSign size={16} /> },
-          { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} /> },
-          { id: 'emails', label: 'Email Templates', icon: <Mail size={16} /> },
-          { id: 'support', label: `Support Inbox ${supportUnreadCount > 0 ? `(${supportUnreadCount})` : ''}`, icon: <MessageSquare size={16} /> },
-          { id: 'website_manager', label: 'Website Manager', icon: <LayoutDashboard size={16} /> }
-        ].map(tab => (
+          { id: 'overview', label: 'Dashboard Overview', icon: <TrendingUp size={16} />, roles: ['super_admin', 'billing_admin'] },
+          { id: 'accounts', label: `Tenants & Staff (${tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role)).length})`, icon: <Users size={16} />, roles: ['super_admin'] },
+          { id: 'platform_staff', label: `Platform Staff (${tenants.filter(t => ['super_admin', 'support_admin', 'billing_admin'].includes(t.role)).length})`, icon: <ShieldAlert size={16} />, roles: ['super_admin'] },
+          { id: 'plans', label: 'Subscription Plans', icon: <DollarSign size={16} />, roles: ['super_admin', 'billing_admin'] },
+          { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} />, roles: ['super_admin', 'billing_admin'] },
+          { id: 'emails', label: 'Email Templates', icon: <Mail size={16} />, roles: ['super_admin'] },
+          { id: 'support', label: `Support Inbox ${supportUnreadCount > 0 ? `(${supportUnreadCount})` : ''}`, icon: <MessageSquare size={16} />, roles: ['super_admin', 'support_admin'] },
+          { id: 'website_manager', label: 'Website Manager', icon: <LayoutDashboard size={16} />, roles: ['super_admin'] }
+        ].filter(tab => tab.roles.includes(profile?.role)).map(tab => (
           <button
             key={tab.id}
             type="button"
@@ -844,14 +867,16 @@ export default function SuperAdmin() {
         </div>
       )}
 
-      {/* TAB 2: ACCOUNTS & TENANTS */}
-      {adminActiveTab === 'accounts' && (
+      {/* TAB 2 & 3: ACCOUNTS & PLATFORM STAFF */}
+      {(adminActiveTab === 'accounts' || adminActiveTab === 'platform_staff') && (
         <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
           
           {/* Header Controls for accounts list */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Platform User Accounts</h3>
+              <h3 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                {adminActiveTab === 'platform_staff' ? 'Platform Admin Accounts' : 'Tenant & Staff Accounts'}
+              </h3>
             </div>
             <button className="btn btn-primary" onClick={() => setShowUserForm(!showUserForm)}>
               <UserPlus size={20} /> {showUserForm ? 'Hide Creator' : 'Create New Account'}
@@ -862,7 +887,9 @@ export default function SuperAdmin() {
           {showUserForm && (
             <div className="card" style={{ marginBottom: '2rem', animation: 'slideDown 0.3s ease-out', border: '1px solid rgba(5, 150, 105, 0.15)', background: 'rgba(255, 255, 255, 0.95)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h2 style={{ fontSize: '1.25rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Create New {userFormData.role === 'tenant_admin' ? 'Tenant' : 'Staff'} Account</h2>
+                <h2 style={{ fontSize: '1.25rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                  Create New {userFormData.role === 'tenant_admin' ? 'Tenant' : userFormData.role === 'staff' ? 'Staff' : 'Platform'} Account
+                </h2>
               </div>
               
               {formError && <div style={{ color: 'var(--danger)', marginBottom: '1rem', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px', fontWeight: 600 }}>{formError}</div>}
@@ -883,8 +910,18 @@ export default function SuperAdmin() {
                 <div className="form-group">
                   <label className="form-label">Account Role</label>
                   <select className="form-select" value={userFormData.role} onChange={e => setUserFormData({...userFormData, role: e.target.value, tenantId: ''})}>
-                    <option value="tenant_admin">Tenant (Property Owner)</option>
-                    <option value="staff">Staff (Operational)</option>
+                    {adminActiveTab === 'accounts' ? (
+                      <>
+                        <option value="tenant_admin">Tenant (Property Owner)</option>
+                        <option value="staff">Staff (Operational)</option>
+                      </>
+                    ) : (
+                      <>
+                        <option value="super_admin">Super Admin (Full Access)</option>
+                        <option value="billing_admin">Billing Admin (Plans/Settings)</option>
+                        <option value="support_admin">Support Admin (Inbox Only)</option>
+                      </>
+                    )}
                   </select>
                 </div>
                 
@@ -902,7 +939,7 @@ export default function SuperAdmin() {
 
                 <div style={{ gridColumn: 'span 2', marginTop: '0.5rem' }}>
                   <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '48px', fontWeight: 700 }} disabled={loading}>
-                    {loading ? 'Creating...' : `Create ${userFormData.role === 'tenant_admin' ? 'Tenant' : 'Staff'} Account`}
+                    {loading ? 'Creating...' : `Create Account`}
                   </button>
                 </div>
               </form>
@@ -912,7 +949,9 @@ export default function SuperAdmin() {
           {/* Accounts Search & List Table Card */}
           <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h4 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Registered Accounts List</h4>
+              <h4 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+                {adminActiveTab === 'platform_staff' ? 'Platform Team' : 'Registered Accounts List'}
+              </h4>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <div style={{ position: 'relative' }}>
                   <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -986,15 +1025,25 @@ export default function SuperAdmin() {
                 </thead>
                 <tbody>
                   {tenants.filter(t => 
-                    t.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                    (adminActiveTab === 'platform_staff' 
+                      ? ['super_admin', 'support_admin', 'billing_admin'].includes(t.role)
+                      : ['tenant_admin', 'staff'].includes(t.role)
+                    ) &&
+                    (t.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                     t.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     t.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    t.role?.toLowerCase().includes(searchTerm.toLowerCase())
+                    t.role?.toLowerCase().includes(searchTerm.toLowerCase()))
                   ).map(tenant => (
                     <tr key={tenant.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s ease', ':hover': { backgroundColor: '#f8fafc' } }}>
                       <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: tenant.role === 'tenant_admin' ? 'linear-gradient(135deg, #0F2C59, #1a4a8f)' : 'linear-gradient(135deg, #64748B, #94a3b8)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.1rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                          <div style={{ 
+                            width: '42px', height: '42px', borderRadius: '50%', 
+                            background: ['super_admin', 'billing_admin', 'support_admin'].includes(tenant.role) 
+                              ? 'linear-gradient(135deg, #7c3aed, #4c1d95)'
+                              : tenant.role === 'tenant_admin' ? 'linear-gradient(135deg, #0F2C59, #1a4a8f)' : 'linear-gradient(135deg, #64748B, #94a3b8)', 
+                            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.1rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' 
+                          }}>
                             {tenant.full_name?.charAt(0).toUpperCase() || '?'}
                           </div>
                           <div>
@@ -1032,13 +1081,21 @@ export default function SuperAdmin() {
                             fontWeight: '800',
                             padding: '0.25rem 0.65rem',
                             borderRadius: '20px',
-                            background: tenant.role === 'tenant_admin' ? 'rgba(5, 150, 105, 0.08)' : 'rgba(107, 114, 128, 0.08)',
-                            color: tenant.role === 'tenant_admin' ? '#059669' : '#64748B',
-                            border: tenant.role === 'tenant_admin' ? '1px solid rgba(5, 150, 105, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)'
+                            background: tenant.role === 'super_admin' ? 'rgba(124, 58, 237, 0.1)' : tenant.role === 'billing_admin' ? 'rgba(37, 99, 235, 0.1)' : tenant.role === 'support_admin' ? 'rgba(236, 72, 153, 0.1)' : tenant.role === 'tenant_admin' ? 'rgba(5, 150, 105, 0.08)' : 'rgba(107, 114, 128, 0.08)',
+                            color: tenant.role === 'super_admin' ? '#7c3aed' : tenant.role === 'billing_admin' ? '#2563eb' : tenant.role === 'support_admin' ? '#ec4899' : tenant.role === 'tenant_admin' ? '#059669' : '#64748B',
+                            border: tenant.role === 'super_admin' ? '1px solid rgba(124, 58, 237, 0.2)' : tenant.role === 'billing_admin' ? '1px solid rgba(37, 99, 235, 0.2)' : tenant.role === 'support_admin' ? '1px solid rgba(236, 72, 153, 0.2)' : tenant.role === 'tenant_admin' ? '1px solid rgba(5, 150, 105, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)'
                           }}>
-                            {tenant.role === 'tenant_admin' ? <Hotel size={12} /> : <Users size={12} />}
-                            {tenant.role === 'tenant_admin' ? 'TENANT ADMIN' : 'STAFF MEMBER'}
+                            {['super_admin', 'billing_admin', 'support_admin'].includes(tenant.role) ? <ShieldAlert size={12} /> : tenant.role === 'tenant_admin' ? <Hotel size={12} /> : <Users size={12} />}
+                            {tenant.role === 'super_admin' ? 'SUPER ADMIN' : tenant.role === 'billing_admin' ? 'BILLING ADMIN' : tenant.role === 'support_admin' ? 'SUPPORT ADMIN' : tenant.role === 'tenant_admin' ? 'TENANT ADMIN' : 'STAFF MEMBER'}
                           </span>
+                          
+                          {['super_admin', 'billing_admin', 'support_admin'].includes(tenant.role) && (
+                            <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxWidth: '200px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                <Shield size={13} /> Platform Administrator
+                              </div>
+                            </div>
+                          )}
                           
                           {tenant.role === 'staff' && (
                             <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', flexDirection: 'column', gap: '0.3rem', maxWidth: '200px' }}>
@@ -1069,7 +1126,14 @@ export default function SuperAdmin() {
                         </div>
                       </td>
                       <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
-                        {tenant.role === 'tenant_admin' ? (
+                          {['super_admin', 'support_admin', 'billing_admin'].includes(tenant.role) ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                              <div>
+                                <div style={{ fontSize: '0.85rem', color: '#0F2C59', fontWeight: 700 }}>Platform Plan</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748B' }}>System Managed</div>
+                              </div>
+                            </div>
+                          ) : tenant.role === 'tenant_admin' ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div>
                               <span className={`badge ${tenant.plan_type === 'premium' ? 'badge-primary' : (tenant.plan_type === 'pro' ? 'badge-success' : 'badge-outline')}`}>
