@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
 import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
 
@@ -914,15 +915,24 @@ export default function SuperAdmin() {
                       t.subscription_status === 'active' ? 'Active' : 'Suspended',
                       t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : ''
                     ]);
-                    const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))].join('\r\n');
-                    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.setAttribute('download', 'staypilot_accounts.csv');
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
+
+                    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+                    
+                    // Set column widths to prevent #### for dates and long IDs
+                    worksheet['!cols'] = [
+                      { wch: 38 }, // ID
+                      { wch: 25 }, // Full Name
+                      { wch: 30 }, // Email
+                      { wch: 15 }, // Role
+                      { wch: 40 }, // Properties
+                      { wch: 20 }, // Plan
+                      { wch: 10 }, // Status
+                      { wch: 15 }  // Joined Date
+                    ];
+
+                    const workbook = XLSX.utils.book_new();
+                    XLSX.utils.book_append_sheet(workbook, worksheet, "Accounts");
+                    XLSX.writeFile(workbook, "staypilot_accounts.xlsx");
                   }}
                 >
                   <Download size={16} /> Export to Excel
