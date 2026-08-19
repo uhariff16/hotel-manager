@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { useSettingsStore } from './lib/store';
 import AppLayout from './layouts/AppLayout';
+import { Toaster } from 'react-hot-toast';
 
 // Mock empty pages for now
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -164,6 +165,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <Toaster position="top-right" />
       <React.Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
         <Routes>
           <Route 

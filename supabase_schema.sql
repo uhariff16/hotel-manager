@@ -323,4 +323,5 @@ ALTER TABLE public.profiles
      A F T E R   I N S E R T   O N   s u p p o r t _ m e s s a g e s  
      F O R   E A C H   R O W  
      E X E C U T E   F U N C T I O N   u p d a t e _ t i c k e t _ u p d a t e d _ a t ( ) ;  
+ A L T E R   T A B L E   s u p p o r t _ t i c k e t s   A D D   C O L U M N   I F   N O T   E X I S T S   t i c k e t _ n u m b e r   S E R I A L ;  
  

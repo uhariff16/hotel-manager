@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 import { Mail, MessageSquare, Send, CheckCircle, X, Search, Clock, User } from 'lucide-react';
 
 const SupportInbox = ({ superAdminProfile }) => {
@@ -13,12 +14,42 @@ const SupportInbox = ({ superAdminProfile }) => {
 
   useEffect(() => {
     fetchTickets();
+    
+    // Realtime listeners
+    const ticketSubscription = supabase
+      .channel('admin-tickets')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_tickets' }, payload => {
+        toast.success(`New Ticket: ${payload.new.subject}`);
+        setTickets(current => [payload.new, ...current]);
+      })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages' }, async payload => {
+        if (!payload.new.is_from_admin) {
+          toast(`New reply received`, { icon: '💬' });
+          
+          // If we are looking at this ticket, add the message to the view
+          setSelectedTicket(currentTicket => {
+            if (currentTicket && currentTicket.id === payload.new.ticket_id) {
+              setMessages(currentMsgs => [...currentMsgs, payload.new]);
+              return currentTicket;
+            }
+            return currentTicket;
+          });
+          
+          // Re-fetch tickets to update the 'updated_at' sorting
+          fetchTickets();
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ticketSubscription);
+    };
   }, [filter]);
 
   const fetchTickets = async () => {
     setLoading(true);
     let query = supabase.from('support_tickets').select(`
-      id, subject, status, created_at, updated_at,
+      id, ticket_number, subject, status, created_at, updated_at,
       profiles ( id, full_name, email )
     `).order('updated_at', { ascending: false });
 
@@ -155,7 +186,10 @@ const SupportInbox = ({ superAdminProfile }) => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.95rem' }}>{ticket.subject}</div>
+                  <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.95rem' }}>
+                    <span style={{ color: '#64748b', marginRight: '0.5rem' }}>#{ticket.ticket_number}</span>
+                    {ticket.subject}
+                  </div>
                   <span style={{ 
                     fontSize: '0.7rem', 
                     padding: '0.2rem 0.5rem', 
@@ -186,7 +220,10 @@ const SupportInbox = ({ superAdminProfile }) => {
           {/* Header */}
           <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
-              <h3 style={{ margin: '0 0 0.3rem 0', fontSize: '1.2rem', color: '#0F2C59' }}>{selectedTicket.subject}</h3>
+              <h3 style={{ margin: '0 0 0.3rem 0', fontSize: '1.2rem', color: '#0F2C59' }}>
+                <span style={{ color: '#64748b', marginRight: '0.5rem' }}>#{selectedTicket.ticket_number}</span>
+                {selectedTicket.subject}
+              </h3>
               <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', gap: '1rem' }}>
                 <span>From: {selectedTicket.profiles?.full_name} ({selectedTicket.profiles?.email})</span>
                 <span>Created: {new Date(selectedTicket.created_at).toLocaleDateString()}</span>

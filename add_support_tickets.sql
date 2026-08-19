@@ -2,12 +2,17 @@
 
 CREATE TABLE IF NOT EXISTS support_tickets (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+  ticket_number SERIAL,
   tenant_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   subject TEXT NOT NULL,
   status TEXT DEFAULT 'open' CHECK (status IN ('open', 'closed')),
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- Add ticket_number to existing table if running this script again
+ALTER TABLE support_tickets ADD COLUMN IF NOT EXISTS ticket_number SERIAL;
+
 
 CREATE TABLE IF NOT EXISTS support_messages (
   id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,

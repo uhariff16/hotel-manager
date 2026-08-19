@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Mail, MessageSquare, Send, CheckCircle, Plus, AlertCircle, Clock } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import toast from 'react-hot-toast';
 
 const TenantSupport = () => {
   const { profile } = useSettingsStore();
@@ -17,13 +18,53 @@ const TenantSupport = () => {
 
   useEffect(() => {
     fetchTickets();
-  }, []);
+    
+    if (!profile) return;
+    
+    // Realtime listeners
+    const ticketSubscription = supabase
+      .channel('tenant-tickets')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'support_messages' }, async payload => {
+        if (payload.new.is_from_admin) {
+          toast(`New reply from support`, { icon: '💬' });
+          
+          // If we are looking at this ticket, add the message to the view
+          setSelectedTicket(currentTicket => {
+            if (currentTicket && currentTicket.id === payload.new.ticket_id) {
+              setMessages(currentMsgs => [...currentMsgs, payload.new]);
+              return currentTicket;
+            }
+            return currentTicket;
+          });
+          
+          // Re-fetch tickets to update the 'updated_at' sorting
+          fetchTickets();
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'support_tickets' }, payload => {
+        if (payload.new.tenant_id === (profile.tenant_id || profile.id)) {
+           // update tickets array with new ticket data (e.g. status change)
+           setTickets(current => current.map(t => t.id === payload.new.id ? payload.new : t));
+           setSelectedTicket(currentTicket => {
+             if (currentTicket && currentTicket.id === payload.new.id) {
+               return payload.new;
+             }
+             return currentTicket;
+           });
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ticketSubscription);
+    };
+  }, [profile]);
 
   const fetchTickets = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('support_tickets')
-      .select('id, subject, status, created_at, updated_at')
+      .select('id, ticket_number, subject, status, created_at, updated_at')
       .eq('tenant_id', profile.tenant_id || profile.id)
       .order('updated_at', { ascending: false });
 
@@ -190,7 +231,10 @@ const TenantSupport = () => {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>{ticket.subject}</div>
+                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
+                      <span style={{ color: '#64748b', marginRight: '0.4rem' }}>#{ticket.ticket_number}</span>
+                      {ticket.subject}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ 
@@ -267,7 +311,10 @@ const TenantSupport = () => {
             <>
               {/* Header */}
               <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-                <h3 style={{ margin: '0 0 0.3rem 0', fontSize: '1.2rem', color: '#0F2C59' }}>{selectedTicket.subject}</h3>
+                <h3 style={{ margin: '0 0 0.3rem 0', fontSize: '1.2rem', color: '#0F2C59' }}>
+                  <span style={{ color: '#64748b', marginRight: '0.5rem' }}>#{selectedTicket.ticket_number}</span>
+                  {selectedTicket.subject}
+                </h3>
                 <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
                   Ticket opened on {new Date(selectedTicket.created_at).toLocaleString()}
                 </div>
