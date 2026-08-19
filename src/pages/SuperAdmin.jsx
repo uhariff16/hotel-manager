@@ -908,11 +908,11 @@ export default function SuperAdmin() {
                       t.id,
                       t.full_name,
                       t.email,
-                      t.role,
-                      (t.propertyNames || []).join(';'),
-                      t.plan_type || 'free',
-                      t.subscription_status || 'active',
-                      t.created_at ? new Date(t.created_at).toLocaleDateString() : ''
+                      t.role === 'tenant_admin' ? 'Tenant Admin' : 'Staff',
+                      (t.propertyNames || []).join('; '),
+                      pricingConfig[t.plan_type]?.name || t.plan_type || 'Free Starter',
+                      t.subscription_status === 'active' ? 'Active' : 'Suspended',
+                      t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : ''
                     ]);
                     const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))].join('\r\n');
                     const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
