@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase } from 'lucide-react';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
 
@@ -918,92 +918,113 @@ export default function SuperAdmin() {
                     t.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                     t.role?.toLowerCase().includes(searchTerm.toLowerCase())
                   ).map(tenant => (
-                    <tr key={tenant.id}>
-                      <td style={{ verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#0F2C59' }}>{tenant.full_name}</div>
-                        <div style={{ color: 'var(--primary)', fontSize: '0.8rem', fontWeight: 600, marginTop: '0.1rem' }}>{tenant.email}</div>
-                        {tenant.created_at && (
-                          <div style={{ fontSize: '0.75rem', color: '#64748B', marginTop: '0.2rem', fontWeight: 500 }}>
-                            Joined: {new Date(tenant.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                    <tr key={tenant.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s ease', ':hover': { backgroundColor: '#f8fafc' } }}>
+                      <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: tenant.role === 'tenant_admin' ? 'linear-gradient(135deg, #0F2C59, #1a4a8f)' : 'linear-gradient(135deg, #64748B, #94a3b8)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '1.1rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+                            {tenant.full_name?.charAt(0).toUpperCase() || '?'}
                           </div>
-                        )}
-                        <small style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', marginTop: '0.25rem' }}>ID: {tenant.id}</small>
-                      </td>
-                      <td style={{ verticalAlign: 'top' }}>
-                        <span style={{ 
-                          display: 'inline-flex', 
-                          alignItems: 'center', 
-                          gap: '0.4rem', 
-                          fontSize: '0.7rem', 
-                          fontWeight: '800',
-                          padding: '0.25rem 0.65rem',
-                          borderRadius: '20px',
-                          background: tenant.role === 'tenant_admin' ? 'rgba(5, 150, 105, 0.08)' : 'rgba(107, 114, 128, 0.08)',
-                          color: tenant.role === 'tenant_admin' ? '#059669' : '#64748B',
-                          border: tenant.role === 'tenant_admin' ? '1px solid rgba(5, 150, 105, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)'
-                        }}>
-                          {tenant.role === 'tenant_admin' ? <Hotel size={12} /> : <Users size={12} />}
-                          {tenant.role === 'tenant_admin' ? 'TENANT' : 'STAFF'}
-                        </span>
-                        
-                        {tenant.role === 'staff' && (
-                          <div style={{ marginTop: '0.4rem', fontSize: '0.75rem', color: '#475569' }}>
-                            Under: <strong>{tenant.ownerName}</strong>
-                          </div>
-                        )}
-
-                        {tenant.role === 'tenant_admin' && (
-                          <div style={{ marginTop: '0.5rem', fontSize: '0.75rem', color: '#475569', lineHeight: 1.4 }}>
-                            <strong style={{ color: '#0F2C59' }}>Resorts:</strong> {tenant.propertyNames && tenant.propertyNames.length > 0 ? (
-                              <span style={{ color: '#059669', fontWeight: 600 }}>{tenant.propertyNames.join(', ')}</span>
-                            ) : (
-                              <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No properties created</span>
-                            )}
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ verticalAlign: 'top' }}>
-                        {tenant.role === 'tenant_admin' ? (
-                          <>
-                            <span className={`badge ${tenant.plan_type === 'premium' ? 'badge-primary' : (tenant.plan_type === 'pro' ? 'badge-success' : 'badge-outline')}`}>
-                              {pricingConfig[tenant.plan_type]?.name?.toUpperCase() || tenant.plan_type?.toUpperCase() || 'FREE'}
-                            </span>
-                            <div style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-                              Props Count: <strong>{tenant.propertyCount}</strong> <br />
-                              Bookings Count: <strong>{tenant.bookingCount}</strong>
+                          <div>
+                            <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1e293b' }}>{tenant.full_name}</div>
+                            <div style={{ color: '#64748b', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.1rem' }}>
+                              <Mail size={12} /> {tenant.email}
                             </div>
-                          </>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.2rem', display: 'flex', gap: '0.5rem' }}>
+                              <span>ID: {tenant.id.substring(0, 8)}...</span>
+                              {tenant.created_at && (
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Calendar size={10} /> {new Date(tenant.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>
+                          <span style={{ 
+                            display: 'inline-flex', 
+                            alignItems: 'center', 
+                            gap: '0.4rem', 
+                            fontSize: '0.7rem', 
+                            fontWeight: '800',
+                            padding: '0.25rem 0.65rem',
+                            borderRadius: '20px',
+                            background: tenant.role === 'tenant_admin' ? 'rgba(5, 150, 105, 0.08)' : 'rgba(107, 114, 128, 0.08)',
+                            color: tenant.role === 'tenant_admin' ? '#059669' : '#64748B',
+                            border: tenant.role === 'tenant_admin' ? '1px solid rgba(5, 150, 105, 0.15)' : '1px solid rgba(107, 114, 128, 0.15)'
+                          }}>
+                            {tenant.role === 'tenant_admin' ? <Hotel size={12} /> : <Users size={12} />}
+                            {tenant.role === 'tenant_admin' ? 'TENANT ADMIN' : 'STAFF MEMBER'}
+                          </span>
+                          
+                          {tenant.role === 'staff' && (
+                            <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                              <Briefcase size={13} /> Under: <strong>{tenant.ownerName}</strong>
+                            </div>
+                          )}
+
+                          {tenant.role === 'tenant_admin' && (
+                            <div style={{ fontSize: '0.8rem', color: '#475569', display: 'flex', alignItems: 'flex-start', gap: '0.3rem', maxWidth: '200px' }}>
+                              <Hotel size={13} style={{ marginTop: '0.15rem', flexShrink: 0 }} /> 
+                              <span style={{ lineHeight: 1.4 }}>
+                                {tenant.propertyNames && tenant.propertyNames.length > 0 ? (
+                                  <span style={{ color: '#0F2C59', fontWeight: 600 }}>{tenant.propertyNames.join(', ')}</span>
+                                ) : (
+                                  <span style={{ color: '#94a3b8', fontStyle: 'italic' }}>No properties created</span>
+                                )}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
+                        {tenant.role === 'tenant_admin' ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                            <div>
+                              <span className={`badge ${tenant.plan_type === 'premium' ? 'badge-primary' : (tenant.plan_type === 'pro' ? 'badge-success' : 'badge-outline')}`}>
+                                {pricingConfig[tenant.plan_type]?.name?.toUpperCase() || tenant.plan_type?.toUpperCase() || 'FREE STARTER'}
+                              </span>
+                            </div>
+                            <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: '#64748b' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Properties</span>
+                                <strong style={{ color: '#1e293b', fontSize: '0.9rem' }}>{tenant.propertyCount || 0}</strong>
+                              </div>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Bookings</span>
+                                <strong style={{ color: '#1e293b', fontSize: '0.9rem' }}>{tenant.bookingCount || 0}</strong>
+                              </div>
+                            </div>
+                          </div>
                         ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>Operational account</span>
+                          <span style={{ color: '#94a3b8', fontSize: '0.8rem', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                            <Users size={14} /> Operational Account
+                          </span>
                         )}
                       </td>
-                      <td style={{ verticalAlign: 'top' }}>
+                      <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
                         <div style={{ 
                           display: 'inline-flex', 
                           alignItems: 'center', 
                           gap: '0.35rem', 
                           color: tenant.subscription_status === 'active' ? '#059669' : '#ef4444', 
-                          fontSize: '0.8rem',
-                          fontWeight: 700,
+                          fontSize: '0.75rem',
+                          fontWeight: 800,
                           background: tenant.subscription_status === 'active' ? 'rgba(5, 150, 105, 0.08)' : 'rgba(239, 68, 68, 0.08)',
-                          padding: '0.25rem 0.65rem',
+                          padding: '0.35rem 0.75rem',
                           borderRadius: '20px',
                           border: tenant.subscription_status === 'active' ? '1px solid rgba(5, 150, 105, 0.15)' : '1px solid rgba(239, 68, 68, 0.15)'
                         }}>
-                          {tenant.subscription_status === 'active' ? <CheckCircle size={12} /> : <XCircle size={12} />}
-                          {tenant.subscription_status === 'active' ? 'Active' : 'Suspended'}
+                          {tenant.subscription_status === 'active' ? <CheckCircle size={14} /> : <XCircle size={14} />}
+                          {tenant.subscription_status === 'active' ? 'ACTIVE' : 'SUSPENDED'}
                         </div>
                       </td>
-                      <td style={{ verticalAlign: 'top' }}>
+                      <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
                         <button 
                           className="btn btn-outline" 
-                          style={{ padding: '0.35rem 0.9rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px' }} 
-                          onClick={() => {
-                            console.log("Manage button clicked. Setting editingUser to:", tenant);
-                            setEditingUser(tenant);
-                          }}
+                          style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', fontWeight: 700, borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0F2C59', borderColor: '#cbd5e1' }} 
+                          onClick={() => setEditingUser(tenant)}
                         >
-                          Manage
+                          <Settings size={14} /> Manage
                         </button>
                       </td>
                     </tr>
