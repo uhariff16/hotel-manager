@@ -268,11 +268,33 @@ export default function SuperAdmin() {
   const [editingUser, setEditingUser] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [adminActiveTab, setAdminActiveTab] = useState('overview');
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
 
   useEffect(() => {
     if (profile?.role !== 'super_admin') return;
     fetchGlobalData();
+    fetchUnreadTickets();
+    
+    const unreadSub = supabase
+      .channel('super-admin-unread')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, () => {
+        fetchUnreadTickets();
+      })
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(unreadSub);
+    };
   }, [profile]);
+
+  const fetchUnreadTickets = async () => {
+    const { count } = await supabase
+      .from('support_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'open')
+      .eq('admin_unread', true);
+    setSupportUnreadCount(count || 0);
+  };
 
   const fetchGlobalData = async () => {
     setLoading(true);
@@ -714,7 +736,7 @@ export default function SuperAdmin() {
           { id: 'plans', label: 'Subscription Plans', icon: <DollarSign size={16} /> },
           { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} /> },
           { id: 'emails', label: 'Email Templates', icon: <Mail size={16} /> },
-          { id: 'support', label: 'Support Inbox', icon: <MessageSquare size={16} /> },
+          { id: 'support', label: `Support Inbox ${supportUnreadCount > 0 ? `(${supportUnreadCount})` : ''}`, icon: <MessageSquare size={16} /> },
           { id: 'website_manager', label: 'Website Manager', icon: <LayoutDashboard size={16} /> }
         ].map(tab => (
           <button

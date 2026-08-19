@@ -49,7 +49,7 @@ const SupportInbox = ({ superAdminProfile }) => {
   const fetchTickets = async () => {
     setLoading(true);
     let query = supabase.from('support_tickets').select(`
-      id, ticket_number, subject, status, created_at, updated_at,
+      id, ticket_number, subject, status, admin_unread, created_at, updated_at,
       profiles ( id, full_name, email )
     `).order('updated_at', { ascending: false });
 
@@ -65,6 +65,13 @@ const SupportInbox = ({ superAdminProfile }) => {
 
   const openTicket = async (ticket) => {
     setSelectedTicket(ticket);
+    
+    // Mark as read
+    if (ticket.admin_unread) {
+      await supabase.from('support_tickets').update({ admin_unread: false }).eq('id', ticket.id);
+      setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, admin_unread: false } : t));
+    }
+
     const { data, error } = await supabase
       .from('support_messages')
       .select('*')
@@ -193,9 +200,12 @@ const SupportInbox = ({ superAdminProfile }) => {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.95rem' }}>
+                  <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.95rem', display: 'flex', alignItems: 'center' }}>
                     <span style={{ color: '#64748b', marginRight: '0.5rem' }}>#{ticket.ticket_number}</span>
                     {ticket.subject}
+                    {ticket.admin_unread && (
+                      <span style={{ marginLeft: '0.5rem', width: '8px', height: '8px', background: '#3b82f6', borderRadius: '50%', display: 'inline-block' }}></span>
+                    )}
                   </div>
                   <span style={{ 
                     fontSize: '0.7rem', 

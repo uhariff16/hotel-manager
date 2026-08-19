@@ -64,7 +64,7 @@ const TenantSupport = () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('support_tickets')
-      .select('id, ticket_number, subject, status, created_at, updated_at')
+      .select('id, ticket_number, subject, status, tenant_unread, created_at, updated_at')
       .eq('tenant_id', profile.tenant_id || profile.id)
       .order('updated_at', { ascending: false });
 
@@ -76,6 +76,13 @@ const TenantSupport = () => {
   const openTicket = async (ticket) => {
     setSelectedTicket(ticket);
     setShowNewTicketForm(false);
+    
+    // Mark as read
+    if (ticket.tenant_unread) {
+      await supabase.from('support_tickets').update({ tenant_unread: false }).eq('id', ticket.id);
+      setTickets(prev => prev.map(t => t.id === ticket.id ? { ...t, tenant_unread: false } : t));
+    }
+
     const { data, error } = await supabase
       .from('support_messages')
       .select('*')
@@ -248,11 +255,14 @@ const TenantSupport = () => {
                   }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                    <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
-                      <span style={{ color: '#64748b', marginRight: '0.4rem' }}>#{ticket.ticket_number}</span>
-                      {ticket.subject}
-                    </div>
+                  <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px', display: 'flex', alignItems: 'center' }}>
+                    <span style={{ color: '#64748b', marginRight: '0.4rem' }}>#{ticket.ticket_number}</span>
+                    {ticket.subject}
+                    {ticket.tenant_unread && (
+                      <span style={{ marginLeft: '0.5rem', minWidth: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', display: 'inline-block' }}></span>
+                    )}
                   </div>
+                </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ 
                       fontSize: '0.7rem', 

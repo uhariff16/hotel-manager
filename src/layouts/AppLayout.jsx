@@ -10,9 +10,36 @@ export default function AppLayout() {
   const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled, isDataLoaded, globalPlans } = useSettingsStore();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isManagementActive = ['/resorts', '/setup', '/staff'].includes(location.pathname);
   const [isManagementOpen, setIsManagementOpen] = React.useState(isManagementActive);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
+
+  useEffect(() => {
+    if (profile && profile.role !== 'super_admin') {
+      fetchUnreadTickets();
+      const unreadSub = supabase
+        .channel('tenant-unread')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'support_tickets' }, () => {
+          fetchUnreadTickets();
+        })
+        .subscribe();
+      return () => {
+        supabase.removeChannel(unreadSub);
+      };
+    }
+  }, [profile]);
+
+  const fetchUnreadTickets = async () => {
+    if (!profile) return;
+    const { count } = await supabase
+      .from('support_tickets')
+      .select('id', { count: 'exact', head: true })
+      .eq('tenant_id', profile.tenant_id || profile.id)
+      .eq('tenant_unread', true);
+    setSupportUnreadCount(count || 0);
+  };
 
   React.useEffect(() => {
     if (isManagementActive) {
@@ -75,7 +102,7 @@ export default function AppLayout() {
         ]
       },
       { to: '/subscription', label: 'Plans & Billing', icon: <CreditCard size={20} /> },
-      { to: '/support', label: 'Help & Support', icon: <LifeBuoy size={20} /> },
+      { to: '/support', label: `Help & Support ${supportUnreadCount > 0 ? `(${supportUnreadCount})` : ''}`, icon: <LifeBuoy size={20} /> },
     ];
   }
 
