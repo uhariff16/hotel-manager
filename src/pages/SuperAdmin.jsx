@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload } from 'lucide-react';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
 
@@ -887,25 +887,57 @@ export default function SuperAdmin() {
           <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <h4 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Registered Accounts List</h4>
-              <div style={{ position: 'relative' }}>
-                <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  placeholder="Search tenants or staff..." 
-                  style={{ paddingLeft: '2.5rem', width: '300px' }} 
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ position: 'relative' }}>
+                  <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    placeholder="Search tenants or staff..." 
+                    style={{ paddingLeft: '2.5rem', width: '300px' }} 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <button 
+                  className="btn btn-outline" 
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: '#0F2C59', borderColor: '#cbd5e1' }}
+                  onClick={() => {
+                    const headers = ['ID', 'Full Name', 'Email', 'Role', 'Properties', 'Plan', 'Status', 'Joined Date'];
+                    const rows = tenants.map(t => [
+                      t.id,
+                      t.full_name,
+                      t.email,
+                      t.role,
+                      (t.propertyNames || []).join(';'),
+                      t.plan_type || 'free',
+                      t.subscription_status || 'active',
+                      t.created_at ? new Date(t.created_at).toLocaleDateString() : ''
+                    ]);
+                    const csvContent = [headers.join(','), ...rows.map(row => row.map(cell => `"${(cell || '').toString().replace(/"/g, '""')}"`).join(','))].join('\\n');
+                    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.setAttribute('download', 'staypilot_accounts.csv');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }}
+                >
+                  <Download size={16} /> Export to Excel
+                </button>
               </div>
             </div>
             
             <div className="table-container" style={{ overflowX: 'auto' }}>
-              <table className="table" style={{ width: '100%', minWidth: '1000px', borderCollapse: 'collapse', textAlign: 'left' }}>
+              <table className="table" style={{ width: '100%', minWidth: '1200px', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
                   <tr>
-                    <th>User Details</th>
-                    <th>Role & Associated Properties</th>
+                    <th>User Name / ID</th>
+                    <th>Contact Info</th>
+                    <th>Joined</th>
+                    <th>Role & Properties</th>
                     <th>Sub Plan & Stats</th>
                     <th>Status</th>
                     <th>Actions</th>
@@ -926,16 +958,26 @@ export default function SuperAdmin() {
                           </div>
                           <div>
                             <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1e293b' }}>{tenant.full_name}</div>
-                            <div style={{ color: '#64748b', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem', marginTop: '0.1rem' }}>
-                              <Mail size={12} /> {tenant.email}
-                            </div>
                             <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.2rem', display: 'flex', gap: '0.5rem' }}>
                               <span>ID: {tenant.id.substring(0, 8)}...</span>
-                              {tenant.created_at && (
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Calendar size={10} /> {new Date(tenant.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                              )}
                             </div>
                           </div>
+                        </div>
+                      </td>
+                      <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
+                        <div style={{ color: '#475569', fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <Mail size={13} style={{ color: '#94a3b8' }} /> {tenant.email}
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <Phone size={13} style={{ color: '#94a3b8' }} /> {tenant.phone || <span style={{ color: '#cbd5e1', fontStyle: 'italic' }}>Not provided</span>}
+                          </div>
+                        </div>
+                      </td>
+                      <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
+                        <div style={{ fontSize: '0.85rem', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <Calendar size={14} style={{ color: '#94a3b8' }} /> 
+                          {tenant.created_at ? new Date(tenant.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'}
                         </div>
                       </td>
                       <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
