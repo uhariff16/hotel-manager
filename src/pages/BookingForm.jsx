@@ -612,7 +612,189 @@ export default function BookingForm() {
   const relevantRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id && (r.status === 'Available' || r.status === 'Active' || bookingForm.room_ids.includes(r.id)));
 
   return (
-    <div className="container" style={{ maxWidth: '850px', margin: '0 auto', padding: '2rem 1.5rem', fontFamily: "'Outfit', sans-serif" }}>
+    <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        .booking-page-title {
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 1.85rem;
+          font-weight: 800;
+          color: #0F2C59;
+          margin-bottom: 2rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        
+        .booking-layout {
+          display: grid;
+          grid-template-columns: 7fr 4fr;
+          gap: 2.5rem;
+          align-items: start;
+        }
+        
+        .form-section-card {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 2.25rem;
+          margin-bottom: 2rem;
+          box-shadow: 0 4px 20px -2px rgba(15, 44, 89, 0.03);
+          transition: all 0.2s;
+        }
+        
+        .form-section-card:hover {
+          box-shadow: 0 10px 30px -5px rgba(15, 44, 89, 0.05);
+        }
+        
+        .form-section-title {
+          font-size: 1.15rem;
+          color: #0F2C59;
+          font-weight: 700;
+          margin: 0 0 1.5rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          border-bottom: 1px solid var(--border);
+          padding-bottom: 0.75rem;
+          text-transform: tracking-tight;
+        }
+        
+        .premium-label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: #64748b;
+          margin-bottom: 0.5rem;
+        }
+        
+        .premium-input, .premium-select {
+          width: 100%;
+          padding: 0.8rem 1rem;
+          border-radius: 10px;
+          border: 1.5px solid #cbd5e1;
+          background-color: var(--bg-color);
+          color: #1e293b;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+        
+        .premium-input:focus, .premium-select:focus {
+          outline: none;
+          border-color: var(--primary);
+          box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+        }
+        
+        /* Check-in / Check-out Timeline widget */
+        .timeline-widget {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: #f8fafc;
+          border: 1px dashed #cbd5e1;
+          border-radius: 12px;
+          padding: 1.25rem;
+          margin-bottom: 1.5rem;
+        }
+        .timeline-col {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .timeline-label {
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .timeline-val {
+          font-size: 0.95rem;
+          font-weight: 800;
+          color: #0F2C59;
+        }
+        
+        .sticky-receipt {
+          position: sticky;
+          top: 2rem;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 2.25rem;
+          box-shadow: 0 15px 35px rgba(15, 44, 89, 0.06);
+        }
+        
+        .receipt-header {
+          font-size: 1rem;
+          font-weight: 800;
+          color: #94a3b8;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          border-bottom: 2px solid #e2e8f0;
+          padding-bottom: 0.75rem;
+          margin-bottom: 1.5rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .receipt-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.9rem;
+          color: #64748b;
+          margin-bottom: 0.85rem;
+          font-weight: 500;
+        }
+        .receipt-row.bold {
+          font-weight: 700;
+          color: #1e293b;
+        }
+        
+        .receipt-total-box {
+          background: #f8fafc;
+          border-radius: 12px;
+          padding: 1.25rem;
+          margin: 1.5rem 0;
+          border: 1px solid #e2e8f0;
+        }
+        
+        .badge-room {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background: #f1f5f9;
+          border: 1.5px solid #cbd5e1;
+          color: #1e293b;
+          font-size: 0.85rem;
+          font-weight: 600;
+          padding: 0.4rem 1rem;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .badge-room.selected {
+          background: rgba(5, 150, 105, 0.08);
+          border-color: var(--primary);
+          color: var(--primary);
+        }
+        
+        @media (max-width: 991px) {
+          .booking-layout {
+            grid-template-columns: 1fr;
+          }
+          .sticky-receipt {
+            position: relative;
+            top: 0;
+          }
+        }
+      `}</style>
+
       <button 
         className="btn btn-outline" 
         onClick={() => navigate('/bookings')} 
@@ -621,43 +803,45 @@ export default function BookingForm() {
         <ArrowLeft size={16} /> Back to Reservations
       </button>
 
-      <div className="card" style={{ padding: '2.5rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(15, 44, 89, 0.05)', border: '1px solid var(--border)' }}>
-        <h2 style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#0F2C59', fontWeight: 800, fontSize: '1.75rem' }}>
-          <CalendarCheck size={28} /> {id ? `Update Reservation: ${bookingForm.reference_number}` : 'Create New Reservation'}
-        </h2>
-        
-        {error && (
-          <div style={{ color: 'var(--danger)', marginBottom: '1.5rem', padding: '1rem', background: 'rgba(229, 62, 62, 0.08)', borderRadius: '8px', border: '1px solid rgba(229, 62, 62, 0.15)', fontSize: '0.9rem' }}>
-            {error}
-          </div>
-        )}
+      <h2 className="booking-page-title">
+        <CalendarCheck size={28} /> {id ? `Update Reservation: ${bookingForm.reference_number}` : 'Create New Reservation'}
+      </h2>
+      
+      {error && (
+        <div style={{ color: 'var(--danger)', marginBottom: '1.5rem', padding: '1rem', background: 'rgba(229, 62, 62, 0.08)', borderRadius: '8px', border: '1px solid rgba(229, 62, 62, 0.15)', fontSize: '0.9rem' }}>
+          {error}
+        </div>
+      )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+      <form onSubmit={handleSubmit} className="booking-layout">
+        
+        {/* LEFT COLUMN: FORM DETAILS */}
+        <div className="form-left-col">
           
-          {/* SECTION 1: GUEST DETAILS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0F2C59', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-              <User size={18} /> Guest Profile Details
+          {/* SECTION 1: PRIMARY GUEST DETAILS */}
+          <div className="form-section-card">
+            <h3 className="form-section-title">
+              <User size={18} style={{ color: 'var(--primary)' }} /> Primary Guest Details
             </h3>
             
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Primary Guest Full Name</label>
+                <label className="premium-label">Primary Guest Full Name</label>
                 <input 
                   type="text" 
                   required 
-                  className="form-input" 
+                  className="premium-input" 
                   placeholder="Enter guest's first & last name"
                   value={bookingForm.guest_name} 
                   onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} 
                 />
               </div>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Email Address</label>
+                <label className="premium-label">Email Address (Optional)</label>
                 <input 
                   type="email" 
-                  className="form-input" 
-                  placeholder="guest@email.com (Optional)" 
+                  className="premium-input" 
+                  placeholder="guest@email.com" 
                   value={bookingForm.guest_email} 
                   onChange={e => setBookingForm({...bookingForm, guest_email: e.target.value})} 
                 />
@@ -666,11 +850,11 @@ export default function BookingForm() {
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Mobile Number (Country Code & Phone)</label>
+                <label className="premium-label">Mobile Contact Number (5/5 Layout)</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                   <input 
                     list="country-codes"
-                    className="form-input" 
+                    className="premium-input" 
                     value={bookingForm.phone_code || '+91'} 
                     placeholder="Code (e.g. +91)"
                     onChange={e => setBookingForm(prev => ({ ...prev, phone_code: e.target.value, phone_number: e.target.value + prev.phone_raw }))}
@@ -678,7 +862,7 @@ export default function BookingForm() {
                   <input 
                     type="text" 
                     required 
-                    className="form-input" 
+                    className="premium-input" 
                     placeholder="9876543210" 
                     value={bookingForm.phone_raw || ''} 
                     onChange={e => setBookingForm(prev => ({ ...prev, phone_raw: e.target.value, phone_number: prev.phone_code + e.target.value }))} 
@@ -686,12 +870,12 @@ export default function BookingForm() {
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Booking Reference Number</label>
+                <label className="premium-label">Booking Reference Number</label>
                 <input 
                   type="text" 
                   required 
-                  className="form-input" 
-                  style={{ fontWeight: 'bold', color: 'var(--primary)' }} 
+                  className="premium-input" 
+                  style={{ fontWeight: '700', color: 'var(--primary)' }} 
                   value={bookingForm.reference_number} 
                   onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} 
                 />
@@ -700,45 +884,44 @@ export default function BookingForm() {
           </div>
 
           {/* SECTION 2: ADDITIONAL CONTACTS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-secondary)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--primary)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Users size={16} /> Additional Occupants / Contacts
+          <div className="form-section-card" style={{ background: '#f8fafc' }}>
+            <h3 className="form-section-title">
+              <Users size={18} style={{ color: 'var(--primary)' }} /> Additional Occupants / Contacts
             </h3>
-            <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Log other guests staying in the same booking</p>
             
             {bookingForm.additional_guests && bookingForm.additional_guests.map((guest, index) => (
-              <div key={index} style={{ border: '1px solid var(--border)', padding: '1.25rem', borderRadius: '8px', background: 'var(--bg-color)', position: 'relative' }}>
+              <div key={index} style={{ border: '1px solid #cbd5e1', padding: '1.25rem', borderRadius: '12px', background: 'white', position: 'relative', marginBottom: '1rem' }}>
                 <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }}>
                   <button 
                     type="button" 
                     onClick={() => handleRemoveAdditionalGuest(index)} 
-                    style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}
+                    style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
                   >
                     Remove
                   </button>
                 </div>
-                <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-muted)' }}>Occupant #{index + 2}</h4>
+                <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Occupant #{index + 2}</h4>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Guest Name</label>
-                    <input type="text" required className="form-input" placeholder="Name" value={guest.name} onChange={e => handleUpdateAdditionalGuest(index, 'name', e.target.value)} />
+                    <label className="premium-label" style={{ fontSize: '0.7rem' }}>Guest Name</label>
+                    <input type="text" required className="premium-input" placeholder="Name" value={guest.name} onChange={e => handleUpdateAdditionalGuest(index, 'name', e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Email Address</label>
-                    <input type="email" className="form-input" placeholder="Email" value={guest.email} onChange={e => handleUpdateAdditionalGuest(index, 'email', e.target.value)} />
+                    <label className="premium-label" style={{ fontSize: '0.7rem' }}>Email Address</label>
+                    <input type="email" className="premium-input" placeholder="Email" value={guest.email} onChange={e => handleUpdateAdditionalGuest(index, 'email', e.target.value)} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 600 }}>Mobile Number</label>
+                    <label className="premium-label" style={{ fontSize: '0.7rem' }}>Mobile Number</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
                       <input 
                         list="country-codes"
-                        className="form-input" 
+                        className="premium-input" 
                         value={guest.phone_code || '+91'} 
                         placeholder="Code"
                         onChange={e => handleUpdateAdditionalGuest(index, 'phone_code', e.target.value)}
                       />
-                      <input type="text" className="form-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
+                      <input type="text" className="premium-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -749,7 +932,7 @@ export default function BookingForm() {
               type="button" 
               className="btn btn-outline" 
               onClick={handleAddAdditionalGuest} 
-              style={{ height: '42px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderStyle: 'dashed', borderRadius: '8px', fontWeight: 600 }}
+              style={{ height: '42px', width: '100%', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderStyle: 'dashed', borderRadius: '10px', fontWeight: 600 }}
             >
               + Add More Guest / Contact Detail
             </button>
@@ -762,18 +945,18 @@ export default function BookingForm() {
           </datalist>
 
           {/* SECTION 3: STAY SCHEDULE */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0F2C59', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-              <Calendar size={18} /> Booking Schedule & Property
+          <div className="form-section-card">
+            <h3 className="form-section-title">
+              <Calendar size={18} style={{ color: 'var(--primary)' }} /> Booking Schedule & Property
             </h3>
             
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Check-in Date</label>
+                <label className="premium-label">Check-in Date</label>
                 <input 
                   type="date" 
                   required 
-                  className="form-input" 
+                  className="premium-input" 
                   value={bookingForm.check_in_date} 
                   onChange={e => {
                     const newInDate = e.target.value;
@@ -790,28 +973,28 @@ export default function BookingForm() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Check-out Date</label>
+                <label className="premium-label">Check-out Date</label>
                 <input 
                   type="date" 
                   required 
-                  className="form-input" 
+                  className="premium-input" 
                   value={bookingForm.check_out_date} 
                   onChange={e => setBookingForm({...bookingForm, check_out_date: e.target.value})} 
                 />
               </div>
             </div>
 
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Accommodation Booking Scope</label>
-                <select className="form-select" value={bookingForm.booking_type} onChange={e => setBookingForm({...bookingForm, booking_type: e.target.value, room_ids: []})}>
+                <label className="premium-label">Accommodation Booking Scope</label>
+                <select className="premium-select" value={bookingForm.booking_type} onChange={e => setBookingForm({...bookingForm, booking_type: e.target.value, room_ids: []})}>
                   <option value="Entire Property">Entire Property Booking</option>
                   <option value="Room">Individual Rooms Booking</option>
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Select Property / Cottage</label>
-                <select className="form-select" value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value})}>
+                <label className="premium-label">Select Property / Cottage</label>
+                <select className="premium-select" value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value})}>
                   <option value="">Choose property...</option>
                   {cottages.filter(c => c.status === 'Available' || c.status === 'Active' || c.id === bookingForm.cottage_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
@@ -819,16 +1002,19 @@ export default function BookingForm() {
             </div>
 
             {bookingForm.booking_type === 'Room' && (
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Assign Specific Rooms</label>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: 'rgba(15, 44, 89, 0.02)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                <label className="premium-label">Assign Specific Rooms</label>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   {relevantRooms.length === 0 ? (
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>Please select a property/cottage first</span>
+                    <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>Please select a property/cottage first</span>
                   ) : relevantRooms.map(r => (
-                    <label key={r.id} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', background: bookingForm.room_ids.includes(r.id) ? 'rgba(5, 150, 105, 0.08)' : 'white', padding: '0.5rem 1rem', borderRadius: '20px', border: bookingForm.room_ids.includes(r.id) ? '1px solid var(--primary)' : '1px solid var(--border)', transition: 'all 0.2s', fontSize: '0.875rem', fontWeight: 600 }}>
+                    <label 
+                      key={r.id} 
+                      className={`badge-room ${bookingForm.room_ids.includes(r.id) ? 'selected' : ''}`}
+                    >
                       <input 
                         type="checkbox" 
-                        style={{ accentColor: 'var(--primary)' }}
+                        style={{ display: 'none' }}
                         checked={bookingForm.room_ids.includes(r.id)} 
                         onChange={e => {
                           const newIds = e.target.checked ? [...bookingForm.room_ids, r.id] : bookingForm.room_ids.filter(id => id !== r.id);
@@ -859,33 +1045,8 @@ export default function BookingForm() {
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Category Summary</label>
-                <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', minHeight: '42px', display: 'flex', alignItems: 'center' }}>
-                  {bookingForm.booking_type === 'Room' ? (
-                    bookingForm.room_ids.length > 0 ? (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', width: '100%' }}>
-                        {bookingForm.room_ids.map(rid => {
-                          const r = rooms.find(room => room.id === rid);
-                          if (!r) return null;
-                          return (
-                            <div key={rid} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 500 }}>{r.name}:</span>
-                              <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary)' }}>{r.room_type || 'Deluxe'}</span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>No rooms selected yet</span>
-                    )
-                  ) : (
-                    <span style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--primary)' }}>Entire Property Booking</span>
-                  )}
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Breakfast Inclusions</label>
-                <select className="form-select" value={bookingForm.breakfast} onChange={e => setBookingForm({...bookingForm, breakfast: e.target.value})}>
+                <label className="premium-label">Breakfast Inclusions</label>
+                <select className="premium-select" value={bookingForm.breakfast} onChange={e => setBookingForm({...bookingForm, breakfast: e.target.value})}>
                   <option value="NA">No Breakfast (NA)</option>
                   <option value="Included">Breakfast Included</option>
                 </select>
@@ -893,30 +1054,30 @@ export default function BookingForm() {
             </div>
           </div>
 
-          {/* SECTION 4: ADDITIONAL INFO */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0F2C59', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-              <Info size={18} /> Additional Occupancy Details
+          {/* SECTION 4: OCCUPANCY DETAILS */}
+          <div className="form-section-card">
+            <h3 className="form-section-title">
+              <Info size={18} style={{ color: 'var(--primary)' }} /> Occupancy & Document Details
             </h3>
 
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Number of Guests (Adults & Children)</label>
+                <label className="premium-label">Number of Guests (Adults & Children)</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input type="number" min="1" placeholder="Adults" className="form-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: e.target.value === '' ? '' : Number(e.target.value)})} />
-                  <input type="number" min="0" placeholder="Kids" className="form-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: e.target.value === '' ? '' : Number(e.target.value)})} />
+                  <input type="number" min="1" placeholder="Adults" className="premium-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: e.target.value === '' ? '' : Number(e.target.value)})} />
+                  <input type="number" min="0" placeholder="Kids" className="premium-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: e.target.value === '' ? '' : Number(e.target.value)})} />
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Guest Vehicle Number</label>
-                <input type="text" className="form-input" placeholder="E.g. KA-01-MX-1234 (Optional)" value={bookingForm.vehicle_number || ''} onChange={e => setBookingForm({...bookingForm, vehicle_number: e.target.value})} />
+                <label className="premium-label">Guest Vehicle Number (Optional)</label>
+                <input type="text" className="premium-input" placeholder="E.g. KA-01-MX-1234" value={bookingForm.vehicle_number || ''} onChange={e => setBookingForm({...bookingForm, vehicle_number: e.target.value})} />
               </div>
             </div>
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: bookingForm.id_proof_type === 'Other' ? '1fr 1fr 2fr' : '1fr 2fr', gap: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Identification Document (ID Type)</label>
-                <select className="form-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => {
+                <label className="premium-label">Identification Document (ID Type)</label>
+                <select className="premium-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => {
                   const type = e.target.value;
                   let val = bookingForm.id_proof_number || '';
                   if (type === 'Aadhar') {
@@ -938,15 +1099,15 @@ export default function BookingForm() {
               </div>
               {bookingForm.id_proof_type === 'Other' && (
                 <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 600 }}>Specify Document Type</label>
-                  <input type="text" className="form-input" placeholder="E.g. Company ID" value={bookingForm.id_proof_other_type || ''} onChange={e => setBookingForm({...bookingForm, id_proof_other_type: e.target.value})} />
+                  <label className="premium-label">Specify Document Type</label>
+                  <input type="text" className="premium-input" placeholder="E.g. Company ID" value={bookingForm.id_proof_other_type || ''} onChange={e => setBookingForm({...bookingForm, id_proof_other_type: e.target.value})} />
                 </div>
               )}
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>ID Document Number / Reference</label>
+                <label className="premium-label">ID Document Number</label>
                 <input 
                   type="text" 
-                  className="form-input" 
+                  className="premium-input" 
                   placeholder="Enter identification card number" 
                   value={bookingForm.id_proof_number || ''} 
                   onChange={e => {
@@ -965,18 +1126,18 @@ export default function BookingForm() {
             </div>
           </div>
 
-          {/* SECTION 5: ADD-ONS & CHANNELS */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0F2C59', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
-              <Globe size={18} /> Extra Services & Reservation Channel
+          {/* SECTION 5: SERVICES & RESERVATION CHANNEL */}
+          <div className="form-section-card">
+            <h3 className="form-section-title">
+              <Globe size={18} style={{ color: 'var(--primary)' }} /> Services & Distribution Channels
             </h3>
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Extra Add-on Services</label>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <label className="premium-label">Extra Add-on Services</label>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
                   {['Food', 'Fire camp', 'BBQ'].map(addon => (
-                    <label key={addon} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}>
+                    <label key={addon} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
                       <input 
                         type="checkbox" 
                         style={{ accentColor: 'var(--primary)' }}
@@ -991,7 +1152,7 @@ export default function BookingForm() {
                       {addon}
                     </label>
                   ))}
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.875rem', fontWeight: 500 }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
                     <input 
                       type="checkbox" 
                       style={{ accentColor: 'var(--primary)' }}
@@ -1006,14 +1167,14 @@ export default function BookingForm() {
                     Others
                   </label>
                   {bookingForm.addon_selections?.includes('Others') && (
-                    <input type="text" className="form-input" style={{ width: '100%', marginTop: '0.5rem' }} placeholder="Specify custom add-on..." value={bookingForm.addon_others || ''} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
+                    <input type="text" className="premium-input" style={{ width: '100%', marginTop: '0.5rem' }} placeholder="Specify custom add-on..." value={bookingForm.addon_others || ''} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
                   )}
                 </div>
               </div>
 
               <div className="form-group">
-                <label className="form-label" style={{ fontWeight: 600 }}>Reservation Booking Channel</label>
-                <select className="form-select" value={bookingForm.booking_source} onChange={e => {
+                <label className="premium-label">Booking Source Channel</label>
+                <select className="premium-select" value={bookingForm.booking_source} onChange={e => {
                   const src = e.target.value;
                   const defName = bookingForm.agent_name || agents[0] || '';
                   setBookingForm({
@@ -1033,7 +1194,7 @@ export default function BookingForm() {
                 {bookingForm.booking_source === 'Agent' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
                     <select 
-                      className="form-select" 
+                      className="premium-select" 
                       value={agents.includes(bookingForm.agent_name) ? bookingForm.agent_name : (bookingForm.agent_name ? 'Other' : '')} 
                       onChange={e => {
                         const val = e.target.value;
@@ -1054,7 +1215,7 @@ export default function BookingForm() {
                     {(bookingForm.is_custom_agent || (!agents.includes(bookingForm.agent_name) && bookingForm.agent_name)) && (
                       <input 
                         type="text" 
-                        className="form-input" 
+                        className="premium-input" 
                         placeholder="Enter new agent's name" 
                         value={bookingForm.agent_name} 
                         onChange={e => setBookingForm({...bookingForm, agent_name: e.target.value})} 
@@ -1063,8 +1224,8 @@ export default function BookingForm() {
                     )}
                     <input 
                       type="text" 
-                      className="form-input" 
-                      placeholder="Agent's contact number (Optional)" 
+                      className="premium-input" 
+                      placeholder="Agent's contact number" 
                       value={bookingForm.agent_phone || ''} 
                       onChange={e => setBookingForm({...bookingForm, agent_phone: e.target.value})} 
                     />
@@ -1073,7 +1234,7 @@ export default function BookingForm() {
                 {bookingForm.booking_source === 'Other' && (
                   <input 
                     type="text" 
-                    className="form-input" 
+                    className="premium-input" 
                     style={{ marginTop: '0.5rem' }} 
                     placeholder="Specify booking source channel" 
                     value={bookingForm.custom_booking_source || ''} 
@@ -1085,28 +1246,38 @@ export default function BookingForm() {
             </div>
           </div>
 
-          {/* SECTION 6: BILLING SUMMARY */}
-          <div style={{ background: '#f8fafc', padding: '2rem', borderRadius: '12px', border: '1px solid #cbd5e1', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}>
-            <h3 style={{ margin: '0 0 1.25rem 0', color: '#0F2C59', fontWeight: 800, borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.1rem' }}>
-              <Wallet size={20} /> Billing & Invoicing Summary
+          {/* SECTION 6: FINANCIAL ADJUSTMENTS */}
+          <div className="form-section-card">
+            <h3 className="form-section-title">
+              <Wallet size={18} style={{ color: 'var(--primary)' }} /> Financial Adjustments & Status
             </h3>
             
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+              <div className="form-group">
+                <label className="premium-label">Base Accommodation Charge (₹)</label>
+                <input type="number" className="premium-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: e.target.value === '' ? '' : Number(e.target.value)})} />
+              </div>
+              <div className="form-group">
+                <label className="premium-label">Advance Deposit Received (₹)</label>
+                <input type="number" className="premium-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: e.target.value === '' ? '' : Number(e.target.value)})} />
+              </div>
+            </div>
+
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+              <div className="form-group">
+                <label className="premium-label">Total Add-on Services Cost (₹)</label>
+                <input type="number" className="premium-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: e.target.value === '' ? '' : Number(e.target.value)})} />
+              </div>
+              <div className="form-group">
+                <label className="premium-label">Extra Guest / Occupancy Charges (₹)</label>
+                <input type="number" className="premium-input" value={bookingForm.extra_guest_charges} onChange={e => setBookingForm({...bookingForm, extra_guest_charges: e.target.value === '' ? '' : Number(e.target.value)})} />
+              </div>
+            </div>
+
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span className="form-label" style={{ margin: 0, fontWeight: 600 }}>Total Duration of Stay:</span> 
-                <span style={{ fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary)' }}>{bookingForm.night_count} {bookingForm.night_count === 1 ? 'Night' : 'Nights'}</span>
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>Base Accommodation Charges (₹)</label>
-                <input type="number" className="form-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: e.target.value === '' ? '' : Number(e.target.value)})} />
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>Advance Deposit Paid (₹)</label>
-                <input type="number" className="form-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: e.target.value === '' ? '' : Number(e.target.value)})} />
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>Reservation Booking Status</label>
-                <select className="form-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
+              <div className="form-group">
+                <label className="premium-label">Reservation Booking Status</label>
+                <select className="premium-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
                   <option value="Confirmed">Confirmed</option>
                   <option value="Pending">Pending</option>
                   {id && originalStatus !== 'Pending' && (
@@ -1119,40 +1290,122 @@ export default function BookingForm() {
                   <option value="Cancelled">Cancelled</option>
                 </select>
               </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>Total Add-on Services Cost (₹)</label>
-                <input type="number" className="form-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: e.target.value === '' ? '' : Number(e.target.value)})} />
+            </div>
+          </div>
+          
+        </div>
+
+        {/* RIGHT COLUMN: STICKY RESERVATION RECEIPT */}
+        <div className="form-right-col">
+          <div className="sticky-receipt">
+            <div className="receipt-header">
+              <span>Booking Summary</span>
+              <span className={`badge badge-${bookingForm.status === 'Confirmed' || bookingForm.status === 'Completed' ? 'success' : (bookingForm.status === 'Pending' ? 'warning' : 'danger')}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
+                {bookingForm.status}
+              </span>
+            </div>
+
+            {/* Dates widget */}
+            <div className="timeline-widget">
+              <div className="timeline-col">
+                <span className="timeline-label">Check In</span>
+                <span className="timeline-val">{bookingForm.check_in_date || '--'}</span>
               </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>Extra Guest / Occupancy Charges (₹)</label>
-                <input type="number" className="form-input" value={bookingForm.extra_guest_charges} onChange={e => setBookingForm({...bookingForm, extra_guest_charges: e.target.value === '' ? '' : Number(e.target.value)})} />
+              <div style={{ color: '#cbd5e1', fontSize: '1.25rem', fontWeight: 600 }}>➔</div>
+              <div className="timeline-col" style={{ textAlign: 'right' }}>
+                <span className="timeline-label">Check Out</span>
+                <span className="timeline-val">{bookingForm.check_out_date || '--'}</span>
               </div>
             </div>
 
-            <div style={{ marginTop: '2rem', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', padding: '1.25rem', background: 'white', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
-                <span className="form-label" style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>GROSS TOTAL AMOUNT</span>
-                <span style={{ fontSize: '1.6rem', fontWeight: '900', color: '#0F2C59' }}>₹{bookingForm.total_amount.toLocaleString()}</span>
+            {/* General details */}
+            <div className="receipt-row bold">
+              <span>Property:</span>
+              <span>{cottages.find(c => c.id === bookingForm.cottage_id)?.name || '--'}</span>
+            </div>
+            
+            <div className="receipt-row">
+              <span>Booking Scope:</span>
+              <span>{bookingForm.booking_type}</span>
+            </div>
+
+            {bookingForm.booking_type === 'Room' && (
+              <div className="receipt-row">
+                <span>Rooms Assigned:</span>
+                <span>
+                  {bookingForm.room_ids.length > 0 
+                    ? bookingForm.room_ids.map(rid => rooms.find(room => room.id === rid)?.name).filter(Boolean).join(', ')
+                    : 'None selected'
+                  }
+                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', borderLeft: '1px solid #e2e8f0', paddingLeft: '1.5rem' }}>
-                <span className="form-label" style={{ margin: 0, fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>REMAINING BALANCE DUE</span>
-                <span style={{ fontSize: '1.6rem', fontWeight: '900', color: bookingForm.balance_amount > 0 ? 'var(--danger)' : 'var(--success)' }}>
-                  ₹{bookingForm.balance_amount.toLocaleString()}
+            )}
+
+            <div className="receipt-row">
+              <span>Duration of Stay:</span>
+              <span style={{ fontWeight: 700, color: 'var(--primary)' }}>
+                {bookingForm.night_count} {bookingForm.night_count === 1 ? 'Night' : 'Nights'}
+              </span>
+            </div>
+
+            <div className="receipt-row">
+              <span>Total Occupants:</span>
+              <span>{Number(bookingForm.adults_count || 1) + Number(bookingForm.kids_count || 0)} Guests</span>
+            </div>
+
+            <div style={{ width: '100%', height: '1px', background: '#cbd5e1', margin: '1.25rem 0' }}></div>
+
+            {/* Financials list */}
+            <div className="receipt-row">
+              <span>Base Accommodation:</span>
+              <span>₹{(bookingForm.base_amount || 0).toLocaleString()}</span>
+            </div>
+            {Number(bookingForm.extra_guest_charges || 0) > 0 && (
+              <div className="receipt-row">
+                <span>Extra Guest Fee:</span>
+                <span>₹{Number(bookingForm.extra_guest_charges).toLocaleString()}</span>
+              </div>
+            )}
+            {Number(bookingForm.addons_cost || 0) > 0 && (
+              <div className="receipt-row">
+                <span>Add-on Amenities:</span>
+                <span>₹{Number(bookingForm.addons_cost).toLocaleString()}</span>
+              </div>
+            )}
+
+            <div className="receipt-total-box">
+              <div className="receipt-row bold" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
+                <span>Gross Total:</span>
+                <span style={{ color: '#0F2C59', fontSize: '1.2rem', fontWeight: 800 }}>
+                  ₹{(bookingForm.total_amount || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="receipt-row" style={{ fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                <span>Advance Paid:</span>
+                <span style={{ color: 'var(--success)', fontWeight: 600 }}>
+                  ₹{(bookingForm.advance_paid || 0).toLocaleString()}
+                </span>
+              </div>
+              <div className="receipt-row bold" style={{ fontSize: '1rem', marginBottom: 0, borderTop: '1px solid #cbd5e1', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+                <span>Balance Due:</span>
+                <span style={{ color: bookingForm.balance_amount > 0 ? 'var(--danger)' : 'var(--success)', fontSize: '1.2rem', fontWeight: 800 }}>
+                  ₹{(bookingForm.balance_amount || 0).toLocaleString()}
                 </span>
               </div>
             </div>
-          </div>
 
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            disabled={isSubmitting} 
-            style={{ padding: '1.1rem', fontSize: '1.1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', borderRadius: '10px', fontWeight: 700, boxShadow: '0 4px 12px rgba(5, 150, 105, 0.2)' }}
-          >
-            <CheckCircle2 size={20} /> {isSubmitting ? 'Processing...' : (id ? 'Save Changes' : 'Confirm & Save Reservation')}
-          </button>
-        </form>
-      </div>
+            <button 
+              type="submit" 
+              className="btn btn-primary" 
+              disabled={isSubmitting} 
+              style={{ width: '100%', padding: '1.1rem', fontSize: '1.05rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', borderRadius: '12px', fontWeight: 800, boxShadow: '0 4px 15px rgba(5, 150, 105, 0.2)' }}
+            >
+              <CheckCircle2 size={20} /> {isSubmitting ? 'Processing...' : (id ? 'Save Reservation' : 'Confirm Booking')}
+            </button>
+          </div>
+        </div>
+
+      </form>
     </div>
   );
 }
