@@ -173,7 +173,7 @@ function App() {
             element={session && !isRecovering && !window.location.hash.includes('type=recovery') ? <Navigate to="/dashboard" replace /> : <Auth />} 
           />
           
-          <Route path="/" element={!session ? <Home /> : (profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
+          <Route path="/" element={!session ? (window.Capacitor?.isNativePlatform() ? <Navigate to="/auth" replace /> : <Home />) : (profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/pricing" element={<Pricing />} />
           

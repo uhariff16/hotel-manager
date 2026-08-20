@@ -132,16 +132,16 @@ export default function Auth() {
         border: '1px solid var(--border)',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <div style={{ margin: '0 auto 1.5rem', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.5rem' : '2.5rem' }}>
+          <div style={{ margin: isMobile ? '0 auto 1rem' : '0 auto 1.5rem', display: 'flex', justifyContent: 'center' }}>
             <Link to="/">
-              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: '280px', height: 'auto', objectFit: 'contain' }} />
+              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: isMobile ? '200px' : '280px', height: 'auto', objectFit: 'contain' }} />
             </Link>
           </div>
-          <h1 style={{ fontSize: '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-            {isRecovering ? 'Set New Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Sign up as Tenant'))}
+          <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+            {isRecovering ? 'Reset Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Create an Account'))}
           </h1>
-          <p style={{ color: 'var(--text-muted)' }}>
+          <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.9rem' : '1rem' }}>
             {isRecovering 
               ? 'Enter your new secure password below'
               : (isForgotPassword 
