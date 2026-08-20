@@ -1,10 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Trash2, ArrowUpRight, ArrowDownRight, Edit2, Filter, CalendarCheck, Plus, X } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 export default function Financials() {
+  const navigate = useNavigate();
+  const formContainerRef = useRef(null);
   const { session, activeResortId } = useSettingsStore();
   const [incomes, setIncomes] = useState([]);
   const [expenses, setExpenses] = useState([]);
@@ -258,12 +261,12 @@ export default function Financials() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
       {/* HEADER ACTION BUTTONS */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
-         <button className="btn" style={{ background: 'var(--success)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }} onClick={() => { setActiveMobileTab('income'); setShowIncomeForm(!showIncomeForm); setShowExpenseForm(false); }}>
-           {showIncomeForm ? <X size={18} /> : <Plus size={18} />} {showIncomeForm ? 'Close Form' : 'Add Income'}
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'auto auto', justifyContent: isMobile ? 'stretch' : 'flex-end', gap: '1rem' }}>
+         <button className="btn" style={{ background: 'var(--success)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 'bold', padding: '0.8rem' }} onClick={() => { setActiveMobileTab('income'); setShowIncomeForm(!showIncomeForm); setShowExpenseForm(false); setTimeout(() => formContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}>
+           {showIncomeForm ? <X size={18} /> : <Plus size={18} />} {showIncomeForm ? 'Close' : 'Add Income'}
          </button>
-         <button className="btn" style={{ background: 'var(--danger)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }} onClick={() => { setActiveMobileTab('expense'); setShowExpenseForm(!showExpenseForm); setShowIncomeForm(false); }}>
-           {showExpenseForm ? <X size={18} /> : <Plus size={18} />} {showExpenseForm ? 'Close Form' : 'Add Expense'}
+         <button className="btn" style={{ background: 'var(--danger)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 'bold', padding: '0.8rem' }} onClick={() => { setActiveMobileTab('expense'); setShowExpenseForm(!showExpenseForm); setShowIncomeForm(false); setTimeout(() => formContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}>
+           {showExpenseForm ? <X size={18} /> : <Plus size={18} />} {showExpenseForm ? 'Close' : 'Add Expense'}
          </button>
       </div>
 
@@ -336,7 +339,7 @@ export default function Financials() {
           </div>
         </div>
 
-      <div className="financials-main-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(500px, 1fr))', gap: '2rem' }}>
+      <div ref={formContainerRef} className="financials-main-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(500px, 1fr))', gap: '2rem' }}>
         
         {/* INCOMES SECTION */}
         <div style={{ display: (activeMobileTab === 'income' || !isMobile) ? 'block' : 'none' }}>
