@@ -329,12 +329,19 @@ export default function Financials() {
           <small style={{ opacity: 0.8, textTransform: 'uppercase', fontWeight: 700, fontSize: isMobile ? '0.65rem' : '0.8rem' }}>Net Profit/Loss</small>
           <div style={{ fontSize: isMobile ? '1.5rem' : '2rem', fontWeight: 800, marginTop: '0.5rem' }}>₹{stats.net.toLocaleString()}</div>
         </div>
-      </div>
-
-      {/* MOBILE TAB SWITCHER */}
-      <div className="mobile-only" style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0.3rem', border: '1px solid var(--border)', marginBottom: '0.5rem' }}>
-        <button onClick={() => setActiveMobileTab('income')} style={{ flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'income' ? 'var(--success)' : 'transparent', color: activeMobileTab === 'income' ? 'white' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>Income</button>
-        <button onClick={() => setActiveMobileTab('expense')} style={{ flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'expense' ? 'var(--danger)' : 'transparent', color: activeMobileTab === 'expense' ? 'white' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>Expenses</button>
+        
+        {/* MOBILE TAB SWITCHER */}
+        <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0.3rem', border: '1px solid var(--border)' }}>
+            <button onClick={() => setActiveMobileTab('income')} style={{ flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'income' ? 'var(--success)' : 'transparent', color: activeMobileTab === 'income' ? 'white' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>Income</button>
+            <button onClick={() => setActiveMobileTab('expense')} style={{ flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'expense' ? 'var(--danger)' : 'transparent', color: activeMobileTab === 'expense' ? 'white' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>Expenses</button>
+          </div>
+          {isMobile && (
+            <button className="btn" style={{ width: '100%', background: activeMobileTab === 'income' ? 'var(--success)' : 'var(--danger)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', border: 'none' }} onClick={() => activeMobileTab === 'income' ? setShowIncomeForm(!showIncomeForm) : setShowExpenseForm(!showExpenseForm)}>
+              {activeMobileTab === 'income' ? (showIncomeForm ? 'Close Form' : '+ Add Income') : (showExpenseForm ? 'Close Form' : '+ Add Expense')}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="financials-main-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(500px, 1fr))', gap: '2rem' }}>
@@ -346,11 +353,6 @@ export default function Financials() {
             {!isMobile && (
               <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
                 {showIncomeForm ? 'Close Form' : '+ Add New'}
-              </button>
-            )}
-            {isMobile && activeMobileTab === 'income' && (
-              <button className="btn btn-primary" style={{ position: 'fixed', bottom: '80px', right: '20px', height: '56px', width: '56px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
-                {showIncomeForm ? <X size={24} /> : <Plus size={24} />}
               </button>
             )}
           </div>
@@ -471,11 +473,6 @@ export default function Financials() {
             {!isMobile && (
               <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
                 {showExpenseForm ? 'Close Form' : '+ Add New'}
-              </button>
-            )}
-            {isMobile && activeMobileTab === 'expense' && (
-              <button className="btn btn-primary" style={{ position: 'fixed', bottom: '80px', right: '20px', height: '56px', width: '56px', padding: '0', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', zIndex: 100, boxShadow: '0 4px 12px rgba(0,0,0,0.3)' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
-                {showExpenseForm ? <X size={24} /> : <Plus size={24} />}
               </button>
             )}
           </div>
