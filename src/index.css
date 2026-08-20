@@ -360,6 +360,7 @@ a {
     height: 100vh;
     z-index: 1002;
     box-shadow: 20px 0 50px rgba(0,0,0,0.1);
+    padding-top: env(safe-area-inset-top);
   }
 
   .sidebar.open {
@@ -617,7 +618,7 @@ a {
   
   /* Glassmorphism for mobile header */
   .top-header {
-    background: rgba(255, 255, 255, 0.9) !important;
+    background: var(--bg-secondary) !important;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border);
@@ -649,7 +650,7 @@ a {
     left: 0;
     right: 0;
     height: 72px;
-    background: #ffffff;
+    background: var(--bg-secondary);
     display: flex;
     justify-content: space-around;
     align-items: center;
