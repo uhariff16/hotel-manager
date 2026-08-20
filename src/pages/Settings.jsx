@@ -809,7 +809,7 @@ export default function Settings() {
                 </h2>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <p style={{ margin: 0, fontWeight: '500' }}>Current Mode: {theme === 'light' ? 'Light (Eco)' : 'Dark (Luxury)'}</p>
+                    <p style={{ margin: 0, fontWeight: '500' }}>Current Mode: {theme === 'system' ? 'System Default' : (theme === 'light' ? 'Light (Eco)' : 'Dark (Luxury)')}</p>
                     <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Customize how the dashboard looks on your screen.</p>
                   </div>
                   <button className="btn btn-outline" onClick={toggleTheme}>

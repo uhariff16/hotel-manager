@@ -4,7 +4,7 @@ import { persist } from 'zustand/middleware';
 export const useSettingsStore = create(
   persist(
     (set) => ({
-      theme: 'light',
+      theme: 'system',
       resortName: 'Stay Pilot',
       primaryColor: '#2f855a',
       contactPhone: '',
@@ -25,7 +25,7 @@ export const useSettingsStore = create(
       
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
       setIsDataLoaded: (loaded) => set({ isDataLoaded: loaded }),
-      toggleTheme: () => set((state) => ({ theme: state.theme === 'light' ? 'dark' : 'light' })),
+      toggleTheme: () => set((state) => ({ theme: state.theme === 'system' ? 'light' : (state.theme === 'light' ? 'dark' : 'system') })),
       
       setSession: (session) => set({ session }),
       setProfile: (profile) => set({ profile }),

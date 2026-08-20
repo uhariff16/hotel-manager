@@ -28,7 +28,25 @@ function App() {
   const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setOnboardingWizardEnabled, setIsDataLoaded } = useSettingsStore();
 
   useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    const applyTheme = () => {
+      const isSystemDark = mediaQuery.matches;
+      const appliedTheme = theme === 'system' || !theme ? (isSystemDark ? 'dark' : 'light') : theme;
+      document.documentElement.setAttribute('data-theme', appliedTheme);
+      
+      if (window.Capacitor?.isNativePlatform()) {
+        import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
+          StatusBar.setStyle({ style: appliedTheme === 'dark' ? Style.Dark : Style.Light }).catch(() => {});
+        }).catch(() => {});
+      }
+    };
+
+    applyTheme();
+    
+    const listener = () => applyTheme();
+    mediaQuery.addEventListener('change', listener);
+    return () => mediaQuery.removeEventListener('change', listener);
   }, [theme]);
 
   useEffect(() => {
