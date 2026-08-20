@@ -22,6 +22,7 @@ export default function Financials() {
   const [showExpenseForm, setShowExpenseForm] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   
+  const [periodType, setPeriodType] = useState('full_year');
   const [range, setRange] = useState({
     start: `${new Date().getFullYear()}-01-01`,
     end: `${new Date().getFullYear()}-12-31`
@@ -46,33 +47,29 @@ export default function Financials() {
     return { totalInc, totalExp, net: totalInc - totalExp };
   }, [filteredIncomes, filteredExpenses]);
 
-  const setMonthRange = (monthIdx) => {
-    const year = new Date().getFullYear();
-    const start = format(new Date(year, monthIdx, 1), 'yyyy-MM-dd');
-    const end = format(endOfMonth(new Date(year, monthIdx, 1)), 'yyyy-MM-dd');
-    setRange({ start, end });
-  };
-
-  const setYearRange = () => {
-    const year = new Date().getFullYear();
-    setRange({ start: `${year}-01-01`, end: `${year}-12-31` });
-  };
-
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  
-  const currentMonthIdx = React.useMemo(() => {
-    const d = new Date(range.start);
-    const dEnd = new Date(range.end);
-    if (d.getMonth() === dEnd.getMonth() && d.getFullYear() === dEnd.getFullYear()) {
-        return d.getMonth();
+  const handlePeriodChange = (e) => {
+    const val = e.target.value;
+    setPeriodType(val);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    
+    if (val === 'full_year') {
+      setRange({ start: `${year}-01-01`, end: `${year}-12-31` });
+    } else if (val === 'this_month') {
+      setRange({ 
+        start: format(new Date(year, month, 1), 'yyyy-MM-dd'), 
+        end: format(endOfMonth(new Date(year, month, 1)), 'yyyy-MM-dd') 
+      });
+    } else if (val === 'last_month') {
+      const lastMonth = month === 0 ? 11 : month - 1;
+      const lastMonthYear = month === 0 ? year - 1 : year;
+      setRange({ 
+        start: format(new Date(lastMonthYear, lastMonth, 1), 'yyyy-MM-dd'), 
+        end: format(endOfMonth(new Date(lastMonthYear, lastMonth, 1)), 'yyyy-MM-dd') 
+      });
     }
-    return -1;
-  }, [range.start, range.end]);
-
-  const isFullYear = React.useMemo(() => {
-    const year = new Date().getFullYear();
-    return range.start === `${year}-01-01` && range.end === `${year}-12-31`;
-  }, [range.start, range.end]);
+  };
 
   useEffect(() => {
     fetchData();
@@ -260,87 +257,83 @@ export default function Financials() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
+      {/* HEADER ACTION BUTTONS */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', flexWrap: 'wrap' }}>
+         <button className="btn" style={{ background: 'var(--success)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }} onClick={() => { setActiveMobileTab('income'); setShowIncomeForm(!showIncomeForm); setShowExpenseForm(false); }}>
+           {showIncomeForm ? <X size={18} /> : <Plus size={18} />} {showIncomeForm ? 'Close Form' : 'Add Income'}
+         </button>
+         <button className="btn" style={{ background: 'var(--danger)', color: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }} onClick={() => { setActiveMobileTab('expense'); setShowExpenseForm(!showExpenseForm); setShowIncomeForm(false); }}>
+           {showExpenseForm ? <X size={18} /> : <Plus size={18} />} {showExpenseForm ? 'Close Form' : 'Add Expense'}
+         </button>
+      </div>
+
       {/* FILTER SECTION */}
       <div className="card" style={{ padding: '1rem 1.5rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '300px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '250px' }}>
             <h3 style={{ margin: 0, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
               <Filter size={18} color="var(--primary)"/> Period:
             </h3>
-            <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-                <button 
-                  onClick={setYearRange}
-                  style={{ 
-                    padding: '0.4rem 0.75rem', fontSize: '0.75rem', fontWeight: 800, borderRadius: '6px', cursor: 'pointer',
-                    border: isFullYear ? '1px solid var(--primary)' : '1px solid var(--border)',
-                    background: isFullYear ? 'var(--primary)' : 'white',
-                    color: isFullYear ? 'white' : 'var(--text-main)'
-                  }}
-                >
-                  Full Year
-                </button>
-                {months.map((m, i) => (
-                  <button 
-                    key={m} onClick={() => setMonthRange(i)}
-                    style={{ 
-                      padding: '0.4rem 0.6rem', fontSize: '0.75rem', fontWeight: 700, borderRadius: '6px', cursor: 'pointer',
-                      border: currentMonthIdx === i ? '1px solid var(--primary)' : '1px solid var(--border)',
-                      background: currentMonthIdx === i ? 'var(--primary)' : 'white',
-                      color: currentMonthIdx === i ? 'white' : 'var(--text-main)'
-                    }}
-                  >
-                    {m}
-                  </button>
-                ))}
-            </div>
+            <select className="form-select" style={{ width: '180px', height: '36px', fontSize: '0.9rem', fontWeight: 600 }} value={periodType} onChange={handlePeriodChange}>
+              <option value="full_year">Full Year</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="custom">Custom Range</option>
+            </select>
           </div>
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <small style={{ fontWeight: 700, opacity: 0.6 }}>PROPERTY</small>
-              <select className="form-select" style={{ width: '160px', height: '32px', fontSize: '0.8rem', padding: '0 0.5rem' }} value={selectedCottageId} onChange={e => setSelectedCottageId(e.target.value)}>
+              <select className="form-select" style={{ width: '160px', height: '36px', fontSize: '0.85rem' }} value={selectedCottageId} onChange={e => setSelectedCottageId(e.target.value)}>
                 <option value="all">All Properties</option>
                 {cottages.map(c => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
               </select>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <small style={{ fontWeight: 700, opacity: 0.6 }}>FROM</small>
-              <input type="date" className="form-input" style={{ width: '130px', height: '32px', fontSize: '0.8rem' }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <small style={{ fontWeight: 700, opacity: 0.6 }}>TO</small>
-              <input type="date" className="form-input" style={{ width: '130px', height: '32px', fontSize: '0.8rem' }} value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
-            </div>
+            {periodType === 'custom' && (
+              <>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <small style={{ fontWeight: 700, opacity: 0.6 }}>FROM</small>
+                  <input type="date" className="form-input" style={{ width: '130px', height: '36px', fontSize: '0.85rem' }} value={range.start} onChange={e => setRange({...range, start: e.target.value})} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <small style={{ fontWeight: 700, opacity: 0.6 }}>TO</small>
+                  <input type="date" className="form-input" style={{ width: '130px', height: '36px', fontSize: '0.85rem' }} value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
+      
       {/* GLOBAL SUMMARY DASHBOARD */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.5rem' }}>
-        <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--success)', padding: isMobile ? '0.75rem' : '1.25rem' }}>
-          <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: isMobile ? '0.65rem' : '0.8rem' }}>Total Income</small>
-          <div style={{ fontSize: isMobile ? '1.5rem' : '2rem', fontWeight: 800, color: 'var(--success)', marginTop: '0.5rem' }}>₹{stats.totalInc.toLocaleString()}</div>
+      <div className="card" style={{ padding: isMobile ? '1.25rem' : '1.75rem', border: 'none', background: 'var(--bg-secondary)', position: 'relative', overflow: 'hidden' }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '6px', height: '100%', background: stats.net >= 0 ? 'var(--success)' : 'var(--danger)' }}></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div>
+             <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em' }}>Net Profit / Loss</small>
+             <div style={{ fontSize: isMobile ? '2.5rem' : '3.5rem', fontWeight: 900, color: stats.net >= 0 ? 'var(--success)' : 'var(--danger)', marginTop: '0.25rem', letterSpacing: '-0.02em', lineHeight: 1 }}>₹{stats.net.toLocaleString()}</div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
+             <div>
+                <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, fontSize: '0.7rem' }}>Total Income</small>
+                <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>₹{stats.totalInc.toLocaleString()}</div>
+             </div>
+             <div>
+                <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, fontSize: '0.7rem' }}>Total Expenses</small>
+                <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>₹{stats.totalExp.toLocaleString()}</div>
+             </div>
+          </div>
         </div>
-        <div className="card" style={{ background: 'var(--bg-secondary)', borderLeft: '6px solid var(--danger)', padding: isMobile ? '0.75rem' : '1.25rem' }}>
-          <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, fontSize: isMobile ? '0.65rem' : '0.8rem' }}>Total Expenses</small>
-          <div style={{ fontSize: isMobile ? '1.5rem' : '2rem', fontWeight: 800, color: 'var(--danger)', marginTop: '0.5rem' }}>₹{stats.totalExp.toLocaleString()}</div>
-        </div>
-        <div className="card" style={{ background: stats.net >= 0 ? 'var(--success)' : 'var(--danger)', color: 'white', padding: isMobile ? '0.75rem' : '1.25rem' }}>
-          <small style={{ opacity: 0.8, textTransform: 'uppercase', fontWeight: 700, fontSize: isMobile ? '0.65rem' : '0.8rem' }}>Net Profit/Loss</small>
-          <div style={{ fontSize: isMobile ? '1.5rem' : '2rem', fontWeight: 800, marginTop: '0.5rem' }}>₹{stats.net.toLocaleString()}</div>
-        </div>
+      </div>
         
-        {/* MOBILE TAB SWITCHER */}
+          {/* MOBILE TAB SWITCHER */}
         <div className="mobile-only" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', background: 'var(--bg-secondary)', borderRadius: 'var(--radius-md)', padding: '0.3rem', border: '1px solid var(--border)' }}>
             <button onClick={() => setActiveMobileTab('income')} style={{ flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'income' ? 'var(--success)' : 'transparent', color: activeMobileTab === 'income' ? 'white' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>Income</button>
             <button onClick={() => setActiveMobileTab('expense')} style={{ flex: 1, padding: '0.6rem', borderRadius: 'var(--radius-md)', border: 'none', background: activeMobileTab === 'expense' ? 'var(--danger)' : 'transparent', color: activeMobileTab === 'expense' ? 'white' : 'var(--text-muted)', fontWeight: 700, fontSize: '0.85rem' }}>Expenses</button>
           </div>
-          {isMobile && (
-            <button className="btn" style={{ width: '100%', background: activeMobileTab === 'income' ? 'var(--success)' : 'var(--danger)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', border: 'none' }} onClick={() => activeMobileTab === 'income' ? setShowIncomeForm(!showIncomeForm) : setShowExpenseForm(!showExpenseForm)}>
-              {activeMobileTab === 'income' ? (showIncomeForm ? 'Close Form' : '+ Add Income') : (showExpenseForm ? 'Close Form' : '+ Add Expense')}
-            </button>
-          )}
         </div>
       </div>
 
@@ -350,11 +343,6 @@ export default function Financials() {
         <div style={{ display: (activeMobileTab === 'income' || !isMobile) ? 'block' : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--success)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowUpRight size={isMobile ? 20 : 28} /> Incomes</h2>
-            {!isMobile && (
-              <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setShowIncomeForm(!showIncomeForm)}>
-                {showIncomeForm ? 'Close Form' : '+ Add New'}
-              </button>
-            )}
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -394,74 +382,116 @@ export default function Financials() {
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto', overflowX: 'auto' }}>
-                <table className="table" style={{ margin: 0, width: '100%', tableLayout: isMobile ? 'auto' : 'fixed', minWidth: isMobile ? '350px' : '100%' }}>
-                  <colgroup>
-                    <col style={{ width: isMobile ? '15%' : '110px' }} />
-                    <col style={{ width: isMobile ? '45%' : 'auto' }} />
-                    <col style={{ width: isMobile ? '25%' : '120px' }} />
-                    <col style={{ width: isMobile ? '15%' : '100px' }} />
-                  </colgroup>
-                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
-                    <tr style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>
-                        <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Date</th>
-                        <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Details</th>
-                        <th style={{ textAlign: 'right', padding: isMobile ? '0.4rem' : '1rem' }}>Amount</th>
-                        <th style={{ textAlign: 'center', padding: isMobile ? '0.4rem' : '1rem' }}>Act</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr style={{ background: 'rgba(16, 185, 129, 0.05)', fontWeight: 'bold' }}>
-                      <td colSpan="2" style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.65rem' : '0.85rem', textTransform: 'uppercase', padding: isMobile ? '0.4rem' : '1rem' }}>Total Section</td>
-                      <td style={{ color: 'var(--success)', fontSize: isMobile ? '0.85rem' : '1.15rem', padding: isMobile ? '0.4rem' : '1rem', textAlign: 'right' }}>₹{stats.totalInc.toLocaleString()}</td>
-                      <td></td>
-                    </tr>
-                    {filteredIncomes.map(i => {
-                      const isAutoGenerated = i.booking_id && (i.notes?.includes('Auto') || i.notes?.includes('Settled') || i.notes?.includes('Refund') || i.notes?.includes('Settlement'));
-                      return (
-                      <tr key={i.id} className="table-row-hover">
-                        <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(i.date)}</td>
-                        <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{i.source}</div>
-                          <div style={{ marginTop: '2px', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}>
-                              Prop: {cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General'}
-                            </span>
-                            {i.notes?.toLowerCase().includes('advance') && (
-                              <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700 }}>
-                                Advance
-                              </span>
-                            )}
-                            {i.notes?.toLowerCase().includes('settlement') && (
-                              <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700 }}>
-                                Settlement
-                              </span>
-                            )}
-                            {i.notes?.toLowerCase().includes('adjustment') && (
-                              <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>
-                                Adjustment
-                              </span>
-                            )}
+              {isMobile ? (
+                <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--bg-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                    <span>Total Income</span>
+                    <span style={{ color: 'var(--success)', fontSize: '1rem' }}>₹{stats.totalInc.toLocaleString()}</span>
+                  </div>
+                  {filteredIncomes.map(i => {
+                    const propName = cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General';
+                    return (
+                      <div key={i.id} style={{ background: 'var(--bg-color)', borderRadius: '12px', padding: '1rem', border: '1px solid var(--border)', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                          <div>
+                             <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem' }}>{i.source}</div>
+                             <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>{formatDateShort(i.date)} &bull; {propName}</div>
+                             {(i.notes?.toLowerCase().includes('advance') || i.notes?.toLowerCase().includes('settlement') || i.notes?.toLowerCase().includes('adjustment')) && (
+                                <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                                  {i.notes?.toLowerCase().includes('advance') && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700 }}>Advance</span>}
+                                  {i.notes?.toLowerCase().includes('settlement') && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700 }}>Settlement</span>}
+                                  {i.notes?.toLowerCase().includes('adjustment') && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>Adjustment</span>}
+                                </div>
+                             )}
+                             {i.bookings?.reference_number && (
+                                <div style={{ marginTop: '0.5rem' }}>
+                                  <div style={{ color: 'var(--text-main)', fontWeight: '700', fontSize: '0.8rem' }}>{i.bookings.guest_name}</div>
+                                  <div style={{ color: 'var(--primary)', fontWeight: '800', fontSize: '0.7rem' }}>REF: {i.bookings.reference_number}</div>
+                                </div>
+                             )}
                           </div>
-                          {i.bookings?.reference_number && (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
-                              <small style={{ color: 'var(--text-main)', fontWeight: '700', fontSize: isMobile ? '0.65rem' : '0.85rem' }}>{i.bookings.guest_name}</small>
-                              <small style={{ color: 'var(--primary)', fontWeight: '800', fontSize: isMobile ? '0.55rem' : '0.75rem' }}>REF: {i.bookings.reference_number}</small>
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                            <div style={{ color: 'var(--success)', fontWeight: 900, fontSize: '1.2rem' }}>₹{i.amount.toLocaleString()}</div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                               <button onClick={() => loadIncomeForEdit(i)} className="btn-icon" style={{ color: 'var(--primary)', padding: '0.4rem', background: 'var(--bg-secondary)', borderRadius: '6px' }}><Edit2 size={14}/></button>
+                               <button onClick={() => deleteRecord('incomes', i.id)} className="btn-icon" style={{ color: 'var(--danger)', padding: '0.4rem', background: 'var(--bg-secondary)', borderRadius: '6px' }}><Trash2 size={14}/></button>
                             </div>
-                          )}
-                        </td>
-                        <td style={{ color: 'var(--success)', fontWeight: '800', fontSize: isMobile ? '0.8rem' : '1.1rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', textAlign: 'right' }}>₹{i.amount.toLocaleString()}</td>
-                        <td style={{ textAlign: 'center', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
-                          <div style={{ display: 'flex', gap: isMobile ? '0.1rem' : '0.5rem', justifyContent: 'center' }}>
-                            <button onClick={() => loadIncomeForEdit(i)} className="btn-icon" style={{ color: 'var(--primary)' }}><Edit2 size={isMobile ? 10 : 16}/></button>
-                            <button onClick={() => deleteRecord('incomes', i.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={isMobile ? 10 : 16}/></button>
                           </div>
-                        </td>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto', overflowX: 'auto' }}>
+                  <table className="table" style={{ margin: 0, width: '100%', tableLayout: isMobile ? 'auto' : 'fixed', minWidth: isMobile ? '350px' : '100%' }}>
+                    <colgroup>
+                      <col style={{ width: isMobile ? '15%' : '110px' }} />
+                      <col style={{ width: isMobile ? '45%' : 'auto' }} />
+                      <col style={{ width: isMobile ? '25%' : '120px' }} />
+                      <col style={{ width: isMobile ? '15%' : '100px' }} />
+                    </colgroup>
+                    <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
+                      <tr style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>
+                          <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Date</th>
+                          <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Details</th>
+                          <th style={{ textAlign: 'right', padding: isMobile ? '0.4rem' : '1rem' }}>Amount</th>
+                          <th style={{ textAlign: 'center', padding: isMobile ? '0.4rem' : '1rem' }}>Act</th>
                       </tr>
-                    )})}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      <tr style={{ background: 'rgba(16, 185, 129, 0.05)', fontWeight: 'bold' }}>
+                        <td colSpan="2" style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.65rem' : '0.85rem', textTransform: 'uppercase', padding: isMobile ? '0.4rem' : '1rem' }}>Total Section</td>
+                        <td style={{ color: 'var(--success)', fontSize: isMobile ? '0.85rem' : '1.15rem', padding: isMobile ? '0.4rem' : '1rem', textAlign: 'right' }}>₹{stats.totalInc.toLocaleString()}</td>
+                        <td></td>
+                      </tr>
+                      {filteredIncomes.map(i => {
+                        const isAutoGenerated = i.booking_id && (i.notes?.includes('Auto') || i.notes?.includes('Settled') || i.notes?.includes('Refund') || i.notes?.includes('Settlement'));
+                        return (
+                        <tr key={i.id} className="table-row-hover">
+                          <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(i.date)}</td>
+                          <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{i.source}</div>
+                            <div style={{ marginTop: '2px', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+                              <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                                Prop: {cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General'}
+                              </span>
+                              {i.notes?.toLowerCase().includes('advance') && (
+                                <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700 }}>
+                                  Advance
+                                </span>
+                              )}
+                              {i.notes?.toLowerCase().includes('settlement') && (
+                                <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700 }}>
+                                  Settlement
+                                </span>
+                              )}
+                              {i.notes?.toLowerCase().includes('adjustment') && (
+                                <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>
+                                  Adjustment
+                                </span>
+                              )}
+                            </div>
+                            {i.bookings?.reference_number && (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '2px', marginTop: '4px' }}>
+                                <small style={{ color: 'var(--text-main)', fontWeight: '700', fontSize: isMobile ? '0.65rem' : '0.85rem' }}>{i.bookings.guest_name}</small>
+                                <small style={{ color: 'var(--primary)', fontWeight: '800', fontSize: isMobile ? '0.55rem' : '0.75rem' }}>REF: {i.bookings.reference_number}</small>
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ color: 'var(--success)', fontWeight: '800', fontSize: isMobile ? '0.8rem' : '1.1rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', textAlign: 'right' }}>₹{i.amount.toLocaleString()}</td>
+                          <td style={{ textAlign: 'center', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
+                            <div style={{ display: 'flex', gap: isMobile ? '0.1rem' : '0.5rem', justifyContent: 'center' }}>
+                              <button onClick={() => loadIncomeForEdit(i)} className="btn-icon" style={{ color: 'var(--primary)' }}><Edit2 size={isMobile ? 10 : 16}/></button>
+                              <button onClick={() => deleteRecord('incomes', i.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={isMobile ? 10 : 16}/></button>
+                            </div>
+                          </td>
+                        </tr>
+                      )})}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -524,52 +554,82 @@ export default function Financials() {
             </div>
 
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
-              <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto', overflowX: 'auto' }}>
-                <table className="table" style={{ margin: 0, width: '100%', tableLayout: isMobile ? 'auto' : 'fixed', minWidth: isMobile ? '350px' : '100%' }}>
-                  <colgroup>
-                    <col style={{ width: isMobile ? '15%' : '110px' }} />
-                    <col style={{ width: isMobile ? '45%' : 'auto' }} />
-                    <col style={{ width: isMobile ? '25%' : '120px' }} />
-                    <col style={{ width: isMobile ? '15%' : '100px' }} />
-                  </colgroup>
-                  <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
-                    <tr style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>
-                        <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Date</th>
-                        <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Details</th>
-                        <th style={{ textAlign: 'right', padding: isMobile ? '0.4rem' : '1rem' }}>Amount</th>
-                        <th style={{ textAlign: 'center', padding: isMobile ? '0.4rem' : '1rem' }}>Act</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr style={{ background: 'rgba(239, 68, 68, 0.05)', fontWeight: 'bold' }}>
-                      <td colSpan="2" style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.65rem' : '0.85rem', textTransform: 'uppercase', padding: isMobile ? '0.4rem' : '1rem' }}>Total Section</td>
-                      <td style={{ color: 'var(--danger)', fontSize: isMobile ? '0.85rem' : '1.15rem', padding: isMobile ? '0.4rem' : '1rem', textAlign: 'right' }}>₹{stats.totalExp.toLocaleString()}</td>
-                      <td></td>
-                    </tr>
-                    {filteredExpenses.map(e => (
-                      <tr key={e.id} className="table-row-hover">
-                        <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(e.date)}</td>
-                        <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
-                          <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{e.category}</div>
-                          <div style={{ marginTop: '2px', marginBottom: '2px' }}>
-                            <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}>
-                              Prop: {cottages.find(c => c.id === e.cottage_id)?.name || 'General'}
-                            </span>
+              {isMobile ? (
+                <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', background: 'var(--bg-secondary)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid var(--border)', fontWeight: 700, color: 'var(--text-muted)', fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                    <span>Total Expenses</span>
+                    <span style={{ color: 'var(--danger)', fontSize: '1rem' }}>₹{stats.totalExp.toLocaleString()}</span>
+                  </div>
+                  {filteredExpenses.map(e => {
+                    const propName = cottages.find(c => c.id === e.cottage_id)?.name || 'General';
+                    return (
+                      <div key={e.id} style={{ background: 'var(--bg-color)', borderRadius: '12px', padding: '1rem', border: '1px solid var(--border)', position: 'relative' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '1rem' }}>
+                          <div>
+                             <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '1rem' }}>{e.category}</div>
+                             <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>{formatDateShort(e.date)} &bull; {propName}</div>
+                             <div style={{ color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.8rem', marginTop: '0.4rem' }}>{e.vendor_name || 'General'}</div>
                           </div>
-                          <small style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.55rem' : '0.8rem', display: 'block' }}>{e.vendor_name || 'General'}</small>
-                        </td>
-                        <td style={{ color: 'var(--danger)', fontWeight: '800', fontSize: isMobile ? '0.8rem' : '1.1rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', textAlign: 'right' }}>₹{e.amount.toLocaleString()}</td>
-                        <td style={{ textAlign: 'center', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
-                          <div style={{ display: 'flex', gap: isMobile ? '0.1rem' : '0.5rem', justifyContent: 'center' }}>
-                            <button onClick={() => loadExpenseForEdit(e)} className="btn-icon" style={{ color: 'var(--primary)' }}><Edit2 size={isMobile ? 10 : 16}/></button>
-                            <button onClick={() => deleteRecord('expenses', e.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={10}/></button>
+                          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
+                            <div style={{ color: 'var(--danger)', fontWeight: 900, fontSize: '1.2rem' }}>₹{e.amount.toLocaleString()}</div>
+                            <div style={{ display: 'flex', gap: '0.5rem' }}>
+                               <button onClick={() => loadExpenseForEdit(e)} className="btn-icon" style={{ color: 'var(--primary)', padding: '0.4rem', background: 'var(--bg-secondary)', borderRadius: '6px' }}><Edit2 size={14}/></button>
+                               <button onClick={() => deleteRecord('expenses', e.id)} className="btn-icon" style={{ color: 'var(--danger)', padding: '0.4rem', background: 'var(--bg-secondary)', borderRadius: '6px' }}><Trash2 size={14}/></button>
+                            </div>
                           </div>
-                        </td>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="table-container" style={{ maxHeight: '700px', overflowY: 'auto', overflowX: 'auto' }}>
+                  <table className="table" style={{ margin: 0, width: '100%', tableLayout: isMobile ? 'auto' : 'fixed', minWidth: isMobile ? '350px' : '100%' }}>
+                    <colgroup>
+                      <col style={{ width: isMobile ? '15%' : '110px' }} />
+                      <col style={{ width: isMobile ? '45%' : 'auto' }} />
+                      <col style={{ width: isMobile ? '25%' : '120px' }} />
+                      <col style={{ width: isMobile ? '15%' : '100px' }} />
+                    </colgroup>
+                    <thead style={{ position: 'sticky', top: 0, background: 'var(--bg-secondary)', zIndex: 1, borderBottom: '2px solid var(--border)' }}>
+                      <tr style={{ fontSize: isMobile ? '0.7rem' : '0.85rem' }}>
+                          <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Date</th>
+                          <th style={{ padding: isMobile ? '0.4rem' : '1rem' }}>Details</th>
+                          <th style={{ textAlign: 'right', padding: isMobile ? '0.4rem' : '1rem' }}>Amount</th>
+                          <th style={{ textAlign: 'center', padding: isMobile ? '0.4rem' : '1rem' }}>Act</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      <tr style={{ background: 'rgba(239, 68, 68, 0.05)', fontWeight: 'bold' }}>
+                        <td colSpan="2" style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.65rem' : '0.85rem', textTransform: 'uppercase', padding: isMobile ? '0.4rem' : '1rem' }}>Total Section</td>
+                        <td style={{ color: 'var(--danger)', fontSize: isMobile ? '0.85rem' : '1.15rem', padding: isMobile ? '0.4rem' : '1rem', textAlign: 'right' }}>₹{stats.totalExp.toLocaleString()}</td>
+                        <td></td>
+                      </tr>
+                      {filteredExpenses.map(e => (
+                        <tr key={e.id} className="table-row-hover">
+                          <td style={{ fontSize: isMobile ? '0.6rem' : '0.9rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', color: 'var(--text-muted)' }}>{formatDateShort(e.date)}</td>
+                          <td style={{ padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
+                            <div style={{ fontWeight: '700', fontSize: isMobile ? '0.75rem' : '1rem', wordBreak: 'break-word', lineHeight: '1.2' }}>{e.category}</div>
+                            <div style={{ marginTop: '2px', marginBottom: '2px' }}>
+                              <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(0,0,0,0.05)', color: 'var(--text-muted)', fontWeight: 700 }}>
+                                Prop: {cottages.find(c => c.id === e.cottage_id)?.name || 'General'}
+                              </span>
+                            </div>
+                            <small style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.55rem' : '0.8rem', display: 'block' }}>{e.vendor_name || 'General'}</small>
+                          </td>
+                          <td style={{ color: 'var(--danger)', fontWeight: '800', fontSize: isMobile ? '0.8rem' : '1.1rem', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top', textAlign: 'right' }}>₹{e.amount.toLocaleString()}</td>
+                          <td style={{ textAlign: 'center', padding: isMobile ? '0.4rem 0.15rem' : '1rem', verticalAlign: 'top' }}>
+                            <div style={{ display: 'flex', gap: isMobile ? '0.1rem' : '0.5rem', justifyContent: 'center' }}>
+                              <button onClick={() => loadExpenseForEdit(e)} className="btn-icon" style={{ color: 'var(--primary)' }}><Edit2 size={isMobile ? 10 : 16}/></button>
+                              <button onClick={() => deleteRecord('expenses', e.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={10}/></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
