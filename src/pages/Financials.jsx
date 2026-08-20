@@ -260,15 +260,7 @@ export default function Financials() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       
-      {/* HEADER ACTION BUTTONS */}
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'auto auto', justifyContent: isMobile ? 'stretch' : 'flex-end', gap: '1rem' }}>
-         <button className="btn" style={{ background: 'var(--success)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 'bold', padding: '0.8rem' }} onClick={() => { setActiveMobileTab('income'); setShowIncomeForm(!showIncomeForm); setShowExpenseForm(false); setTimeout(() => formContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}>
-           {showIncomeForm ? <X size={18} /> : <Plus size={18} />} {showIncomeForm ? 'Close' : 'Add Income'}
-         </button>
-         <button className="btn" style={{ background: 'var(--danger)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 'bold', padding: '0.8rem' }} onClick={() => { setActiveMobileTab('expense'); setShowExpenseForm(!showExpenseForm); setShowIncomeForm(false); setTimeout(() => formContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); }}>
-           {showExpenseForm ? <X size={18} /> : <Plus size={18} />} {showExpenseForm ? 'Close' : 'Add Expense'}
-         </button>
-      </div>
+      {/* ACTION BUTTONS MOVED TO SECTIONS */}
 
       {/* FILTER SECTION */}
       <div className="card" style={{ padding: '1rem 1.5rem', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
@@ -344,7 +336,10 @@ export default function Financials() {
         {/* INCOMES SECTION */}
         <div style={{ display: (activeMobileTab === 'income' || !isMobile) ? 'block' : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--success)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowUpRight size={isMobile ? 20 : 28} /> Incomes</h2>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--success)', fontSize: isMobile ? '1.15rem' : '1.5rem', margin: 0 }}><ArrowUpRight size={isMobile ? 20 : 28} /> Incomes</h2>
+            <button className="btn" style={{ background: 'var(--success)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 'bold', padding: '0.4rem 0.8rem', fontSize: '0.9rem' }} onClick={() => { setShowIncomeForm(!showIncomeForm); if (!showIncomeForm) { setTimeout(() => formContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); } }}>
+              {showIncomeForm ? <X size={16} /> : <Plus size={16} />} {showIncomeForm ? 'Close' : 'Add Income'}
+            </button>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
@@ -504,12 +499,10 @@ export default function Financials() {
         {/* EXPENSES SECTION */}
         <div style={{ display: (activeMobileTab === 'expense' || !isMobile) ? 'block' : 'none' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--danger)', fontSize: isMobile ? '1.15rem' : '1.5rem' }}><ArrowDownRight size={isMobile ? 20 : 28} /> Expenses</h2>
-            {!isMobile && (
-              <button className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={() => setShowExpenseForm(!showExpenseForm)}>
-                {showExpenseForm ? 'Close Form' : '+ Add New'}
-              </button>
-            )}
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: 'var(--danger)', fontSize: isMobile ? '1.15rem' : '1.5rem', margin: 0 }}><ArrowDownRight size={isMobile ? 20 : 28} /> Expenses</h2>
+            <button className="btn" style={{ background: 'var(--danger)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 'bold', padding: '0.4rem 0.8rem', fontSize: '0.9rem' }} onClick={() => { setShowExpenseForm(!showExpenseForm); if (!showExpenseForm) { setTimeout(() => formContainerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100); } }}>
+              {showExpenseForm ? <X size={16} /> : <Plus size={16} />} {showExpenseForm ? 'Close' : 'Add Expense'}
+            </button>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
