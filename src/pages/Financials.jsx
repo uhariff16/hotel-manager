@@ -339,7 +339,7 @@ export default function Financials() {
           </div>
         </div>
 
-      <div ref={formContainerRef} className="financials-main-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(500px, 1fr))', gap: '2rem' }}>
+      <div ref={formContainerRef} className="financials-main-grid" style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(500px, 1fr))', gap: '2rem', scrollMarginTop: '80px' }}>
         
         {/* INCOMES SECTION */}
         <div style={{ display: (activeMobileTab === 'income' || !isMobile) ? 'block' : 'none' }}>
@@ -379,7 +379,10 @@ export default function Financials() {
                 ) : (
                   <div className="form-group"><label className="form-label">Ref #</label><input type="text" className="form-input" placeholder="Booking Ref" value={newIncome.reference_number || ''} onChange={e => setNewIncome({...newIncome, reference_number: e.target.value})} /></div>
                 )}
-                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>{editingIncomeId ? 'Update' : 'Save Income'}</button>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => { setShowIncomeForm(false); setEditingIncomeId(null); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 2 }}>{editingIncomeId ? 'Update' : 'Save Income'}</button>
+                </div>
               </form>
             </div>
 
@@ -551,7 +554,10 @@ export default function Financials() {
                   </label>
                   <input type="text" className="form-input" placeholder="Name" value={newExpense.vendor_name || ''} onChange={e => setNewExpense({...newExpense, vendor_name: e.target.value})} />
                 </div>
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', background: 'var(--danger)', borderColor: 'var(--danger)' }}>{editingExpenseId ? 'Update' : 'Save Expense'}</button>
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
+                  <button type="button" className="btn btn-outline" style={{ flex: 1 }} onClick={() => { setShowExpenseForm(false); setEditingExpenseId(null); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" style={{ flex: 2, background: 'var(--danger)', borderColor: 'var(--danger)' }}>{editingExpenseId ? 'Update' : 'Save Expense'}</button>
+                </div>
               </form>
             </div>
 
