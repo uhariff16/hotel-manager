@@ -713,19 +713,18 @@ export default function Bookings() {
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  borderRadius: 'var(--radius-md)',
+                  borderRadius: 'var(--radius-full, 20px)',
                   fontSize: '0.85rem',
-                  fontWeight: 700,
-                  border: 'none',
-                  background: isActive ? opt.color : 'var(--bg-color)',
-                  color: isActive ? 'white' : 'var(--text-muted)',
+                  fontWeight: 600,
+                  background: isActive ? (opt.label === 'All' ? 'var(--primary)' : opt.bg) : 'transparent',
+                  color: isActive ? (opt.label === 'All' ? 'white' : opt.color) : 'var(--text-muted)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '0.5rem',
                   transition: 'all 0.2s',
                   whiteSpace: 'nowrap',
-                  border: isActive ? `1px solid ${opt.color}` : '1px solid var(--border)'
+                  border: isActive ? `1px solid ${opt.label === 'All' ? 'var(--primary)' : opt.color}` : '1px solid var(--border)'
                 }}
               >
                 {isActive ? <CheckSquare size={16} /> : <Square size={16} />}

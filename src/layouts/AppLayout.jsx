@@ -343,7 +343,7 @@ export default function AppLayout() {
                   }
                 }
               `}} />
-              <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800, color: '#0F2C59', fontFamily: "'Outfit', sans-serif" }}>Stay Pilot</h2>
+              <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800, color: 'var(--text-main)', fontFamily: "'Outfit', sans-serif" }}>Stay Pilot</h2>
               <span className="header-brand-sep" style={{ color: '#cbd5e1', fontWeight: 300 }}>|</span>
               <span className="header-brand-tag" style={{ fontSize: '0.9rem', color: '#059669', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '0.02em', marginTop: '2px' }}>
                 Know Your Bookings. Know Your Numbers.
