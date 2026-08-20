@@ -100,6 +100,14 @@ export default function Bookings() {
   const [selectedBookings, setSelectedBookings] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'priority', direction: 'ascending' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [filters, setFilters] = useState({
+    dateStart: '',
+    dateEnd: '',
+    propertyId: '',
+    bookingType: '',
+    paymentStatus: ''
+  });
 
   const [settlingBooking, setSettlingBooking] = useState(null);
   const [settlementData, setSettlementData] = useState({ discount: 0, allSettled: false });
@@ -610,7 +618,7 @@ export default function Bookings() {
     });
 
     return items;
-  }, [bookings, activeTabs, sortConfig, searchTerm]);
+  }, [bookings, activeTabs, sortConfig, searchTerm, filters]);
 
   const bookingStats = React.useMemo(() => {
     // Exclude cancelled bookings from the totals so they don't artificially inflate the values
@@ -649,8 +657,8 @@ export default function Bookings() {
       {/* Modern Filter Header */}
       <div className="card" style={{ padding: isMobile ? '1rem' : '1.5rem', marginBottom: '1.5rem', overflow: 'visible' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '250px' }}>
-            <div className="search-bar" style={{ position: 'relative' }}>
+          <div style={{ flex: 1, minWidth: '250px', display: 'flex', gap: '0.5rem' }}>
+            <div className="search-bar" style={{ position: 'relative', flex: 1 }}>
               <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
@@ -658,9 +666,16 @@ export default function Bookings() {
                 placeholder="Search guest, ref #, phone..." 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)}
-                style={{ padding: '0.7rem 1rem 0.7rem 2.75rem', fontSize: '0.95rem', background: 'var(--bg-color)', border: '1px solid var(--border)' }}
+                style={{ padding: '0.7rem 1rem 0.7rem 2.75rem', fontSize: '0.95rem', background: 'var(--bg-color)', border: '1px solid var(--border)', width: '100%' }}
               />
             </div>
+            <button 
+              className="btn btn-outline" 
+              onClick={() => setShowFilters(!showFilters)} 
+              style={{ padding: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: showFilters ? 'var(--primary)' : 'var(--bg-color)', color: showFilters ? 'white' : 'var(--text-main)', borderColor: showFilters ? 'var(--primary)' : 'var(--border)' }}
+            >
+              <Filter size={18} /> <span className="desktop-only">Filter</span>
+            </button>
           </div>
           
           {selectedBookings.length > 0 && (profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
@@ -741,6 +756,54 @@ export default function Bookings() {
             );
           })}
         </div>
+
+        {/* Expandable Filter Panel */}
+        {showFilters && (
+          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', animation: 'fadeIn 0.2s ease-out' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Check-in From</label>
+              <input type="date" className="form-input" value={filters.dateStart} onChange={e => setFilters({...filters, dateStart: e.target.value})} />
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Check-in To</label>
+              <input type="date" className="form-input" value={filters.dateEnd} onChange={e => setFilters({...filters, dateEnd: e.target.value})} />
+            </div>
+            {profile?.role !== 'staff' && (
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Property</label>
+                <select className="form-select" value={filters.propertyId} onChange={e => setFilters({...filters, propertyId: e.target.value})}>
+                  <option value="">All Properties</option>
+                  {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            )}
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Booking Type</label>
+              <select className="form-select" value={filters.bookingType} onChange={e => setFilters({...filters, bookingType: e.target.value})}>
+                <option value="">All Types</option>
+                <option value="Rooms">Rooms</option>
+                <option value="Entire Property">Entire Property</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Payment Status</label>
+              <select className="form-select" value={filters.paymentStatus} onChange={e => setFilters({...filters, paymentStatus: e.target.value})}>
+                <option value="">All Statuses</option>
+                <option value="Fully Paid">Fully Paid</option>
+                <option value="Pending Payment">Pending Payment</option>
+              </select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => setFilters({ dateStart: '', dateEnd: '', propertyId: '', bookingType: '', paymentStatus: '' })}
+                style={{ height: '42px', width: '100%' }}
+              >
+                Clear Filters
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* MOBILE CARD LIST VIEW */}
