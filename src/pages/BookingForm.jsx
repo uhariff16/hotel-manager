@@ -594,27 +594,6 @@ export default function BookingForm() {
     }
   };
 
-  if (loading) return <div style={{ padding: '2rem' }}>Loading Form...</div>;
-
-  if (!id && (cottages.length === 0 || rooms.length === 0)) {
-    return (
-      <div className="container" style={{ maxWidth: '600px', margin: '4rem auto' }}>
-        <div className="card text-center" style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
-          <div style={{ backgroundColor: 'rgba(229, 62, 62, 0.1)', padding: '1rem', borderRadius: '50%', color: 'var(--danger)', display: 'inline-flex', justifyContent: 'center', alignItems: 'center' }}>
-            <CalendarCheck size={48} />
-          </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Setup Required</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.5', margin: 0 }}>
-            You cannot create a booking until you configure at least one Property and Room under Property Management.
-          </p>
-          <button className="btn btn-primary" onClick={() => navigate('/setup')} style={{ padding: '0.75rem 2rem', fontWeight: 600 }}>
-            Go to Property Management
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const relevantRooms = React.useMemo(() => {
     let baseRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id && (r.status === 'Available' || r.status === 'Active' || bookingForm.room_ids.includes(r.id)));
     if (!bookingForm.check_in_date || !bookingForm.check_out_date || !bookingForm.cottage_id) return baseRooms;
@@ -649,6 +628,27 @@ export default function BookingForm() {
     
     return baseRooms.filter(r => !bookedRoomIds.has(r.id) || bookingForm.room_ids.includes(r.id));
   }, [rooms, bookingForm.cottage_id, bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.room_ids, activeBookings, id]);
+
+  if (loading) return <div style={{ padding: '2rem' }}>Loading Form...</div>;
+
+  if (!id && (cottages.length === 0 || rooms.length === 0)) {
+    return (
+      <div className="container" style={{ maxWidth: '600px', margin: '4rem auto' }}>
+        <div className="card text-center" style={{ padding: '3rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+          <div style={{ backgroundColor: 'rgba(229, 62, 62, 0.1)', padding: '1rem', borderRadius: '50%', color: 'var(--danger)', display: 'inline-flex', justifyContent: 'center', alignItems: 'center' }}>
+            <CalendarCheck size={48} />
+          </div>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 700 }}>Setup Required</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: '1.5', margin: 0 }}>
+            You cannot create a booking until you configure at least one Property and Room under Property Management.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate('/setup')} style={{ padding: '0.75rem 2rem', fontWeight: 600 }}>
+            Go to Property Management
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
