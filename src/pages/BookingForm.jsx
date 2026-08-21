@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet } from 'lucide-react';
-import { eachDayOfInterval, isWeekend } from 'date-fns';
+import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
 const parseAgentSource = (sourceStr) => {
@@ -629,6 +629,48 @@ export default function BookingForm() {
     return baseRooms.filter(r => !bookedRoomIds.has(r.id) || bookingForm.room_ids.includes(r.id));
   }, [rooms, bookingForm.cottage_id, bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.room_ids, activeBookings, id]);
 
+  const dailyAvailability = React.useMemo(() => {
+    if (!bookingForm.check_in_date || !bookingForm.check_out_date || !bookingForm.cottage_id) return [];
+    
+    let baseRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id && (r.status === 'Available' || r.status === 'Active'));
+    const start = new Date(bookingForm.check_in_date);
+    const end = new Date(bookingForm.check_out_date);
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    
+    if (end <= start) return [];
+
+    const days = eachDayOfInterval({ start, end: new Date(end.getTime() - 24*60*60*1000) });
+    if (days.length <= 1) return [];
+
+    return days.map(d => {
+      const bookedRoomIds = new Set();
+      
+      activeBookings.forEach(b => {
+        if (b.id === id) return;
+        if (b.cottage_id !== bookingForm.cottage_id) return;
+        
+        const bStart = new Date(b.check_in_date);
+        const bEnd = new Date(b.check_out_date);
+        bStart.setHours(0,0,0,0);
+        bEnd.setHours(0,0,0,0);
+        
+        if (bStart <= d && bEnd > d) {
+           if (b.booking_type === 'Entire Property' || !b.room_ids || b.room_ids.length === 0) {
+              baseRooms.forEach(r => bookedRoomIds.add(r.id));
+           } else {
+              b.room_ids.forEach(rid => bookedRoomIds.add(rid));
+           }
+        }
+      });
+      
+      return {
+        date: d,
+        availableRooms: baseRooms.filter(r => !bookedRoomIds.has(r.id))
+      };
+    });
+  }, [rooms, bookingForm.cottage_id, bookingForm.check_in_date, bookingForm.check_out_date, activeBookings, id]);
+
   if (loading) return <div style={{ padding: '2rem' }}>Loading Form...</div>;
 
   if (!id && (cottages.length === 0 || rooms.length === 0)) {
@@ -1042,10 +1084,10 @@ export default function BookingForm() {
 
             {bookingForm.booking_type === 'Room' && (
               <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                <label className="premium-label">Assign Specific Rooms</label>
+                <label className="premium-label">Assign Specific Rooms (Available for Entire Stay)</label>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                   {relevantRooms.length === 0 ? (
-                    <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>Please select a property/cottage first</span>
+                    <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>{(!bookingForm.cottage_id) ? 'Please select a property/cottage first' : 'No rooms available for the entire selected duration.'}</span>
                   ) : relevantRooms.map(r => (
                     <label 
                       key={r.id} 
@@ -1079,6 +1121,22 @@ export default function BookingForm() {
                     </label>
                   ))}
                 </div>
+
+                {dailyAvailability.length > 0 && (
+                  <div style={{ padding: '1rem', background: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1', marginTop: '1rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Daily Room Availability</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {dailyAvailability.map(dayInfo => (
+                        <div key={dayInfo.date.toISOString()} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                          <span style={{ fontWeight: 600, color: '#334155' }}>{format(dayInfo.date, 'MMM d, yyyy')}</span>
+                          <span style={{ color: dayInfo.availableRooms.length > 0 ? '#10b981' : '#ef4444', fontWeight: 500 }}>
+                            {dayInfo.availableRooms.length > 0 ? dayInfo.availableRooms.map(r => r.name).join(', ') : 'Fully Booked'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
