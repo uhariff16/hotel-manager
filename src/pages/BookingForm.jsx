@@ -132,6 +132,7 @@ export default function BookingForm() {
   
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
+  const [activeBookings, setActiveBookings] = useState([]);
 
   const [bookingForm, setBookingForm] = useState({
     guest_name: '', guest_email: '', phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
@@ -193,13 +194,18 @@ export default function BookingForm() {
         }));
       }
 
-      // Fetch agents from existing bookings
+      // Fetch agents and active bookings from existing bookings
       let fetchedAgents = [];
       try {
         const { data: bks, error: bksErr } = await supabase
           .from('bookings')
-          .select('booking_source')
+          .select('id, cottage_id, room_ids, booking_type, status, check_in_date, check_out_date, booking_source')
+          .eq('resort_id', activeResortId)
+          .neq('status', 'Cancelled')
+          .neq('status', 'Checked Out');
+          
         if (!bksErr && bks) {
+          setActiveBookings(bks);
           const dbAgentsMap = {};
            bks.forEach(b => {
              const { isAgent, name, phone } = parseAgentSource(b.booking_source);
@@ -609,7 +615,40 @@ export default function BookingForm() {
     );
   }
 
-  const relevantRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id && (r.status === 'Available' || r.status === 'Active' || bookingForm.room_ids.includes(r.id)));
+  const relevantRooms = React.useMemo(() => {
+    let baseRooms = rooms.filter(r => r.cottage_id === bookingForm.cottage_id && (r.status === 'Available' || r.status === 'Active' || bookingForm.room_ids.includes(r.id)));
+    if (!bookingForm.check_in_date || !bookingForm.check_out_date || !bookingForm.cottage_id) return baseRooms;
+    
+    const start = new Date(bookingForm.check_in_date);
+    const end = new Date(bookingForm.check_out_date);
+    start.setHours(0,0,0,0);
+    end.setHours(0,0,0,0);
+    
+    if (end <= start) return baseRooms;
+
+    const bookedRoomIds = new Set();
+    
+    activeBookings.forEach(b => {
+      if (b.id === id) return; // skip current editing booking
+      if (b.cottage_id !== bookingForm.cottage_id) return;
+      
+      const bStart = new Date(b.check_in_date);
+      const bEnd = new Date(b.check_out_date);
+      bStart.setHours(0,0,0,0);
+      bEnd.setHours(0,0,0,0);
+      
+      // Overlap condition: start1 < end2 && end1 > start2
+      if (bStart < end && bEnd > start) {
+         if (b.booking_type === 'Entire Property' || !b.room_ids || b.room_ids.length === 0) {
+            baseRooms.forEach(r => bookedRoomIds.add(r.id));
+         } else {
+            b.room_ids.forEach(rid => bookedRoomIds.add(rid));
+         }
+      }
+    });
+    
+    return baseRooms.filter(r => !bookedRoomIds.has(r.id) || bookingForm.room_ids.includes(r.id));
+  }, [rooms, bookingForm.cottage_id, bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.room_ids, activeBookings, id]);
 
   return (
     <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
