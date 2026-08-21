@@ -897,7 +897,9 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                           const dayBookings = filteredBookings.filter(b => b.cottage_id === c.id && isWithinInterval(d, { start: startOfDay(new Date(b.check_in_date)), end: startOfDay(new Date(b.check_out_date)) }));
                           
                           return (
-                            <div key={d.toString()} style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '120px', padding: isMobile ? '0.25rem' : '0.5rem', background: isCurrentMonth ? 'white' : 'var(--bg-color)', opacity: isCurrentMonth ? 1 : 0.4, position: 'relative', transition: 'all 0.2s' }}>
+                            <div key={d.toString()} 
+                                 onClick={() => handleEmptyCellDoubleClick(d, 'Property', c.id, c.id)}
+                                 style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '120px', padding: isMobile ? '0.25rem' : '0.5rem', background: isCurrentMonth ? 'var(--bg-color)' : 'var(--bg-secondary)', opacity: isCurrentMonth ? 1 : 0.4, position: 'relative', transition: 'all 0.2s', cursor: 'pointer' }}>
                               <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.85rem' : '1rem', color: isTodayDate ? 'var(--primary)' : 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
                                   {format(d, 'd')}
                                   {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: 'var(--primary)', color: 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
@@ -905,7 +907,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                                 {dayBookings.slice(0, isMobile ? 2 : 3).map(b => (
                                   <div key={b.id} 
-                                       onClick={() => setSelectedBooking(b)} 
+                                       onClick={(e) => { e.stopPropagation(); setSelectedBooking(b); }} 
                                        onMouseEnter={(e) => { if (window.Capacitor?.isNativePlatform()) return; setHoveredBooking(b); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
                                        onMouseLeave={() => setHoveredBooking(null)}
                                        style={{ 
@@ -980,15 +982,6 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                           </div>
                           <div style={{ textAlign: 'right' }}>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
-                              <span style={{ padding: '0.2rem 0.75rem', borderRadius: '12px', fontSize: '0.65rem', fontWeight: 800, background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', border: '1px solid rgba(99, 102, 241, 0.2)' }}>
-                                {(() => {
-                                  const { isAgent, name, phone } = parseAgentSource(b.booking_source);
-                                  if (isAgent) {
-                                    return `Agent: ${name}${phone ? `, Contact: ${phone}` : ''}`;
-                                  }
-                                  return b.booking_source || 'Direct';
-                                })()}
-                              </span>
                               <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
                             </div>
                             <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
