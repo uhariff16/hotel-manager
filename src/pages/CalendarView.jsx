@@ -954,7 +954,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                   const monthStart = startOfMonth(currentDate);
                   const monthEnd = endOfMonth(currentDate);
                   return checkIn <= monthEnd && checkOut >= monthStart;
-                }).sort((a,b) => new Date(a.check_in_date.replace(/-/g, '/')) - new Date(b.check_in_date.replace(/-/g, '/')));
+                }).sort((a,b) => new Date(b.check_in_date.replace(/-/g, '/')) - new Date(a.check_in_date.replace(/-/g, '/')));
                 
                 return (
                   <div key={c.id} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
@@ -981,10 +981,10 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                             </div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)', marginBottom: '0.75rem' }}>₹{b.total_amount?.toLocaleString()}</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
                               <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
                             </div>
+                            <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
                           </div>
                         </div>
                       </div>
