@@ -304,20 +304,20 @@ export default function Financials() {
       
       {/* GLOBAL SUMMARY DASHBOARD */}
       <div className="card" style={{ padding: isMobile ? '1.25rem' : '1.75rem', border: 'none', background: 'var(--bg-secondary)', position: 'relative', overflow: 'hidden' }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, width: '6px', height: '100%', background: stats.net >= 0 ? 'var(--success)' : 'var(--danger)' }}></div>
+        <div style={{ position: 'absolute', top: 0, left: 0, width: '6px', height: '100%', background: 'var(--primary)' }}></div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <div>
              <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, fontSize: '0.75rem', letterSpacing: '0.05em' }}>Net Profit / Loss</small>
-             <div style={{ fontSize: isMobile ? '2.5rem' : '3.5rem', fontWeight: 900, color: stats.net >= 0 ? 'var(--success)' : 'var(--danger)', marginTop: '0.25rem', letterSpacing: '-0.02em', lineHeight: 1 }}>₹{stats.net.toLocaleString()}</div>
+             <div style={{ fontSize: isMobile ? '2.5rem' : '3.5rem', fontWeight: 900, color: 'var(--primary)', marginTop: '0.25rem', letterSpacing: '-0.02em', lineHeight: 1 }}>₹{stats.net.toLocaleString()}</div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem' }}>
              <div>
                 <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, fontSize: '0.7rem' }}>Total Income</small>
-                <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>₹{stats.totalInc.toLocaleString()}</div>
+                <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: 'var(--success)', marginTop: '0.25rem' }}>₹{stats.totalInc.toLocaleString()}</div>
              </div>
              <div>
                 <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, fontSize: '0.7rem' }}>Total Expenses</small>
-                <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: 'var(--text-main)', marginTop: '0.25rem' }}>₹{stats.totalExp.toLocaleString()}</div>
+                <div style={{ fontSize: isMobile ? '1.25rem' : '1.75rem', fontWeight: 800, color: 'var(--danger)', marginTop: '0.25rem' }}>₹{stats.totalExp.toLocaleString()}</div>
              </div>
           </div>
         </div>
