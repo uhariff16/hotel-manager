@@ -55,7 +55,7 @@ export default function CalendarView() {
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  const [viewType, setViewType] = useState('timeline'); // 'timeline', 'monthly', 'agenda'
+  const [viewType, setViewType] = useState('monthly'); // 'monthly', 'timeline', 'agenda'
   const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
   const [dragSelection, setDragSelection] = useState(null);
   const [monthSelection, setMonthSelection] = useState(null);
@@ -651,7 +651,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
     { label: 'Entire Property', color: 'var(--cottage-block)' },
     { label: 'Room Booking', color: 'var(--room-block)' },
     { label: 'Pending', color: 'var(--pending-block)' },
-    { label: 'Selected', color: 'var(--primary)' },
+    { label: 'Selected', color: '#3182ce' },
   ];
 
   return (
@@ -760,11 +760,11 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                 <Copy size={16} /> <span className={isMobile ? "desktop-only" : ""}>Screenshot</span>
              </button>
              <div className="view-switcher" style={{ display: 'flex', background: 'var(--bg-color)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
-                <button onClick={() => setViewType('timeline')} style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.5rem 1rem', flex: isMobile ? '1' : 'none', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'timeline' ? 'var(--primary)' : 'transparent', color: viewType === 'timeline' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', transition: 'all 0.2s' }}>
-                    <Columns size={14} /> Timeline
-                </button>
                 <button onClick={() => setViewType('monthly')} style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.5rem 1rem', flex: isMobile ? '1' : 'none', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'monthly' ? 'var(--primary)' : 'transparent', color: viewType === 'monthly' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', transition: 'all 0.2s' }}>
                     <LayoutGrid size={14} /> Month
+                </button>
+                <button onClick={() => setViewType('timeline')} style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.5rem 1rem', flex: isMobile ? '1' : 'none', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'timeline' ? 'var(--primary)' : 'transparent', color: viewType === 'timeline' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', transition: 'all 0.2s' }}>
+                    <Columns size={14} /> Timeline
                 </button>
                 <button onClick={() => setViewType('agenda')} style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.5rem 1rem', flex: isMobile ? '1' : 'none', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'agenda' ? 'var(--primary)' : 'transparent', color: viewType === 'agenda' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', transition: 'all 0.2s' }}>
                     <List size={14} /> Agenda
@@ -946,16 +946,18 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                               : isSameDay(d, monthSelection.start));
 
                           if (isSelected) {
-                            occupancyColor = 'var(--primary)';
+                            occupancyColor = '#3182ce';
                           }
+                          
+                          const isPast = startOfDay(d) < startOfDay(new Date());
                           
                           return (
                             <div key={d.toString()} 
                                  onClick={() => handleMonthCellClick(d, c.id)}
-                                 style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '100px', padding: isMobile ? '0.25rem' : '0.5rem', background: occupancyColor, opacity: isCurrentMonth ? 1 : 0.4, position: 'relative', transition: 'all 0.2s', cursor: startOfDay(d) >= startOfDay(new Date()) ? 'pointer' : 'default' }}>
+                                 style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '75px', padding: isMobile ? '0.25rem' : '0.4rem', background: occupancyColor, opacity: isPast ? 0.35 : (isCurrentMonth ? 1 : 0.4), position: 'relative', transition: 'all 0.2s', cursor: isPast ? 'not-allowed' : 'pointer' }}>
                               <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.85rem' : '1rem', color: isSelected || occupancyColor !== (isCurrentMonth ? 'var(--available)' : 'var(--bg-secondary)') ? 'white' : (isTodayDate ? 'var(--primary)' : 'var(--text-main)'), display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
                                   {format(d, 'd')}
-                                  {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: isSelected ? 'white' : 'var(--primary)', color: isSelected ? 'var(--primary)' : 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
+                                  {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: isSelected ? 'white' : 'var(--primary)', color: isSelected ? '#3182ce' : 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
                               </div>
                             </div>
                           );
