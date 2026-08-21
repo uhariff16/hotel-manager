@@ -562,7 +562,9 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
       // Start new selection
       setMonthSelection({ start: date, end: null, cottageId });
     } else {
-      // Complete selection
+      // Complete selection, show range, then navigate
+      setMonthSelection({ ...monthSelection, end: date });
+      
       const datesArr = [monthSelection.start, date].sort((a, b) => a - b);
       const inDate = datesArr[0];
       const outDate = addDays(datesArr[1], 1); // Checkout is next day
@@ -572,8 +574,11 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
          booking_type: 'Entire Property',
          cottage_id: cottageId
       };
-      setMonthSelection(null);
-      navigate('/bookings/new', { state: { prefill } });
+      
+      setTimeout(() => {
+        setMonthSelection(null);
+        navigate('/bookings/new', { state: { prefill } });
+      }, 400); // 400ms delay to let user see the selection
     }
   };
 
@@ -921,18 +926,25 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                           const cottageRooms = rooms.filter(r => r.cottage_id === c.id);
                           const totalRooms = cottageRooms.length;
                           const bookedRoomIds = new Set(dayBookings.flatMap(b => b.room_ids || []));
-                          const isEntirePropertyBooked = dayBookings.some(b => !b.room_ids || b.room_ids.length === 0);
+                          const isEntirePropertyBooked = dayBookings.some(b => !b.room_ids || b.room_ids.length === 0 || b.booking_type === 'Entire Property');
+                          const hasPending = dayBookings.some(b => b.status === 'Pending');
 
-                          let occupancyColor = isCurrentMonth ? 'var(--bg-color)' : 'var(--bg-secondary)'; // available
+                          let occupancyColor = isCurrentMonth ? 'var(--available)' : 'var(--bg-secondary)'; // available
                           if (dayBookings.length > 0) {
-                            if (isEntirePropertyBooked || (totalRooms > 0 && bookedRoomIds.size >= totalRooms)) {
-                              occupancyColor = 'rgba(239, 68, 68, 0.2)'; // fully booked (red)
+                            if (hasPending) {
+                              occupancyColor = 'var(--pending-block)';
+                            } else if (isEntirePropertyBooked || (totalRooms > 0 && bookedRoomIds.size >= totalRooms)) {
+                              occupancyColor = 'var(--cottage-block)'; // fully booked (red)
                             } else {
-                              occupancyColor = 'rgba(245, 158, 11, 0.2)'; // partially booked (orange)
+                              occupancyColor = 'var(--room-block)'; // partially booked (light red)
                             }
                           }
 
-                          const isSelected = monthSelection?.cottageId === c.id && monthSelection?.start && isSameDay(d, monthSelection.start);
+                          const isSelected = monthSelection?.cottageId === c.id && monthSelection?.start && 
+                            (monthSelection.end 
+                              ? (d >= Math.min(monthSelection.start, monthSelection.end) && d <= Math.max(monthSelection.start, monthSelection.end))
+                              : isSameDay(d, monthSelection.start));
+
                           if (isSelected) {
                             occupancyColor = 'var(--primary)';
                           }
@@ -941,7 +953,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                             <div key={d.toString()} 
                                  onClick={() => handleMonthCellClick(d, c.id)}
                                  style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '100px', padding: isMobile ? '0.25rem' : '0.5rem', background: occupancyColor, opacity: isCurrentMonth ? 1 : 0.4, position: 'relative', transition: 'all 0.2s', cursor: startOfDay(d) >= startOfDay(new Date()) ? 'pointer' : 'default' }}>
-                              <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.85rem' : '1rem', color: isSelected ? 'white' : (isTodayDate ? 'var(--primary)' : 'var(--text-main)'), display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
+                              <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.85rem' : '1rem', color: isSelected || occupancyColor !== (isCurrentMonth ? 'var(--available)' : 'var(--bg-secondary)') ? 'white' : (isTodayDate ? 'var(--primary)' : 'var(--text-main)'), display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
                                   {format(d, 'd')}
                                   {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: isSelected ? 'white' : 'var(--primary)', color: isSelected ? 'var(--primary)' : 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
                               </div>
