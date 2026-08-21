@@ -966,26 +966,36 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                       <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85rem', paddingLeft: '0.5rem' }}>No bookings for this property in this period.</p>
                     ) : cottageBookings.map(b => (
                       <div key={b.id} className="card" onClick={() => setSelectedBooking(b)} style={{ padding: '1.25rem', cursor: 'pointer', borderLeft: `8px solid ${b.status === 'Checked-in' ? '#6366f1' : (b.status === 'Confirmed' ? 'var(--primary)' : 'var(--warning)')}`, transition: 'all 0.2s', margin: 0 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-                            <div style={{ textAlign: 'center', minWidth: '60px', padding: '0.5rem', background: 'var(--bg-color)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                        <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '1rem' : '0' }}>
+                          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem', width: '100%' }}>
+                            <div style={{ textAlign: 'center', minWidth: '60px', padding: '0.5rem', background: 'var(--bg-color)', borderRadius: '12px', border: '1px solid var(--border)', flexShrink: 0 }}>
                               <div style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>{format(new Date(b.check_in_date), 'MMM')}</div>
                               <div style={{ fontSize: '1.25rem', fontWeight: 900 }}>{format(new Date(b.check_in_date), 'dd')}</div>
                             </div>
-                            <div>
-                              <div style={{ fontWeight: 800, fontSize: '1.25rem', marginBottom: '0.25rem' }}>{b.guest_name}</div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> {format(new Date(b.check_in_date), 'dd MMM')} - {format(new Date(b.check_out_date), 'dd MMM')}</span>
-                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Home size={14} /> {c.name}</span>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+                                <div style={{ fontWeight: 800, fontSize: isMobile ? '1.1rem' : '1.25rem', marginBottom: '0.25rem', wordBreak: 'break-word' }}>{b.guest_name}</div>
+                                {isMobile && (
+                                  <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem', flexShrink: 0, marginTop: '0.2rem' }}>{b.status}</span>
+                                )}
                               </div>
+                              <div style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? '0.4rem' : '1rem', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 600 }}>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}><Calendar size={14} /> {format(new Date(b.check_in_date), 'dd MMM')} - {format(new Date(b.check_out_date), 'dd MMM')}</span>
+                                <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}><Home size={14} /> {c.name}</span>
+                              </div>
+                              {isMobile && (
+                                <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
+                              )}
                             </div>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
-                              <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
+                          {!isMobile && (
+                            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
+                                <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
+                              </div>
+                              <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
                             </div>
-                            <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
-                          </div>
+                          )}
                         </div>
                       </div>
                     ))}
