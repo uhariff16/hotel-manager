@@ -981,10 +981,10 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                             </div>
                           </div>
                           <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)', marginBottom: '0.75rem' }}>₹{b.total_amount?.toLocaleString()}</div>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
                               <span className={`badge badge-${b.status === 'Cancelled' ? 'danger' : b.status === 'Completed' ? 'success' : 'info'}`} style={{ fontSize: '0.65rem' }}>{b.status}</span>
                             </div>
-                            <div style={{ marginTop: '0.75rem', fontWeight: 900, fontSize: '1.25rem', color: 'var(--primary)' }}>₹{b.total_amount?.toLocaleString()}</div>
                           </div>
                         </div>
                       </div>
