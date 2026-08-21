@@ -136,7 +136,7 @@ export default function BookingForm() {
 
   const [bookingForm, setBookingForm] = useState({
     guest_name: '', guest_email: '', phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
-    booking_type: 'Entire Property', cottage_id: '', room_ids: [],
+    booking_type: 'Room', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Confirmed', is_loading_edit: false,
     reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_other_type: '', id_proof_number: '',

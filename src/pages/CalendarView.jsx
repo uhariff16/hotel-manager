@@ -571,7 +571,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
       let prefill = {
          check_in_date: format(inDate, 'yyyy-MM-dd'),
          check_out_date: format(outDate, 'yyyy-MM-dd'),
-         booking_type: 'Entire Property',
+         booking_type: 'Room',
          cottage_id: cottageId
       };
       
