@@ -58,6 +58,7 @@ export default function CalendarView() {
   const [viewType, setViewType] = useState('timeline'); // 'timeline', 'monthly', 'agenda'
   const [currentDate, setCurrentDate] = useState(startOfMonth(new Date()));
   const [dragSelection, setDragSelection] = useState(null);
+  const [monthSelection, setMonthSelection] = useState(null);
   const [selectedBooking, setSelectedBooking] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -551,8 +552,29 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
       prefill.cottage_id = cottageId;
       prefill.room_ids = [itemId];
     }
-    setDragSelection(null);
     navigate('/bookings/new', { state: { prefill } });
+  };
+
+  const handleMonthCellClick = (date, cottageId) => {
+    if (startOfDay(date) < startOfDay(new Date())) return; // Cannot book past dates
+
+    if (!monthSelection || monthSelection.cottageId !== cottageId || monthSelection.end) {
+      // Start new selection
+      setMonthSelection({ start: date, end: null, cottageId });
+    } else {
+      // Complete selection
+      const datesArr = [monthSelection.start, date].sort((a, b) => a - b);
+      const inDate = datesArr[0];
+      const outDate = addDays(datesArr[1], 1); // Checkout is next day
+      let prefill = {
+         check_in_date: format(inDate, 'yyyy-MM-dd'),
+         check_out_date: format(outDate, 'yyyy-MM-dd'),
+         booking_type: 'Entire Property',
+         cottage_id: cottageId
+      };
+      setMonthSelection(null);
+      navigate('/bookings/new', { state: { prefill } });
+    }
   };
 
   const goToToday = () => {
@@ -895,36 +917,33 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                           const isTodayDate = isToday(d);
                           // Filter bookings specifically for this property
                           const dayBookings = filteredBookings.filter(b => b.cottage_id === c.id && isWithinInterval(d, { start: startOfDay(new Date(b.check_in_date)), end: startOfDay(new Date(b.check_out_date)) }));
+                          // Determine color coding based on occupancy
+                          const cottageRooms = rooms.filter(r => r.cottage_id === c.id);
+                          const totalRooms = cottageRooms.length;
+                          const bookedRoomIds = new Set(dayBookings.flatMap(b => b.room_ids || []));
+                          const isEntirePropertyBooked = dayBookings.some(b => !b.room_ids || b.room_ids.length === 0);
+
+                          let occupancyColor = isCurrentMonth ? 'var(--bg-color)' : 'var(--bg-secondary)'; // available
+                          if (dayBookings.length > 0) {
+                            if (isEntirePropertyBooked || (totalRooms > 0 && bookedRoomIds.size >= totalRooms)) {
+                              occupancyColor = 'rgba(239, 68, 68, 0.2)'; // fully booked (red)
+                            } else {
+                              occupancyColor = 'rgba(245, 158, 11, 0.2)'; // partially booked (orange)
+                            }
+                          }
+
+                          const isSelected = monthSelection?.cottageId === c.id && monthSelection?.start && isSameDay(d, monthSelection.start);
+                          if (isSelected) {
+                            occupancyColor = 'var(--primary)';
+                          }
                           
                           return (
                             <div key={d.toString()} 
-                                 onClick={() => handleEmptyCellDoubleClick(d, 'Property', c.id, c.id)}
-                                 style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '120px', padding: isMobile ? '0.25rem' : '0.5rem', background: isCurrentMonth ? 'var(--bg-color)' : 'var(--bg-secondary)', opacity: isCurrentMonth ? 1 : 0.4, position: 'relative', transition: 'all 0.2s', cursor: 'pointer' }}>
-                              <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.85rem' : '1rem', color: isTodayDate ? 'var(--primary)' : 'var(--text-main)', display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
+                                 onClick={() => handleMonthCellClick(d, c.id)}
+                                 style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '100px', padding: isMobile ? '0.25rem' : '0.5rem', background: occupancyColor, opacity: isCurrentMonth ? 1 : 0.4, position: 'relative', transition: 'all 0.2s', cursor: startOfDay(d) >= startOfDay(new Date()) ? 'pointer' : 'default' }}>
+                              <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.85rem' : '1rem', color: isSelected ? 'white' : (isTodayDate ? 'var(--primary)' : 'var(--text-main)'), display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
                                   {format(d, 'd')}
-                                  {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: 'var(--primary)', color: 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
-                              </div>
-                              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
-                                {dayBookings.slice(0, isMobile ? 2 : 3).map(b => (
-                                  <div key={b.id} 
-                                       onClick={(e) => { e.stopPropagation(); setSelectedBooking(b); }} 
-                                       onMouseEnter={(e) => { if (window.Capacitor?.isNativePlatform()) return; setHoveredBooking(b); setTooltipPos({ x: e.clientX, y: e.clientY }); }}
-                                       onMouseLeave={() => setHoveredBooking(null)}
-                                       style={{ 
-                                          fontSize: isMobile ? '0.55rem' : '0.75rem', padding: isMobile ? '0.15rem' : '0.35rem 0.6rem', borderRadius: '4px', 
-                                          background: b.status === 'Checked-in' ? 'rgba(99, 102, 241, 0.1)' : 'rgba(16, 185, 129, 0.1)', 
-                                          color: b.status === 'Checked-in' ? '#6366f1' : '#10b981', 
-                                          borderLeft: `2px solid ${b.status === 'Checked-in' ? '#6366f1' : '#10b981'}`, 
-                                          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', cursor: 'pointer',
-                                          fontWeight: 700,
-                                          transform: hoveredBooking?.id === b.id ? 'translateX(4px)' : 'none',
-                                          transition: 'transform 0.2s',
-                                          textAlign: isMobile ? 'center' : 'left'
-                                       }}>
-                                    {isMobile ? b.guest_name.split(' ')[0] : b.guest_name}
-                                  </div>
-                                ))}
-                                {dayBookings.length > (isMobile ? 2 : 3) && <small style={{ color: 'var(--text-muted)', fontWeight: 700, textAlign: 'center', display: 'block', marginTop: '0.25rem', fontSize: isMobile ? '0.55rem' : '0.7rem' }}>+ {dayBookings.length - (isMobile ? 2 : 3)}</small>}
+                                  {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: isSelected ? 'white' : 'var(--primary)', color: isSelected ? 'var(--primary)' : 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
                               </div>
                             </div>
                           );
