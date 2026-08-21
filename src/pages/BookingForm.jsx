@@ -701,7 +701,7 @@ export default function BookingForm() {
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-size: 1.85rem;
           font-weight: 800;
-          color: #0F2C59;
+          color: var(--text-color);
           margin-bottom: 2rem;
           display: flex;
           align-items: center;
@@ -731,7 +731,7 @@ export default function BookingForm() {
         
         .form-section-title {
           font-size: 1.15rem;
-          color: #0F2C59;
+          color: var(--primary);
           font-weight: 700;
           margin: 0 0 1.5rem 0;
           display: flex;
@@ -748,7 +748,7 @@ export default function BookingForm() {
           font-weight: 700;
           text-transform: uppercase;
           letter-spacing: 0.06em;
-          color: #64748b;
+          color: var(--text-muted);
           margin-bottom: 0.5rem;
         }
         
@@ -756,9 +756,9 @@ export default function BookingForm() {
           width: 100%;
           padding: 0.8rem 1rem;
           border-radius: 10px;
-          border: 1.5px solid #cbd5e1;
+          border: 1.5px solid var(--border);
           background-color: var(--bg-color);
-          color: #1e293b;
+          color: var(--text-color);
           font-family: 'Plus Jakarta Sans', sans-serif;
           font-size: 0.9rem;
           font-weight: 500;
@@ -776,8 +776,8 @@ export default function BookingForm() {
           display: flex;
           align-items: center;
           justify-content: space-between;
-          background: #f8fafc;
-          border: 1px dashed #cbd5e1;
+          background: var(--bg-secondary);
+          border: 1px dashed var(--border);
           border-radius: 12px;
           padding: 1.25rem;
           margin-bottom: 1.5rem;
@@ -790,14 +790,14 @@ export default function BookingForm() {
         .timeline-label {
           font-size: 0.7rem;
           font-weight: 700;
-          color: #94a3b8;
+          color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 0.05em;
         }
         .timeline-val {
           font-size: 0.95rem;
           font-weight: 800;
-          color: #0F2C59;
+          color: var(--text-color);
         }
         
         .sticky-receipt {
@@ -813,10 +813,10 @@ export default function BookingForm() {
         .receipt-header {
           font-size: 1rem;
           font-weight: 800;
-          color: #94a3b8;
+          color: var(--text-muted);
           text-transform: uppercase;
           letter-spacing: 0.08em;
-          border-bottom: 2px solid #e2e8f0;
+          border-bottom: 2px solid var(--border);
           padding-bottom: 0.75rem;
           margin-bottom: 1.5rem;
           display: flex;
@@ -828,30 +828,30 @@ export default function BookingForm() {
           display: flex;
           justify-content: space-between;
           font-size: 0.9rem;
-          color: #64748b;
+          color: var(--text-muted);
           margin-bottom: 0.85rem;
           font-weight: 500;
         }
         .receipt-row.bold {
           font-weight: 700;
-          color: #1e293b;
+          color: var(--text-color);
         }
         
         .receipt-total-box {
-          background: #f8fafc;
+          background: var(--bg-secondary);
           border-radius: 12px;
           padding: 1.25rem;
           margin: 1.5rem 0;
-          border: 1px solid #e2e8f0;
+          border: 1px solid var(--border);
         }
         
         .badge-room {
           display: inline-flex;
           align-items: center;
           gap: 0.4rem;
-          background: #f1f5f9;
-          border: 1.5px solid #cbd5e1;
-          color: #1e293b;
+          background: var(--bg-secondary);
+          border: 1.5px solid var(--border);
+          color: var(--text-color);
           font-size: 0.85rem;
           font-weight: 600;
           padding: 0.4rem 1rem;
@@ -965,13 +965,13 @@ export default function BookingForm() {
           </div>
 
           {/* SECTION 2: ADDITIONAL CONTACTS */}
-          <div className="form-section-card" style={{ background: '#f8fafc' }}>
+          <div className="form-section-card" style={{ background: 'var(--bg-secondary)' }}>
             <h3 className="form-section-title">
               <Users size={18} style={{ color: 'var(--primary)' }} /> Additional Occupants / Contacts
             </h3>
             
             {bookingForm.additional_guests && bookingForm.additional_guests.map((guest, index) => (
-              <div key={index} style={{ border: '1px solid #cbd5e1', padding: '1.25rem', borderRadius: '12px', background: 'white', position: 'relative', marginBottom: '1rem' }}>
+              <div key={index} style={{ border: '1px solid var(--border)', padding: '1.25rem', borderRadius: '12px', background: 'var(--bg-primary)', position: 'relative', marginBottom: '1rem' }}>
                 <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }}>
                   <button 
                     type="button" 
@@ -981,7 +981,7 @@ export default function BookingForm() {
                     Remove
                   </button>
                 </div>
-                <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Occupant #{index + 2}</h4>
+                <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Occupant #{index + 2}</h4>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div className="form-group">
@@ -1085,9 +1085,9 @@ export default function BookingForm() {
             {bookingForm.booking_type === 'Room' && (
               <div className="form-group" style={{ marginBottom: '1.25rem' }}>
                 <label className="premium-label">Assign Specific Rooms (Available for Entire Stay)</label>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   {relevantRooms.length === 0 ? (
-                    <span style={{ fontSize: '0.85rem', color: '#94a3b8', fontStyle: 'italic' }}>{(!bookingForm.cottage_id) ? 'Please select a property/cottage first' : 'No rooms available for the entire selected duration.'}</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{(!bookingForm.cottage_id) ? 'Please select a property/cottage first' : 'No rooms available for the entire selected duration.'}</span>
                   ) : relevantRooms.map(r => (
                     <label 
                       key={r.id} 
@@ -1123,13 +1123,13 @@ export default function BookingForm() {
                 </div>
 
                 {dailyAvailability.length > 0 && (
-                  <div style={{ padding: '1rem', background: '#fff', borderRadius: '12px', border: '1px dashed #cbd5e1', marginTop: '1rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Daily Room Availability</div>
+                  <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px dashed var(--border)', marginTop: '1rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Daily Room Availability</div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {dailyAvailability.map(dayInfo => (
                         <div key={dayInfo.date.toISOString()} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                          <span style={{ fontWeight: 600, color: '#334155' }}>{format(dayInfo.date, 'MMM d, yyyy')}</span>
-                          <span style={{ color: dayInfo.availableRooms.length > 0 ? '#10b981' : '#ef4444', fontWeight: 500 }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-color)' }}>{format(dayInfo.date, 'MMM d, yyyy')}</span>
+                          <span style={{ color: dayInfo.availableRooms.length > 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 500 }}>
                             {dayInfo.availableRooms.length > 0 ? dayInfo.availableRooms.map(r => r.name).join(', ') : 'Fully Booked'}
                           </span>
                         </div>
@@ -1232,9 +1232,9 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Extra Add-on Services</label>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '1rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   {['Food', 'Fire camp', 'BBQ'].map(addon => (
-                    <label key={addon} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                    <label key={addon} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>
                       <input 
                         type="checkbox" 
                         style={{ accentColor: 'var(--primary)' }}
@@ -1249,7 +1249,7 @@ export default function BookingForm() {
                       {addon}
                     </label>
                   ))}
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>
                     <input 
                       type="checkbox" 
                       style={{ accentColor: 'var(--primary)' }}
