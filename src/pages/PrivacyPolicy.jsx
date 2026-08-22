@@ -98,7 +98,7 @@ export default function PrivacyPolicy() {
 
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: '2rem', marginBottom: '1rem', color: '#0F2C59' }}>6. Contact Us</h2>
           <p style={{ marginBottom: '1rem', color: '#334155' }}>
-            If you have any questions about this privacy policy or our privacy practices, please contact us at support@staypilot.app.
+            If you have any questions about this privacy policy or our privacy practices, please contact us at uhariff@live.com.
           </p>
         </div>
       </main>
