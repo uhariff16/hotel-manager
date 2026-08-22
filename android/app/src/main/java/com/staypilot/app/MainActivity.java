@@ -1,4 +1,4 @@
-package com.hotelmanager.myapp;
+package com.staypilot.app;
 
 import com.getcapacitor.BridgeActivity;
 
