@@ -65,7 +65,7 @@ export default function PrivacyPolicy() {
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: '2rem', marginBottom: '1rem', color: '#0F2C59' }}>2. Data We Collect</h2>
           <p style={{ marginBottom: '1rem', color: '#334155' }}>We may collect, use, store and transfer different kinds of personal data about you which we have grouped together as follows:</p>
           <ul style={{ marginLeft: '1.5rem', marginBottom: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', color: '#334155' }}>
-            <li><strong style={{ color: '#0f172a' }}>Identity Data:</strong> includes first name, last name, username or similar identifier, and government-issued identification numbers (such as Aadhar cards or passports) uploaded by you or on your behalf.</li>
+            <li><strong style={{ color: '#0f172a' }}>Identity Data:</strong> includes first name, last name, username or similar identifier, and government-issued identification numbers or documents uploaded by you or on your behalf.</li>
             <li><strong style={{ color: '#0f172a' }}>Contact Data:</strong> includes billing address, email address, and telephone numbers.</li>
             <li><strong style={{ color: '#0f172a' }}>Property Data:</strong> includes details about accommodations, room assignments, and booking references.</li>
             <li><strong style={{ color: '#0f172a' }}>Other Personal Info:</strong> includes vehicle registration numbers or license plate information recorded during stays.</li>
@@ -82,7 +82,7 @@ export default function PrivacyPolicy() {
           <div style={{ background: 'rgba(5, 150, 105, 0.08)', padding: '1.5rem', borderRadius: '12px', borderLeft: '4px solid #059669', margin: '2rem 0' }}>
             <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#059669' }}>Data Processing on Behalf of Third Parties (Hotel Managers)</h3>
             <p style={{ margin: 0, fontSize: '0.95rem', color: '#0f172a', lineHeight: 1.6 }}>
-              StayPilot provides software to hotel and resort managers. When our clients (the managers) use StayPilot to record information about their guests (such as Aadhar numbers, Vehicle numbers, and contact details), StayPilot acts as a Data Processor. We securely store this data strictly for the purpose of providing application functionality to our clients, and we do not sell or share this data with unauthorized third parties.
+              StayPilot provides software to hotel and resort managers. When our clients (the managers) use StayPilot to record information about their guests (such as government-issued IDs, vehicle registration details, and contact information), StayPilot acts as a Data Processor. We securely store this data strictly for the purpose of providing application functionality to our clients, and we do not sell or share this data with unauthorized third parties.
             </p>
           </div>
 
