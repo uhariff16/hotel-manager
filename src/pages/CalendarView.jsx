@@ -921,7 +921,12 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                           const isCurrentMonth = d.getMonth() === currentDate.getMonth();
                           const isTodayDate = isToday(d);
                           // Filter bookings specifically for this property
-                          const dayBookings = filteredBookings.filter(b => b.cottage_id === c.id && isWithinInterval(d, { start: startOfDay(new Date(b.check_in_date)), end: startOfDay(new Date(b.check_out_date)) }));
+                          const dayBookings = filteredBookings.filter(b => {
+                            if (b.cottage_id !== c.id) return false;
+                            const bIn = startOfDay(new Date(b.check_in_date));
+                            const bOut = startOfDay(new Date(b.check_out_date));
+                            return d >= bIn && d < bOut;
+                          });
                           // Determine color coding based on occupancy
                           const cottageRooms = rooms.filter(r => r.cottage_id === c.id);
                           const totalRooms = cottageRooms.length;
