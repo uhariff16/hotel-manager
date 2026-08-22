@@ -695,7 +695,7 @@ export default function Reports() {
               <h2 style={{ fontSize: '1.75rem', fontWeight: 800, margin: 0 }}>₹{(totalCollections || 0).toLocaleString()}</h2>
             </div>
 
-            <div className="card" style={{ border: 'none', background: 'white', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <div className="card" style={{ border: 'none', background: 'var(--bg-color)', padding: '1.25rem', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
                 <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>EXPENSES</span>
                 <TrendingDown size={20} color="var(--danger)" />
@@ -723,7 +723,7 @@ export default function Reports() {
               <p style={{ color: 'var(--text-muted)' }}>Generating report data...</p>
             </div>
           ) : (
-            <div id="report-container" className="card" style={{ padding: '2rem', background: 'white', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <div id="report-container" className="card" style={{ padding: '2rem', background: 'var(--bg-color)', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
               
               {/* Header section */}
               <div style={{ textAlign: 'center', marginBottom: '2.5rem', borderBottom: '1px solid #eee', paddingBottom: '2rem' }}>
@@ -759,15 +759,15 @@ export default function Reports() {
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '2rem' }}>
-                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>VALID BOOKINGS</span>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0' }}>{validBookings.length}</h3>
                     </div>
-                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>COMPLETED STAYS</span>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0' }}>{completedBookings.length}</h3>
                     </div>
-                    <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)' }}>TOTAL GUESTS SERVED</span>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0' }}>{completedGuests}</h3>
                     </div>
@@ -779,14 +779,14 @@ export default function Reports() {
               {/* REPORT VIEW: BOOKING DETAILS */}
               {activeReportType === 'bookings' && (
                 <div>
-                  <div className="no-print" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+                  <div className="no-print" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px' }}>
                     <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
                       <input 
                         type="text" 
                         placeholder="Search guest or ref..." 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        style={{ padding: '0.5rem 1rem', paddingLeft: '2.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem', width: '100%' }}
+                        style={{ padding: '0.5rem 1rem', paddingLeft: '2.25rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.85rem', width: '100%' }}
                       />
                       <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#a0aec0' }} />
                     </div>
@@ -810,7 +810,7 @@ export default function Reports() {
 
                   <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '600px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                      <thead style={{ background: '#fafafa' }}>
+                      <thead style={{ background: 'var(--bg-secondary)' }}>
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
                           <th onClick={() => requestSort('reference_number')} style={{ padding: '0.8rem', textAlign: 'left', cursor: 'pointer' }}>REF # <SortIcon column="reference_number"/></th>
                           <th onClick={() => requestSort('guest_name')} style={{ padding: '0.8rem', textAlign: 'left', cursor: 'pointer' }}>GUEST NAME <SortIcon column="guest_name"/></th>
@@ -851,7 +851,7 @@ export default function Reports() {
                                   : '-'}
                               </td>
                               <td style={{ padding: '0.8rem' }}>
-                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700 }}>
+                                <span style={{ fontSize: '0.7rem', padding: '2px 6px', borderRadius: '4px', background: 'var(--bg-secondary)', color: 'var(--text-main)', fontWeight: 700 }}>
                                   {data.cottages.find(c => c.id === b.cottage_id)?.name || '-'}
                                 </span>
                               </td>
@@ -872,7 +872,7 @@ export default function Reports() {
                           );
                         })}
                         {sortedBookings.length > 0 && (
-                          <tr style={{ background: '#f8fafc', borderTop: '2px solid #e2e8f0', fontWeight: 800 }}>
+                          <tr style={{ background: 'var(--bg-secondary)', borderTop: '2px solid var(--border)', fontWeight: 800 }}>
                             <td colSpan="13" style={{ padding: '0.8rem', textAlign: 'right' }}>TOTAL</td>
                             <td style={{ padding: '0.8rem', textAlign: 'right', color: 'var(--text-main)' }}>₹{sortedBookings.reduce((sum, b) => sum + Number(b.total_amount || 0), 0).toLocaleString()}</td>
                             <td style={{ padding: '0.8rem', textAlign: 'right', color: 'var(--success)' }}>₹{sortedBookings.reduce((sum, b) => sum + Number(b.advance_paid || 0), 0).toLocaleString()}</td>
@@ -888,14 +888,14 @@ export default function Reports() {
               {/* REPORT VIEW: GUEST CONTACTS */}
               {activeReportType === 'guests' && (
                 <div>
-                  <div className="no-print" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+                  <div className="no-print" style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px' }}>
                     <div style={{ flex: 1, position: 'relative' }}>
                       <input 
                         type="text" 
                         placeholder="Search by guest name, email, or phone number..." 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        style={{ padding: '0.5rem 1rem', paddingLeft: '2.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem', width: '100%' }}
+                        style={{ padding: '0.5rem 1rem', paddingLeft: '2.25rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.85rem', width: '100%' }}
                       />
                       <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#a0aec0' }} />
                     </div>
@@ -903,7 +903,7 @@ export default function Reports() {
 
                   <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '600px' }}>
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem' }}>
-                      <thead style={{ background: '#fafafa' }}>
+                      <thead style={{ background: 'var(--bg-secondary)' }}>
                         <tr style={{ borderBottom: '2px solid #f0f0f0' }}>
                           <th style={{ padding: '0.8rem', textAlign: 'left' }}>GUEST NAME</th>
                           <th style={{ padding: '0.8rem', textAlign: 'left' }}>EMAIL ADDRESS</th>
@@ -951,14 +951,14 @@ export default function Reports() {
                     </div>
                   </div>
 
-                  <div className="no-print" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+                  <div className="no-print" style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', marginBottom: '1.5rem', background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px' }}>
                     <div style={{ flex: 1, minWidth: '200px', position: 'relative' }}>
                       <input 
                         type="text" 
                         placeholder="Search logs by ref, categories, names..." 
                         value={searchTerm}
                         onChange={e => setSearchTerm(e.target.value)}
-                        style={{ padding: '0.5rem 1rem', paddingLeft: '2.25rem', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '0.85rem', width: '100%' }}
+                        style={{ padding: '0.5rem 1rem', paddingLeft: '2.25rem', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.85rem', width: '100%' }}
                       />
                       <Search size={14} style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: '#a0aec0' }} />
                     </div>
@@ -989,7 +989,7 @@ export default function Reports() {
                       </h4>
                       <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                          <thead style={{ background: '#fafafa' }}>
+                          <thead style={{ background: 'var(--bg-secondary)' }}>
                              <tr>
                                <th style={{ padding: '0.6rem', textAlign: 'left' }}>DATE</th>
                                <th style={{ padding: '0.6rem', textAlign: 'left' }}>GUEST / REF</th>
@@ -1009,7 +1009,7 @@ export default function Reports() {
                                    <div style={{ fontSize: '0.65rem', opacity: 0.7 }}>{i.bookings?.reference_number || '-'}</div>
                                  </td>
                                  <td style={{ padding: '0.6rem' }}>
-                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700, display: 'inline-block', marginBottom: '2px' }}>
+                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'var(--bg-secondary)', color: 'var(--text-main)', fontWeight: 700, display: 'inline-block', marginBottom: '2px' }}>
                                       {data.cottages.find(c => c.id === (i.cottage_id || i.bookings?.cottage_id))?.name || 'General'}
                                     </span>
                                     {i.notes?.toLowerCase().includes('advance') && (
@@ -1050,7 +1050,7 @@ export default function Reports() {
                       </h4>
                       <div className="table-container" style={{ border: '1px solid #f0f0f0', borderRadius: '12px', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
                         <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.75rem' }}>
-                          <thead style={{ background: '#fafafa' }}>
+                          <thead style={{ background: 'var(--bg-secondary)' }}>
                              <tr>
                                <th style={{ padding: '0.6rem', textAlign: 'left' }}>DATE</th>
                                <th style={{ padding: '0.6rem', textAlign: 'left' }}>CATEGORY</th>
@@ -1067,7 +1067,7 @@ export default function Reports() {
                                  <td style={{ padding: '0.6rem' }}>{e.date}</td>
                                  <td style={{ padding: '0.6rem', fontWeight: 700 }}>{e.category}</td>
                                  <td style={{ padding: '0.6rem' }}>
-                                   <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: '#f3f4f6', color: '#374151', fontWeight: 700 }}>
+                                   <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'var(--bg-secondary)', color: 'var(--text-main)', fontWeight: 700 }}>
                                      {data.cottages.find(c => c.id === e.cottage_id)?.name || 'General'}
                                    </span>
                                  </td>
