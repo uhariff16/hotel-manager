@@ -953,9 +953,20 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                           
                           return (
                             <div key={d.toString()} 
-                                 onClick={() => handleMonthCellClick(d, c.id)}
-                                 style={{ minWidth: 0, overflow: 'hidden', minHeight: isMobile ? '60px' : '75px', padding: isMobile ? '0.25rem' : '0.4rem', background: occupancyColor, opacity: isPast ? 0.35 : (isCurrentMonth ? 1 : 0.4), position: 'relative', transition: 'all 0.2s', cursor: isPast ? 'not-allowed' : 'pointer' }}>
-                              <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.85rem' : '1rem', color: isSelected || occupancyColor !== (isCurrentMonth ? 'var(--available)' : 'var(--bg-secondary)') ? 'white' : (isTodayDate ? 'var(--primary)' : 'var(--text-main)'), display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
+                                 onClick={() => { if (!isPast) handleMonthCellClick(d, c.id) }}
+                                 style={{ 
+                                   minWidth: 0, 
+                                   overflow: 'hidden', 
+                                   minHeight: isMobile ? '45px' : '55px', 
+                                   padding: isMobile ? '0.25rem' : '0.4rem', 
+                                   background: (isPast && occupancyColor === (isCurrentMonth ? 'var(--available)' : 'var(--bg-secondary)')) ? 'var(--border)' : occupancyColor, 
+                                   opacity: isPast ? 0.5 : (isCurrentMonth ? 1 : 0.4), 
+                                   filter: isPast ? 'grayscale(80%)' : 'none',
+                                   position: 'relative', 
+                                   transition: 'all 0.2s', 
+                                   cursor: isPast ? 'not-allowed' : 'pointer' 
+                                 }}>
+                              <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.8rem' : '0.9rem', color: isSelected || (occupancyColor !== 'var(--available)' && occupancyColor !== 'var(--bg-secondary)') ? 'white' : (isTodayDate ? 'var(--primary)' : 'var(--text-main)'), display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
                                   {format(d, 'd')}
                                   {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: isSelected ? 'white' : 'var(--primary)', color: isSelected ? '#3182ce' : 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
                               </div>
