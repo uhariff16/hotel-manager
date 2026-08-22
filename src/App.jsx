@@ -24,6 +24,7 @@ const Auth = React.lazy(() => import('./pages/Auth'));
 const Home = React.lazy(() => import('./pages/Home'));
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
+const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'));
 
 function App() {
@@ -196,6 +197,7 @@ function App() {
           <Route path="/" element={!session ? (window.Capacitor?.isNativePlatform() ? <Navigate to="/auth" replace /> : <Home />) : (profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
           
           <Route element={session ? <AppLayout /> : <Navigate to="/auth" replace />}>
             <Route path="dashboard" element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Dashboard />} />

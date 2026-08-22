@@ -679,6 +679,7 @@ export default function Home() {
             <a href="#features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</a>
             <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</Link>
             <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
+            <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
           </div>
 
           <div style={{ color: '#94a3b8' }}>
