@@ -370,7 +370,7 @@ export default function CottagesRooms() {
         
         {/* RATE PLANS LIST */}
         <div className="card">
-          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0F2C59', fontWeight: 800 }}>
+          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
             <CalendarDays size={22} /> Global Rate Plans
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
@@ -406,7 +406,7 @@ export default function CottagesRooms() {
 
         {/* ROOM CATEGORIES LIST */}
         <div className="card">
-          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#0F2C59', fontWeight: 800 }}>
+          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: 800 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Tag size={22} /> Room Categories
             </div>
@@ -493,7 +493,7 @@ export default function CottagesRooms() {
       
       {/* COTTAGES SECTION */}
       <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#0F2C59', fontWeight: 800 }}>
+        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: 800 }}>
           <span>Properties (Entire Property Booking)</span>
           {!editingCottage && (
             <button className="btn btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem' }} onClick={() => startCottageEdit()}>
@@ -628,7 +628,7 @@ export default function CottagesRooms() {
 
       {/* ROOMS SECTION */}
       <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: '#0F2C59', fontWeight: 800 }}>
+        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: 800 }}>
           <span>Rooms (Individual Booking)</span>
         </h2>
         
