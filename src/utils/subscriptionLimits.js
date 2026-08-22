@@ -2,7 +2,7 @@ export const PLAN_LIMITS = {
   free: {
     maxResorts: 1,
     maxCottages: 1,
-    maxRooms: 5,
+    maxRooms: 4,
     analyticsEnabled: false,
     reportsExportEnabled: false,
     label: 'Free Starter Plan'

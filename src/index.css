@@ -340,6 +340,25 @@ a {
 .badge-indigo { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
 .badge-info { background: rgba(49, 130, 206, 0.1); color: #3182ce; }
 
+/* Grids */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.5rem;
+}
+
+.grid-4 {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   :root {

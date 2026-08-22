@@ -11,12 +11,16 @@ export default function OnboardingWizard() {
   const [error, setError] = useState(null);
   const [existingCottages, setExistingCottages] = useState([]);
   const [startedOnboarding, setStartedOnboarding] = useState(false);
+  const searchParams = new URLSearchParams(window.location.search);
+  const isNewProperty = searchParams.get('newProperty') === 'true';
 
   // Plan Limits
   const currentPlanId = profile?.plan_type || 'free';
-  const planConfig = globalPlans?.[currentPlanId] || { maxRooms: 5, name: 'Free Starter' };
-  const roomLimit = planConfig.maxRooms || 5;
+  const planConfig = globalPlans?.[currentPlanId] || { maxRooms: 4, name: 'Free Starter' };
+  const roomLimit = planConfig.maxRooms || 4;
   const planName = planConfig.name || currentPlanId.toUpperCase();
+
+  const [selectedRatePlans, setSelectedRatePlans] = useState(['Weekday', 'Weekend']);
 
   // Step 1: Entity Details
   const [entityForm, setEntityForm] = useState({
@@ -34,19 +38,17 @@ export default function OnboardingWizard() {
     name: 'The Grand Villa',
     max_capacity: 10,
     number_of_rooms: 3,
-    weekday_price: 15000,
-    weekend_price: 20000,
+    rates: { 'Weekday': 15000, 'Weekend': 20000 },
     phone: '',
     wifi_password: ''
   });
 
   // Step 3: Rooms
   const [rooms, setRooms] = useState([]);
-  const [roomMode, setRoomMode] = useState('auto');
 
   useEffect(() => {
     setStep(1);
-    if (resorts && resorts.length > 0) {
+    if (resorts && resorts.length > 0 && !isNewProperty) {
       supabase.from('cottages')
         .select('*')
         .eq('resort_id', resorts[0].id)
@@ -56,7 +58,7 @@ export default function OnboardingWizard() {
           }
         });
     }
-  }, [resorts]);
+  }, [resorts, isNewProperty]);
 
   useEffect(() => {
     if (resorts && resorts.length > 0 && resorts[0]) {
@@ -80,8 +82,7 @@ export default function OnboardingWizard() {
         name: c.name || 'The Grand Villa',
         max_capacity: c.max_capacity || 10,
         number_of_rooms: 3,
-        weekday_price: c.weekday_price || 15000,
-        weekend_price: c.weekend_price || 20000,
+        rates: { 'Weekday': c.weekday_price || 15000, 'Weekend': c.weekend_price || 20000 },
         phone: c.phone || '',
         wifi_password: c.wifi_password || ''
       });
@@ -89,24 +90,36 @@ export default function OnboardingWizard() {
   }, [existingCottages]);
 
   useEffect(() => {
-    if (step === 3 && rooms.length === 0) {
-      generateRooms();
+    if (step === 3) {
+      syncRooms();
     }
   }, [step]);
 
-  const generateRooms = () => {
+  const syncRooms = () => {
     let numRooms = Number(propertyForm.number_of_rooms) || 1;
     if (numRooms > roomLimit) numRooms = roomLimit;
-    const initialRooms = Array.from({ length: numRooms }).map((_, i) => ({
-      id: Date.now() + i,
-      name: String(101 + i),
-      room_type: 'Standard room',
-      capacity: 2,
-      weekday_price: 1200,
-      weekend_price: 1500
-    }));
-    setRooms(initialRooms);
-    setRoomMode('auto');
+    
+    if (rooms.length === numRooms) return; // already synced
+
+    if (rooms.length < numRooms) {
+      const needed = numRooms - rooms.length;
+      const newRooms = Array.from({ length: needed }).map((_, i) => {
+        const initRates = {};
+        selectedRatePlans.forEach(rp => {
+          initRates[rp] = rp === 'Weekday' ? 1200 : rp === 'Weekend' ? 1500 : 0;
+        });
+        return {
+          id: Date.now() + i,
+          name: String(101 + rooms.length + i),
+          room_type: 'Standard Room',
+          capacity: 2,
+          rates: initRates
+        };
+      });
+      setRooms([...rooms, ...newRooms]);
+    } else {
+      setRooms(rooms.slice(0, numRooms));
+    }
     setError(null);
   };
 
@@ -116,24 +129,30 @@ export default function OnboardingWizard() {
       return;
     }
     setError(null);
+    const initRates = {};
+    selectedRatePlans.forEach(rp => {
+      initRates[rp] = rp === 'Weekday' ? 1200 : rp === 'Weekend' ? 1500 : 0;
+    });
     setRooms([...rooms, {
       id: Date.now(),
       name: '',
-      room_type: 'Standard room',
+      room_type: 'Standard Room',
       capacity: 2,
-      weekday_price: 1200,
-      weekend_price: 1500
+      rates: initRates
     }]);
     setRoomMode('manual');
   };
 
-  const updateRoom = (id, field, value) => {
-    if (field === 'room_type') {
-      let cap = 2, w = 1200, we = 1500;
-      if (value === 'Suite Room') { cap = 2; w = 3000; we = 3500; }
-      else if (value === 'Deluxe') { cap = 2; w = 2000; we = 2500; }
-      else if (value === 'Standard room') { cap = 2; w = 1200; we = 1500; }
-      setRooms(rooms.map(r => r.id === id ? { ...r, room_type: value, capacity: cap, weekday_price: w, weekend_price: we } : r));
+  const updateRoom = (id, field, value, rpName = null) => {
+    if (rpName) {
+      setRooms(rooms.map(r => r.id === id ? { ...r, rates: { ...r.rates, [rpName]: value } } : r));
+    } else if (field === 'room_type') {
+      let cap = 2;
+      if (value === 'Suite' || value === 'Family Room' || value === 'Cottage') cap = 4;
+      else if (value === 'Deluxe Room' || value === 'Premium Room') cap = 2;
+      else if (value === 'Dormitory') cap = 8;
+      else if (value === 'Tent') cap = 2;
+      setRooms(rooms.map(r => r.id === id ? { ...r, room_type: value, capacity: cap } : r));
     } else {
       setRooms(rooms.map(r => r.id === id ? { ...r, [field]: value } : r));
     }
@@ -148,18 +167,33 @@ export default function OnboardingWizard() {
     window.location.reload();
   };
 
-  const handleNextStep = () => {
+  const handleNextStep = async () => {
     setError(null);
     if (step === 1) {
       if (!entityForm.name.trim()) return setError("Please enter your Property/Entity name.");
       if (!entityForm.phone.trim()) return setError("Please enter your Contact Phone.");
       if (!entityForm.email.trim()) return setError("Please enter your Email.");
+
+      // Check if this Entity Name (Resort) already exists
+      const isDuplicateEntity = resorts?.some(r => r.name.toLowerCase().trim() === entityForm.name.toLowerCase().trim() && r.id !== (resorts[0]?.id));
+      if (isDuplicateEntity) {
+        return setError("An entity with this name already exists.");
+      }
     } else if (step === 2) {
       if (!propertyForm.name.trim()) return setError("Please enter Property Name.");
       if (propertyForm.number_of_rooms < 1) return setError("Number of rooms must be at least 1.");
       if (propertyForm.number_of_rooms > roomLimit) return setError(`Your current ${planName} plan allows a maximum of ${roomLimit} rooms.`);
-      if (propertyForm.weekday_price < 0 || propertyForm.weekend_price < 0) {
+      if (Object.values(propertyForm.rates).some(p => p < 0)) {
         return setError("Price cannot be negative.");
+      }
+
+      if (resorts && resorts.length > 0) {
+        const { data: existingNames } = await supabase.from('cottages').select('id').eq('resort_id', resorts[0].id).ilike('name', propertyForm.name.trim());
+        if (existingNames && existingNames.length > 0) {
+           if (isNewProperty || !existingCottages.length || existingNames.some(c => c.id !== existingCottages[0].id)) {
+               return setError("A property with this name already exists. Please choose a different name.");
+           }
+        }
       }
     }
     setStep(prev => prev + 1);
@@ -223,13 +257,13 @@ export default function OnboardingWizard() {
 
       // 2. Resolve Cottage (Property Class)
       let activeCottage = null;
-      if (existingCottages && existingCottages.length > 0) {
+      if (existingCottages && existingCottages.length > 0 && !isNewProperty) {
         setStatusMessage("Updating property class...");
         const cottagePayload = {
           name: propertyForm.name,
           max_capacity: Number(propertyForm.max_capacity),
-          weekday_price: Number(propertyForm.weekday_price),
-          weekend_price: Number(propertyForm.weekend_price),
+          weekday_price: Number(propertyForm.rates['Weekday'] || 0),
+          weekend_price: Number(propertyForm.rates['Weekend'] || 0),
           phone: propertyForm.phone,
           wifi_password: propertyForm.wifi_password
         };
@@ -248,8 +282,8 @@ export default function OnboardingWizard() {
         const cottagePayload = {
           name: propertyForm.name,
           max_capacity: Number(propertyForm.max_capacity),
-          weekday_price: Number(propertyForm.weekday_price),
-          weekend_price: Number(propertyForm.weekend_price),
+          weekday_price: Number(propertyForm.rates['Weekday'] || 0),
+          weekend_price: Number(propertyForm.rates['Weekend'] || 0),
           seasonal_price: 0,
           status: 'Available',
           phone: propertyForm.phone,
@@ -277,13 +311,18 @@ export default function OnboardingWizard() {
       if (rooms.length === 0) throw new Error("Please add at least one room.");
       if (rooms.some(r => !r.name.trim())) throw new Error("All rooms must have a name/number.");
       
+      const roomNames = rooms.map(r => r.name.trim().toLowerCase());
+      if (new Set(roomNames).size !== roomNames.length) {
+        throw new Error("Room names must be unique within this property.");
+      }
+      
       const roomsToInsert = rooms.map(r => ({
         cottage_id: activeCottage.id,
         name: r.name,
         room_type: r.room_type,
         capacity: Number(r.capacity),
-        weekday_price: Number(r.weekday_price),
-        weekend_price: Number(r.weekend_price),
+        weekday_price: Number(r.rates?.['Weekday'] || 0),
+        weekend_price: Number(r.rates?.['Weekend'] || 0),
         seasonal_price: 0,
         status: 'Available',
         tenant_id: session.user.id,
@@ -304,25 +343,73 @@ export default function OnboardingWizard() {
         throw new Error("Failed to create initial rooms: " + roomsError.message);
       }
 
-      // Write default room pricing categories to tenant_integrations
-      const defaultCategories = [
-        { name: 'Suite Room', weekday_price: 3000, weekend_price: 3500, capacity: 2 },
-        { name: 'Deluxe', weekday_price: 2000, weekend_price: 2500, capacity: 2 },
-        { name: 'Standard room', weekday_price: 1200, weekend_price: 1500, capacity: 2 }
-      ];
-      const tags = [{ key: 'room_pricing_categories', value: JSON.stringify(defaultCategories) }];
-      await supabase.from('tenant_integrations').upsert({
-        tenant_id: session.user.id,
-        resort_id: activeResort.id,
-        whatsapp_custom_tags: tags,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'resort_id' });
+      // Create selected Rate Plans
+      setStatusMessage("Setting up Pricing & Categories...");
+      
+      const { data: existingRPs } = await supabase.from('rate_plans').select('*').eq('resort_id', activeResort.id);
+      const existingRPNames = existingRPs ? existingRPs.map(rp => rp.name) : [];
+      
+      const rpsToInsert = selectedRatePlans
+        .filter(name => !existingRPNames.includes(name))
+        .map(name => ({ name, tenant_id: session.user.id, resort_id: activeResort.id }));
 
-      setStatusMessage("Setup complete successfully! You can add more properties or rooms from the Property Management tab in your dashboard. Redirecting...");
+      let finalRPs = existingRPs ? existingRPs.filter(rp => selectedRatePlans.includes(rp.name)) : [];
+
+      if (rpsToInsert.length > 0) {
+        const { data: newRPData, error: rpErr } = await supabase.from('rate_plans').insert(rpsToInsert).select();
+        if (!rpErr && newRPData) {
+           finalRPs = [...finalRPs, ...newRPData];
+        }
+      }
+
+      if (finalRPs.length > 0) {
+        // Insert property rates
+        const pRates = finalRPs.map(rp => ({
+          cottage_id: activeCottage.id,
+          rate_plan_id: rp.id,
+          price: Number(propertyForm.rates[rp.name] || 0)
+        }));
+        await supabase.from('property_rates').insert(pRates);
+
+        const uniqueCategories = [...new Set(rooms.map(r => r.room_type))];
+        const { data: existingCats } = await supabase.from('room_categories').select('*').eq('resort_id', activeResort.id).in('name', uniqueCategories);
+
+        for (const catName of uniqueCategories) {
+          const sampleRoom = rooms.find(r => r.room_type === catName);
+          let catData = existingCats ? existingCats.find(c => c.name === catName) : null;
+          
+          if (!catData) {
+             const { data: newCatData } = await supabase.from('room_categories').insert([
+              { name: catName, capacity: sampleRoom.capacity, tenant_id: session.user.id, resort_id: activeResort.id }
+             ]).select();
+             if (newCatData) catData = newCatData[0];
+          }
+          
+          if (catData) {
+            const { data: existingCRates } = await supabase.from('category_rates').select('*').eq('category_id', catData.id);
+            const existingRPIdsForCat = existingCRates ? existingCRates.map(cr => cr.rate_plan_id) : [];
+
+            const cRatesToInsert = finalRPs
+              .filter(rp => !existingRPIdsForCat.includes(rp.id))
+              .map(rp => ({
+                category_id: catData.id,
+                rate_plan_id: rp.id,
+                price: Number(sampleRoom.rates?.[rp.name] || 0)
+              }));
+            
+            if (cRatesToInsert.length > 0) {
+               await supabase.from('category_rates').insert(cRatesToInsert);
+            }
+            await supabase.from('rooms').update({ category_id: catData.id }).eq('resort_id', activeResort.id).eq('room_type', catName).eq('cottage_id', activeCottage.id);
+          }
+        }
+      }
+
+      setStatusMessage("Setup complete! Redirecting...");
       
       setTimeout(() => {
-        window.location.reload();
-      }, 4000);
+        window.location.href = '/setup';
+      }, 3000);
 
     } catch (err) {
       setError(err.message);
@@ -331,7 +418,11 @@ export default function OnboardingWizard() {
   };
 
   const roomTypes = [
-    "Standard room", "Deluxe", "Suite Room"
+    'Standard Room', 'Deluxe Room', 'Premium Room', 'Suite', 'Family Room', 'Dormitory', 'Tent', 'Cottage'
+  ];
+
+  const PREDEFINED_RATE_PLANS = [
+    'Weekday', 'Weekend', 'Holiday', 'Peak Season', 'Off Season', 'Early Bird'
   ];
 
   return (
@@ -705,30 +796,40 @@ export default function OnboardingWizard() {
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <h4 style={{ color: '#10b981', fontSize: '0.95rem', fontWeight: 700, margin: '1rem 0 0.5rem 0' }}>Price for Entire Property</h4>
                     <p style={{ color: '#475569', fontSize: '0.85rem', marginBottom: '1rem' }}>Cost when booking the whole property at once.</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-                      <div>
-                        <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Weekday Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
-                        <input
-                          type="number"
-                          min={0}
-                          className="form-input"
-                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
-                          value={propertyForm.weekday_price}
-                          onChange={e => setPropertyForm({ ...propertyForm, weekday_price: e.target.value === '' ? '' : Number(e.target.value) })}
-                        />
-                      </div>
-                      <div>
-                        <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Weekend Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
-                        <input
-                          type="number"
-                          min={0}
-                          className="form-input"
-                          style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
-                          value={propertyForm.weekend_price}
-                          onChange={e => setPropertyForm({ ...propertyForm, weekend_price: e.target.value === '' ? '' : Number(e.target.value) })}
-                        />
-                      </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1rem' }}>
+                      {selectedRatePlans.map(rp => (
+                        <div key={rp}>
+                          <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>{rp} Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
+                          <input
+                            type="number"
+                            min={0}
+                            className="form-input"
+                            style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', color: '#0f172a', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                            value={propertyForm.rates[rp] || ''}
+                            onChange={e => setPropertyForm({ ...propertyForm, rates: { ...propertyForm.rates, [rp]: e.target.value === '' ? '' : Number(e.target.value) } })}
+                          />
+                        </div>
+                      ))}
                     </div>
+                    {PREDEFINED_RATE_PLANS.filter(p => !selectedRatePlans.includes(p)).length > 0 && (
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <select 
+                          className="form-select"
+                          style={{ width: '200px', height: '40px', padding: '0.5rem', borderRadius: '8px', border: '1px solid #cbd5e1', color: '#475569', fontSize: '0.85rem' }}
+                          value=""
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              setSelectedRatePlans([...selectedRatePlans, e.target.value]);
+                            }
+                          }}
+                        >
+                          <option value="">+ Add Rate Plan</option>
+                          {PREDEFINED_RATE_PLANS.filter(p => !selectedRatePlans.includes(p)).map(p => (
+                            <option key={p} value={p}>{p}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Property Phone Number</label>
@@ -762,49 +863,9 @@ export default function OnboardingWizard() {
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Create Rooms</h2>
                 <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '2rem' }}>Define each room in your property, including type and individual pricing.</p>
 
-                {/* Generator Mode Switcher */}
-                <div style={{ display: 'flex', gap: '1rem', background: '#f1f5f9', padding: '0.35rem', borderRadius: '10px', marginBottom: '1.75rem', border: '1px solid #334155' }}>
-                  <button
-                    type="button"
-                    onClick={generateRooms}
-                    style={{
-                      flex: 1,
-                      padding: '0.6rem',
-                      border: 'none',
-                      borderRadius: '8px',
-                      background: roomMode === 'auto' ? '#10b981' : 'transparent',
-                      color: roomMode === 'auto' ? 'white' : '#94a3b8',
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    ⚡ Auto Generate (Reset to {propertyForm.number_of_rooms} rooms)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRoomMode('manual')}
-                    style={{
-                      flex: 1,
-                      padding: '0.6rem',
-                      border: 'none',
-                      borderRadius: '8px',
-                      background: roomMode === 'manual' ? '#10b981' : 'transparent',
-                      color: roomMode === 'manual' ? 'white' : '#94a3b8',
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    ✍️ Manual / Edit Mode
-                  </button>
-                </div>
-
                 <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                   {rooms.map((room, index) => (
-                    <div key={room.id} style={{ display: 'grid', gridTemplateColumns: '2fr 3fr 1fr 1fr 1fr 40px', gap: '1rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.05)', marginBottom: '1rem', alignItems: 'end' }}>
+                    <div key={room.id} style={{ display: 'grid', gridTemplateColumns: `2fr 3fr 1fr ${selectedRatePlans.map(()=>'1fr').join(' ')} 40px`, gap: '1rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.05)', marginBottom: '1rem', alignItems: 'end', overflowX: 'auto' }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Room Name</label>
                         <input
@@ -832,32 +893,24 @@ export default function OnboardingWizard() {
                         <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Capacity</label>
                         <input
                           type="number"
-                          disabled
                           className="form-input"
-                          style={{ background: '#e2e8f0', border: '1px solid #cbd5e1', color: '#64748b', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                          style={{ background: '#fff', border: '1px solid #cbd5e1', color: '#0f172a', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.capacity}
+                          onChange={e => updateRoom(room.id, 'capacity', Number(e.target.value))}
                         />
                       </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Weekday (₹)</label>
-                        <input
-                          type="number"
-                          disabled
-                          className="form-input"
-                          style={{ background: '#e2e8f0', border: '1px solid #cbd5e1', color: '#64748b', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
-                          value={room.weekday_price}
-                        />
-                      </div>
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Weekend (₹)</label>
-                        <input
-                          type="number"
-                          disabled
-                          className="form-input"
-                          style={{ background: '#e2e8f0', border: '1px solid #cbd5e1', color: '#64748b', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
-                          value={room.weekend_price}
-                        />
-                      </div>
+                      {selectedRatePlans.map(rp => (
+                        <div className="form-group" key={rp} style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{rp} (₹)</label>
+                          <input
+                            type="number"
+                            className="form-input"
+                            style={{ background: '#fff', border: '1px solid #cbd5e1', color: '#0f172a', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                            value={room.rates?.[rp] || ''}
+                            onChange={e => updateRoom(room.id, null, Number(e.target.value), rp)}
+                          />
+                        </div>
+                      ))}
                       <button 
                         onClick={() => removeRoom(room.id)}
                         style={{ height: '40px', background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -867,33 +920,6 @@ export default function OnboardingWizard() {
                     </div>
                   ))}
                 </div>
-                
-                {roomMode === 'manual' && (
-                  <button
-                    type="button"
-                    onClick={addManualRoom}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.5rem',
-                      background: 'rgba(16, 185, 129, 0.1)',
-                      border: '1px dashed #10b981',
-                      padding: '0.75rem 1.5rem',
-                      borderRadius: '10px',
-                      color: '#10b981',
-                      cursor: 'pointer',
-                      fontWeight: 600,
-                      fontSize: '0.9rem',
-                      marginTop: '1rem',
-                      width: '100%',
-                      justifyContent: 'center',
-                      transition: 'all 0.2s'
-                    }}
-                  >
-                    <Plus size={16} /> Add Room Manually
-                  </button>
-                )}
-
               </div>
             )}
 

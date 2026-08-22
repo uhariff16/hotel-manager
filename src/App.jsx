@@ -24,6 +24,8 @@ const Auth = React.lazy(() => import('./pages/Auth'));
 const Home = React.lazy(() => import('./pages/Home'));
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
+const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'));
+
 function App() {
   const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setOnboardingWizardEnabled, setIsDataLoaded } = useSettingsStore();
 
@@ -212,6 +214,8 @@ function App() {
             <Route path="investment-analysis" element={<InvestmentAnalysis />} />
             <Route path="settings" element={<Settings />} />
           </Route>
+
+          <Route path="/wizard" element={session ? <OnboardingWizard /> : <Navigate to="/auth" replace />} />
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -29,7 +29,7 @@ export default function SuperAdmin() {
       enabled: true,
       price: 0,
       maxResorts: 1,
-      maxRooms: 5,
+      maxRooms: 4,
       maxStaff: 1,
       color: '#a0aec0',
       reports: { summary: false, bookings: true, guests: false, finance: true, exportExcel: false, exportPdf: false },

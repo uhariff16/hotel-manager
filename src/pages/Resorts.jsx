@@ -47,6 +47,11 @@ export default function Resorts() {
     
     setLoading(true);
     try {
+      const isDuplicate = resorts.some(r => r.name.toLowerCase().trim() === resortForm.name.toLowerCase().trim() && r.id !== editingResortId);
+      if (isDuplicate) {
+        throw new Error("A tenant/entity with this name already exists.");
+      }
+
       if (editingResortId) {
         const { data, error } = await supabase.from('resorts').update(resortForm).eq('id', editingResortId).select();
         if (error) throw error;
@@ -228,7 +233,20 @@ export default function Resorts() {
                 <div style={{ color: 'var(--primary)', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '0.2rem' }}>
                   Owner: {resort.owner_name || 'Not set'}
                 </div>
-                <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>ID: {resort.id}</span>
+                <div style={{ marginTop: '0.5rem' }}>
+                  <span style={{ 
+                    fontSize: '0.75rem', 
+                    color: 'var(--text-main)', 
+                    background: 'var(--bg-color)', 
+                    padding: '0.2rem 0.5rem', 
+                    borderRadius: '4px', 
+                    border: '1px solid var(--border)',
+                    fontFamily: 'monospace',
+                    fontWeight: 600
+                  }}>
+                    Tenant ID: {resort.id.substring(0, 8).toUpperCase()}
+                  </span>
+                </div>
               </div>
               {activeResortId === resort.id && (
                 <div style={{ 

@@ -179,12 +179,20 @@ export default function BookingForm() {
         roomsQuery = roomsQuery.eq('cottage_id', profile.cottage_id);
       }
 
-      const [cts, rms] = await Promise.all([
+      const [cts, rms, plansRes, ratesRes, propRatesRes] = await Promise.all([
         cottagesQuery,
-        roomsQuery
+        roomsQuery,
+        supabase.from('rate_plans').select('*').eq('resort_id', activeResortId),
+        supabase.from('category_rates').select('*, rate_plans!inner(resort_id)').eq('rate_plans.resort_id', activeResortId),
+        supabase.from('property_rates').select('*, rate_plans!inner(resort_id)').eq('rate_plans.resort_id', activeResortId)
       ]);
       setCottages(cts.data || []);
       setRooms(rms.data || []);
+      
+      // Store globally for calculateBasePrice
+      window.__bookingRatePlans = plansRes.data || [];
+      window.__bookingCategoryRates = ratesRes.data || [];
+      window.__bookingPropertyRates = propRatesRes.data || [];
 
       // If restricted staff, prefill the cottage_id
       if (profile?.role === 'staff' && profile?.cottage_id && !id) {
@@ -405,10 +413,45 @@ export default function BookingForm() {
     }
 
     let base = 0;
+    const ratePlans = window.__bookingRatePlans || [];
+    const catRates = window.__bookingCategoryRates || [];
+    const propRates = window.__bookingPropertyRates || [];
+    
+    // Find Weekday and Weekend Rate Plans (fallback to null if not found)
+    const weekdayPlan = ratePlans.find(rp => rp.name.toLowerCase() === 'weekday');
+    const weekendPlan = ratePlans.find(rp => rp.name.toLowerCase() === 'weekend');
+
     days.forEach(d => {
       let daily = 0;
+      const isWknd = isWeekend(d);
+      
       itemPricingArray.forEach(item => {
-        if (isWeekend(d)) daily += Number(item.weekend_price || 0);
+        const planToUse = isWknd ? weekendPlan : weekdayPlan;
+
+        // If it's an Entire Property booking
+        if (booking_type === 'Entire Property' && (weekdayPlan || weekendPlan)) {
+          if (planToUse) {
+            const propRateRecord = propRates.find(r => r.cottage_id === item.id && r.rate_plan_id === planToUse.id);
+            if (propRateRecord) {
+              daily += Number(propRateRecord.price || 0);
+              return;
+            }
+          }
+        }
+
+        // If it's a room with a category_id, use Rate Plans
+        if (booking_type === 'Room' && item.category_id && (weekdayPlan || weekendPlan)) {
+          if (planToUse) {
+            const rateRecord = catRates.find(r => r.category_id === item.category_id && r.rate_plan_id === planToUse.id);
+            if (rateRecord) {
+              daily += Number(rateRecord.price || 0);
+              return;
+            }
+          }
+        }
+        
+        // Fallback to legacy pricing (or Cottage pricing which hasn't been migrated yet)
+        if (isWknd) daily += Number(item.weekend_price || 0);
         else daily += Number(item.weekday_price || 0);
       });
       base += daily;
