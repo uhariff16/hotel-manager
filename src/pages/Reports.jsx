@@ -661,7 +661,7 @@ export default function Reports() {
                       fontWeight: 700, 
                       borderRadius: '6px',
                       border: currentMonthIdx === i ? '1px solid var(--primary)' : '1px solid var(--border)',
-                      background: currentMonthIdx === i ? 'var(--primary)' : 'white',
+                      background: currentMonthIdx === i ? 'var(--primary)' : 'var(--bg-secondary)',
                       color: currentMonthIdx === i ? 'white' : 'var(--text-main)',
                       cursor: 'pointer',
                       transition: 'all 0.2s'
