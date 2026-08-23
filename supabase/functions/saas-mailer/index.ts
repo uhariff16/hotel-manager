@@ -92,6 +92,13 @@ serve(async (req) => {
         html: `<h1>New Customer Signed Up!</h1><p>Email: ${tenantEmail}</p><p>Name: ${tenantData.full_name || 'N/A'}</p>`
       });
 
+      // Welcome email has been moved to the 'tenant_welcome' type
+    }
+    // 1.5 Tenant Welcome (Fired from frontend after verification)
+    else if (type === "tenant_welcome") {
+      const tenantData = record || event_data;
+      const tenantEmail = tenantData.email;
+
       if (tenantEmail) {
         const { html, subject } = renderTemplate('welcome', 
           `<h1>Welcome to StayPilot!</h1>\n<p>Hi {{tenant_name}},</p>\n<p>Thank you for choosing StayPilot to manage your property! We are thrilled to have you onboard.</p>`,

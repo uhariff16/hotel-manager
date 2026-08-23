@@ -47,6 +47,18 @@ export default function OnboardingWizard() {
   const [rooms, setRooms] = useState([]);
 
   useEffect(() => {
+    // Send welcome email on first visit to wizard
+    const welcomeKey = `staypilot_welcome_sent_${session?.user?.id}`;
+    if (session?.user?.id && profile && !localStorage.getItem(welcomeKey)) {
+      localStorage.setItem(welcomeKey, 'true');
+      supabase.functions.invoke('saas-mailer', {
+        body: { 
+          type: 'tenant_welcome', 
+          event_data: { email: session.user.email, full_name: profile?.full_name } 
+        }
+      }).catch(console.error);
+    }
+    
     setStep(1);
     if (resorts && resorts.length > 0 && !isNewProperty) {
       supabase.from('cottages')
