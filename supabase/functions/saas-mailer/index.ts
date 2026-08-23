@@ -76,8 +76,12 @@ serve(async (req) => {
       return { html, subject };
     };
 
-    // 1. New Tenant Registration
+    // 1. New Tenant Registration (Fired by DB Trigger - Now Ignored)
     if (type === "new_tenant_alert") {
+      console.log("Ignored instant trigger. Waiting for email confirmation.");
+    }
+    // 1.5 Tenant Welcome (Fired from frontend after verification)
+    else if (type === "tenant_welcome") {
       const tenantData = record || event_data;
       let tenantEmail = tenantData.email;
       
@@ -88,16 +92,9 @@ serve(async (req) => {
 
       emailsToSend.push({
         to: superAdminEmail,
-        subject: `New Customer Registration: ${tenantEmail}`,
-        html: `<h1>New Customer Signed Up!</h1><p>Email: ${tenantEmail}</p><p>Name: ${tenantData.full_name || 'N/A'}</p>`
+        subject: `New Customer Registration: ${tenantEmail || 'Unknown Email'}`,
+        html: `<h1>New Customer Signed Up!</h1><p>Email: ${tenantEmail || 'Unknown'}</p><p>Name: ${tenantData.full_name || 'N/A'}</p>`
       });
-
-      // Welcome email has been moved to the 'tenant_welcome' type
-    }
-    // 1.5 Tenant Welcome (Fired from frontend after verification)
-    else if (type === "tenant_welcome") {
-      const tenantData = record || event_data;
-      const tenantEmail = tenantData.email;
 
       if (tenantEmail) {
         const { html, subject } = renderTemplate('welcome', 

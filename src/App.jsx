@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { useSettingsStore } from './lib/store';
 import AppLayout from './layouts/AppLayout';
-import { Toaster } from 'react-hot-toast';
+import toast, { Toaster } from 'react-hot-toast';
 
 // Mock empty pages for now
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -53,6 +53,10 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
+    if (window.location.hash.includes('type=signup') || window.location.hash.includes('type=invite')) {
+      toast.success('Email successfully verified! Welcome aboard.', { duration: 6000 });
+    }
+
     // Auth Listener
     setIsDataLoaded(false);
     supabase.auth.getSession().then(({ data: { session } }) => {
