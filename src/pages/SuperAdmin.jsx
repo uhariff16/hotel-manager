@@ -311,7 +311,7 @@ export default function SuperAdmin() {
     try {
       const [{ data: u }, { data: r }, { data: b }, { data: inc }] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
-        supabase.from('resorts').select('id, tenant_id, name'),
+        supabase.from('resorts').select('id, tenant_id, name, email, phone'),
         supabase.from('bookings').select('id, tenant_id'),
         supabase.from('incomes').select('amount')
       ]);
@@ -328,6 +328,8 @@ export default function SuperAdmin() {
         return {
           ...user,
           ownerName: owner ? owner.full_name : 'Self',
+          email: user.email || (tenantResorts[0] && tenantResorts[0].email) || '',
+          phone: user.phone || (tenantResorts[0] && tenantResorts[0].phone) || '',
           propertyCount: resortNamesList.length,
           propertyNames: resortNamesList,
           bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length
