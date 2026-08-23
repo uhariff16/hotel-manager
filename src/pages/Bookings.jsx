@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, Mail, CheckSquare, Square } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, MessageCircle, Mail, CheckSquare, Square } from 'lucide-react';
 import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
@@ -87,6 +87,28 @@ Thank you again, and we look forward to welcoming you back soon!
 
 📞 Contact: {resort_phone}`;
 
+const WHATSAPP_TEMPLATES = {
+  confirmation: `Hi {guest_name}, your booking at {resort_name} is confirmed! 
+Ref: {reference_number}
+Dates: {check_in_date} to {check_out_date} ({night_count} nights)
+Total: ₹{total_amount}
+Advance: ₹{advance_paid}
+Balance: ₹{balance_amount}
+
+Looking forward to hosting you!`,
+
+  checkin_reminder: `Hi {guest_name}, we are excited to host you today at {resort_name}!
+Check-in is at 1:00 PM. 
+Please let us know your estimated time of arrival.
+Safe travels!`,
+
+  payment_reminder: `Hi {guest_name}, this is a gentle reminder regarding the pending balance of ₹{balance_amount} for your booking {reference_number} at {resort_name}. 
+Please let us know if you need any assistance with the payment.`,
+
+  thank_you: `Hi {guest_name}, thank you for staying at {resort_name}! We hope you had a wonderful time. 
+We'd love it if you could leave us a review. Have a safe journey back!`
+};
+
 export default function Bookings() {
   const navigate = useNavigate();
   const { activeResortId, profile } = useSettingsStore();
@@ -96,6 +118,8 @@ export default function Bookings() {
   const [activeResort, setActiveResort] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  
+  const [whatsappDropdownId, setWhatsappDropdownId] = useState(null);
 
   const [selectedBookings, setSelectedBookings] = useState([]);
   const [sortConfig, setSortConfig] = useState({ key: 'priority', direction: 'ascending' });
@@ -332,6 +356,32 @@ export default function Bookings() {
     }
 
     return compiled;
+  };
+
+  // Click outside to close WhatsApp dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (whatsappDropdownId && !e.target.closest('.whatsapp-dropdown-container')) {
+        setWhatsappDropdownId(null);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [whatsappDropdownId]);
+
+  const handleSendWhatsapp = (booking, templateKey) => {
+    const message = compileWhatsAppTemplate(WHATSAPP_TEMPLATES[templateKey], booking);
+
+    // Remove any non-numeric characters from phone number except leading +
+    let cleanPhone = (booking.phone_number || '').replace(/[^\d+]/g, '');
+    if (!cleanPhone.startsWith('+')) {
+       if (cleanPhone.length === 10) cleanPhone = '+91' + cleanPhone;
+    }
+    cleanPhone = cleanPhone.replace('+', '');
+
+    const url = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
+    window.open(url, '_blank');
+    setWhatsappDropdownId(null);
   };
 
   const getStatusCount = (status) => {
@@ -827,6 +877,24 @@ export default function Bookings() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.25rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                             <Phone size={14} /> {b.phone_number}
+                            <div className="whatsapp-dropdown-container" style={{ position: 'relative' }}>
+                               <button 
+                                 className="btn-icon" 
+                                 style={{ color: '#25D366', padding: '2px', background: 'rgba(37, 211, 102, 0.1)', marginLeft: '4px' }}
+                                 onClick={(e) => { e.stopPropagation(); setWhatsappDropdownId(whatsappDropdownId === b.id ? null : b.id); }}
+                                 title="Send WhatsApp"
+                               >
+                                 <MessageCircle size={14} />
+                               </button>
+                               {whatsappDropdownId === b.id && (
+                                 <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 100, minWidth: '180px', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'confirmation'); }}>Booking Confirmation</button>
+                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'checkin_reminder'); }}>Check-in Reminder</button>
+                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'payment_reminder'); }}>Payment Reminder</button>
+                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'thank_you'); }}>Thank You / Review</button>
+                                 </div>
+                               )}
+                            </div>
                         </div>
                       </div>
                     </div>
@@ -950,7 +1018,27 @@ export default function Bookings() {
                       <td>
                         <small style={{ color: 'var(--primary)', fontWeight: 800 }}>{b.reference_number}</small>
                         <div style={{ fontWeight: 700, fontSize: '1rem' }}>{b.guest_name}</div>
-                        <small style={{ color: 'var(--text-muted)' }}><Phone size={12} style={{ verticalAlign: 'middle' }} /> {b.phone_number}</small>
+                        <small style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <Phone size={12} /> {b.phone_number}
+                          <div className="whatsapp-dropdown-container" style={{ position: 'relative', display: 'inline-block' }}>
+                             <button 
+                               className="btn-icon" 
+                               style={{ color: '#25D366', padding: '2px', background: 'rgba(37, 211, 102, 0.1)' }}
+                               onClick={(e) => { e.stopPropagation(); setWhatsappDropdownId(whatsappDropdownId === b.id ? null : b.id); }}
+                               title="Send WhatsApp"
+                             >
+                               <MessageCircle size={12} />
+                             </button>
+                             {whatsappDropdownId === b.id && (
+                               <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 100, minWidth: '180px', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'confirmation'); }}>Booking Confirmation</button>
+                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'checkin_reminder'); }}>Check-in Reminder</button>
+                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'payment_reminder'); }}>Payment Reminder</button>
+                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'thank_you'); }}>Thank You / Review</button>
+                               </div>
+                             )}
+                          </div>
+                        </small>
                       </td>
                       <td>
                         <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
