@@ -29,6 +29,7 @@ const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'
 
 function App() {
   const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setOnboardingWizardEnabled, setIsDataLoaded } = useSettingsStore();
+  const [isNewlyVerified, setIsNewlyVerified] = React.useState(false);
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -53,8 +54,8 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    if (window.location.hash.includes('type=signup') || window.location.hash.includes('type=invite')) {
-      toast.success('Email successfully verified! Welcome aboard.', { duration: 6000 });
+    if (window.location.href.includes('type=signup') || window.location.href.includes('type=invite')) {
+      setIsNewlyVerified(true);
     }
 
     // Auth Listener
@@ -158,6 +159,26 @@ function App() {
     
     setIsDataLoaded(true);
   };
+
+  if (isNewlyVerified) {
+    return (
+      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+        <div style={{ background: 'white', padding: '3rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
+          <div style={{ background: '#10b981', color: 'white', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          </div>
+          <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>Email Verified!</h1>
+          <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '1.1rem' }}>Your email has been successfully confirmed.</p>
+          <button 
+            onClick={() => setIsNewlyVerified(false)}
+            style={{ background: '#0F2C59', color: 'white', padding: '0.75rem 2rem', borderRadius: '0.5rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '1rem', width: '100%' }}
+          >
+            Continue to Setup
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (session && profile?.subscription_status === 'suspended') {
     return (
