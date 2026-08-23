@@ -87,27 +87,15 @@ Thank you again, and we look forward to welcoming you back soon!
 
 📞 Contact: {resort_phone}`;
 
-const WHATSAPP_TEMPLATES = {
-  confirmation: `Hi {guest_name}, your booking at {resort_name} is confirmed! 
-Ref: {reference_number}
-Dates: {check_in_date} to {check_out_date} ({night_count} nights)
-Total: ₹{total_amount}
-Advance: ₹{advance_paid}
-Balance: ₹{balance_amount}
+const DEFAULT_PAYMENT_REMINDER_TEMPLATE = `Dear {guest_name},
 
-Looking forward to hosting you!`,
+This is a gentle reminder regarding the pending balance for your booking {reference_number} at {resort_name}.
+Total Amount: ₹{total_amount}
+Advance Paid: ₹{advance_paid}
+Balance Due: ₹{balance_amount}
 
-  checkin_reminder: `Hi {guest_name}, we are excited to host you today at {resort_name}!
-Check-in is at 1:00 PM. 
-Please let us know your estimated time of arrival.
-Safe travels!`,
-
-  payment_reminder: `Hi {guest_name}, this is a gentle reminder regarding the pending balance of ₹{balance_amount} for your booking {reference_number} at {resort_name}. 
-Please let us know if you need any assistance with the payment.`,
-
-  thank_you: `Hi {guest_name}, thank you for staying at {resort_name}! We hope you had a wonderful time. 
-We'd love it if you could leave us a review. Have a safe journey back!`
-};
+Please let us know if you need any assistance with the payment.
+Thank you!`;
 
 export default function Bookings() {
   const navigate = useNavigate();
@@ -152,7 +140,8 @@ export default function Bookings() {
     confirm: DEFAULT_CONFIRM_TEMPLATE,
     receipt: DEFAULT_RECEIPT_TEMPLATE,
     reminder: DEFAULT_REMINDER_TEMPLATE,
-    review: DEFAULT_REVIEW_TEMPLATE
+    review: DEFAULT_REVIEW_TEMPLATE,
+    payment_reminder: DEFAULT_PAYMENT_REMINDER_TEMPLATE
   });
   const [customTags, setCustomTags] = useState([]);
   const [globalCommEnabled, setGlobalCommEnabled] = useState(true);
@@ -203,7 +192,8 @@ export default function Bookings() {
         confirm: dbConfirm || DEFAULT_CONFIRM_TEMPLATE,
         receipt: dbReceipt || DEFAULT_RECEIPT_TEMPLATE,
         reminder: dbReminder || DEFAULT_REMINDER_TEMPLATE,
-        review: dbReview || DEFAULT_REVIEW_TEMPLATE
+        review: dbReview || DEFAULT_REVIEW_TEMPLATE,
+        payment_reminder: DEFAULT_PAYMENT_REMINDER_TEMPLATE
       });
 
       if (dbCustomTags) {
@@ -370,7 +360,7 @@ export default function Bookings() {
   }, [whatsappDropdownId]);
 
   const handleSendWhatsapp = (booking, templateKey) => {
-    const message = compileWhatsAppTemplate(WHATSAPP_TEMPLATES[templateKey], booking);
+    const message = compileWhatsAppTemplate(whatsappTemplates[templateKey], booking);
 
     // Remove any non-numeric characters from phone number except leading +
     let cleanPhone = (booking.phone_number || '').replace(/[^\d+]/g, '');
@@ -887,10 +877,11 @@ export default function Bookings() {
                                </button>
                                {whatsappDropdownId === b.id && (
                                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 100, minWidth: '180px', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'confirmation'); }}>Booking Confirmation</button>
-                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'checkin_reminder'); }}>Check-in Reminder</button>
+                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'confirm'); }}>Booking Confirmation</button>
+                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'receipt'); }}>Payment Receipt</button>
+                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'reminder'); }}>Check-in Reminder</button>
+                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'review'); }}>Thank You / Review</button>
                                     <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'payment_reminder'); }}>Payment Reminder</button>
-                                    <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'thank_you'); }}>Thank You / Review</button>
                                  </div>
                                )}
                             </div>
@@ -1029,10 +1020,11 @@ export default function Bookings() {
                              </button>
                              {whatsappDropdownId === b.id && (
                                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 100, minWidth: '180px', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'confirmation'); }}>Booking Confirmation</button>
-                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'checkin_reminder'); }}>Check-in Reminder</button>
+                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'confirm'); }}>Booking Confirmation</button>
+                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'receipt'); }}>Payment Receipt</button>
+                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'reminder'); }}>Check-in Reminder</button>
+                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'review'); }}>Thank You / Review</button>
                                   <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'payment_reminder'); }}>Payment Reminder</button>
-                                  <button className="btn btn-outline" style={{ border: 'none', justifyContent: 'flex-start', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} onClick={(e) => { e.stopPropagation(); handleSendWhatsapp(b, 'thank_you'); }}>Thank You / Review</button>
                                </div>
                              )}
                           </div>
@@ -1437,6 +1429,22 @@ export default function Bookings() {
                   style={{ borderColor: '#8b5cf6', color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
                 >
                   <MessageSquare size={16} /> WhatsApp Review
+                </button>
+
+                <button 
+                  onClick={() => {
+                    const text = compileWhatsAppTemplate(whatsappTemplates.payment_reminder, selectedDetailedBooking);
+                    setWhatsappGenerator({
+                      open: true,
+                      templateType: 'payment_reminder',
+                      messageText: text,
+                      paymentAmount: ''
+                    });
+                  }} 
+                  className="btn btn-outline" 
+                  style={{ borderColor: '#ef4444', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                >
+                  <MessageSquare size={16} /> WhatsApp Payment Reminder
                 </button>
               </div>
 
