@@ -879,12 +879,11 @@ export default function Bookings() {
                             <Phone size={14} /> {b.phone_number}
                             <div className="whatsapp-dropdown-container" style={{ position: 'relative' }}>
                                <button 
-                                 className="btn-icon" 
-                                 style={{ color: '#25D366', padding: '2px', background: 'rgba(37, 211, 102, 0.1)', marginLeft: '4px' }}
+                                 style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', padding: '3px 10px', background: '#25D366', marginLeft: '8px', border: 'none', borderRadius: '12px', cursor: 'pointer', gap: '4px', fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)' }}
                                  onClick={(e) => { e.stopPropagation(); setWhatsappDropdownId(whatsappDropdownId === b.id ? null : b.id); }}
                                  title="Send WhatsApp"
                                >
-                                 <MessageCircle size={14} />
+                                 <MessageCircle size={14} /> WhatsApp
                                </button>
                                {whatsappDropdownId === b.id && (
                                  <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 100, minWidth: '180px', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -1022,12 +1021,11 @@ export default function Bookings() {
                           <Phone size={12} /> {b.phone_number}
                           <div className="whatsapp-dropdown-container" style={{ position: 'relative', display: 'inline-block' }}>
                              <button 
-                               className="btn-icon" 
-                               style={{ color: '#25D366', padding: '2px', background: 'rgba(37, 211, 102, 0.1)' }}
+                               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', padding: '3px 10px', background: '#25D366', marginLeft: '8px', border: 'none', borderRadius: '12px', cursor: 'pointer', gap: '4px', fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)' }}
                                onClick={(e) => { e.stopPropagation(); setWhatsappDropdownId(whatsappDropdownId === b.id ? null : b.id); }}
                                title="Send WhatsApp"
                              >
-                               <MessageCircle size={12} />
+                               <MessageCircle size={14} /> WhatsApp
                              </button>
                              {whatsappDropdownId === b.id && (
                                <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', boxShadow: 'var(--shadow-lg)', zIndex: 100, minWidth: '180px', padding: '0.5rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
