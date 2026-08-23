@@ -625,24 +625,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
     };
   }, [bookings, cottages, rooms]);
 
-  const handleExport = () => {
-    const exportData = bookings.map(b => ({
-      'Guest Name': b.guest_name,
-      'Phone': b.phone_number,
-      'Check-in': b.check_in_date,
-      'Check-out': b.check_out_date,
-      'Reference': b.reference_number,
-      'Status': b.status,
-      'Total Amount': b.total_amount,
-      'Type': b.booking_type,
-      'Property': cottages.find(c => c.id === b.cottage_id)?.name || 'N/A'
-    }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Bookings');
-    XLSX.writeFile(wb, `Bookings_Calendar_Export_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-  };
 
   if (loading) return <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '80vh', gap: '1rem', color: 'var(--text-muted)' }}><Clock className="animate-spin" /> Loading Availability...</div>;
 
@@ -724,10 +707,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
         {/* CONTROL BAR */}
         <div style={{ padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
-             <button className="btn btn-outline" onClick={handleExport} style={{ height: '38px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flex: isMobile ? '1' : 'none', justifyContent: 'center' }}>
-                <Globe size={16} /> <span className={isMobile ? "desktop-only" : ""}>Export</span>
-             </button>
-             
+
              <button 
                 className="btn btn-outline" 
                 onClick={() => setIsFullScreen(!isFullScreen)} 
