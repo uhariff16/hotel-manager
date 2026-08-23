@@ -107,10 +107,16 @@ export default function Auth() {
         });
         if (authError) throw authError;
 
-        alert("Signup successful! Please check your email for verification.");
+        setMessage("Signup successful! Please check your email for a verification link before signing in.");
+        setIsLogin(true);
+        setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
       }
     } catch (err) {
-      setError(err.message);
+      if (err.message === 'Email not confirmed') {
+        setError('Please verify your email address before signing in.');
+      } else {
+        setError(err.message);
+      }
     } finally {
       setLoading(false);
     }
