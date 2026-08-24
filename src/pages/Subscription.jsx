@@ -34,18 +34,18 @@ export default function Subscription() {
   const [paymentHistory, setPaymentHistory] = useState([]);
 
   useEffect(() => {
-    if (profile?.id && profile?.plan_type !== 'free') {
+    if (profile?.id) {
        fetchSubscriptionData();
-    } else {
-       setActiveSubscription(null);
-       setPaymentHistory([]);
     }
-  }, [profile?.id, profile?.plan_type]);
+  }, [profile?.id]);
 
   const fetchSubscriptionData = async () => {
      try {
        const { data: subData } = await supabase.from('saas_subscriptions')
-         .select('*').eq('tenant_id', profile.id).eq('status', 'active').maybeSingle();
+         .select('*').eq('tenant_id', profile.id)
+         .order('created_at', { ascending: false })
+         .limit(1)
+         .maybeSingle();
        if (subData) setActiveSubscription(subData);
 
        const { data: payData } = await supabase.from('saas_payments')
@@ -279,36 +279,39 @@ export default function Subscription() {
               </button>
             </div>
           </div>
-          
-          {paymentHistory.length > 0 && (
-            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
-              <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem' }}>Recent Payments</h3>
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                  <thead>
-                    <tr style={{ borderBottom: '1px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '0.5rem 0' }}>Date</th>
-                      <th style={{ padding: '0.5rem 0' }}>Amount</th>
-                      <th style={{ padding: '0.5rem 0' }}>Status</th>
-                      <th style={{ padding: '0.5rem 0' }}>Transaction ID</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paymentHistory.slice(0,5).map(payment => (
-                      <tr key={payment.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-                        <td style={{ padding: '0.75rem 0' }}>{new Date(payment.created_at).toLocaleDateString()}</td>
-                        <td style={{ padding: '0.75rem 0' }}>₹{payment.amount / 100}</td>
-                        <td style={{ padding: '0.75rem 0' }}>
-                          <span className={`badge ${payment.status === 'captured' ? 'badge-success' : 'badge-danger'}`}>{payment.status}</span>
-                        </td>
-                        <td style={{ padding: '0.75rem 0', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{payment.razorpay_payment_id}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
+          {/* Payment History is moved out of this card */}
+        </div>
+      )}
+
+      {paymentHistory.length > 0 && (
+        <div className="card" style={{ marginBottom: '3rem', padding: '2rem', border: '1px solid var(--border)' }}>
+          <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <CreditCard size={20} /> Payment History
+          </h3>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
+                  <th style={{ padding: '0.75rem 0.5rem' }}>Date</th>
+                  <th style={{ padding: '0.75rem 0.5rem' }}>Amount</th>
+                  <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
+                  <th style={{ padding: '0.75rem 0.5rem' }}>Transaction ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentHistory.slice(0, 10).map(payment => (
+                  <tr key={payment.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '1rem 0.5rem' }}>{new Date(payment.created_at).toLocaleDateString()}</td>
+                    <td style={{ padding: '1rem 0.5rem', fontWeight: 600 }}>₹{payment.amount / 100}</td>
+                    <td style={{ padding: '1rem 0.5rem' }}>
+                      <span className={`badge ${payment.status === 'captured' ? 'badge-success' : 'badge-danger'}`}>{payment.status.toUpperCase()}</span>
+                    </td>
+                    <td style={{ padding: '1rem 0.5rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{payment.razorpay_payment_id || payment.id.split('-')[0]}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

@@ -850,3 +850,33 @@ input:checked + .slider:before {
   .desktop-nav { display: none !important; }
   .desktop-btn { display: none !important; }
 }
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .print-receipt-container, .print-receipt-container * {
+    visibility: visible;
+  }
+  .print-receipt-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+  }
+}
+
+@media print {
+  .a5-format {
+    font-size: 12px;
+  }
+  .a5-format h3 {
+    font-size: 14px !important;
+  }
+  .a5-format table th, .a5-format table td {
+    padding: 8px !important;
+  }
+}

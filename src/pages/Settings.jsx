@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2 } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText } from 'lucide-react';
 
 const DEFAULT_CONFIRM_TEMPLATE = `🏡 Booking Confirmed – {resort_name}
 
@@ -61,7 +61,7 @@ Thank you again, and we look forward to welcoming you back soon!
 📞 Contact: {resort_phone}`;
 
 export default function Settings() {
-  const { profile, setProfile, theme, toggleTheme, session, activeResortId } = useSettingsStore();
+  const { profile, setProfile, theme, toggleTheme, session, activeResortId, resorts } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -109,6 +109,17 @@ export default function Settings() {
   const [cleanupStats, setCleanupStats] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isCleaning, setIsCleaning] = useState(false);
+
+  // Invoice Settings State
+  const [cottages, setCottages] = useState([]);
+  const [selectedInvoiceCottageId, setSelectedInvoiceCottageId] = useState(null);
+  const [invoiceSettings, setInvoiceSettings] = useState({
+    format: 'A4',
+    email: '',
+    phone: '',
+    logo_url: ''
+  });
+  const [savingInvoice, setSavingInvoice] = useState(false);
 
   // Custom Tags Manager State
   const [customTags, setCustomTags] = useState([
@@ -202,6 +213,19 @@ export default function Settings() {
         setResortName(data.name || '');
         setResortPhone(data.phone || '');
       }
+      
+      // Fetch cottages
+      const { data: cottagesData } = await supabase
+        .from('cottages')
+        .select('*')
+        .eq('resort_id', activeResortId);
+      
+      if (cottagesData) {
+        setCottages(cottagesData);
+        if (cottagesData.length > 0 && !selectedInvoiceCottageId) {
+          setSelectedInvoiceCottageId(cottagesData[0].id);
+        }
+      }
     } catch (e) {
       console.error("Error fetching resort details:", e);
     }
@@ -239,6 +263,51 @@ export default function Settings() {
       }
     } catch (e) {
       console.error("Error fetching global settings:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (cottages.length > 0 && !selectedInvoiceCottageId) {
+      setSelectedInvoiceCottageId(cottages[0].id);
+    }
+  }, [cottages]);
+
+  useEffect(() => {
+    if (profile?.global_settings && selectedInvoiceCottageId) {
+      const prefs = profile.global_settings.invoice_preferences || {};
+      const currentPrefs = prefs[selectedInvoiceCottageId] || { format: 'A4', email: '', phone: '', logo_url: '' };
+      setInvoiceSettings(currentPrefs);
+    }
+  }, [profile?.global_settings, selectedInvoiceCottageId]);
+
+  const saveInvoiceSettings = async (e) => {
+    e.preventDefault();
+    setSavingInvoice(true);
+    try {
+      const globalSettings = profile?.global_settings || {};
+      const invoicePrefs = globalSettings.invoice_preferences || {};
+      
+      const newGlobalSettings = {
+        ...globalSettings,
+        invoice_preferences: {
+          ...invoicePrefs,
+          [selectedInvoiceCottageId]: invoiceSettings
+        }
+      };
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({ global_settings: newGlobalSettings })
+        .eq('id', session.user.id)
+        .select();
+
+      if (error) throw error;
+      setProfile(data[0]);
+      alert("Invoice settings saved successfully!");
+    } catch (e) {
+      alert("Error saving invoice settings: " + e.message);
+    } finally {
+      setSavingInvoice(false);
     }
   };
 
@@ -562,6 +631,31 @@ export default function Settings() {
               }}
             >
               <Database size={18} /> Data Manager
+            </button>
+          )}
+
+          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+            <button 
+              type="button"
+              onClick={() => setActiveTab('invoice')}
+              style={{ 
+                padding: '0.75rem 1rem', 
+                background: activeTab === 'invoice' ? 'var(--primary)' : 'transparent', 
+                color: activeTab === 'invoice' ? 'white' : 'var(--text-muted)', 
+                borderRadius: '8px', 
+                cursor: 'pointer', 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: '0.75rem',
+                border: 'none',
+                textAlign: 'left',
+                width: '100%',
+                fontSize: '0.95rem',
+                fontWeight: 500,
+                transition: 'all 0.2s'
+              }}
+            >
+              <FileText size={18} /> Invoice Details
             </button>
           )}
         </aside>
@@ -1164,6 +1258,132 @@ export default function Settings() {
                   )}
                 </div>
               )}
+            </>
+          )}
+          {activeTab === 'invoice' && (
+            <>
+              <div style={{ marginBottom: '1rem' }}>
+                <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>Invoice Details</h1>
+                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Manage specific contact details and layout settings for printable receipts.</p>
+              </div>
+
+              <div className="card">
+                <div style={{ marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Select Property (Cottage) for Invoice Settings</label>
+                  <select 
+                    className="form-input" 
+                    value={selectedInvoiceCottageId || ''} 
+                    onChange={e => setSelectedInvoiceCottageId(e.target.value)}
+                  >
+                    {cottages.map(c => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
+                  <FileText size={24} color="var(--primary)" /> Receipt Settings for {cottages.find(c => c.id === selectedInvoiceCottageId)?.name || 'Property'}
+                </h2>
+                <form onSubmit={saveInvoiceSettings}>
+                  <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Invoice Format</label>
+                    <div style={{ display: 'flex', gap: '1.5rem', marginTop: '0.5rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input 
+                          type="radio" 
+                          name="invoiceFormat" 
+                          value="A4" 
+                          checked={invoiceSettings.format === 'A4'}
+                          onChange={() => setInvoiceSettings({ ...invoiceSettings, format: 'A4' })}
+                          style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--primary)' }}
+                        />
+                        <span style={{ fontSize: '0.95rem' }}>A4 (Full Page)</span>
+                      </label>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                        <input 
+                          type="radio" 
+                          name="invoiceFormat" 
+                          value="A5" 
+                          checked={invoiceSettings.format === 'A5'}
+                          onChange={() => setInvoiceSettings({ ...invoiceSettings, format: 'A5' })}
+                          style={{ width: '1.2rem', height: '1.2rem', accentColor: 'var(--primary)' }}
+                        />
+                        <span style={{ fontSize: '0.95rem' }}>A5 (Half Page)</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+                    <div className="form-group">
+                      <label className="form-label">Invoice Phone</label>
+                      <input 
+                        type="text" 
+                        className="form-input" 
+                        placeholder="e.g. +91 98765 43210"
+                        value={invoiceSettings.phone} 
+                        onChange={e => setInvoiceSettings({ ...invoiceSettings, phone: e.target.value })} 
+                      />
+                      <small style={{ color: 'var(--text-muted)' }}>If blank, falls back to property default.</small>
+                    </div>
+                    
+                    <div className="form-group">
+                      <label className="form-label">Invoice Email</label>
+                      <input 
+                        type="email" 
+                        className="form-input" 
+                        placeholder="e.g. billing@cheerfulchalet.com"
+                        value={invoiceSettings.email} 
+                        onChange={e => setInvoiceSettings({ ...invoiceSettings, email: e.target.value })} 
+                      />
+                      <small style={{ color: 'var(--text-muted)' }}>If blank, falls back to property default.</small>
+                    </div>
+                  </div>
+
+                  <div className="form-group" style={{ marginTop: '1.5rem' }}>
+                    <label className="form-label">Invoice Logo (Max 2MB)</label>
+                    <input 
+                      type="file" 
+                      accept="image/*"
+                      className="form-input" 
+                      onChange={(e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                          if (file.size > 2 * 1024 * 1024) return alert("Logo must be under 2MB");
+                          const reader = new FileReader();
+                          reader.onload = (event) => {
+                            setInvoiceSettings({...invoiceSettings, logo_url: event.target.result});
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      style={{ padding: '0.4rem' }}
+                    />
+                    <small style={{ color: 'var(--text-muted)' }}>Upload your company logo for the receipt header. If blank, falls back to property default.</small>
+                  </div>
+
+                  {invoiceSettings.logo_url && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', display: 'inline-flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
+                      <p style={{ margin: '0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>Logo Preview:</p>
+                      <img src={invoiceSettings.logo_url} alt="Invoice Logo" style={{ maxHeight: '80px', maxWidth: '200px', objectFit: 'contain' }} onError={(e) => e.target.style.display = 'none'} />
+                      <button 
+                        type="button" 
+                        className="btn btn-outline" 
+                        style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)', borderColor: 'var(--danger)' }} 
+                        onClick={() => setInvoiceSettings({...invoiceSettings, logo_url: ''})}
+                      >
+                        Clear Logo
+                      </button>
+                    </div>
+                  )}
+
+                  <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
+                    <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} disabled={savingInvoice}>
+                      {savingInvoice ? <Loader2 size={16} className="spin" /> : <Save size={16} />} 
+                      Save Invoice Settings
+                    </button>
+                  </div>
+                </form>
+              </div>
             </>
           )}
         </main>

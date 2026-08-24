@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, MessageCircle, Mail, CheckSquare, Square } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, MessageCircle, Mail, CheckSquare, Square, Printer, Share2 } from 'lucide-react';
 import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
+import BookingReceipt from '../components/BookingReceipt';
+import html2canvas from 'html2canvas';
 
 const parseAgentSource = (sourceStr) => {
   if (!sourceStr) return { isAgent: false, name: '', phone: '' };
@@ -147,6 +149,71 @@ export default function Bookings() {
     paymentAmount: '',
     paymentOption: 'property' // 'online' | 'agent' | 'property'
   });
+
+  const [isSharingInvoice, setIsSharingInvoice] = useState(false);
+
+  const handleShareInvoice = async () => {
+    if (!selectedDetailedBooking) return;
+    setIsSharingInvoice(true);
+    try {
+      const receiptEl = document.querySelector('.print-receipt-container');
+      if (!receiptEl) {
+        setIsSharingInvoice(false);
+        return;
+      }
+      
+      const oldDisplay = receiptEl.style.display;
+      const oldPosition = receiptEl.style.position;
+      const oldLeft = receiptEl.style.left;
+      const oldTop = receiptEl.style.top;
+      
+      receiptEl.style.display = 'block';
+      receiptEl.style.position = 'absolute';
+      receiptEl.style.left = '-9999px';
+      receiptEl.style.top = '-9999px';
+
+      const canvas = await html2canvas(receiptEl, { scale: 2, useCORS: true });
+      
+      receiptEl.style.display = oldDisplay;
+      receiptEl.style.position = oldPosition;
+      receiptEl.style.left = oldLeft;
+      receiptEl.style.top = oldTop;
+      
+      canvas.toBlob(async (blob) => {
+        if (!blob) {
+          setIsSharingInvoice(false);
+          return;
+        }
+        const file = new File([blob], `Receipt_${selectedDetailedBooking.reference_number}.png`, { type: 'image/png' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          try {
+            await navigator.share({
+              title: `Payment Receipt - ${selectedDetailedBooking.reference_number}`,
+              text: 'Please find attached your payment receipt.',
+              files: [file]
+            });
+          } catch (e) {
+            console.error("Share failed or cancelled", e);
+          }
+        } else {
+          // Fallback download
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = file.name;
+          a.click();
+          URL.revokeObjectURL(url);
+          alert("Receipt downloaded. You can now attach it to WhatsApp or Email manually.");
+        }
+        setIsSharingInvoice(false);
+      }, 'image/png');
+    } catch(e) {
+      console.error(e);
+      setIsSharingInvoice(false);
+      alert("Failed to generate receipt image.");
+    }
+  };
   const [whatsappTemplates, setWhatsappTemplates] = useState({
     confirm: DEFAULT_CONFIRM_TEMPLATE,
     receipt: DEFAULT_RECEIPT_TEMPLATE,
@@ -1248,7 +1315,26 @@ export default function Bookings() {
                 <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.8rem' }}>{selectedDetailedBooking.reference_number}</small>
                 <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Booking Details</h2>
               </div>
-              <button className="btn-icon" onClick={() => setSelectedDetailedBooking(null)}><X size={20} /></button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <button 
+                  className="btn-icon" 
+                  title="Share Invoice"
+                  onClick={handleShareInvoice}
+                  disabled={isSharingInvoice}
+                  style={{ background: '#3b82f6', color: 'white', padding: '0.4rem', borderRadius: '4px', opacity: isSharingInvoice ? 0.7 : 1 }}
+                >
+                  <Share2 size={20} />
+                </button>
+                <button 
+                  className="btn-icon" 
+                  title="Print Receipt"
+                  onClick={() => setTimeout(() => window.print(), 100)}
+                  style={{ background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '4px' }}
+                >
+                  <Printer size={20} />
+                </button>
+                <button className="btn-icon" onClick={() => setSelectedDetailedBooking(null)}><X size={20} /></button>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
@@ -1720,11 +1806,20 @@ export default function Bookings() {
           </div>
         </div>
       )}
+
+      {/* Hidden print receipt rendered when a booking is selected */}
+      {selectedDetailedBooking && (
+        <BookingReceipt 
+          booking={selectedDetailedBooking} 
+          resort={activeResort} 
+          cottage={cottages.find(c => c.id === selectedDetailedBooking.cottage_id)}
+        />
+      )}
     </div>
   );
 }
-
 function formatDateShort(dateStr) {
   const d = new Date(dateStr);
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 }
+ 
