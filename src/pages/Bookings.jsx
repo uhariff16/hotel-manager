@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, MessageCircle, Mail, CheckSquare, Square } from 'lucide-react';
 import { startOfMonth, format } from 'date-fns';
@@ -126,6 +127,16 @@ export default function Bookings() {
   
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
+  useEffect(() => {
+    if (isMobile && showFilters) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobile, showFilters]);
   // New States for Booking Details and WhatsApp templates
   const [selectedDetailedBooking, setSelectedDetailedBooking] = useState(null);
   const [copyStatus, setCopyStatus] = useState({ type: null, text: '' });
@@ -614,7 +625,16 @@ export default function Bookings() {
       const matchesSearch = b.guest_name.toLowerCase().includes(searchTerm.toLowerCase()) || 
                             (b.reference_number || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                             (b.phone_number || '').includes(searchTerm);
-      return matchesStatus && matchesSearch;
+      
+      let matchesFilters = true;
+      if (filters.propertyId && b.cottage_id !== filters.propertyId) matchesFilters = false;
+      if (filters.bookingType && b.booking_type !== filters.bookingType) matchesFilters = false;
+      if (filters.dateStart && new Date(b.check_in_date) < new Date(filters.dateStart)) matchesFilters = false;
+      if (filters.dateEnd && new Date(b.check_in_date) > new Date(filters.dateEnd)) matchesFilters = false;
+      if (filters.paymentStatus === 'paid' && b.balance_amount > 0) matchesFilters = false;
+      if (filters.paymentStatus === 'pending' && b.balance_amount <= 0) matchesFilters = false;
+
+      return matchesStatus && matchesSearch && matchesFilters;
     });
 
     items.sort((a, b) => {
@@ -677,6 +697,44 @@ export default function Bookings() {
     setSortConfig({ key, direction });
   };
 
+  const filterInputs = (
+    <>
+      <div className="form-group" style={{ marginBottom: isMobile ? '1rem' : '0' }}>
+        <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Check-in From</label>
+        <input type="date" className="form-input" value={filters.dateStart} onChange={e => setFilters({...filters, dateStart: e.target.value})} style={{ width: '100%' }} />
+      </div>
+      <div className="form-group" style={{ marginBottom: isMobile ? '1rem' : '0' }}>
+        <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Check-in To</label>
+        <input type="date" className="form-input" value={filters.dateEnd} onChange={e => setFilters({...filters, dateEnd: e.target.value})} style={{ width: '100%' }} />
+      </div>
+      {profile?.role !== 'staff' && (
+        <div className="form-group" style={{ marginBottom: isMobile ? '1rem' : '0' }}>
+          <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Property</label>
+          <select className="form-select" value={filters.propertyId} onChange={e => setFilters({...filters, propertyId: e.target.value})} style={{ width: '100%' }}>
+            <option value="">All Properties</option>
+            {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+        </div>
+      )}
+      <div className="form-group" style={{ marginBottom: isMobile ? '1rem' : '0' }}>
+        <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Booking Type</label>
+        <select className="form-select" value={filters.bookingType} onChange={e => setFilters({...filters, bookingType: e.target.value})} style={{ width: '100%' }}>
+          <option value="">All Types</option>
+          <option value="Rooms">Rooms</option>
+          <option value="Entire Property">Entire Property</option>
+        </select>
+      </div>
+      <div className="form-group" style={{ marginBottom: isMobile ? '1rem' : '0' }}>
+        <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Payment Status</label>
+        <select className="form-select" value={filters.paymentStatus} onChange={e => setFilters({...filters, paymentStatus: e.target.value})} style={{ width: '100%' }}>
+          <option value="">All Statuses</option>
+          <option value="Fully Paid">Fully Paid</option>
+          <option value="Pending Payment">Pending Payment</option>
+        </select>
+      </div>
+    </>
+  );
+
   if (loading) return <div style={{ padding: '2rem' }}>Loading Bookings...</div>;
 
   return (
@@ -725,18 +783,18 @@ export default function Bookings() {
           )}
 
           {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
-            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-              <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                <small style={{ display: 'block', color: 'var(--success)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Paid</small>
-                <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalPaid.toLocaleString()}</span>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: isMobile ? '0.25rem' : '1rem', width: isMobile ? '100%' : 'auto', marginTop: isMobile ? '0.5rem' : '0' }}>
+              <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: isMobile ? '0.5rem' : '0.5rem 1rem', borderRadius: isMobile ? '8px' : '12px', border: '1px solid rgba(16, 185, 129, 0.2)', textAlign: 'center' }}>
+                <small style={{ display: 'block', color: 'var(--success)', fontSize: isMobile ? '0.55rem' : '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Paid</small>
+                <span style={{ fontWeight: 800, fontSize: isMobile ? '0.85rem' : '1rem' }}>₹{bookingStats.totalPaid.toLocaleString()}</span>
               </div>
-              <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
-                <small style={{ display: 'block', color: 'var(--warning)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Balance</small>
-                <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalBalance.toLocaleString()}</span>
+              <div style={{ background: 'rgba(245, 158, 11, 0.08)', padding: isMobile ? '0.5rem' : '0.5rem 1rem', borderRadius: isMobile ? '8px' : '12px', border: '1px solid rgba(245, 158, 11, 0.2)', textAlign: 'center' }}>
+                <small style={{ display: 'block', color: 'var(--warning)', fontSize: isMobile ? '0.55rem' : '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Balance</small>
+                <span style={{ fontWeight: 800, fontSize: isMobile ? '0.85rem' : '1rem' }}>₹{bookingStats.totalBalance.toLocaleString()}</span>
               </div>
-              <div style={{ background: 'var(--bg-secondary)', padding: '0.5rem 1rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                <small style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Total Value</small>
-                <span style={{ fontWeight: 800, fontSize: '1rem' }}>₹{bookingStats.totalValue.toLocaleString()}</span>
+              <div style={{ background: 'var(--bg-secondary)', padding: isMobile ? '0.5rem' : '0.5rem 1rem', borderRadius: isMobile ? '8px' : '12px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <small style={{ display: 'block', color: 'var(--text-muted)', fontSize: isMobile ? '0.55rem' : '0.65rem', fontWeight: 800, textTransform: 'uppercase' }}>Total Value</small>
+                <span style={{ fontWeight: 800, fontSize: isMobile ? '0.85rem' : '1rem' }}>₹{bookingStats.totalValue.toLocaleString()}</span>
               </div>
             </div>
           )}
@@ -797,52 +855,53 @@ export default function Bookings() {
           })}
         </div>
 
-        {/* Expandable Filter Panel */}
+        {/* Filter Panel (Desktop Inline / Mobile Side Drawer) */}
         {showFilters && (
-          <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', animation: 'fadeIn 0.2s ease-out' }}>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Check-in From</label>
-              <input type="date" className="form-input" value={filters.dateStart} onChange={e => setFilters({...filters, dateStart: e.target.value})} />
-            </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Check-in To</label>
-              <input type="date" className="form-input" value={filters.dateEnd} onChange={e => setFilters({...filters, dateEnd: e.target.value})} />
-            </div>
-            {profile?.role !== 'staff' && (
-              <div className="form-group">
-                <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Property</label>
-                <select className="form-select" value={filters.propertyId} onChange={e => setFilters({...filters, propertyId: e.target.value})}>
-                  <option value="">All Properties</option>
-                  {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+          isMobile ? createPortal(
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 99999, display: 'flex', justifyContent: 'flex-end', animation: 'fadeIn 0.2s ease-out' }}>
+              <div style={{ background: 'var(--bg-color)', width: '85%', maxWidth: '320px', height: '100%', padding: '1.5rem', display: 'flex', flexDirection: 'column', overflowY: 'auto', animation: 'fadeIn 0.3s ease-out', boxShadow: '-5px 0 15px rgba(0,0,0,0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800 }}>Filters</h3>
+                  <button onClick={() => setShowFilters(false)} style={{ background: 'var(--bg-secondary)', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={18} /></button>
+                </div>
+                
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                  {filterInputs}
+                </div>
+
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem', paddingBottom: '1rem' }}>
+                  <button 
+                    className="btn btn-outline" 
+                    onClick={() => setFilters({ dateStart: '', dateEnd: '', propertyId: '', bookingType: '', paymentStatus: '' })}
+                    style={{ flex: 1, height: '48px', borderRadius: '12px', fontWeight: 700 }}
+                  >
+                    Reset
+                  </button>
+                  <button 
+                    className="btn btn-primary" 
+                    onClick={() => setShowFilters(false)}
+                    style={{ flex: 1, height: '48px', borderRadius: '12px', fontWeight: 700 }}
+                  >
+                    Apply
+                  </button>
+                </div>
               </div>
-            )}
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Booking Type</label>
-              <select className="form-select" value={filters.bookingType} onChange={e => setFilters({...filters, bookingType: e.target.value})}>
-                <option value="">All Types</option>
-                <option value="Rooms">Rooms</option>
-                <option value="Entire Property">Entire Property</option>
-              </select>
+            </div>,
+            document.body
+          ) : (
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', animation: 'fadeIn 0.2s ease-out' }}>
+              {filterInputs}
+              <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
+                <button 
+                  className="btn btn-outline" 
+                  onClick={() => setFilters({ dateStart: '', dateEnd: '', propertyId: '', bookingType: '', paymentStatus: '' })}
+                  style={{ height: '42px', width: '100%' }}
+                >
+                  Clear Filters
+                </button>
+              </div>
             </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Payment Status</label>
-              <select className="form-select" value={filters.paymentStatus} onChange={e => setFilters({...filters, paymentStatus: e.target.value})}>
-                <option value="">All Statuses</option>
-                <option value="Fully Paid">Fully Paid</option>
-                <option value="Pending Payment">Pending Payment</option>
-              </select>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'flex-end' }}>
-              <button 
-                className="btn btn-outline" 
-                onClick={() => setFilters({ dateStart: '', dateEnd: '', propertyId: '', bookingType: '', paymentStatus: '' })}
-                style={{ height: '42px', width: '100%' }}
-              >
-                Clear Filters
-              </button>
-            </div>
-          </div>
+          )
         )}
       </div>
 

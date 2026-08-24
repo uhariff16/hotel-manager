@@ -9,6 +9,16 @@ const TenantSupport = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [tickets, setTickets] = useState([]);
 
+  const formatTicketNumber = (ticket) => {
+    if (!ticket || !ticket.ticket_number || !ticket.created_at) return ticket?.ticket_number || '';
+    const date = new Date(ticket.created_at);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const num = String(ticket.ticket_number).padStart(4, '0');
+    return `SP-${year}${month}${day}-${num}`;
+  };
+
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
     window.addEventListener('resize', handleResize);
@@ -255,7 +265,7 @@ const TenantSupport = () => {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                   <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '0.9rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px', display: 'flex', alignItems: 'center' }}>
-                    <span style={{ color: '#64748b', marginRight: '0.4rem' }}>#{ticket.ticket_number}</span>
+                    <span style={{ color: '#64748b', marginRight: '0.4rem' }}>{formatTicketNumber(ticket)}</span>
                     {ticket.subject}
                     {ticket.tenant_unread && (
                       <span style={{ marginLeft: '0.5rem', minWidth: '8px', height: '8px', background: '#ef4444', borderRadius: '50%', display: 'inline-block' }}></span>
@@ -338,7 +348,7 @@ const TenantSupport = () => {
               {/* Header */}
               <div style={{ padding: '1.2rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
                 <h3 style={{ margin: '0 0 0.3rem 0', fontSize: '1.2rem', color: '#0F2C59' }}>
-                  <span style={{ color: '#64748b', marginRight: '0.5rem' }}>#{selectedTicket.ticket_number}</span>
+                  <span style={{ color: '#64748b', marginRight: '0.5rem' }}>{formatTicketNumber(selectedTicket)}</span>
                   {selectedTicket.subject}
                 </h3>
                 <div style={{ fontSize: '0.85rem', color: '#64748b' }}>
