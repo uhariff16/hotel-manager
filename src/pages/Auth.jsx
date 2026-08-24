@@ -128,7 +128,9 @@ export default function Auth() {
       display: 'flex', 
       alignItems: 'center', 
       justifyContent: 'center', 
-      background: 'linear-gradient(135deg, #111418 0%, #1e2329 100%)',
+      background: isMobile 
+        ? 'linear-gradient(135deg, #111418 0%, #1e2329 100%)' 
+        : 'linear-gradient(rgba(17,20,24,0.6), rgba(17,20,24,0.8)), url(/hotel_auth_bg.jpg) center/cover no-repeat',
       padding: isMobile ? '1rem' : '1.5rem'
     }}>
       <div className="card" style={{ 
