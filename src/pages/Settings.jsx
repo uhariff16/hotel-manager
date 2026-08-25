@@ -60,6 +60,15 @@ Thank you again, and we look forward to welcoming you back soon!
 
 📞 Contact: {resort_phone}`;
 
+const DEFAULT_PAYMENT_REMINDER_TEMPLATE = `Dear {guest_name},
+
+This is a gentle reminder that there is a pending balance of ₹{balance_amount} for your upcoming stay at {resort_name}.
+Booking ID: {booking_id}
+
+Please clear the dues at your earliest convenience to ensure a smooth check-in.
+
+📞 Contact: {resort_phone}`;
+
 export default function Settings() {
   const { profile, setProfile, theme, toggleTheme, session, activeResortId, resorts } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
@@ -101,7 +110,8 @@ export default function Settings() {
     whatsapp_confirm_msg_template: DEFAULT_CONFIRM_TEMPLATE,
     whatsapp_receipt_msg_template: DEFAULT_RECEIPT_TEMPLATE,
     whatsapp_reminder_msg_template: DEFAULT_REMINDER_TEMPLATE,
-    whatsapp_review_msg_template: DEFAULT_REVIEW_TEMPLATE
+    whatsapp_review_msg_template: DEFAULT_REVIEW_TEMPLATE,
+    whatsapp_payment_reminder_msg_template: DEFAULT_PAYMENT_REMINDER_TEMPLATE
   });
 
   // Data Manager (Cleanup) State
@@ -159,6 +169,7 @@ export default function Settings() {
     const fieldName = activeTextarea === 'confirm' ? 'whatsapp_confirm_msg_template' 
                     : activeTextarea === 'receipt' ? 'whatsapp_receipt_msg_template'
                     : activeTextarea === 'reminder' ? 'whatsapp_reminder_msg_template'
+                    : activeTextarea === 'payment_reminder' ? 'whatsapp_payment_reminder_msg_template'
                     : 'whatsapp_review_msg_template';
                     
     const textarea = document.getElementById(fieldName);
@@ -193,10 +204,12 @@ export default function Settings() {
     const fieldName = type === 'confirm' ? 'whatsapp_confirm_msg_template' 
                     : type === 'receipt' ? 'whatsapp_receipt_msg_template'
                     : type === 'reminder' ? 'whatsapp_reminder_msg_template'
+                    : type === 'payment_reminder' ? 'whatsapp_payment_reminder_msg_template'
                     : 'whatsapp_review_msg_template';
     const defaultValue = type === 'confirm' ? DEFAULT_CONFIRM_TEMPLATE 
                         : type === 'receipt' ? DEFAULT_RECEIPT_TEMPLATE
                         : type === 'reminder' ? DEFAULT_REMINDER_TEMPLATE
+                        : type === 'payment_reminder' ? DEFAULT_PAYMENT_REMINDER_TEMPLATE
                         : DEFAULT_REVIEW_TEMPLATE;
     setCommSettings(prev => ({ ...prev, [fieldName]: defaultValue }));
   };
@@ -1053,6 +1066,26 @@ export default function Settings() {
                         onFocus={() => setActiveTextarea('review')}
                       />
                     </div>
+                    
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                        <label className="form-label" style={{ fontWeight: 600, margin: 0 }}>Payment Reminder Template</label>
+                        <div style={{ display: 'flex', gap: '0.5rem' }}>
+                          <button type="button" onClick={() => handleClearTemplate('payment_reminder')} style={{ fontSize: '0.75rem', color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Clear</button>
+                          <span style={{ color: 'var(--border)' }}>|</span>
+                          <button type="button" onClick={() => handleResetTemplate('payment_reminder')} style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Reset</button>
+                        </div>
+                      </div>
+                      <textarea 
+                        id="whatsapp_payment_reminder_msg_template"
+                        className="form-input" 
+                        rows={6} 
+                        style={{ fontFamily: 'inherit', resize: 'vertical', padding: '0.75rem', height: 'auto', border: activeTextarea === 'payment_reminder' ? '1px solid var(--primary)' : '1px solid var(--border)' }}
+                        value={commSettings.whatsapp_payment_reminder_msg_template} 
+                        onChange={e => setCommSettings({...commSettings, whatsapp_payment_reminder_msg_template: e.target.value})} 
+                        onFocus={() => setActiveTextarea('payment_reminder')}
+                      />
+                    </div>
                   </div>
 
                   {/* Custom Template Variables */}
@@ -1335,12 +1368,11 @@ export default function Settings() {
                         value={invoiceSettings.email} 
                         onChange={e => setInvoiceSettings({ ...invoiceSettings, email: e.target.value })} 
                       />
-                      <small style={{ color: 'var(--text-muted)' }}>If blank, falls back to property default.</small>
+                      </div>
                     </div>
-                  </div>
-
-                  <div className="form-group" style={{ marginTop: '1.5rem' }}>
-                    <label className="form-label">Invoice Logo (Max 2MB)</label>
+                      
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                      <label className="form-label">Invoice Logo (Max 2MB)</label>
                     <input 
                       type="file" 
                       accept="image/*"

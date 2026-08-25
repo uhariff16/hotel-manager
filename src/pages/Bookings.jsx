@@ -264,6 +264,7 @@ export default function Bookings() {
       const dbReceipt = integrationsRes?.data?.whatsapp_receipt_msg_template;
       const dbReminder = integrationsRes?.data?.whatsapp_reminder_msg_template;
       const dbReview = integrationsRes?.data?.whatsapp_review_msg_template;
+      const dbPaymentReminder = integrationsRes?.data?.whatsapp_payment_reminder_msg_template;
       const dbCustomTags = integrationsRes?.data?.whatsapp_custom_tags;
       
       setWhatsappTemplates({
@@ -271,7 +272,7 @@ export default function Bookings() {
         receipt: dbReceipt || DEFAULT_RECEIPT_TEMPLATE,
         reminder: dbReminder || DEFAULT_REMINDER_TEMPLATE,
         review: dbReview || DEFAULT_REVIEW_TEMPLATE,
-        payment_reminder: DEFAULT_PAYMENT_REMINDER_TEMPLATE
+        payment_reminder: dbPaymentReminder || DEFAULT_PAYMENT_REMINDER_TEMPLATE
       });
 
       if (dbCustomTags) {
