@@ -869,7 +869,31 @@ export default function Bookings() {
         </div>
 
         {/* Status Tabs */}
-        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '1.25rem', overflowX: 'auto', paddingBottom: '0.25rem', scrollbarWidth: 'none' }}>
+        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '1.25rem', overflowX: 'auto', paddingBottom: '0.25rem', scrollbarWidth: 'none', alignItems: 'center' }}>
+          
+          <select 
+            className="form-select" 
+            value={filters.propertyId} 
+            onChange={e => setFilters({...filters, propertyId: e.target.value})} 
+            style={{ 
+              padding: '0.4rem 2rem 0.4rem 1rem', 
+              borderRadius: 'var(--radius-full, 20px)', 
+              fontSize: '0.85rem', 
+              fontWeight: 600, 
+              border: filters.propertyId ? '1px solid var(--primary)' : '1px solid var(--border)',
+              background: filters.propertyId ? 'rgba(5, 150, 105, 0.08)' : 'transparent',
+              color: filters.propertyId ? 'var(--primary)' : 'var(--text-main)',
+              cursor: 'pointer',
+              minWidth: 'max-content',
+              outline: 'none'
+            }}
+          >
+            <option value="">All Properties</option>
+            {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          
+          <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 0.25rem', flexShrink: 0 }}></div>
+
           {statusOptions.map(opt => {
             const isActive = activeTabs.includes(opt.label);
             const count = getStatusCount(opt.label);

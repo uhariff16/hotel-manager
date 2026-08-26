@@ -135,21 +135,26 @@ export default function Auth() {
       alignItems: 'center', 
       justifyContent: 'center', 
       background: isMobile 
-        ? 'linear-gradient(135deg, #111418 0%, #1e2329 100%)' 
+        ? '#ffffff' 
         : 'linear-gradient(rgba(17,20,24,0.6), rgba(17,20,24,0.8)), url(/hotel_auth_bg.jpg) center/cover no-repeat',
-      padding: isMobile ? '1rem' : '1.5rem'
+      padding: isMobile ? '0' : '1.5rem'
     }}>
       <div className="card" style={{ 
         width: '100%', 
-        maxWidth: '450px', 
-        padding: isMobile ? '1.5rem' : '2.5rem', 
-        border: '1px solid var(--border)',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+        maxWidth: isMobile ? '100%' : '450px', 
+        minHeight: isMobile ? '100vh' : 'auto',
+        padding: isMobile ? '2rem 1.5rem' : '2.5rem', 
+        border: isMobile ? 'none' : undefined,
+        boxShadow: isMobile ? 'none' : undefined,
+        borderRadius: isMobile ? '0' : undefined,
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center'
       }}>
-        <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.5rem' : '2.5rem' }}>
-          <div style={{ margin: isMobile ? '0 auto 1rem' : '0 auto 1.5rem', display: 'flex', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.5rem' : '2rem' }}>
+          <div style={{ margin: isMobile ? '0 auto 0.5rem' : '0 auto 1rem', display: 'flex', justifyContent: 'center' }}>
             <Link to="/">
-              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: isMobile ? '200px' : '280px', height: 'auto', objectFit: 'contain' }} />
+              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: isMobile ? '140px' : '200px', height: 'auto', objectFit: 'contain' }} />
             </Link>
           </div>
           <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
