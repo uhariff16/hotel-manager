@@ -1072,6 +1072,10 @@ export default function SuperAdmin() {
                           <Calendar size={14} style={{ color: '#94a3b8' }} /> 
                           {tenant.created_at ? new Date(tenant.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Unknown'}
                         </div>
+                        <div style={{ fontSize: '0.75rem', color: '#94a3b8', display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.4rem' }}>
+                          <span title="Last Login">🕒</span> 
+                          {tenant.last_login_at ? new Date(tenant.last_login_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Never logged in'}
+                        </div>
                       </td>
                       <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '0.4rem' }}>

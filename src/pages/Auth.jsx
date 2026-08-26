@@ -107,6 +107,12 @@ export default function Auth() {
         });
         if (authError) throw authError;
 
+        // Supabase returns an empty identities array if the email is already taken 
+        // (when "Prevent Email Enumeration" is enabled in settings)
+        if (authData?.user?.identities && authData.user.identities.length === 0) {
+          throw new Error("An account with this email already exists. Please sign in instead.");
+        }
+
         setMessage("Signup successful! Please check your email for a verification link before signing in.");
         setIsLogin(true);
         setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));

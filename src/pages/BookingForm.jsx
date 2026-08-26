@@ -547,7 +547,8 @@ export default function BookingForm() {
         price_type: bookingForm.price_type,
         room_type: bookingForm.room_type,
         breakfast: bookingForm.breakfast,
-        additional_guests: formattedAdditionalGuests
+        additional_guests: formattedAdditionalGuests,
+        guest_address: bookingForm.guest_address
       };
       
       // If status was Completed and now it's NOT, delete the auto-settled income record
@@ -560,17 +561,17 @@ export default function BookingForm() {
       if (id) {
         result = await supabase.from('bookings').update(bookingData).eq('id', id);
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
-          alert("Notice: Room Type, Breakfast or Additional Guests columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
+          alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_address, ...cleanData } = bookingData;
           result = await supabase.from('bookings').update(cleanData).eq('id', id);
         }
       } else {
         result = await supabase.from('bookings').insert([bookingData]).select();
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
-          alert("Notice: Room Type, Breakfast or Additional Guests columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
+          alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_address, ...cleanData } = bookingData;
           result = await supabase.from('bookings').insert([cleanData]).select();
         }
       }
@@ -1004,6 +1005,18 @@ export default function BookingForm() {
                   onChange={e => setBookingForm({...bookingForm, reference_number: e.target.value})} 
                 />
               </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: '1.25rem' }}>
+              <label className="premium-label">Guest Address (Optional)</label>
+              <textarea 
+                className="premium-input" 
+                placeholder="Enter guest's full address"
+                rows="2"
+                value={bookingForm.guest_address || ''} 
+                onChange={e => setBookingForm({...bookingForm, guest_address: e.target.value})} 
+                style={{ resize: 'vertical' }}
+              />
             </div>
           </div>
 

@@ -72,9 +72,17 @@ function App() {
       const { profile } = useSettingsStore.getState();
       
       if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+        if (event === 'INITIAL_SESSION' && session?.user?.id) {
+          // Update last login on page load if session exists
+          supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', session.user.id).then();
+        }
         if (!profile) setIsDataLoaded(false);
         handleAuthChange(session);
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN' && session?.user?.id) {
+          // Update last login
+          supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', session.user.id).then();
+        }
         // If we already have a profile, DO ABSOLUTELY NOTHING.
         // Updating the Zustand store causes a full app re-render (shivering).
         // The Supabase client internally manages the refreshed token anyway.
