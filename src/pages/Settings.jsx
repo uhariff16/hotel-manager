@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor } from 'lucide-react';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
@@ -73,7 +73,7 @@ Please clear the dues at your earliest convenience to ensure a smooth check-in.
 📞 Contact: {resort_phone}`;
 
 export default function Settings() {
-  const { profile, setProfile, theme, toggleTheme, session, activeResortId, resorts } = useSettingsStore();
+  const { profile, setProfile, theme, updateSettings, session, activeResortId, resorts } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -698,7 +698,7 @@ export default function Settings() {
             </button>
           )}
 
-          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && !Capacitor.isNativePlatform() && (
             <button 
               type="button"
               onClick={() => setActiveTab('invoice')}
@@ -997,12 +997,41 @@ export default function Settings() {
                 </h2>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
-                    <p style={{ margin: 0, fontWeight: '500' }}>Current Mode: {theme === 'system' ? 'System Default' : (theme === 'light' ? 'Light (Eco)' : 'Dark (Luxury)')}</p>
+                    <p style={{ margin: 0, fontWeight: '500' }}>Theme Preference</p>
                     <p style={{ margin: '0.25rem 0 0', fontSize: '0.875rem', color: 'var(--text-muted)' }}>Customize how the dashboard looks on your screen.</p>
                   </div>
-                  <button className="btn btn-outline" onClick={toggleTheme}>
-                    Toggle Theme
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: '12px' }}>
+                    <button 
+                      onClick={() => updateSettings({ theme: 'light' })}
+                      style={{ 
+                        background: theme === 'light' ? 'var(--primary)' : 'transparent', 
+                        color: theme === 'light' ? '#fff' : 'var(--text-muted)', 
+                        border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: '500', transition: 'all 0.2s' 
+                      }}
+                    >
+                      <Sun size={16} /> Light
+                    </button>
+                    <button 
+                      onClick={() => updateSettings({ theme: 'dark' })}
+                      style={{ 
+                        background: theme === 'dark' ? 'var(--primary)' : 'transparent', 
+                        color: theme === 'dark' ? '#fff' : 'var(--text-muted)', 
+                        border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: '500', transition: 'all 0.2s' 
+                      }}
+                    >
+                      <Moon size={16} /> Dark
+                    </button>
+                    <button 
+                      onClick={() => updateSettings({ theme: 'system' })}
+                      style={{ 
+                        background: theme === 'system' ? 'var(--primary)' : 'transparent', 
+                        color: theme === 'system' ? '#fff' : 'var(--text-muted)', 
+                        border: 'none', borderRadius: '8px', padding: '0.5rem 1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.875rem', fontWeight: '500', transition: 'all 0.2s' 
+                      }}
+                    >
+                      <Monitor size={16} /> System
+                    </button>
+                  </div>
                 </div>
               </div>
             </>
