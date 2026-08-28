@@ -388,6 +388,7 @@ export default function Settings() {
         const receipt_tpl = data.whatsapp_receipt_msg_template || DEFAULT_RECEIPT_TEMPLATE;
         const reminder_tpl = data.whatsapp_reminder_msg_template || DEFAULT_REMINDER_TEMPLATE;
         const review_tpl = data.whatsapp_review_msg_template || DEFAULT_REVIEW_TEMPLATE;
+        const payment_tpl = data.whatsapp_payment_reminder_msg_template || DEFAULT_PAYMENT_REMINDER_TEMPLATE;
         setCommSettings({
           email_enabled: data.email_enabled || false,
           email_api_key: data.email_api_key || '',
@@ -403,7 +404,8 @@ export default function Settings() {
           whatsapp_confirm_msg_template: confirm_tpl,
           whatsapp_receipt_msg_template: receipt_tpl,
           whatsapp_reminder_msg_template: reminder_tpl,
-          whatsapp_review_msg_template: review_tpl
+          whatsapp_review_msg_template: review_tpl,
+          whatsapp_payment_reminder_msg_template: payment_tpl
         });
         if (data.whatsapp_custom_tags) {
           try {
