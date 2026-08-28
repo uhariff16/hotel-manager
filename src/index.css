@@ -668,15 +668,22 @@ a {
     bottom: 0;
     left: 0;
     right: 0;
-    height: 72px;
+    min-height: 72px;
+    height: calc(72px + env(safe-area-inset-bottom, 0px));
+    padding: 0 0.25rem env(safe-area-inset-bottom, 0px) 0.25rem;
     background: var(--bg-secondary);
     display: flex;
     justify-content: space-around;
     align-items: center;
     border-top: 1px solid var(--border);
     z-index: 2000;
-    padding: 0 0.25rem;
     box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+  }
+
+  /* Capacitor Android specific fallback for 3-button navs that don't report safe area properly */
+  body.capacitor-android .mobile-bottom-nav {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 16px);
+    height: calc(72px + max(env(safe-area-inset-bottom, 0px), 16px));
   }
 
   .mobile-nav-item {

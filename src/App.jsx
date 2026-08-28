@@ -40,6 +40,9 @@ function App() {
       document.documentElement.setAttribute('data-theme', appliedTheme);
       
       if (window.Capacitor?.isNativePlatform()) {
+        if (window.Capacitor.getPlatform() === 'android') {
+          document.body.classList.add('capacitor-android');
+        }
         import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
           StatusBar.setStyle({ style: appliedTheme === 'dark' ? Style.Dark : Style.Light }).catch(() => {});
         }).catch(() => {});

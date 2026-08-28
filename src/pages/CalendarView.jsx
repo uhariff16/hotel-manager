@@ -684,8 +684,8 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
           </div>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-           <div className="search-bar" style={{ position: 'relative', width: '300px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: isMobile ? '100%' : 'auto', flexDirection: isMobile ? 'column' : 'row' }}>
+           <div className="search-bar" style={{ position: 'relative', width: isMobile ? '100%' : '300px' }}>
               <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
@@ -693,10 +693,10 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                 placeholder="Find guest or reference..." 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)}
-                style={{ paddingLeft: '2.75rem', height: '44px', background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}
+                style={{ paddingLeft: '2.75rem', height: '44px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', width: '100%' }}
               />
            </div>
-           <button className="btn btn-primary" onClick={() => navigate('/bookings/new')} style={{ height: '44px' }}>
+           <button className="btn btn-primary" onClick={() => navigate('/bookings/new')} style={{ height: '44px', width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}>
              <Calendar size={18} /> New Booking
            </button>
         </div>
