@@ -343,17 +343,17 @@ export default function AppLayout() {
                   }
                 }
               `}} />
-              <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800, color: 'var(--text-main)', fontFamily: "'Outfit', sans-serif" }}>Stay Pilot</h2>
+              <h2 style={{ fontSize: '1.25rem', margin: 0, fontWeight: 800, color: 'var(--text-main)', fontFamily: "'Outfit', sans-serif", whiteSpace: 'nowrap', flexShrink: 0 }}>Stay Pilot</h2>
               <span className="header-brand-sep" style={{ color: '#cbd5e1', fontWeight: 300 }}>|</span>
-              <span className="header-brand-tag" style={{ fontSize: '0.9rem', color: '#059669', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '0.02em', marginTop: '2px' }}>
+              <span className="header-brand-tag" style={{ fontSize: '0.9rem', color: '#059669', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif", letterSpacing: '0.02em', marginTop: '2px', whiteSpace: 'nowrap' }}>
                 Know Your Bookings. Know Your Numbers.
               </span>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', fontSize: '0.75rem' }}>
-              <span style={{ fontWeight: 'bold' }}>{profile?.full_name}</span>
-              <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize' }}>{profile?.role?.replace('_', ' ') || ''}</span>
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', minWidth: 0 }}>
+            <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', fontSize: '0.75rem', minWidth: 0 }}>
+              <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>{profile?.full_name}</span>
+              <span style={{ color: 'var(--text-muted)', textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '130px' }}>{profile?.role?.replace('_', ' ') || ''}</span>
             </div>
             <button 
               className="btn btn-outline" 
