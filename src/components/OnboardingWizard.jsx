@@ -174,9 +174,13 @@ export default function OnboardingWizard() {
     setRooms(rooms.filter(r => r.id !== id));
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    window.location.reload();
+  const handleCancel = async () => {
+    if (isNewProperty) {
+      window.location.href = "/";
+    } else {
+      await supabase.auth.signOut();
+      window.location.reload();
+    }
   };
 
   const handleNextStep = async () => {
@@ -450,6 +454,13 @@ export default function OnboardingWizard() {
     }}>
       
       {/* Top Header Controls */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @media (max-width: 768px) {
+          .mobile-stack { grid-template-columns: 1fr !important; }
+          .mobile-room-stack { grid-template-columns: 1fr 1fr !important; align-items: start !important; }
+          .mobile-room-stack > div { margin-bottom: 0.5rem; }
+        }
+      `}} />
       <div style={{
         position: 'absolute',
         top: '1.5rem',
@@ -463,7 +474,7 @@ export default function OnboardingWizard() {
           <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.05em', color: '#10b981', fontFamily: "'Outfit', sans-serif" }}>STAY PILOT</span>
         </div>
         <button
-          onClick={handleLogout}
+          onClick={handleCancel}
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -480,7 +491,7 @@ export default function OnboardingWizard() {
           }}
           className="btn-logout-hover"
         >
-          <LogOut size={16} /> Exit & Logout
+          <LogOut size={16} /> Cancel Setup
         </button>
       </div>
 
@@ -587,7 +598,7 @@ export default function OnboardingWizard() {
                 marginTop: '0.5rem'
               }}
             >
-              Exit & Logout
+              Cancel Setup
             </button>
           </div>
         ) : (
@@ -670,7 +681,7 @@ export default function OnboardingWizard() {
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Welcome to Stay Pilot!</h2>
                 <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '2rem' }}>Let's set up your business identity profile details to configure your accounts.</p>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Business/Entity Name *</label>
                     <input
@@ -767,7 +778,7 @@ export default function OnboardingWizard() {
                 <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Property Details (Entire Property Booking)</h2>
                 <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '2rem' }}>Define the overarching property and the pricing for booking the entire property/estate.</p>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Property Name *</label>
                     <input
@@ -808,7 +819,7 @@ export default function OnboardingWizard() {
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
                     <h4 style={{ color: '#10b981', fontSize: '0.95rem', fontWeight: 700, margin: '1rem 0 0.5rem 0' }}>Price for Entire Property</h4>
                     <p style={{ color: '#475569', fontSize: '0.85rem', marginBottom: '1rem' }}>Cost when booking the whole property at once.</p>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1rem' }}>
+                    <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1rem' }}>
                       {selectedRatePlans.map(rp => (
                         <div key={rp}>
                           <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>{rp} Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
@@ -877,7 +888,7 @@ export default function OnboardingWizard() {
 
                 <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                   {rooms.map((room, index) => (
-                    <div key={room.id} style={{ display: 'grid', gridTemplateColumns: `2fr 3fr 1fr ${selectedRatePlans.map(()=>'1fr').join(' ')} 40px`, gap: '1rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.05)', marginBottom: '1rem', alignItems: 'end', overflowX: 'auto' }}>
+                    <div key={room.id} className="mobile-room-stack" style={{ display: 'grid', gridTemplateColumns: `2fr 3fr 1fr ${selectedRatePlans.map(()=>'1fr').join(' ')} 40px`, gap: '1rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.05)', marginBottom: '1rem', alignItems: 'end', overflowX: 'auto' }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
                         <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Room Name</label>
                         <input
