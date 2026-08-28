@@ -492,7 +492,7 @@ export default function Settings() {
         // Fallback: If DB columns do not exist, try upserting without template columns
         if (error.message && (error.message.includes('column') || error.code === '42703')) {
           console.warn("DB template columns missing. Saving other configuration in database.");
-          const { whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, ...cleanSettings } = commSettings;
+          const { whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, whatsapp_payment_reminder_msg_template, ...cleanSettings } = commSettings;
           const retryPayload = {
             tenant_id: profile.id,
             resort_id: activeResortId,
