@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint } from 'lucide-react';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Preferences } from '@capacitor/preferences';
+import { Capacitor } from '@capacitor/core';
 
 const DEFAULT_CONFIRM_TEMPLATE = `🏡 Booking Confirmed – {resort_name}
 
@@ -101,6 +102,7 @@ export default function Settings() {
 
   useEffect(() => {
     const initBiometric = async () => {
+      if (!Capacitor.isNativePlatform()) return;
       try {
         const result = await NativeBiometric.isAvailable();
         setBiometricAvailable(result.isAvailable);
@@ -765,7 +767,7 @@ export default function Settings() {
               </div>
 
               {/* Security & Biometrics Card */}
-              {biometricAvailable && (
+              {biometricAvailable && Capacitor.isNativePlatform() && (
                 <div className="card">
                   <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
                     <Fingerprint size={24} color="var(--primary)" /> Security & Login

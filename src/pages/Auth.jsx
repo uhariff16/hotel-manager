@@ -5,6 +5,7 @@ import { useSettingsStore } from '../lib/store';
 import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff, Fingerprint } from 'lucide-react';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Preferences } from '@capacitor/preferences';
+import { Capacitor } from '@capacitor/core';
 
 export default function Auth() {
   const { isRecovering, setIsRecovering } = useSettingsStore();
@@ -66,6 +67,8 @@ export default function Auth() {
         setFormData(prev => ({ ...prev, email: savedEmail.value, password: savedPassword.value }));
         setRememberMe(true);
       }
+
+      if (!Capacitor.isNativePlatform()) return;
 
       try {
         const result = await NativeBiometric.isAvailable();
