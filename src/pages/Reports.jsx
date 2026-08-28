@@ -662,44 +662,6 @@ export default function Reports() {
             </select>
           </div>
 
-          {/* Select Report View */}
-          <div className="card" style={{ border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '1.25rem' }}>
-            <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <FileText size={16} color="var(--primary)"/> Report Type
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-              {[
-                { id: 'summary', label: 'Performance Summary' },
-                { id: 'bookings', label: 'Booking Details' },
-                { id: 'guests', label: 'Guest Contacts' },
-                { id: 'finance', label: 'Income & Expenses' }
-              ].filter(opt => allowedReports[opt.id] !== false).map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => {
-                    setReportType(opt.id);
-                    setSearchTerm('');
-                  }}
-                  style={{
-                    width: '100%',
-                    padding: '0.75rem 1rem',
-                    borderRadius: '8px',
-                    border: 'none',
-                    textAlign: 'left',
-                    background: activeReportType === opt.id ? 'rgba(5, 150, 105, 0.08)' : 'transparent',
-                    color: activeReportType === opt.id ? 'var(--primary)' : 'var(--text-main)',
-                    fontWeight: activeReportType === opt.id ? 800 : 500,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s',
-                    borderLeft: activeReportType === opt.id ? '4px solid var(--primary)' : '4px solid transparent'
-                  }}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Date Picker Range */}
           <div className="card" style={{ border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
             <h3 style={{ fontSize: '0.95rem', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
@@ -761,6 +723,44 @@ export default function Reports() {
                 <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>END DATE</label>
                 <input type="date" className="form-input" value={range.end} onChange={e => setRange({...range, end: e.target.value})} />
               </div>
+            </div>
+          </div>
+
+          {/* Select Report View */}
+          <div className="card" style={{ border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.05)', padding: '1.25rem' }}>
+            <h3 style={{ fontSize: '0.95rem', marginBottom: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <FileText size={16} color="var(--primary)"/> Report Type
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              {[
+                { id: 'summary', label: 'Performance Summary' },
+                { id: 'bookings', label: 'Booking Details' },
+                { id: 'guests', label: 'Guest Contacts' },
+                { id: 'finance', label: 'Income & Expenses' }
+              ].filter(opt => allowedReports[opt.id] !== false).map(opt => (
+                <button
+                  key={opt.id}
+                  onClick={() => {
+                    setReportType(opt.id);
+                    setSearchTerm('');
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    textAlign: 'left',
+                    background: activeReportType === opt.id ? 'rgba(5, 150, 105, 0.08)' : 'transparent',
+                    color: activeReportType === opt.id ? 'var(--primary)' : 'var(--text-main)',
+                    fontWeight: activeReportType === opt.id ? 800 : 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    borderLeft: activeReportType === opt.id ? '4px solid var(--primary)' : '4px solid transparent'
+                  }}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
 
