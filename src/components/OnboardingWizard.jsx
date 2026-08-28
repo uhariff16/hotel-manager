@@ -583,7 +583,7 @@ export default function OnboardingWizard() {
 
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={handleCancel}
               style={{
                 background: 'transparent',
                 border: '1px solid rgba(255,255,255,0.1)',
