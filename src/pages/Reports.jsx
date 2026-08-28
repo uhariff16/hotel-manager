@@ -36,6 +36,7 @@ export default function Reports() {
   const [sourceFilter, setSourceFilter] = useState('All');
   const [paymentMethodFilter, setPaymentMethodFilter] = useState('All');
   const [expenseCategoryFilter, setExpenseCategoryFilter] = useState('All');
+  const [exportFormat, setExportFormat] = useState('pdf');
 
   useEffect(() => {
     fetchReports();
@@ -601,17 +602,24 @@ export default function Reports() {
           <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.5rem', fontWeight: 800 }}>
             <FileText size={28} color="var(--primary)" /> Reports & Analytics
           </h2>
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            {allowedReports?.exportExcel !== false && (
-              <button className="btn btn-outline" onClick={handleExportExcel} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <TableIcon size={18}/> <span className="desktop-only">Export Excel</span>
-              </button>
-            )}
-            {allowedReports?.exportPdf !== false && (
-              <button className="btn btn-primary" onClick={handleExportPDF} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Download size={18}/> <span className="desktop-only">Export PDF</span>
-              </button>
-            )}
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <select 
+              className="form-select" 
+              style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.9rem' }}
+              value={exportFormat}
+              onChange={(e) => setExportFormat(e.target.value)}
+            >
+              {allowedReports?.exportPdf !== false && <option value="pdf">PDF Format</option>}
+              {allowedReports?.exportExcel !== false && <option value="excel">Excel Format</option>}
+            </select>
+            
+            <button 
+              className="btn btn-primary" 
+              onClick={exportFormat === 'pdf' ? handleExportPDF : handleExportExcel} 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+            >
+              <Download size={18}/> <span className="desktop-only">Download</span>
+            </button>
           </div>
         </div>
       </div>
