@@ -512,6 +512,7 @@ export default function Settings() {
             tenant_id: profile.id,
             resort_id: activeResortId,
             ...cleanSettings,
+            whatsapp_custom_tags: updatedTags,
             updated_at: new Date().toISOString()
           };
           const { error: retryError } = await supabase
