@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
-import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff, Fingerprint } from 'lucide-react';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 
 export default function Auth() {
   const { isRecovering, setIsRecovering } = useSettingsStore();
@@ -28,6 +29,21 @@ export default function Auth() {
     fullName: ''
   });
 
+  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [rememberWithBiometrics, setRememberWithBiometrics] = useState(false);
+
+  useEffect(() => {
+    const checkBiometric = async () => {
+      try {
+        const result = await NativeBiometric.isAvailable();
+        setIsBiometricAvailable(result.isAvailable);
+      } catch (err) {
+        console.log("Biometrics not available:", err);
+      }
+    };
+    checkBiometric();
+  }, []);
+
   useEffect(() => {
     // 1. Check for errors in URL hash (e.g., expired links)
     const hash = window.location.hash;
@@ -51,6 +67,31 @@ export default function Auth() {
       setIsLogin(false);
     }
   }, [location.search]);
+
+  const handleBiometricLogin = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const credentials = await NativeBiometric.getCredentials({
+        server: 'staypilot.com',
+      });
+      
+      if (credentials && credentials.username && credentials.password) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email: credentials.username,
+          password: credentials.password,
+        });
+        if (error) throw error;
+      }
+    } catch (error) {
+      console.error("Biometric login failed:", error);
+      if (error.code !== 'UserCancel') {
+        setError("Biometric login failed or no credentials saved.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -91,6 +132,18 @@ export default function Auth() {
           password: formData.password,
         });
         if (error) throw error;
+        
+        if (rememberWithBiometrics && isBiometricAvailable) {
+          try {
+            await NativeBiometric.setCredentials({
+              server: 'staypilot.com',
+              username: loginEmail,
+              password: formData.password,
+            });
+          } catch(e) {
+            console.error("Failed to save biometric credentials:", e);
+          }
+        }
       } else {
         if (formData.password !== formData.confirmPassword) {
           throw new Error("Passwords do not match");
@@ -294,6 +347,20 @@ export default function Auth() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {isLogin && isBiometricAvailable && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <input 
+                    type="checkbox" 
+                    id="rememberBiometric" 
+                    checked={rememberWithBiometrics}
+                    onChange={(e) => setRememberWithBiometrics(e.target.checked)}
+                    style={{ width: 'auto', margin: 0, accentColor: 'var(--primary)' }}
+                  />
+                  <label htmlFor="rememberBiometric" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    Save credentials for Biometric Login
+                  </label>
+                </div>
+              )}
             </div>
           )}
 
@@ -344,6 +411,31 @@ export default function Auth() {
           >
             {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account</>)))}
           </button>
+          
+          {isLogin && isBiometricAvailable && (
+            <button 
+              type="button" 
+              onClick={handleBiometricLogin}
+              disabled={loading}
+              className="btn"
+              style={{ 
+                width: '100%', 
+                padding: '0.75rem', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                gap: '0.5rem',
+                background: 'var(--bg-secondary)',
+                border: '1px solid var(--border)',
+                color: 'var(--text-main)',
+                borderRadius: 'var(--radius-md)',
+                fontWeight: 600,
+                height: '50px'
+              }}
+            >
+              <Fingerprint size={20} /> Sign in with Biometrics
+            </button>
+          )}
         </form>
 
         <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem' }}>
