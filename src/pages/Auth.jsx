@@ -32,6 +32,7 @@ export default function Auth() {
   });
 
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
   const handleBiometricLogin = async () => {
@@ -77,7 +78,13 @@ export default function Auth() {
         if (result.isAvailable) {
           const bioEnabled = await Preferences.get({ key: 'biometric_enabled' });
           if (bioEnabled.value === 'true') {
-             handleBiometricLogin();
+             setIsBiometricEnabled(true);
+             const justLoggedOut = sessionStorage.getItem('justLoggedOut');
+             if (justLoggedOut === 'true') {
+               sessionStorage.removeItem('justLoggedOut');
+             } else {
+               handleBiometricLogin();
+             }
           }
         }
       } catch (err) {
@@ -401,6 +408,18 @@ export default function Auth() {
           >
             {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account</>)))}
           </button>
+          
+          {isLogin && isBiometricEnabled && !isForgotPassword && !isRecovering && (
+             <button 
+                type="button" 
+                className="btn btn-outline" 
+                style={{ width: '100%', height: '50px', fontSize: '1rem', marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                onClick={handleBiometricLogin}
+                disabled={loading}
+             >
+                <Fingerprint size={20} /> Sign in with Biometrics
+             </button>
+          )}
         </form>
 
         <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem' }}>

@@ -318,7 +318,7 @@ export default function AppLayout() {
           <button 
             className="nav-item" 
             style={{ width: '100%', background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem 1rem', borderRadius: 'var(--radius-md)' }}
-            onClick={() => { if(window.confirm('Logout?')) { supabase.auth.signOut(); logout(); } }}
+            onClick={() => { if(window.confirm('Logout?')) { sessionStorage.setItem('justLoggedOut', 'true'); supabase.auth.signOut(); logout(); } }}
           >
             <LogOut size={20} />
             <span style={{ fontWeight: 600 }}>Logout</span>
@@ -358,7 +358,7 @@ export default function AppLayout() {
             <button 
               className="btn btn-outline" 
               style={{ padding: '0.5rem' }} 
-              onClick={() => { supabase.auth.signOut(); logout(); }}
+              onClick={() => { sessionStorage.setItem('justLoggedOut', 'true'); supabase.auth.signOut(); logout(); }}
               title="Logout"
             >
               <LogOut size={18} />
