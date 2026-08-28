@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff, Fingerprint } from 'lucide-react';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
+import { Preferences } from '@capacitor/preferences';
 
 export default function Auth() {
   const { isRecovering, setIsRecovering } = useSettingsStore();
@@ -30,43 +31,7 @@ export default function Auth() {
   });
 
   const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
-  const [rememberWithBiometrics, setRememberWithBiometrics] = useState(false);
-
-  useEffect(() => {
-    const checkBiometric = async () => {
-      try {
-        const result = await NativeBiometric.isAvailable();
-        setIsBiometricAvailable(result.isAvailable);
-      } catch (err) {
-        console.log("Biometrics not available:", err);
-      }
-    };
-    checkBiometric();
-  }, []);
-
-  useEffect(() => {
-    // 1. Check for errors in URL hash (e.g., expired links)
-    const hash = window.location.hash;
-    if (hash) {
-      const params = new URLSearchParams(hash.substring(1));
-      const error_description = params.get('error_description');
-      const error_code = params.get('error_code');
-      
-      if (error_description) {
-        setError(error_description.replace(/\+/g, ' '));
-        // Clear hash so error doesn't persist on refresh
-        window.history.replaceState(null, null, window.location.pathname);
-      }
-    }
-  }, []);
-
-  const location = useLocation();
-  useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('mode') === 'signup') {
-      setIsLogin(false);
-    }
-  }, [location.search]);
+  const [rememberMe, setRememberMe] = useState(false);
 
   const handleBiometricLogin = async () => {
     try {
@@ -86,12 +51,38 @@ export default function Auth() {
     } catch (error) {
       console.error("Biometric login failed:", error);
       if (error.code !== 'UserCancel') {
-        setError("Biometric login failed or no credentials saved.");
+        setError("Biometric login failed.");
       }
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    const initAuth = async () => {
+      const savedEmail = await Preferences.get({ key: 'rememberMeEmail' });
+      const savedPassword = await Preferences.get({ key: 'rememberMePassword' });
+      if (savedEmail.value && savedPassword.value) {
+        setFormData(prev => ({ ...prev, email: savedEmail.value, password: savedPassword.value }));
+        setRememberMe(true);
+      }
+
+      try {
+        const result = await NativeBiometric.isAvailable();
+        setIsBiometricAvailable(result.isAvailable);
+        
+        if (result.isAvailable) {
+          const bioEnabled = await Preferences.get({ key: 'biometric_enabled' });
+          if (bioEnabled.value === 'true') {
+             handleBiometricLogin();
+          }
+        }
+      } catch (err) {
+        console.log("Biometrics not available:", err);
+      }
+    };
+    initAuth();
+  }, []);
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -133,16 +124,12 @@ export default function Auth() {
         });
         if (error) throw error;
         
-        if (rememberWithBiometrics && isBiometricAvailable) {
-          try {
-            await NativeBiometric.setCredentials({
-              server: 'staypilot.com',
-              username: loginEmail,
-              password: formData.password,
-            });
-          } catch(e) {
-            console.error("Failed to save biometric credentials:", e);
-          }
+        if (rememberMe) {
+          await Preferences.set({ key: 'rememberMeEmail', value: loginEmail });
+          await Preferences.set({ key: 'rememberMePassword', value: formData.password });
+        } else {
+          await Preferences.remove({ key: 'rememberMeEmail' });
+          await Preferences.remove({ key: 'rememberMePassword' });
         }
       } else {
         if (formData.password !== formData.confirmPassword) {
@@ -347,17 +334,17 @@ export default function Auth() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              {isLogin && isBiometricAvailable && (
+              {isLogin && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
                   <input 
                     type="checkbox" 
-                    id="rememberBiometric" 
-                    checked={rememberWithBiometrics}
-                    onChange={(e) => setRememberWithBiometrics(e.target.checked)}
+                    id="rememberMe" 
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
                     style={{ width: 'auto', margin: 0, accentColor: 'var(--primary)' }}
                   />
-                  <label htmlFor="rememberBiometric" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
-                    Save credentials for Biometric Login
+                  <label htmlFor="rememberMe" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                    Remember Me
                   </label>
                 </div>
               )}
@@ -411,31 +398,6 @@ export default function Auth() {
           >
             {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account</>)))}
           </button>
-          
-          {isLogin && isBiometricAvailable && (
-            <button 
-              type="button" 
-              onClick={handleBiometricLogin}
-              disabled={loading}
-              className="btn"
-              style={{ 
-                width: '100%', 
-                padding: '0.75rem', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                gap: '0.5rem',
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border)',
-                color: 'var(--text-main)',
-                borderRadius: 'var(--radius-md)',
-                fontWeight: 600,
-                height: '50px'
-              }}
-            >
-              <Fingerprint size={20} /> Sign in with Biometrics
-            </button>
-          )}
         </form>
 
         <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem' }}>

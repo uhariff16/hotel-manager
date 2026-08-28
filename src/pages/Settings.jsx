@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint } from 'lucide-react';
+import { NativeBiometric } from '@capgo/capacitor-native-biometric';
+import { Preferences } from '@capacitor/preferences';
 
 const DEFAULT_CONFIRM_TEMPLATE = `🏡 Booking Confirmed – {resort_name}
 
@@ -93,6 +95,53 @@ export default function Settings() {
     email: { loading: false, success: null, message: '' },
     whatsapp: { loading: false, success: null, message: '' }
   });
+  
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+
+  useEffect(() => {
+    const initBiometric = async () => {
+      try {
+        const result = await NativeBiometric.isAvailable();
+        setBiometricAvailable(result.isAvailable);
+        if (result.isAvailable) {
+          const pref = await Preferences.get({ key: 'biometric_enabled' });
+          setBiometricEnabled(pref.value === 'true');
+        }
+      } catch (err) {
+        console.log("Biometric check failed:", err);
+      }
+    };
+    initBiometric();
+  }, []);
+
+  const handleToggleBiometric = async () => {
+    if (biometricEnabled) {
+      try {
+        await NativeBiometric.deleteCredentials({ server: 'staypilot.com' });
+        await Preferences.set({ key: 'biometric_enabled', value: 'false' });
+        setBiometricEnabled(false);
+      } catch (err) {
+        alert("Failed to disable biometrics: " + err.message);
+      }
+    } else {
+      const pw = window.prompt("Please enter your current password to enable Biometric Login:");
+      if (!pw) return;
+      
+      try {
+        await NativeBiometric.setCredentials({
+          server: 'staypilot.com',
+          username: session?.user?.email,
+          password: pw
+        });
+        await Preferences.set({ key: 'biometric_enabled', value: 'true' });
+        setBiometricEnabled(true);
+        alert("Biometric login enabled successfully!");
+      } catch(err) {
+        alert("Failed to enable biometrics: " + err.message);
+      }
+    }
+  };
   
   // Integration Settings State
   const [commSettings, setCommSettings] = useState({
@@ -714,6 +763,36 @@ export default function Settings() {
                   </button>
                 </form>
               </div>
+
+              {/* Security & Biometrics Card */}
+              {biometricAvailable && (
+                <div className="card">
+                  <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
+                    <Fingerprint size={24} color="var(--primary)" /> Security & Login
+                  </h2>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Enable Fingerprint or Face ID to quickly log into your account.</p>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', border: '1px solid var(--border)', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
+                    <div>
+                      <h4 style={{ margin: 0, fontSize: '1rem' }}>Biometric Login</h4>
+                      <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{biometricEnabled ? 'Enabled for this device' : 'Disabled'}</p>
+                    </div>
+                    <button 
+                      onClick={handleToggleBiometric}
+                      style={{
+                        padding: '0.5rem 1rem',
+                        borderRadius: '20px',
+                        border: 'none',
+                        background: biometricEnabled ? 'var(--danger)' : 'var(--primary)',
+                        color: '#fff',
+                        fontWeight: '600',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {biometricEnabled ? 'Disable' : 'Enable'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {/* Communications API Configurations */}
               {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalCommEnabled && profile?.feature_comm_enabled !== false)) && (
