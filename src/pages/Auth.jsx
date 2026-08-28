@@ -135,7 +135,7 @@ export default function Auth() {
       alignItems: 'center', 
       justifyContent: 'center', 
       background: isMobile 
-        ? '#ffffff' 
+        ? 'var(--bg-color)' 
         : 'linear-gradient(rgba(17,20,24,0.6), rgba(17,20,24,0.8)), url(/hotel_auth_bg.jpg) center/cover no-repeat',
       padding: isMobile ? '0' : '1.5rem'
     }}>
@@ -152,9 +152,16 @@ export default function Auth() {
         justifyContent: 'center'
       }}>
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.5rem' : '2rem' }}>
-          <div style={{ margin: isMobile ? '0 auto 0.5rem' : '0 auto 1rem', display: 'flex', justifyContent: 'center' }}>
-            <Link to="/">
-              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: isMobile ? '140px' : '200px', height: 'auto', objectFit: 'contain' }} />
+          <div style={{ margin: isMobile ? '0 auto 1.5rem' : '0 auto 2rem', display: 'flex', justifyContent: 'center' }}>
+            <Link to="/" style={{ 
+              display: 'inline-block', 
+              background: '#ffffff', 
+              padding: '1.25rem', 
+              borderRadius: '24px', 
+              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)',
+              border: '1px solid rgba(0,0,0,0.05)'
+            }}>
+              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: isMobile ? '120px' : '180px', height: 'auto', objectFit: 'contain', display: 'block' }} />
             </Link>
           </div>
           <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
