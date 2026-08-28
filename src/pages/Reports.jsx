@@ -4,6 +4,7 @@ import { Download, FileText, Filter, Table as TableIcon, CreditCard, Wallet, Tre
 import html2pdf from 'html2pdf.js';
 import { useSettingsStore } from '../lib/store';
 import { startOfMonth, endOfMonth, format } from 'date-fns';
+import toast from 'react-hot-toast';
 
 export default function Reports() {
   const { activeResortId, resorts, session, profile, globalPlans } = useSettingsStore();
@@ -234,6 +235,28 @@ export default function Reports() {
     return <span style={{ marginLeft: '4px', color: 'var(--primary)' }}>{bookingSort.direction === 'ascending' ? '↑' : '↓'}</span>;
   };
 
+  const handleNativeShare = async (fileName, base64Data, mimeType) => {
+    try {
+      const { Filesystem, Directory } = await import('@capacitor/filesystem');
+      const { Share } = await import('@capacitor/share');
+      
+      const savedFile = await Filesystem.writeFile({
+        path: fileName,
+        data: base64Data,
+        directory: Directory.Cache,
+      });
+
+      await Share.share({
+        title: fileName,
+        url: savedFile.uri,
+        dialogTitle: 'Share or Download Report',
+      });
+    } catch (err) {
+      console.error('Error sharing file:', err);
+      toast.error("Failed to share file on your device.");
+    }
+  };
+
   const handleExportPDF = () => {
     import('jspdf').then(({ default: jsPDF }) => {
       import('jspdf-autotable').then(({ default: autoTable }) => {
@@ -362,7 +385,14 @@ export default function Reports() {
           });
         }
         
-        doc.save(`${resortName.replace(/\s+/g, '_')}_${activeReportType}_Report_${format(new Date(range.start), 'MMM_dd_yyyy')}.pdf`);
+        const fileName = `${resortName.replace(/\s+/g, '_')}_${activeReportType}_Report_${format(new Date(range.start), 'MMM_dd_yyyy')}.pdf`;
+        if (window.Capacitor?.isNativePlatform()) {
+          const pdfData = doc.output('datauristring');
+          const base64Data = pdfData.split(',')[1];
+          handleNativeShare(fileName, base64Data, 'application/pdf');
+        } else {
+          doc.save(fileName);
+        }
       });
     });
   };
@@ -449,7 +479,13 @@ export default function Reports() {
          if(cell) cell.s = { font: { bold: true, name: "Arial", sz: 10 } };
       }
       XLSX.utils.book_append_sheet(workbook, summarySheet, "Summary");
-      XLSX.writeFile(workbook, `${resortStr}_Summary_Report_${periodStr}.xlsx`);
+      const fileName = `${resortStr}_Summary_Report_${periodStr}.xlsx`;
+      if (window.Capacitor?.isNativePlatform()) {
+        const excelData = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+        handleNativeShare(fileName, excelData, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        XLSX.writeFile(workbook, fileName);
+      }
 
     } else if (activeReportType === 'bookings') {
       const bookingsHeaders = ["Ref #", "Guest Name", "Phone", "Email", "Adults", "Kids", "Vehicle No", "ID Type", "ID Number", "Add'l Guests", "Property", "Source", "Status", "Check-in", "Check-out", "Total Value", "Paid", "Balance"];
@@ -482,7 +518,13 @@ export default function Reports() {
       const totalBookingBalance = bookingsRows.reduce((sum, r) => sum + r[17], 0);
       const bookingsAOA = [bookingsHeaders, ...bookingsRows, ["", "", "", "", "", "", "", "", "", "", "", "", "", "", "TOTAL", totalBookingValue, totalBookingPaid, totalBookingBalance]];
       XLSX.utils.book_append_sheet(workbook, createStyledSheet(bookingsAOA, [{wch:15}, {wch:25}, {wch:15}, {wch:25}, {wch:8}, {wch:8}, {wch:15}, {wch:12}, {wch:15}, {wch:25}, {wch:15}, {wch:15}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}, {wch:12}], true), "Bookings");
-      XLSX.writeFile(workbook, `${resortStr}_Bookings_Report_${periodStr}.xlsx`);
+      const fileName = `${resortStr}_Bookings_Report_${periodStr}.xlsx`;
+      if (window.Capacitor?.isNativePlatform()) {
+        const excelData = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+        handleNativeShare(fileName, excelData, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        XLSX.writeFile(workbook, fileName);
+      }
 
     } else if (activeReportType === 'guests') {
       const guestHeaders = ["Guest Name", "Email", "Phone", "Bookings Count", "Latest Booking Ref", "Latest Stay Date"];
@@ -495,7 +537,13 @@ export default function Reports() {
         g.latestBookingDate
       ]);
       XLSX.utils.book_append_sheet(workbook, createStyledSheet([guestHeaders, ...guestRows], [{wch:25}, {wch:30}, {wch:20}, {wch:15}, {wch:20}, {wch:15}]), "Guests Directory");
-      XLSX.writeFile(workbook, `${resortStr}_Guest_Contacts_${periodStr}.xlsx`);
+      const fileName = `${resortStr}_Guest_Contacts_${periodStr}.xlsx`;
+      if (window.Capacitor?.isNativePlatform()) {
+        const excelData = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+        handleNativeShare(fileName, excelData, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        XLSX.writeFile(workbook, fileName);
+      }
 
     } else if (activeReportType === 'finance') {
       const incomeHeaders = ["Date", "Ref #", "Guest Name", "Property", "Amount (₹)", "Method", "Notes"];
@@ -525,7 +573,13 @@ export default function Reports() {
       const expenseAOA = [expenseHeaders, ...expenseRows, ["", "", "TOTAL EXPENSES", totalExpenseAmount, "", ""]];
       XLSX.utils.book_append_sheet(workbook, createStyledSheet(expenseAOA, [{wch:12}, {wch:20}, {wch:15}, {wch:15}, {wch:20}, {wch:35}], true), "Expense Log");
 
-      XLSX.writeFile(workbook, `${resortStr}_Financials_${periodStr}.xlsx`);
+      const fileName = `${resortStr}_Financials_${periodStr}.xlsx`;
+      if (window.Capacitor?.isNativePlatform()) {
+        const excelData = XLSX.write(workbook, { bookType: 'xlsx', type: 'base64' });
+        handleNativeShare(fileName, excelData, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+      } else {
+        XLSX.writeFile(workbook, fileName);
+      }
     }
   };
 
@@ -562,7 +616,24 @@ export default function Reports() {
         </div>
       </div>
 
-      <div className="reports-layout" style={{ display: 'grid', gridTemplateColumns: '320px 1fr', gap: '2rem', alignItems: 'start' }}>
+      <style dangerouslySetInnerHTML={{__html: `
+        .reports-layout {
+          display: grid;
+          grid-template-columns: 320px 1fr;
+          gap: 2rem;
+          align-items: start;
+        }
+        @media (max-width: 768px) {
+          .reports-layout {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+          .reports-layout aside {
+            position: static !important;
+          }
+        }
+      `}} />
+      <div className="reports-layout">
         <aside style={{ position: 'sticky', top: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           
           {/* Select Property */}
