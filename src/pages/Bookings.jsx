@@ -1011,16 +1011,17 @@ export default function Bookings() {
             return (
               <div key={b.id} className="card animate-card" onClick={(e) => { if (e.target.tagName !== 'INPUT' && !e.target.closest('button') && !e.target.closest('.btn-icon') && !e.target.closest('a')) setSelectedDetailedBooking(b); }} style={{ padding: 0, overflow: 'hidden', borderLeft: `6px solid ${opt.color}`, opacity: b.status === 'Cancelled' ? 0.7 : 1, cursor: 'pointer' }}>
                 <div style={{ padding: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
-                    <div>
-                      <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem' }}>{b.reference_number}</small>
-                      <h3 style={{ margin: '0.1rem 0 0.25rem 0', fontSize: '1.1rem' }}>{b.guest_name}</h3>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.25rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '0.5rem' }}>
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.reference_number}</small>
+                      <h3 style={{ margin: '0.1rem 0 0.25rem 0', fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.guest_name}</h3>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            <Phone size={14} /> {b.phone_number}
+                            <Phone size={14} style={{ flexShrink: 0 }} /> 
+                            <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '110px' }}>{b.phone_number}</span>
                             <div className="whatsapp-dropdown-container" style={{ position: 'relative' }}>
                                <button 
-                                 style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', padding: '3px 10px', background: '#25D366', marginLeft: '8px', border: 'none', borderRadius: '12px', cursor: 'pointer', gap: '4px', fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)' }}
+                                 style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', padding: '3px 8px', background: '#25D366', marginLeft: '4px', border: 'none', borderRadius: '12px', cursor: 'pointer', gap: '4px', fontSize: '0.7rem', fontWeight: 600, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)' }}
                                  onClick={(e) => { e.stopPropagation(); setWhatsappDropdownId(whatsappDropdownId === b.id ? null : b.id); }}
                                  title="Send WhatsApp"
                                >
@@ -1039,24 +1040,17 @@ export default function Bookings() {
                         </div>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end' }}>
-                      <span style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44`, width: 'fit-content' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', alignItems: 'flex-end', flexShrink: 0, maxWidth: '100px' }}>
+                      <span style={{ padding: '0.3rem 0.75rem', borderRadius: '20px', fontSize: '0.7rem', fontWeight: 700, background: opt.bg, color: opt.color, border: `1px solid ${opt.color}44`, maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {displayStatus}
                       </span>
-                      <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800, border: '1px solid rgba(99, 102, 241, 0.2)' }}>
+                      <span style={{ fontSize: '0.65rem', padding: '2px 8px', borderRadius: '4px', background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', fontWeight: 800, border: '1px solid rgba(99, 102, 241, 0.2)', maxWidth: '100%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {(() => {
                           const { isAgent, name, phone } = parseAgentSource(b.booking_source);
                           if (isAgent) {
                             return (
                               <span onClick={(e) => e.stopPropagation()}>
-                                Agent: {name} {phone && (
-                                  <>
-                                    {', Contact: '}
-                                    <a href={`tel:${phone}`} style={{ color: '#6366f1', textDecoration: 'underline' }}>
-                                      {phone}
-                                    </a>
-                                  </>
-                                )}
+                                Agent: {name}
                               </span>
                             );
                           }
