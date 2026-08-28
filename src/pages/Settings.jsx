@@ -408,10 +408,14 @@ export default function Settings() {
         if (data.whatsapp_custom_tags) {
           try {
             const tags = typeof data.whatsapp_custom_tags === 'string' ? JSON.parse(data.whatsapp_custom_tags) : data.whatsapp_custom_tags;
-            setCustomTags(tags);
+            setCustomTags(tags.filter(t => t.key !== '__template_payment_reminder'));
+            
             const wifiTag = tags.find(t => t.key === 'wifi_password');
-            if (wifiTag) {
-              setWifiPassword(wifiTag.value || '');
+            if (wifiTag) setWifiPassword(wifiTag.value);
+
+            const storedPaymentReminder = tags.find(t => t.key === '__template_payment_reminder');
+            if (storedPaymentReminder && !data.whatsapp_payment_reminder_msg_template) {
+               setCommSettings(prev => ({ ...prev, whatsapp_payment_reminder_msg_template: storedPaymentReminder.value }));
             }
           } catch (e) {
             console.error("Failed to parse custom tags:", e);
@@ -474,7 +478,16 @@ export default function Settings() {
       } else {
         updatedTags.push({ key: 'wifi_password', value: wifiPassword });
       }
-      setCustomTags(updatedTags);
+
+      // Hide the payment template in custom tags so it gets saved without needing a DB migration
+      const paymentTemplateTagIndex = updatedTags.findIndex(t => t.key === '__template_payment_reminder');
+      if (paymentTemplateTagIndex !== -1) {
+        updatedTags[paymentTemplateTagIndex] = { key: '__template_payment_reminder', value: commSettings.whatsapp_payment_reminder_msg_template };
+      } else {
+        updatedTags.push({ key: '__template_payment_reminder', value: commSettings.whatsapp_payment_reminder_msg_template });
+      }
+
+      setCustomTags(updatedTags.filter(t => t.key !== '__template_payment_reminder'));
 
       const payload = {
         tenant_id: profile.id,

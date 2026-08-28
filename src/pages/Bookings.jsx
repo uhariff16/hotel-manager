@@ -264,8 +264,11 @@ export default function Bookings() {
       const dbReceipt = integrationsRes?.data?.whatsapp_receipt_msg_template;
       const dbReminder = integrationsRes?.data?.whatsapp_reminder_msg_template;
       const dbReview = integrationsRes?.data?.whatsapp_review_msg_template;
-      const dbPaymentReminder = integrationsRes?.data?.whatsapp_payment_reminder_msg_template;
-      const dbCustomTags = integrationsRes?.data?.whatsapp_custom_tags;
+      
+      const customTagsRaw = integrationsRes?.data?.whatsapp_custom_tags;
+      const parsedTags = customTagsRaw ? (typeof customTagsRaw === 'string' ? JSON.parse(customTagsRaw) : customTagsRaw) : [];
+      const storedPaymentReminderTag = parsedTags.find(t => t.key === '__template_payment_reminder');
+      const dbPaymentReminder = integrationsRes?.data?.whatsapp_payment_reminder_msg_template || (storedPaymentReminderTag ? storedPaymentReminderTag.value : null);
       
       setWhatsappTemplates({
         confirm: dbConfirm || DEFAULT_CONFIRM_TEMPLATE,
@@ -275,9 +278,9 @@ export default function Bookings() {
         payment_reminder: dbPaymentReminder || DEFAULT_PAYMENT_REMINDER_TEMPLATE
       });
 
-      if (dbCustomTags) {
+      if (customTagsRaw) {
         try {
-          setCustomTags(typeof dbCustomTags === 'string' ? JSON.parse(dbCustomTags) : dbCustomTags);
+          setCustomTags(parsedTags.filter(t => t.key !== '__template_payment_reminder'));
         } catch (e) {
           console.error("Failed to parse custom tags:", e);
         }
