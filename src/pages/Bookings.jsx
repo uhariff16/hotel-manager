@@ -268,7 +268,10 @@ export default function Bookings() {
       const customTagsRaw = integrationsRes?.data?.whatsapp_custom_tags;
       const parsedTags = customTagsRaw ? (typeof customTagsRaw === 'string' ? JSON.parse(customTagsRaw) : customTagsRaw) : [];
       const storedPaymentReminderTag = parsedTags.find(t => t.key === '__template_payment_reminder');
-      const dbPaymentReminder = integrationsRes?.data?.whatsapp_payment_reminder_msg_template || (storedPaymentReminderTag ? storedPaymentReminderTag.value : null);
+      let dbPaymentReminder = storedPaymentReminderTag ? storedPaymentReminderTag.value : null;
+      if (!dbPaymentReminder && integrationsRes?.data?.whatsapp_payment_reminder_msg_template) {
+         dbPaymentReminder = integrationsRes?.data?.whatsapp_payment_reminder_msg_template;
+      }
       
       setWhatsappTemplates({
         confirm: dbConfirm || DEFAULT_CONFIRM_TEMPLATE,
