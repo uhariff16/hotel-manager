@@ -376,7 +376,7 @@ export default function CottagesRooms() {
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
             Define the pricing concepts (e.g. Weekday, Weekend) that apply across your property. Prices are attached to specific categories or properties.
           </p>
-          <form onSubmit={handleAddRatePlan} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          <form onSubmit={handleAddRatePlan} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', alignItems: 'center' }}>
             <select 
               className="form-select" 
               value={newRatePlanName}
@@ -406,11 +406,11 @@ export default function CottagesRooms() {
 
         {/* ROOM CATEGORIES LIST */}
         <div className="card">
-          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: 800 }}>
+          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Tag size={22} /> Room Categories
             </div>
-            <button className="btn btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem' }} onClick={() => startCategoryEdit()}>
+            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }} onClick={() => startCategoryEdit()}>
               + New Category
             </button>
           </h2>
@@ -467,7 +467,7 @@ export default function CottagesRooms() {
                   <tr>
                     <th>Category</th>
                     <th>Capacity</th>
-                    <th>Act</th>
+                    <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -493,10 +493,10 @@ export default function CottagesRooms() {
       
       {/* COTTAGES SECTION */}
       <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: 800 }}>
+        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
           <span>Properties (Entire Property Booking)</span>
           {!editingCottage && (
-            <button className="btn btn-primary" style={{ padding: '0.3rem 0.6rem', fontSize: '0.85rem' }} onClick={() => startCottageEdit()}>
+            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }} onClick={() => startCottageEdit()}>
               + New Property
             </button>
           )}
@@ -566,7 +566,7 @@ export default function CottagesRooms() {
                 <tr>
                   <th>Name</th>
                   <th>Capacity</th>
-                  <th>Act</th>
+                  <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -628,7 +628,7 @@ export default function CottagesRooms() {
 
       {/* ROOMS SECTION */}
       <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', color: 'var(--text-main)', fontWeight: 800 }}>
+        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
           <span>Rooms (Individual Booking)</span>
         </h2>
         
@@ -697,7 +697,7 @@ export default function CottagesRooms() {
               <tr>
                 <th>Room</th>
                 <th>Category</th>
-                <th>Act</th>
+                <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
