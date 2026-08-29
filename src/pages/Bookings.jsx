@@ -1646,7 +1646,7 @@ export default function Bookings() {
 
       {/* WhatsApp Modal */}
       {whatsappGenerator.open && selectedDetailedBooking && createPortal(
-        <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setWhatsappGenerator({ ...whatsappGenerator, open: false })}>
+        <div className="modal-overlay" style={{ zIndex: 2600 }} onClick={() => setWhatsappGenerator({ ...whatsappGenerator, open: false })}>
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
