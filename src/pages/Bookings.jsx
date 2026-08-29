@@ -7,6 +7,9 @@ import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
 import BookingReceipt from '../components/BookingReceipt';
 import html2canvas from 'html2canvas';
+import { Capacitor } from '@capacitor/core';
+import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 
 const parseAgentSource = (sourceStr) => {
   if (!sourceStr) return { isAgent: false, name: '', phone: '' };
@@ -184,29 +187,60 @@ export default function Bookings() {
           setIsSharingInvoice(false);
           return;
         }
-        const file = new File([blob], `Receipt_${selectedDetailedBooking.reference_number}.png`, { type: 'image/png' });
         
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          try {
-            await navigator.share({
-              title: `Payment Receipt - ${selectedDetailedBooking.reference_number}`,
-              text: 'Please find attached your payment receipt.',
-              files: [file]
+        try {
+          if (Capacitor.isNativePlatform()) {
+            await new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.readAsDataURL(blob);
+              reader.onloadend = async () => {
+                try {
+                  const base64data = reader.result.split(',')[1];
+                  const fileName = `Receipt_${selectedDetailedBooking.reference_number}.png`;
+                  
+                  const savedFile = await Filesystem.writeFile({
+                    path: fileName,
+                    data: base64data,
+                    directory: Directory.Cache
+                  });
+                  
+                  await Share.share({
+                    title: `Payment Receipt - ${selectedDetailedBooking.reference_number}`,
+                    text: 'Please find attached your payment receipt.',
+                    url: savedFile.uri,
+                    dialogTitle: 'Share Receipt'
+                  });
+                  resolve();
+                } catch (err) {
+                  reject(err);
+                }
+              };
+              reader.onerror = reject;
             });
-          } catch (e) {
-            console.error("Share failed or cancelled", e);
+          } else {
+            const file = new File([blob], `Receipt_${selectedDetailedBooking.reference_number}.png`, { type: 'image/png' });
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                title: `Payment Receipt - ${selectedDetailedBooking.reference_number}`,
+                text: 'Please find attached your payment receipt.',
+                files: [file]
+              });
+            } else {
+              // Fallback download
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = file.name;
+              a.click();
+              URL.revokeObjectURL(url);
+              alert("Receipt downloaded. You can now attach it to WhatsApp or Email manually.");
+            }
           }
-        } else {
-          // Fallback download
-          const url = URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = file.name;
-          a.click();
-          URL.revokeObjectURL(url);
-          alert("Receipt downloaded. You can now attach it to WhatsApp or Email manually.");
+        } catch (e) {
+          console.error("Share failed or cancelled", e);
+        } finally {
+          setIsSharingInvoice(false);
         }
-        setIsSharingInvoice(false);
       }, 'image/png');
     } catch(e) {
       console.error(e);
@@ -1351,14 +1385,16 @@ export default function Bookings() {
                 >
                   <Share2 size={20} />
                 </button>
-                <button 
-                  className="btn-icon" 
-                  title="Print Receipt"
-                  onClick={() => setTimeout(() => window.print(), 100)}
-                  style={{ background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '4px' }}
-                >
-                  <Printer size={20} />
-                </button>
+                {!Capacitor.isNativePlatform() && (
+                  <button 
+                    className="btn-icon" 
+                    title="Print Receipt"
+                    onClick={() => setTimeout(() => window.print(), 100)}
+                    style={{ background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '4px' }}
+                  >
+                    <Printer size={20} />
+                  </button>
+                )}
                 <button className="btn-icon" onClick={() => setSelectedDetailedBooking(null)}><X size={20} /></button>
               </div>
             </div>
