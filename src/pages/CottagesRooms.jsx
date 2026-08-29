@@ -410,8 +410,8 @@ export default function CottagesRooms() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Tag size={22} /> Room Categories
             </div>
-            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }} onClick={() => startCategoryEdit()}>
-              + New Category
+            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => startCategoryEdit()}>
+              <Plus size={16} /> New Category
             </button>
           </h2>
           
@@ -496,8 +496,8 @@ export default function CottagesRooms() {
         <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
           <span>Properties (Entire Property Booking)</span>
           {!editingCottage && (
-            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap' }} onClick={() => startCottageEdit()}>
-              + New Property
+            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => startCottageEdit()}>
+              <Plus size={16} /> New Property
             </button>
           )}
         </h2>
