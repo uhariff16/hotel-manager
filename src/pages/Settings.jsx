@@ -97,63 +97,6 @@ export default function Settings() {
     whatsapp: { loading: false, success: null, message: '' }
   });
   
-  const [biometricAvailable, setBiometricAvailable] = useState(false);
-  const [biometricEnabled, setBiometricEnabled] = useState(false);
-  const [showBiometricPrompt, setShowBiometricPrompt] = useState(false);
-  const [biometricPassword, setBiometricPassword] = useState('');
-
-  useEffect(() => {
-    const initBiometric = async () => {
-      if (!Capacitor.isNativePlatform()) return;
-      try {
-        const result = await NativeBiometric.isAvailable();
-        setBiometricAvailable(result.isAvailable);
-        if (result.isAvailable) {
-          const pref = await Preferences.get({ key: 'biometric_enabled' });
-          setBiometricEnabled(pref.value === 'true');
-        }
-      } catch (err) {
-        console.log("Biometric check failed:", err);
-      }
-    };
-    initBiometric();
-  }, []);
-
-  const handleToggleBiometric = async () => {
-    if (biometricEnabled) {
-      try {
-        await NativeBiometric.deleteCredentials({ server: 'staypilot.com' });
-        await Preferences.set({ key: 'biometric_enabled', value: 'false' });
-        setBiometricEnabled(false);
-      } catch (err) {
-        alert("Failed to disable biometrics: " + err.message);
-      }
-    } else {
-      setShowBiometricPrompt(true);
-      setBiometricPassword('');
-    }
-  };
-
-  const confirmBiometricEnable = async (e) => {
-    if (e) e.preventDefault();
-    if (!biometricPassword) return;
-    
-    try {
-      await NativeBiometric.setCredentials({
-        server: 'staypilot.com',
-        username: session?.user?.email,
-        password: biometricPassword
-      });
-      await Preferences.set({ key: 'biometric_enabled', value: 'true' });
-      setBiometricEnabled(true);
-      setShowBiometricPrompt(false);
-      setBiometricPassword('');
-      alert("Biometric login enabled successfully!");
-    } catch(err) {
-      alert("Failed to enable biometrics: " + err.message);
-    }
-  };
-  
   // Integration Settings State
   const [commSettings, setCommSettings] = useState({
     email_enabled: false,
@@ -791,35 +734,6 @@ export default function Settings() {
                 </form>
               </div>
 
-              {/* Security & Biometrics Card */}
-              {biometricAvailable && Capacitor.isNativePlatform() && (
-                <div className="card">
-                  <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
-                    <Fingerprint size={24} color="var(--primary)" /> Security & Login
-                  </h2>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Enable Fingerprint or Face ID to quickly log into your account.</p>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', border: '1px solid var(--border)', borderRadius: '12px', background: 'var(--bg-secondary)' }}>
-                    <div>
-                      <h4 style={{ margin: 0, fontSize: '1rem' }}>Biometric Login</h4>
-                      <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.875rem' }}>{biometricEnabled ? 'Enabled for this device' : 'Disabled'}</p>
-                    </div>
-                    <button 
-                      onClick={handleToggleBiometric}
-                      style={{
-                        padding: '0.5rem 1rem',
-                        borderRadius: '20px',
-                        border: 'none',
-                        background: biometricEnabled ? 'var(--danger)' : 'var(--primary)',
-                        color: '#fff',
-                        fontWeight: '600',
-                        cursor: 'pointer'
-                      }}
-                    >
-                      {biometricEnabled ? 'Disable' : 'Enable'}
-                    </button>
-                  </div>
-                </div>
-              )}
 
               {/* Communications API Configurations */}
               {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalCommEnabled && profile?.feature_comm_enabled !== false)) && (
@@ -1554,36 +1468,6 @@ export default function Settings() {
             </>
           )}
 
-      {showBiometricPrompt && (
-        <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setShowBiometricPrompt(false)}>
-          <div className="modal-content" style={{ maxWidth: '400px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Fingerprint color="var(--primary)" size={20} /> Enable Biometrics
-              </h2>
-              <button className="btn-icon" onClick={() => setShowBiometricPrompt(false)}><X size={20} /></button>
-            </div>
-            <form onSubmit={confirmBiometricEnable}>
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>Please enter your current password</label>
-                <input 
-                  type="password" 
-                  className="form-input" 
-                  autoFocus
-                  required
-                  value={biometricPassword} 
-                  onChange={(e) => setBiometricPassword(e.target.value)} 
-                  placeholder="Enter your password"
-                />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-                <button type="button" className="btn btn-outline" onClick={() => setShowBiometricPrompt(false)}>Cancel</button>
-                <button type="submit" className="btn btn-primary" disabled={!biometricPassword}>Enable</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
         </main>
       </div>

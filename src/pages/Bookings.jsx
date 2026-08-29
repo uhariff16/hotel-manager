@@ -1260,7 +1260,7 @@ export default function Bookings() {
       )}
 
       {/* Settlement Modal */}
-      {settlingBooking && (
+      {settlingBooking && createPortal(
         <div className="modal-overlay">
           <div className="modal-content" style={{ maxWidth: '400px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -1328,11 +1328,12 @@ export default function Bookings() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Booking Details Modal */}
-      {selectedDetailedBooking && (
+      {selectedDetailedBooking && createPortal(
         <div className="modal-overlay" onClick={() => setSelectedDetailedBooking(null)}>
           <div className="modal-content" style={{ maxWidth: '650px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
@@ -1639,11 +1640,12 @@ export default function Bookings() {
               </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* WhatsApp Message Generator Sub-Modal */}
-      {whatsappGenerator.open && selectedDetailedBooking && (
+      {/* WhatsApp Modal */}
+      {whatsappGenerator.open && selectedDetailedBooking && createPortal(
         <div className="modal-overlay" style={{ zIndex: 1100 }} onClick={() => setWhatsappGenerator({ ...whatsappGenerator, open: false })}>
           <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>

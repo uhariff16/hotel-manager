@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
-import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff, Fingerprint } from 'lucide-react';
-import { NativeBiometric } from '@capgo/capacitor-native-biometric';
+import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff } from 'lucide-react';
 import { Preferences } from '@capacitor/preferences';
-import { Capacitor } from '@capacitor/core';
 
 export default function Auth() {
   const { isRecovering, setIsRecovering } = useSettingsStore();
@@ -31,34 +29,8 @@ export default function Auth() {
     fullName: ''
   });
 
-  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
-  const [isBiometricEnabled, setIsBiometricEnabled] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
 
-  const handleBiometricLogin = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const credentials = await NativeBiometric.getCredentials({
-        server: 'staypilot.com',
-      });
-      
-      if (credentials && credentials.username && credentials.password) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: credentials.username,
-          password: credentials.password,
-        });
-        if (error) throw error;
-      }
-    } catch (error) {
-      console.error("Biometric login failed:", error);
-      if (error.code !== 'UserCancel') {
-        setError("Biometric login failed.");
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
   useEffect(() => {
     const initAuth = async () => {
@@ -67,28 +39,6 @@ export default function Auth() {
       if (savedEmail.value && savedPassword.value) {
         setFormData(prev => ({ ...prev, email: savedEmail.value, password: savedPassword.value }));
         setRememberMe(true);
-      }
-
-      if (!Capacitor.isNativePlatform()) return;
-
-      try {
-        const result = await NativeBiometric.isAvailable();
-        setIsBiometricAvailable(result.isAvailable);
-        
-        if (result.isAvailable) {
-          const bioEnabled = await Preferences.get({ key: 'biometric_enabled' });
-          if (bioEnabled.value === 'true') {
-             setIsBiometricEnabled(true);
-             const justLoggedOut = sessionStorage.getItem('justLoggedOut');
-             if (justLoggedOut === 'true') {
-               sessionStorage.removeItem('justLoggedOut');
-             } else {
-               handleBiometricLogin();
-             }
-          }
-        }
-      } catch (err) {
-        console.log("Biometrics not available:", err);
       }
     };
     initAuth();
@@ -408,18 +358,6 @@ export default function Auth() {
           >
             {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account</>)))}
           </button>
-          
-          {isLogin && isBiometricEnabled && !isForgotPassword && !isRecovering && (
-             <button 
-                type="button" 
-                className="btn btn-outline" 
-                style={{ width: '100%', height: '50px', fontSize: '1rem', marginTop: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
-                onClick={handleBiometricLogin}
-                disabled={loading}
-             >
-                <Fingerprint size={20} /> Sign in with Biometrics
-             </button>
-          )}
         </form>
 
         <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.875rem' }}>
