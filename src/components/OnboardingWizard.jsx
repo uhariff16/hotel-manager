@@ -462,41 +462,6 @@ export default function OnboardingWizard() {
         }
       `}} />
       <div style={{
-        position: 'absolute',
-        top: '1rem',
-        left: '1rem',
-        right: '1rem',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        zIndex: 10
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '0.05em', color: '#10b981', fontFamily: "'Outfit', sans-serif" }}>STAY PILOT</span>
-        </div>
-        <button
-          onClick={handleCancel}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            background: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
-            padding: '0.5rem 0.8rem',
-            borderRadius: '8px',
-            color: '#ef4444',
-            cursor: 'pointer',
-            fontWeight: 600,
-            fontSize: '0.8rem',
-            transition: 'all 0.2s'
-          }}
-          className="btn-logout-hover"
-        >
-          <LogOut size={16} /> Cancel Setup
-        </button>
-      </div>
-
-      <div style={{
         width: '100%',
         maxWidth: step === 3 ? '1000px' : '650px',
         background: 'rgba(255, 255, 255, 0.95)',
@@ -953,31 +918,51 @@ export default function OnboardingWizard() {
             )}
 
             {/* Stepper Navigation Buttons */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '1rem', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0, 0, 0, 0.08)' }}>
-              {step > 1 ? (
+            <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap-reverse', gap: '1rem', marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0, 0, 0, 0.08)' }}>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                 <button
                   type="button"
-                  onClick={handlePrevStep}
+                  onClick={handleCancel}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem',
-                    background: 'transparent',
-                    border: '1px solid rgba(0, 0, 0, 0.15)',
-                    padding: '0.75rem 1.5rem',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.2)',
+                    padding: '0.75rem 1rem',
                     borderRadius: '10px',
-                    color: '#0f172a',
+                    color: '#ef4444',
                     cursor: 'pointer',
                     fontWeight: 700,
                     fontSize: '0.9rem',
                     transition: 'all 0.2s'
                   }}
                 >
-                  <ChevronLeft size={16} /> Back
+                  <LogOut size={16} /> Cancel
                 </button>
-              ) : (
-                <div /> /* spacing spacer */
-              )}
+                {step > 1 && (
+                  <button
+                    type="button"
+                    onClick={handlePrevStep}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.5rem',
+                      background: 'transparent',
+                      border: '1px solid rgba(0, 0, 0, 0.15)',
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '10px',
+                      color: '#0f172a',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.9rem',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    <ChevronLeft size={16} /> Back
+                  </button>
+                )}
+              </div>
 
               {step < 3 ? (
                 <button
