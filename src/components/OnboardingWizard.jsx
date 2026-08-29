@@ -463,15 +463,16 @@ export default function OnboardingWizard() {
       `}} />
       <div style={{
         position: 'absolute',
-        top: '1.5rem',
-        left: '2rem',
-        right: '2rem',
+        top: '1rem',
+        left: '1rem',
+        right: '1rem',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        zIndex: 10
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <span style={{ fontSize: '1.25rem', fontWeight: 800, letterSpacing: '0.05em', color: '#10b981', fontFamily: "'Outfit', sans-serif" }}>STAY PILOT</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 800, letterSpacing: '0.05em', color: '#10b981', fontFamily: "'Outfit', sans-serif" }}>STAY PILOT</span>
         </div>
         <button
           onClick={handleCancel}
@@ -479,14 +480,14 @@ export default function OnboardingWizard() {
             display: 'flex',
             alignItems: 'center',
             gap: '0.5rem',
-            background: 'rgba(0, 0, 0, 0.05)',
-            border: '1px solid rgba(0, 0, 0, 0.1)',
-            padding: '0.5rem 1rem',
+            background: 'rgba(239, 68, 68, 0.1)',
+            border: '1px solid rgba(239, 68, 68, 0.2)',
+            padding: '0.5rem 0.8rem',
             borderRadius: '8px',
-            color: '#0f172a',
+            color: '#ef4444',
             cursor: 'pointer',
             fontWeight: 600,
-            fontSize: '0.85rem',
+            fontSize: '0.8rem',
             transition: 'all 0.2s'
           }}
           className="btn-logout-hover"
@@ -585,20 +586,25 @@ export default function OnboardingWizard() {
               type="button"
               onClick={handleCancel}
               style={{
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                background: 'rgba(239, 68, 68, 0.1)',
+                border: '1px solid rgba(239, 68, 68, 0.2)',
                 padding: '0.6rem 1.5rem',
                 borderRadius: '10px',
-                color: '#475569',
+                color: '#ef4444',
                 cursor: 'pointer',
                 fontWeight: 600,
-                fontSize: '0.85rem',
+                fontSize: '0.9rem',
                 transition: 'all 0.2s',
                 alignSelf: 'center',
-                marginTop: '0.5rem'
+                marginTop: '1rem',
+                width: '100%'
               }}
             >
-              Cancel Setup
+              <LogOut size={16} /> Cancel Setup
             </button>
           </div>
         ) : (
