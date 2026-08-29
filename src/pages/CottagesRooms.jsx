@@ -350,8 +350,8 @@ export default function CottagesRooms() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
+      <div style={{ marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div style={{ flex: '1 1 300px' }}>
           <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Property Management</h1>
           <p style={{ color: 'var(--text-muted)' }}>Configure your global Rate Plans, Room Categories, Properties and Rooms.</p>
           {error && <div className="alert alert-danger" style={{marginTop: '1rem', color: 'red'}}>{error}</div>}
@@ -359,10 +359,10 @@ export default function CottagesRooms() {
         <button 
           className="btn btn-primary" 
           onClick={() => navigate('/wizard?newProperty=true')}
-          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 600, padding: '0.6rem 1.2rem', whiteSpace: 'nowrap' }}
         >
           <Plus size={18} />
-          Run Setup Wizard
+          Quick Setup Wizard
         </button>
       </div>
 
