@@ -234,11 +234,11 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
               <div style={{ fontSize: '1.5rem', fontWeight: 900, color: stats.netProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>₹{stats.netProfit.toLocaleString()}</div>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Capital Recovery</span>
-              <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{Math.max(0, stats.actualROI).toFixed(1)}%</div>
-              <div style={{ height: '6px', background: 'var(--bg-secondary)', borderRadius: '3px', marginTop: '0.5rem', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min(100, Math.max(0, stats.actualROI))}%`, height: '100%', background: 'var(--primary)' }}></div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Est. Payback Period</span>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>
+                {stats.yearsToPayback > 0 ? `${stats.yearsToPayback.toFixed(1)} Years` : 'N/A'}
               </div>
+              <small style={{ color: 'var(--text-muted)' }}>At current run rate</small>
             </div>
           </div>
         </div>
