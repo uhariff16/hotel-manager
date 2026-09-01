@@ -236,6 +236,9 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     const requiredOccupancyRate = actualADR > 0 
       ? (totalMonthlyRevenueTarget / actualADR) / (totalUnits * 30.4) * 100 
       : (suggestedRate > 0 ? (totalMonthlyRevenueTarget / suggestedRate) / (totalUnits * 30.4) * 100 : 0);
+      
+    const totalAvailableNightsPast = totalUnits * actualMonthsElapsed * 30.4;
+    const actualOccupancyRate = totalAvailableNightsPast > 0 ? (totalNightsSold / totalAvailableNightsPast) * 100 : 0;
 
     return {
       totalIncome, totalOperatingExpenses, netProfit, actualROI, capitalOutlay, 
@@ -244,7 +247,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       monthlyAverageRevenue, monthlyAverageExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
       suggestedRate, breakEvenRate, breakEvenRevenueTarget, achievedBreakEven,
       totalAnnualCost, breakEvenMonthlyTarget, monthlyBreakdown,
-      actualADR, requiredOccupancyRate,
+      actualADR, requiredOccupancyRate, actualOccupancyRate,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
   }, [financials, investmentData, range]);
@@ -346,6 +349,13 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
           <div>
             <small style={{ color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Target ROI Profit</small>
             <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>₹{Math.ceil(stats.monthlyROIGoal).toLocaleString()}</div>
+          </div>
+          <div>
+            <small style={{ color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Actual Occupancy</small>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800, color: stats.actualOccupancyRate >= stats.requiredOccupancyRate ? 'var(--success)' : 'var(--warning)' }}>
+              {stats.actualOccupancyRate.toFixed(1)}%
+            </div>
+            <small style={{ color: 'var(--text-muted)' }}>Historical average</small>
           </div>
           <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
