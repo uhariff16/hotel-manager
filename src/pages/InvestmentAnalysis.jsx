@@ -347,25 +347,40 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
           </div>
         </div>
         <div className="card" style={{ border: `1px solid ${stats.achievedBreakEven ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}` }}>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Break-Even Status</span>
-          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: stats.achievedBreakEven ? 'var(--success)' : 'var(--warning)', marginTop: '0.5rem' }}>
-            {stats.achievedBreakEven ? 'ACHIEVED' : 'NOT ACHIEVED'}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginTop: '1rem', padding: '0.75rem', background: 'var(--bg-secondary)', borderRadius: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
             <div>
-              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 600 }}>Monthly Target</small>
-              <strong style={{ fontSize: '0.9rem' }}>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</strong>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Break-Even Status (YTD)</span>
+              <div style={{ fontSize: '1.75rem', fontWeight: 900, color: stats.achievedBreakEven ? 'var(--success)' : 'var(--warning)', marginTop: '0.25rem' }}>
+                {stats.achievedBreakEven ? 'ACHIEVED' : 'NOT ACHIEVED'}
+              </div>
+            </div>
+            <span style={{ background: 'var(--bg-secondary)', padding: '0.25rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', color: 'var(--text-muted)', fontWeight: 600, border: '1px solid var(--border)' }}>0% Profit Baseline</span>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginTop: '1.25rem', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+            <div>
+              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>Actual YTD Revenue</small>
+              <strong style={{ fontSize: '1.1rem' }}>₹{Math.ceil(stats.totalIncome).toLocaleString()}</strong>
             </div>
             <div>
-              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 600 }}>Yearly Target</small>
-              <strong style={{ fontSize: '0.9rem' }}>₹{Math.ceil(stats.totalAnnualCost).toLocaleString()}</strong>
+              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>Target YTD Revenue</small>
+              <strong style={{ fontSize: '1.1rem' }}>₹{Math.ceil(stats.breakEvenRevenueTarget).toLocaleString()}</strong>
+            </div>
+            <div>
+              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>Variance (Shortfall/Surplus)</small>
+              <strong style={{ fontSize: '1.1rem', color: stats.achievedBreakEven ? 'var(--success)' : 'var(--danger)' }}>
+                {stats.achievedBreakEven ? '+' : '-'}₹{Math.abs(stats.totalIncome - stats.breakEvenRevenueTarget).toLocaleString()}
+              </strong>
             </div>
           </div>
-          <div style={{ marginTop: '0.75rem' }}>
-            <small style={{ color: 'var(--text-muted)' }}>YTD Prorated Target: ₹{Math.ceil(stats.breakEvenRevenueTarget).toLocaleString()}</small><br/>
-            <small style={{ color: stats.achievedBreakEven ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
-              {stats.achievedBreakEven ? '+' : '-'} ₹{Math.abs(stats.totalIncome - stats.breakEvenRevenueTarget).toLocaleString()} {stats.achievedBreakEven ? 'Surplus' : 'Shortfall'} (YTD)
-            </small>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1rem' }}>
+            <div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, display: 'block' }}>Monthly Required: <strong style={{color: 'var(--text)', fontWeight: 800}}>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</strong></span>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, display: 'block' }}>Yearly Required: <strong style={{color: 'var(--text)', fontWeight: 800}}>₹{Math.ceil(stats.totalAnnualCost).toLocaleString()}</strong></span>
+            </div>
           </div>
           {stats.monthlyBreakdown && stats.monthlyBreakdown.length > 0 && (
             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
