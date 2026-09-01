@@ -546,6 +546,11 @@ export default function InvestmentHub() {
     setSaving(true);
     try {
       const { id, created_at, updated_at, ...dbPayload } = investmentData;
+      
+      // Convert empty strings to null for database compatibility
+      if (dbPayload.average_selling_price === '') dbPayload.average_selling_price = null;
+      if (dbPayload.lease_start_date === '') dbPayload.lease_start_date = null;
+      if (dbPayload.lease_end_date === '') dbPayload.lease_end_date = null;
 
       const { error } = await supabase.from('investments').upsert({
         tenant_id: profile.id,
