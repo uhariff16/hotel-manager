@@ -515,7 +515,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 700 }}>Monthly Break-Even Timeline</span>
               </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
                 {stats.monthlyBreakdown.map((m, idx) => (
                   <div key={idx} style={{ 
                     padding: '0.35rem 0.6rem', 
@@ -687,10 +687,11 @@ export default function InvestmentHub() {
           </div>
 
           {/* Toggle Button Group */}
-          <div style={{ display: 'flex', background: 'var(--bg-secondary)', padding: '0.35rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', flex: '1 1 250px', maxWidth: '400px', background: 'var(--bg-secondary)', padding: '0.35rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
              <button 
                 onClick={() => setView('planner')}
                 style={{ 
+                  flex: 1,
                   padding: '0.5rem 1.25rem', 
                   borderRadius: '10px', 
                   fontSize: '0.85rem', 
@@ -707,6 +708,7 @@ export default function InvestmentHub() {
              <button 
                 onClick={() => setView('roi')}
                 style={{ 
+                  flex: 1,
                   padding: '0.5rem 1.25rem', 
                   borderRadius: '10px', 
                   fontSize: '0.85rem', 
