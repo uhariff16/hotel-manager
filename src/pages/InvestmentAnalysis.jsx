@@ -394,7 +394,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                 <div>
                   <span style={{ color: 'var(--text-muted)' }}>Required Sales: </span>
                   <strong style={{ color: 'var(--primary)' }}>
-                    {Math.ceil(stats.totalMonthlyRevenueTarget / (stats.actualADR > 0 ? stats.actualADR : stats.suggestedRate || 1))} Bookings
+                    {Math.ceil(stats.totalMonthlyRevenueTarget / (stats.actualADR > 0 ? stats.actualADR : stats.suggestedRate || 1))} Nights
                   </strong>
                   <span style={{ color: 'var(--text-muted)' }}> @ ₹{Math.ceil(stats.actualADR > 0 ? stats.actualADR : stats.suggestedRate).toLocaleString()} avg rate</span>
                 </div>
