@@ -105,10 +105,12 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
             <div style={{ padding: '1.5rem', background: 'var(--bg-color)', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700 }}>Break-even Rate</p>
               <h2 style={{ color: 'var(--warning)', margin: 0, fontSize: '2rem' }}>₹{Math.ceil(breakEvenDailyRatePerRoom).toLocaleString()}</h2>
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.75rem', lineHeight: '1.4' }}>Minimum avg. nightly rate required to cover all costs at target occupancy (0% profit).</span>
             </div>
             <div style={{ padding: '1.5rem', background: 'linear-gradient(135deg, var(--primary) 0%, #1e40af 100%)', borderRadius: '16px', color: 'white', textAlign: 'center' }}>
               <p style={{ opacity: 0.9, fontSize: '0.85rem', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700 }}>Suggested Rate</p>
               <h2 style={{ margin: 0, fontSize: '2rem' }}>₹{Math.ceil(suggestedDailyRatePerRoom).toLocaleString()}</h2>
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', marginTop: '0.75rem', lineHeight: '1.4' }}>Target avg. nightly rate required to achieve your desired {data.target_roi_percentage}% ROI.</span>
             </div>
           </div>
           <div style={{ marginTop: '2rem', background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border)' }}>
