@@ -28,7 +28,16 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
   const annualOperatingExpense = data.monthly_operating_expenses * 12;
   const annualTotalFixed = Number(data.annual_fixed_expenses);
   const leaseInvestment = Number(data.total_investment || 0);
-  const recoveryYears = Number(data.recovery_period_years || 1);
+  
+  let recoveryYears = Number(data.recovery_period_years || 1);
+  if (data.property_ownership === 'leased' && data.lease_start_date && data.lease_end_date) {
+    const start = new Date(data.lease_start_date);
+    const end = new Date(data.lease_end_date);
+    const diffTime = Math.abs(end - start);
+    const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+    recoveryYears = diffYears > 0 ? diffYears : 1;
+  }
+  
   const annualCapitalCost = leaseInvestment / recoveryYears;
   
   const totalAnnualCost = annualOperatingExpense + annualTotalFixed + annualCapitalCost;
@@ -75,11 +84,24 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
               </div>
               <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Total setup / purchase cost.</span>
             </div>
-            <div className="form-group">
-              <label className="form-label" style={{ fontSize: '0.8rem' }}>{data.property_ownership === 'owned' ? 'Recovery Period' : 'Lease Period'} (Yrs)</label>
-              <input type="number" className="form-input" value={data.recovery_period_years} onChange={e => setData({...data, recovery_period_years: e.target.value === '' ? '' : Number(e.target.value)})} min="1" step="0.5" />
-              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Amortize costs over time.</span>
-            </div>
+            {data.property_ownership === 'owned' ? (
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '0.8rem' }}>Recovery Period (Yrs)</label>
+                <input type="number" className="form-input" value={data.recovery_period_years} onChange={e => setData({...data, recovery_period_years: e.target.value === '' ? '' : Number(e.target.value)})} min="1" step="0.5" />
+                <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Amortize costs over time.</span>
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.7rem', marginBottom: '0.2rem' }}>Lease Start</label>
+                  <input type="date" className="form-input" style={{ padding: '0.4rem', fontSize: '0.8rem' }} value={data.lease_start_date} onChange={e => setData({...data, lease_start_date: e.target.value})} />
+                </div>
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.7rem', marginBottom: '0.2rem' }}>Lease End</label>
+                  <input type="date" className="form-input" style={{ padding: '0.4rem', fontSize: '0.8rem' }} value={data.lease_end_date} onChange={e => setData({...data, lease_end_date: e.target.value})} />
+                </div>
+              </div>
+            )}
           </div>
           <div className="form-group" style={{ marginBottom: '1.25rem' }}>
             <label className="form-label" style={{ fontSize: '0.8rem' }}>Unit Count</label>
@@ -98,7 +120,7 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
               <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Yearly fixed costs (insurance, licenses).</span>
             </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
             <div className="form-group">
               <label className="form-label" style={{ fontSize: '0.8rem' }}>Target ROI (%)</label>
               <input type="number" className="form-input" value={data.target_roi_percentage} onChange={e => setData({...data, target_roi_percentage: e.target.value === '' ? '' : Number(e.target.value)})} />
@@ -110,6 +132,13 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
               <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Expected % of booked nights per year.</span>
             </div>
           </div>
+          <div className="form-group">
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>Expected Avg. Selling Price (₹)</label>
+            <div style={{ position: 'relative' }}>
+              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>₹</div>
+              <input type="number" className="form-input" style={{ paddingLeft: '35px' }} value={data.average_selling_price} onChange={e => setData({...data, average_selling_price: e.target.value === '' ? '' : Number(e.target.value)})} placeholder="Optional for scenario testing" />
+            </div>
+          </div>
           <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={onSave} disabled={saving}><Save size={18}/> {saving ? 'Saving...' : 'Save Configuration'}</button>
         </section>
       </aside>
@@ -117,7 +146,7 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
       <main style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <div className="card">
           <h3 style={{ marginBottom: '1.5rem', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><TrendingUp size={20} color="var(--success)" /> Strategy Projections</h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`, gap: '1.5rem' }}>
             <div style={{ padding: '1.5rem', background: 'var(--bg-color)', borderRadius: '16px', border: '1px solid var(--border)', textAlign: 'center' }}>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700 }}>Break-even Rate</p>
               <h2 style={{ color: 'var(--warning)', margin: 0, fontSize: '2rem', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.25rem' }}>
@@ -134,6 +163,15 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
               </h2>
               <span style={{ display: 'block', fontSize: '0.7rem', color: 'rgba(255,255,255,0.8)', marginTop: '0.75rem', lineHeight: '1.4' }}>Target avg. nightly rate required to achieve your desired {data.target_roi_percentage}% ROI.</span>
             </div>
+            {Number(data.average_selling_price) > 0 && (
+              <div style={{ padding: '1.5rem', background: 'rgba(16, 185, 129, 0.05)', borderRadius: '16px', border: '1px solid rgba(16, 185, 129, 0.2)', textAlign: 'center' }}>
+                <p style={{ color: 'var(--success)', fontSize: '0.85rem', marginBottom: '0.5rem', textTransform: 'uppercase', fontWeight: 700 }}>Target Occupancy</p>
+                <h2 style={{ color: 'var(--success)', margin: 0, fontSize: '2rem', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.25rem' }}>
+                  {((requiredGrossAnnualRevenue / Number(data.average_selling_price)) / totalAvailableNights * 100).toFixed(1)}%
+                </h2>
+                <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.75rem', lineHeight: '1.4' }}>Required occupancy if selling at expected avg price of ₹{Number(data.average_selling_price).toLocaleString()}.</span>
+              </div>
+            )}
           </div>
           <div style={{ marginTop: '2rem', background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '16px', border: '1px solid var(--border)' }}>
             <h4 style={{ marginBottom: '1.25rem', fontSize: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>Annual Summary</h4>
@@ -361,6 +399,13 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
             </div>
             <small style={{ color: 'var(--text-muted)' }}>Historical average</small>
           </div>
+          <div>
+            <small style={{ color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Avg. Sold Price</small>
+            <div style={{ fontSize: '1.5rem', fontWeight: 800 }}>
+              ₹{Math.ceil(stats.actualADR).toLocaleString()}
+            </div>
+            <small style={{ color: 'var(--text-muted)' }}>Historical average ADR</small>
+          </div>
           <div style={{ background: 'rgba(59, 130, 246, 0.05)', padding: '1.25rem', borderRadius: '16px', border: '1px solid rgba(59, 130, 246, 0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <small style={{ color: 'var(--primary)', fontWeight: 800, textTransform: 'uppercase' }}>Monthly Revenue Goal</small>
@@ -440,7 +485,10 @@ export default function InvestmentHub() {
     total_rooms: 0,
     rental_model: 'room',
     property_ownership: 'leased',
-    recovery_period_years: 1
+    recovery_period_years: 1,
+    lease_start_date: new Date().toISOString().split('T')[0],
+    lease_end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+    average_selling_price: ''
   });
   const [financials, setFinancials] = useState({ incomes: [], expenses: [], bookings: [] });
   const [propertyInfo, setPropertyInfo] = useState({ totalRooms: 0 });
@@ -479,7 +527,10 @@ export default function InvestmentHub() {
         setInvestmentData({
           ...inv.data,
           property_ownership: meta.property_ownership || 'leased',
-          recovery_period_years: meta.recovery_period_years || 1
+          recovery_period_years: meta.recovery_period_years || 1,
+          lease_start_date: meta.lease_start_date || new Date().toISOString().split('T')[0],
+          lease_end_date: meta.lease_end_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+          average_selling_price: meta.average_selling_price || ''
         });
       }
       setFinancials({ incomes: inc.data || [], expenses: exp.data || [], bookings: bkg.data || [] });
@@ -499,9 +550,15 @@ export default function InvestmentHub() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { property_ownership, recovery_period_years, ...dbPayload } = investmentData;
+      const { property_ownership, recovery_period_years, lease_start_date, lease_end_date, average_selling_price, ...dbPayload } = investmentData;
       
-      localStorage.setItem(`inv_meta_${activeResortId}`, JSON.stringify({ property_ownership, recovery_period_years }));
+      localStorage.setItem(`inv_meta_${activeResortId}`, JSON.stringify({ 
+        property_ownership, 
+        recovery_period_years,
+        lease_start_date,
+        lease_end_date,
+        average_selling_price
+      }));
 
       const { error } = await supabase.from('investments').upsert({
         tenant_id: profile.id,
