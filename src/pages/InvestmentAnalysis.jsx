@@ -27,9 +27,11 @@ import { format } from 'date-fns';
 const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
   const annualOperatingExpense = data.monthly_operating_expenses * 12;
   const annualTotalFixed = Number(data.annual_fixed_expenses);
-  const leaseInvestment = Number(data.total_investment);
+  const leaseInvestment = Number(data.total_investment || 0);
+  const recoveryYears = Number(data.recovery_period_years || 1);
+  const annualCapitalCost = leaseInvestment / recoveryYears;
   
-  const totalAnnualCost = annualOperatingExpense + annualTotalFixed + leaseInvestment;
+  const totalAnnualCost = annualOperatingExpense + annualTotalFixed + annualCapitalCost;
   const targetAnnualNetProfit = leaseInvestment * (data.target_roi_percentage / 100);
   const requiredGrossAnnualRevenue = totalAnnualCost + targetAnnualNetProfit;
   
@@ -57,13 +59,27 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
               <button className={`btn ${data.rental_model === 'property' ? 'btn-primary' : 'btn-link'}`} style={{ fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }} onClick={() => setData({...data, rental_model: 'property'})}>Property</button>
             </div>
           </div>
-          <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-            <label className="form-label" style={{ fontSize: '0.8rem' }}>Annual Investment/Lease (₹)</label>
-            <div style={{ position: 'relative' }}>
-              <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>₹</div>
-              <input type="number" className="form-input" style={{ paddingLeft: '35px' }} value={data.total_investment} onChange={e => setData({...data, total_investment: e.target.value === '' ? '' : Number(e.target.value)})} />
+          <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+            <label className="form-label" style={{ fontSize: '0.8rem' }}>Property Ownership</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', background: 'var(--bg-color)', padding: '0.35rem', borderRadius: '10px', border: '1px solid var(--border)' }}>
+              <button className={`btn ${data.property_ownership === 'owned' ? 'btn-primary' : 'btn-link'}`} style={{ fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }} onClick={() => setData({...data, property_ownership: 'owned', recovery_period_years: data.recovery_period_years === 1 ? 5 : data.recovery_period_years})}>Owned</button>
+              <button className={`btn ${data.property_ownership === 'leased' ? 'btn-primary' : 'btn-link'}`} style={{ fontSize: '0.75rem', padding: '0.5rem', borderRadius: '8px' }} onClick={() => setData({...data, property_ownership: 'leased', recovery_period_years: data.recovery_period_years === 5 ? 1 : data.recovery_period_years})}>Leased</button>
             </div>
-            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Total yearly lease or initial capital invested.</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>Total Investment (₹)</label>
+              <div style={{ position: 'relative' }}>
+                <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>₹</div>
+                <input type="number" className="form-input" style={{ paddingLeft: '35px' }} value={data.total_investment} onChange={e => setData({...data, total_investment: e.target.value === '' ? '' : Number(e.target.value)})} />
+              </div>
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Total setup / purchase cost.</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>{data.property_ownership === 'owned' ? 'Recovery Period' : 'Lease Period'} (Yrs)</label>
+              <input type="number" className="form-input" value={data.recovery_period_years} onChange={e => setData({...data, recovery_period_years: e.target.value === '' ? '' : Number(e.target.value)})} min="1" step="0.5" />
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Amortize costs over time.</span>
+            </div>
           </div>
           <div className="form-group" style={{ marginBottom: '1.25rem' }}>
             <label className="form-label" style={{ fontSize: '0.8rem' }}>Unit Count</label>
@@ -123,7 +139,7 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
             <h4 style={{ marginBottom: '1.25rem', fontSize: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>Annual Summary</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Total Operational & Fixed Costs</span><span style={{ fontWeight: 600 }}>₹{(annualOperatingExpense + annualTotalFixed).toLocaleString()}</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Lease/Investment Recovery</span><span style={{ fontWeight: 600 }}>₹{leaseInvestment.toLocaleString()}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Amortized Capital Cost ({recoveryYears} yrs)</span><span style={{ fontWeight: 600 }}>₹{annualCapitalCost.toLocaleString()}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Target Net Profit ({data.target_roi_percentage}% ROI)</span><span style={{ fontWeight: 600, color: 'var(--success)' }}>+ ₹{targetAnnualNetProfit.toLocaleString()}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '1rem', background: 'rgba(0,0,0,0.03)', borderRadius: '12px' }}><span style={{ fontWeight: 800 }}>Required Gross Revenue</span><span style={{ fontWeight: 900, color: 'var(--primary)', fontSize: '1.25rem' }}>₹{requiredGrossAnnualRevenue.toLocaleString()}</span></div>
             </div>
@@ -162,9 +178,10 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     const monthlyAverageExpense = totalOperatingExpenses / actualMonthsElapsed;
     const monthlyAverageProfit = netProfit / actualMonthsElapsed;
     
+    const recoveryYears = Number(investmentData?.recovery_period_years) || 1;
     const yearsToPayback = monthlyAverageProfit > 0 ? (capitalOutlay / (monthlyAverageProfit * 12)) : 0;
 
-    const monthlyCapitalRecoveryGoal = capitalOutlay / 12;
+    const monthlyCapitalRecoveryGoal = capitalOutlay / (recoveryYears * 12);
     const monthlyROIGoal = (capitalOutlay * (targetROIPercent / 100)) / 12;
     
     // Revenue Goal = Recovery + ROI + Current Run Rate Expenses
@@ -206,6 +223,20 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       achieved: m.revenue >= breakEvenMonthlyTarget
     }));
 
+    const validBookings = (financials.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'no_show');
+    let totalNightsSold = 0;
+    validBookings.forEach(b => {
+      const cin = new Date(b.check_in);
+      const cout = new Date(b.check_out);
+      const nights = Math.max(1, Math.round((cout - cin) / (1000 * 60 * 60 * 24)));
+      totalNightsSold += nights;
+    });
+
+    const actualADR = totalNightsSold > 0 ? (totalIncome / totalNightsSold) : 0;
+    const requiredOccupancyRate = actualADR > 0 
+      ? (totalMonthlyRevenueTarget / actualADR) / (totalUnits * 30.4) * 100 
+      : (suggestedRate > 0 ? (totalMonthlyRevenueTarget / suggestedRate) / (totalUnits * 30.4) * 100 : 0);
+
     return {
       totalIncome, totalOperatingExpenses, netProfit, actualROI, capitalOutlay, 
       targetROIPercent, targetPeriodProfit, monthlyAverageProfit, yearsToPayback,
@@ -213,6 +244,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       monthlyAverageRevenue, monthlyAverageExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
       suggestedRate, breakEvenRate, breakEvenRevenueTarget, achievedBreakEven,
       totalAnnualCost, breakEvenMonthlyTarget, monthlyBreakdown,
+      actualADR, requiredOccupancyRate,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
   }, [financials, investmentData, range]);
@@ -344,12 +376,23 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                 <span style={{ color: 'var(--text-muted)' }}>ROI Profit Target</span>
                 <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.monthlyROIGoal).toLocaleString()}</span>
               </div>
-              <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: 'var(--bg-color)', borderRadius: '8px', fontSize: '0.75rem', textAlign: 'center' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Required Sales: </span>
-                <strong style={{ color: 'var(--primary)' }}>
-                  {Math.ceil(stats.totalMonthlyRevenueTarget / (stats.suggestedRate || 1))} Bookings
-                </strong>
-                <span style={{ color: 'var(--text-muted)' }}> @ ₹{Math.ceil(stats.suggestedRate).toLocaleString()} avg rate</span>
+              <div style={{ marginTop: '0.5rem', padding: '0.75rem', background: 'var(--bg-color)', borderRadius: '8px', fontSize: '0.75rem', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div>
+                  <span style={{ color: 'var(--text-muted)' }}>Required Sales: </span>
+                  <strong style={{ color: 'var(--primary)' }}>
+                    {Math.ceil(stats.totalMonthlyRevenueTarget / (stats.actualADR > 0 ? stats.actualADR : stats.suggestedRate || 1))} Bookings
+                  </strong>
+                  <span style={{ color: 'var(--text-muted)' }}> @ ₹{Math.ceil(stats.actualADR > 0 ? stats.actualADR : stats.suggestedRate).toLocaleString()} avg rate</span>
+                </div>
+                <div style={{ paddingTop: '0.5rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Required Occupancy: </span>
+                  <strong style={{ color: 'var(--primary)', fontSize: '1rem' }}>
+                    {stats.requiredOccupancyRate.toFixed(1)}%
+                  </strong>
+                  <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.65rem', marginTop: '0.25rem' }}>
+                    Based on {stats.actualADR > 0 ? 'Actual ADR' : 'Suggested Rate'}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -381,9 +424,11 @@ export default function InvestmentHub() {
     target_roi_percentage: 12,
     expected_occupancy_rate: 60,
     total_rooms: 0,
-    rental_model: 'room'
+    rental_model: 'room',
+    property_ownership: 'leased',
+    recovery_period_years: 1
   });
-  const [financials, setFinancials] = useState({ incomes: [], expenses: [] });
+  const [financials, setFinancials] = useState({ incomes: [], expenses: [], bookings: [] });
   const [propertyInfo, setPropertyInfo] = useState({ totalRooms: 0 });
 
   const [range, setRange] = useState({
@@ -401,14 +446,21 @@ export default function InvestmentHub() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [inv, inc, exp] = await Promise.all([
+      const [inv, inc, exp, bkg] = await Promise.all([
         supabase.from('investments').select('*').eq('resort_id', activeResortId).maybeSingle(),
         supabase.from('incomes').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
-        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end)
+        supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
+        supabase.from('bookings').select('check_in, check_out, total_price, status').eq('resort_id', activeResortId)
       ]);
 
-      if (inv.data) setInvestmentData(inv.data);
-      setFinancials({ incomes: inc.data || [], expenses: exp.data || [] });
+      if (inv.data) {
+        setInvestmentData({
+          ...inv.data,
+          property_ownership: inv.data.property_ownership || 'leased',
+          recovery_period_years: inv.data.recovery_period_years || 1
+        });
+      }
+      setFinancials({ incomes: inc.data || [], expenses: exp.data || [], bookings: bkg.data || [] });
     } catch (err) {
       console.error(err);
     } finally {
