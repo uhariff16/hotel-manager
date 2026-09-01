@@ -454,10 +454,15 @@ export default function InvestmentHub() {
       ]);
 
       if (inv.data) {
+        let meta = {};
+        try {
+          meta = JSON.parse(localStorage.getItem(`inv_meta_${activeResortId}`) || '{}');
+        } catch (e) {}
+
         setInvestmentData({
           ...inv.data,
-          property_ownership: inv.data.property_ownership || 'leased',
-          recovery_period_years: inv.data.recovery_period_years || 1
+          property_ownership: meta.property_ownership || 'leased',
+          recovery_period_years: meta.recovery_period_years || 1
         });
       }
       setFinancials({ incomes: inc.data || [], expenses: exp.data || [], bookings: bkg.data || [] });
@@ -477,10 +482,14 @@ export default function InvestmentHub() {
   const handleSave = async () => {
     setSaving(true);
     try {
+      const { property_ownership, recovery_period_years, ...dbPayload } = investmentData;
+      
+      localStorage.setItem(`inv_meta_${activeResortId}`, JSON.stringify({ property_ownership, recovery_period_years }));
+
       const { error } = await supabase.from('investments').upsert({
         tenant_id: profile.id,
         resort_id: activeResortId,
-        ...investmentData,
+        ...dbPayload,
         updated_at: new Date().toISOString()
       }, { onConflict: 'tenant_id,resort_id' });
       if (error) throw error;
