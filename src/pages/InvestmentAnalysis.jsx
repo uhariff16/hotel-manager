@@ -63,18 +63,36 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave }) => {
               <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 600 }}>₹</div>
               <input type="number" className="form-input" style={{ paddingLeft: '35px' }} value={data.total_investment} onChange={e => setData({...data, total_investment: e.target.value === '' ? '' : Number(e.target.value)})} />
             </div>
+            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Total yearly lease or initial capital invested.</span>
           </div>
           <div className="form-group" style={{ marginBottom: '1.25rem' }}>
             <label className="form-label" style={{ fontSize: '0.8rem' }}>Unit Count</label>
             <input type="number" className="form-input" value={data.total_rooms} onChange={e => setData({...data, total_rooms: e.target.value === '' ? '' : Number(e.target.value)})} />
+            <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Number of rooms available for rent.</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.25rem' }}>
-            <div className="form-group"><label className="form-label" style={{ fontSize: '0.8rem' }}>Monthly OpExp</label><input type="number" className="form-input" value={data.monthly_operating_expenses} onChange={e => setData({...data, monthly_operating_expenses: e.target.value === '' ? '' : Number(e.target.value)})} /></div>
-            <div className="form-group"><label className="form-label" style={{ fontSize: '0.8rem' }}>Annual Fixed</label><input type="number" className="form-input" value={data.annual_fixed_expenses} onChange={e => setData({...data, annual_fixed_expenses: e.target.value === '' ? '' : Number(e.target.value)})} /></div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>Monthly OpExp</label>
+              <input type="number" className="form-input" value={data.monthly_operating_expenses} onChange={e => setData({...data, monthly_operating_expenses: e.target.value === '' ? '' : Number(e.target.value)})} />
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Avg. monthly running costs (utilities, staff).</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>Annual Fixed</label>
+              <input type="number" className="form-input" value={data.annual_fixed_expenses} onChange={e => setData({...data, annual_fixed_expenses: e.target.value === '' ? '' : Number(e.target.value)})} />
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Yearly fixed costs (insurance, licenses).</span>
+            </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-            <div className="form-group"><label className="form-label" style={{ fontSize: '0.8rem' }}>Target ROI (%)</label><input type="number" className="form-input" value={data.target_roi_percentage} onChange={e => setData({...data, target_roi_percentage: e.target.value === '' ? '' : Number(e.target.value)})} /></div>
-            <div className="form-group"><label className="form-label" style={{ fontSize: '0.8rem' }}>Occupancy Goal (%)</label><input type="number" className="form-input" value={data.expected_occupancy_rate} onChange={e => setData({...data, expected_occupancy_rate: e.target.value === '' ? '' : Number(e.target.value)})} /></div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>Target ROI (%)</label>
+              <input type="number" className="form-input" value={data.target_roi_percentage} onChange={e => setData({...data, target_roi_percentage: e.target.value === '' ? '' : Number(e.target.value)})} />
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Desired profit margin on investment.</span>
+            </div>
+            <div className="form-group">
+              <label className="form-label" style={{ fontSize: '0.8rem' }}>Occupancy Goal (%)</label>
+              <input type="number" className="form-input" value={data.expected_occupancy_rate} onChange={e => setData({...data, expected_occupancy_rate: e.target.value === '' ? '' : Number(e.target.value)})} />
+              <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>Expected % of booked nights per year.</span>
+            </div>
           </div>
           <button className="btn btn-primary" style={{ width: '100%', marginTop: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }} onClick={onSave} disabled={saving}><Save size={18}/> {saving ? 'Saving...' : 'Save Configuration'}</button>
         </section>
