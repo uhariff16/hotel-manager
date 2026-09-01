@@ -170,6 +170,9 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     // Revenue Goal = Recovery + ROI + Current Run Rate Expenses
     const totalMonthlyRevenueTarget = monthlyCapitalRecoveryGoal + monthlyROIGoal + monthlyAverageExpense;
 
+    const breakEvenRevenueTarget = (monthlyCapitalRecoveryGoal + monthlyAverageExpense) * actualMonthsElapsed;
+    const achievedBreakEven = totalIncome >= breakEvenRevenueTarget;
+
     // Calculate the suggested rate for sales targeting
     const annualOperatingExpense = Number(investmentData?.monthly_operating_expenses || 0) * 12;
     const annualTotalFixed = Number(investmentData?.annual_fixed_expenses || 0);
@@ -180,13 +183,14 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     const totalUnits = investmentData?.rental_model === 'property' ? 1 : (investmentData?.total_rooms || 1); 
     const sellableRoomNights = (totalUnits * 365) * (Number(investmentData?.expected_occupancy_rate || 60) / 100);
     const suggestedRate = sellableRoomNights > 0 ? requiredGrossAnnualRevenue / sellableRoomNights : 0;
+    const breakEvenRate = sellableRoomNights > 0 ? totalAnnualCost / sellableRoomNights : 0;
 
     return {
       totalIncome, totalOperatingExpenses, netProfit, actualROI, capitalOutlay, 
       targetROIPercent, targetPeriodProfit, monthlyAverageProfit, yearsToPayback,
       monthlyCapitalRecoveryGoal, monthlyROIGoal, 
       monthlyAverageRevenue, monthlyAverageExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
-      suggestedRate,
+      suggestedRate, breakEvenRate, breakEvenRevenueTarget, achievedBreakEven,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
   }, [financials, investmentData, range]);
@@ -208,6 +212,18 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
           <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>{Math.max(0, stats.actualROI).toFixed(1)}%</div>
           <div style={{ height: '6px', background: 'var(--bg-secondary)', borderRadius: '3px', marginTop: '1rem', overflow: 'hidden' }}>
             <div style={{ width: `${Math.min(100, Math.max(0, stats.actualROI))}%`, height: '100%', background: 'var(--primary)' }}></div>
+          </div>
+        </div>
+        <div className="card" style={{ border: `1px solid ${stats.achievedBreakEven ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}` }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Break-Even Status</span>
+          <div style={{ fontSize: '1.75rem', fontWeight: 900, color: stats.achievedBreakEven ? 'var(--success)' : 'var(--warning)', marginTop: '0.5rem' }}>
+            {stats.achievedBreakEven ? 'ACHIEVED' : 'NOT ACHIEVED'}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', marginTop: '0.75rem' }}>
+            <small style={{ color: 'var(--text-muted)' }}>Target: ₹{Math.ceil(stats.breakEvenRevenueTarget).toLocaleString()}</small>
+            <small style={{ color: stats.achievedBreakEven ? 'var(--success)' : 'var(--danger)', fontWeight: 600 }}>
+              {stats.achievedBreakEven ? '+' : '-'} ₹{Math.abs(stats.totalIncome - stats.breakEvenRevenueTarget).toLocaleString()} {stats.achievedBreakEven ? 'Surplus' : 'Shortfall'}
+            </small>
           </div>
         </div>
       </div>
