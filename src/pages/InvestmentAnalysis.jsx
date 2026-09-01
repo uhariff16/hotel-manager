@@ -371,7 +371,13 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
               <strong style={{ fontSize: '1.1rem' }}>₹{Math.ceil(stats.breakEvenRevenueTarget).toLocaleString()}</strong>
             </div>
             <div>
-              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>Variance (Shortfall/Surplus)</small>
+              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>% Achieved</small>
+              <strong style={{ fontSize: '1.1rem', color: stats.totalIncome >= stats.breakEvenRevenueTarget ? 'var(--success)' : 'var(--warning)' }}>
+                {stats.breakEvenRevenueTarget > 0 ? ((stats.totalIncome / stats.breakEvenRevenueTarget) * 100).toFixed(1) : 0}%
+              </strong>
+            </div>
+            <div>
+              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.25rem' }}>Variance</small>
               <strong style={{ fontSize: '1.1rem', color: stats.achievedBreakEven ? 'var(--success)' : 'var(--danger)' }}>
                 {stats.achievedBreakEven ? '+' : '-'}₹{Math.abs(stats.totalIncome - stats.breakEvenRevenueTarget).toLocaleString()}
               </strong>
