@@ -383,14 +383,20 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                     gap: '0.5rem'
                   }}>
                     {m.achieved ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
-                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', lineHeight: 1.2 }}>
                       <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>{m.label}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem' }}>
-                        <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>₹{Math.ceil(m.revenue).toLocaleString()}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                          <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', opacity: 0.7, fontWeight: 800 }}>Revenue</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>₹{Math.ceil(m.revenue).toLocaleString()}</span>
+                        </div>
                         {m.occupancyRate > 0 && (
                           <>
-                            <span style={{ width: '1px', height: '12px', background: 'currentColor', opacity: 0.3 }}></span>
-                            <span style={{ fontSize: '0.75rem', fontWeight: 800, opacity: 0.9 }}>{m.occupancyRate.toFixed(1)}%</span>
+                            <span style={{ width: '1px', height: '18px', background: 'currentColor', opacity: 0.3 }}></span>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
+                              <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', opacity: 0.7, fontWeight: 800 }}>Occupancy</span>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>{m.occupancyRate.toFixed(1)}%</span>
+                            </div>
                           </>
                         )}
                       </div>
