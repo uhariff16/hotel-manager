@@ -219,21 +219,27 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.5rem' }}>
-        <div className="card">
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Actual ROI</span>
-          <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary)' }}>{stats.actualROI.toFixed(1)}%</div>
-          <small style={{ color: 'var(--text-muted)' }}>Target: {stats.targetROIPercent}%</small>
-        </div>
-        <div className="card">
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Net Profit</span>
-          <div style={{ fontSize: '2.5rem', fontWeight: 900, color: stats.netProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>₹{stats.netProfit.toLocaleString()}</div>
-        </div>
-        <div className="card">
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Capital Recovery</span>
-          <div style={{ fontSize: '2.5rem', fontWeight: 900 }}>{Math.max(0, stats.actualROI).toFixed(1)}%</div>
-          <div style={{ height: '6px', background: 'var(--bg-secondary)', borderRadius: '3px', marginTop: '1rem', overflow: 'hidden' }}>
-            <div style={{ width: `${Math.min(100, Math.max(0, stats.actualROI))}%`, height: '100%', background: 'var(--primary)' }}></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
+        <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Actual ROI</span>
+              <div style={{ fontSize: '3rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>{stats.actualROI.toFixed(1)}%</div>
+              <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>Target: {stats.targetROIPercent}%</small>
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
+            <div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Net Profit</span>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: stats.netProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>₹{stats.netProfit.toLocaleString()}</div>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Capital Recovery</span>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>{Math.max(0, stats.actualROI).toFixed(1)}%</div>
+              <div style={{ height: '6px', background: 'var(--bg-secondary)', borderRadius: '3px', marginTop: '0.5rem', overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(100, Math.max(0, stats.actualROI))}%`, height: '100%', background: 'var(--primary)' }}></div>
+              </div>
+            </div>
           </div>
         </div>
         <div className="card" style={{ border: `1px solid ${stats.achievedBreakEven ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}` }}>
