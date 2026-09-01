@@ -221,24 +221,37 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.5rem' }}>
         <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Actual ROI</span>
-              <div style={{ fontSize: '3rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>{stats.actualROI.toFixed(1)}%</div>
+              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>{stats.actualROI.toFixed(1)}%</div>
               <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>Target: {stats.targetROIPercent}%</small>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Capital Recovered</span>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: stats.netProfit >= 0 ? 'var(--success)' : 'var(--danger)', lineHeight: 1 }}>₹{stats.netProfit.toLocaleString()}</div>
+              <div style={{ height: '6px', background: 'var(--bg-secondary)', borderRadius: '3px', marginTop: '0.5rem', overflow: 'hidden' }}>
+                <div style={{ width: `${Math.min(100, Math.max(0, stats.actualROI))}%`, height: '100%', background: 'var(--success)' }}></div>
+              </div>
+              <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>
+                {Math.max(0, stats.actualROI).toFixed(1)}% of ₹{stats.capitalOutlay.toLocaleString()}
+              </small>
             </div>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--border)' }}>
             <div>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Net Profit</span>
-              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: stats.netProfit >= 0 ? 'var(--success)' : 'var(--danger)' }}>₹{stats.netProfit.toLocaleString()}</div>
-            </div>
-            <div>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Est. Payback Period</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Est. Payback Time</span>
               <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>
                 {stats.yearsToPayback > 0 ? `${stats.yearsToPayback.toFixed(1)} Years` : 'N/A'}
               </div>
               <small style={{ color: 'var(--text-muted)' }}>At current run rate</small>
+            </div>
+            <div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: 700, textTransform: 'uppercase' }}>Min. Revenue Req.</span>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900 }}>
+                ₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}
+              </div>
+              <small style={{ color: 'var(--text-muted)' }}>Monthly avg. to break even in 1 Yr</small>
             </div>
           </div>
         </div>
