@@ -400,7 +400,15 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
           </div>
           {stats.monthlyBreakdown && stats.monthlyBreakdown.length > 0 && (
             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.75rem' }}>Monthly Timeline (vs Target)</small>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>Monthly Timeline (vs Target)</small>
+                <small style={{ color: 'var(--text-muted)', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700 }}>
+                  Average Achievement:{' '}
+                  <span style={{ color: stats.totalIncome >= stats.breakEvenRevenueTarget ? 'var(--success)' : 'var(--warning)', fontWeight: 800, fontSize: '0.75rem' }}>
+                    {stats.breakEvenRevenueTarget > 0 ? ((stats.totalIncome / stats.breakEvenRevenueTarget) * 100).toFixed(1) : 0}%
+                  </span>
+                </small>
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {stats.monthlyBreakdown.map((m, idx) => (
                   <div key={idx} style={{ 
