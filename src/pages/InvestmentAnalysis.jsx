@@ -243,14 +243,40 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     const breakEvenMonthlyTarget = totalAnnualCost / 12;
 
     const monthlyPerformance = {};
-    financials.incomes.forEach(inc => {
-      const date = new Date(inc.date);
+    const initMonth = (date) => {
       const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
-      const monthLabel = date.toLocaleString('default', { month: 'short', year: '2-digit' });
       if (!monthlyPerformance[monthKey]) {
-        monthlyPerformance[monthKey] = { label: monthLabel, revenue: 0, year: date.getFullYear(), month: date.getMonth() };
+        monthlyPerformance[monthKey] = { 
+          label: date.toLocaleString('default', { month: 'short', year: '2-digit' }), 
+          revenue: 0, 
+          nightsSold: 0,
+          year: date.getFullYear(), 
+          month: date.getMonth() 
+        };
       }
+      return monthKey;
+    };
+
+    financials.incomes.forEach(inc => {
+      const monthKey = initMonth(new Date(inc.date));
       monthlyPerformance[monthKey].revenue += Number(inc.amount);
+    });
+
+    const validBookings = (financials.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'no_show' && b.status !== 'Cancelled');
+    let totalNightsSold = 0;
+    validBookings.forEach(b => {
+      let nights = Number(b.night_count);
+      if (!(nights > 0)) {
+        const cin = new Date(b.check_in_date);
+        const cout = new Date(b.check_out_date);
+        nights = Math.max(1, Math.round((cout - cin) / (1000 * 60 * 60 * 24)));
+      }
+      totalNightsSold += nights;
+      
+      if (b.check_in_date) {
+        const monthKey = initMonth(new Date(b.check_in_date));
+        monthlyPerformance[monthKey].nightsSold += nights;
+      }
     });
 
     const monthlyBreakdown = Object.values(monthlyPerformance).sort((a, b) => {
@@ -258,21 +284,9 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       return a.month - b.month;
     }).map(m => ({
       ...m,
-      achieved: m.revenue >= breakEvenMonthlyTarget
+      achieved: m.revenue >= breakEvenMonthlyTarget,
+      occupancyRate: (m.nightsSold / (totalUnits * 30.4)) * 100
     }));
-
-    const validBookings = (financials.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'no_show' && b.status !== 'Cancelled');
-    let totalNightsSold = 0;
-    validBookings.forEach(b => {
-      const nights = Number(b.night_count);
-      if (nights > 0) {
-        totalNightsSold += nights;
-      } else {
-        const cin = new Date(b.check_in_date);
-        const cout = new Date(b.check_out_date);
-        totalNightsSold += Math.max(1, Math.round((cout - cin) / (1000 * 60 * 60 * 24)));
-      }
-    });
 
     const actualADR = totalNightsSold > 0 ? (totalIncome / totalNightsSold) : 0;
     const requiredOccupancyRate = actualADR > 0 
@@ -371,7 +385,10 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                     {m.achieved ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                     <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                       <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>{m.label}</span>
-                      <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>₹{Math.ceil(m.revenue).toLocaleString()}</span>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>₹{Math.ceil(m.revenue).toLocaleString()}</span>
+                        {m.occupancyRate > 0 && <span style={{ fontSize: '0.65rem', fontWeight: 600, opacity: 0.8 }}>{m.occupancyRate.toFixed(1)}% occ.</span>}
+                      </div>
                     </div>
                   </div>
                 ))}
