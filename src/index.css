@@ -731,7 +731,7 @@ a {
   .mobile-form-header {
     display: flex !important;
   }
-  .bookings-layout {
+  .bookings-layout, .analysis-layout {
     grid-template-columns: 1fr !important;
     display: flex !important;
     flex-direction: column !important;
