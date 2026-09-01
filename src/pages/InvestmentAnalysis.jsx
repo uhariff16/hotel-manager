@@ -265,24 +265,24 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
           </div>
           {stats.monthlyBreakdown && stats.monthlyBreakdown.length > 0 && (
             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Monthly Timeline (vs Target)</small>
+              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.75rem' }}>Monthly Timeline (vs Target)</small>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {stats.monthlyBreakdown.map((m, idx) => (
                   <div key={idx} style={{ 
-                    padding: '0.25rem 0.5rem', 
-                    borderRadius: '6px', 
-                    fontSize: '0.65rem', 
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    background: m.achieved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                    padding: '0.35rem 0.6rem', 
+                    borderRadius: '8px', 
+                    background: m.achieved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
                     color: m.achieved ? 'var(--success)' : 'var(--warning)',
                     border: `1px solid ${m.achieved ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.25rem'
+                    gap: '0.5rem'
                   }}>
-                    {m.achieved ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-                    {m.label}
+                    {m.achieved ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                    <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
+                      <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>{m.label}</span>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>₹{Math.ceil(m.revenue).toLocaleString()}</span>
+                    </div>
                   </div>
                 ))}
               </div>
