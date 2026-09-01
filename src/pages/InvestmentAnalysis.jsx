@@ -293,6 +293,10 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       ? (totalMonthlyRevenueTarget / actualADR) / (totalUnits * 30.4) * 100 
       : (suggestedRate > 0 ? (totalMonthlyRevenueTarget / suggestedRate) / (totalUnits * 30.4) * 100 : 0);
       
+    const breakEvenOccupancyRate = actualADR > 0
+      ? (breakEvenMonthlyTarget / actualADR) / (totalUnits * 30.4) * 100
+      : (suggestedRate > 0 ? (breakEvenMonthlyTarget / suggestedRate) / (totalUnits * 30.4) * 100 : 0);
+      
     const totalAvailableNightsPast = totalUnits * actualMonthsElapsed * 30.4;
     const actualOccupancyRate = totalAvailableNightsPast > 0 ? (totalNightsSold / totalAvailableNightsPast) * 100 : 0;
 
@@ -303,7 +307,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       monthlyAverageRevenue, monthlyAverageExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
       suggestedRate, breakEvenRate, breakEvenRevenueTarget, achievedBreakEven,
       totalAnnualCost, breakEvenMonthlyTarget, monthlyBreakdown,
-      actualADR, requiredOccupancyRate, actualOccupancyRate,
+      actualADR, requiredOccupancyRate, breakEvenOccupancyRate, actualOccupancyRate,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
   }, [financials, investmentData, range]);
@@ -376,10 +380,16 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
 
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '1rem' }}>
             <div>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, display: 'block' }}>Monthly Required: <strong style={{color: 'var(--text)', fontWeight: 800}}>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</strong></span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, display: 'block' }}>
+                Monthly Required: <strong style={{color: 'var(--text)', fontWeight: 800}}>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</strong>
+                <span style={{ marginLeft: '0.5rem', padding: '0.1rem 0.4rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', fontSize: '0.65rem' }}>{stats.breakEvenOccupancyRate.toFixed(1)}% occ.</span>
+              </span>
             </div>
             <div>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, display: 'block' }}>Yearly Required: <strong style={{color: 'var(--text)', fontWeight: 800}}>₹{Math.ceil(stats.totalAnnualCost).toLocaleString()}</strong></span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600, display: 'block' }}>
+                Yearly Required: <strong style={{color: 'var(--text)', fontWeight: 800}}>₹{Math.ceil(stats.totalAnnualCost).toLocaleString()}</strong>
+                <span style={{ marginLeft: '0.5rem', padding: '0.1rem 0.4rem', background: 'rgba(0,0,0,0.05)', borderRadius: '4px', fontSize: '0.65rem' }}>{stats.breakEvenOccupancyRate.toFixed(1)}% occ.</span>
+              </span>
             </div>
           </div>
           {stats.monthlyBreakdown && stats.monthlyBreakdown.length > 0 && (
