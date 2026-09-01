@@ -519,18 +519,13 @@ export default function InvestmentHub() {
       ]);
 
       if (inv.data) {
-        let meta = {};
-        try {
-          meta = JSON.parse(localStorage.getItem(`inv_meta_${activeResortId}`) || '{}');
-        } catch (e) {}
-
         setInvestmentData({
           ...inv.data,
-          property_ownership: meta.property_ownership || 'leased',
-          recovery_period_years: meta.recovery_period_years || 1,
-          lease_start_date: meta.lease_start_date || new Date().toISOString().split('T')[0],
-          lease_end_date: meta.lease_end_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
-          average_selling_price: meta.average_selling_price || ''
+          property_ownership: inv.data.property_ownership || 'leased',
+          recovery_period_years: inv.data.recovery_period_years || 1,
+          lease_start_date: inv.data.lease_start_date || new Date().toISOString().split('T')[0],
+          lease_end_date: inv.data.lease_end_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+          average_selling_price: inv.data.average_selling_price || ''
         });
       }
       setFinancials({ incomes: inc.data || [], expenses: exp.data || [], bookings: bkg.data || [] });
@@ -550,15 +545,7 @@ export default function InvestmentHub() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const { property_ownership, recovery_period_years, lease_start_date, lease_end_date, average_selling_price, ...dbPayload } = investmentData;
-      
-      localStorage.setItem(`inv_meta_${activeResortId}`, JSON.stringify({ 
-        property_ownership, 
-        recovery_period_years,
-        lease_start_date,
-        lease_end_date,
-        average_selling_price
-      }));
+      const { id, created_at, updated_at, ...dbPayload } = investmentData;
 
       const { error } = await supabase.from('investments').upsert({
         tenant_id: profile.id,
