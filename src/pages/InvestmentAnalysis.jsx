@@ -187,13 +187,32 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
 
     const breakEvenMonthlyTarget = totalAnnualCost / 12;
 
+    const monthlyPerformance = {};
+    financials.incomes.forEach(inc => {
+      const date = new Date(inc.date);
+      const monthKey = `${date.getFullYear()}-${date.getMonth()}`;
+      const monthLabel = date.toLocaleString('default', { month: 'short', year: '2-digit' });
+      if (!monthlyPerformance[monthKey]) {
+        monthlyPerformance[monthKey] = { label: monthLabel, revenue: 0, year: date.getFullYear(), month: date.getMonth() };
+      }
+      monthlyPerformance[monthKey].revenue += Number(inc.amount);
+    });
+
+    const monthlyBreakdown = Object.values(monthlyPerformance).sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.month - b.month;
+    }).map(m => ({
+      ...m,
+      achieved: m.revenue >= breakEvenMonthlyTarget
+    }));
+
     return {
       totalIncome, totalOperatingExpenses, netProfit, actualROI, capitalOutlay, 
       targetROIPercent, targetPeriodProfit, monthlyAverageProfit, yearsToPayback,
       monthlyCapitalRecoveryGoal, monthlyROIGoal, 
       monthlyAverageRevenue, monthlyAverageExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
       suggestedRate, breakEvenRate, breakEvenRevenueTarget, achievedBreakEven,
-      totalAnnualCost, breakEvenMonthlyTarget,
+      totalAnnualCost, breakEvenMonthlyTarget, monthlyBreakdown,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
   }, [financials, investmentData, range]);
@@ -238,6 +257,31 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
               {stats.achievedBreakEven ? '+' : '-'} ₹{Math.abs(stats.totalIncome - stats.breakEvenRevenueTarget).toLocaleString()} {stats.achievedBreakEven ? 'Surplus' : 'Shortfall'} (YTD)
             </small>
           </div>
+          {stats.monthlyBreakdown && stats.monthlyBreakdown.length > 0 && (
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+              <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase', fontWeight: 700, marginBottom: '0.5rem' }}>Monthly Timeline (vs Target)</small>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                {stats.monthlyBreakdown.map((m, idx) => (
+                  <div key={idx} style={{ 
+                    padding: '0.25rem 0.5rem', 
+                    borderRadius: '6px', 
+                    fontSize: '0.65rem', 
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    background: m.achieved ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                    color: m.achieved ? 'var(--success)' : 'var(--warning)',
+                    border: `1px solid ${m.achieved ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.25rem'
+                  }}>
+                    {m.achieved ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+                    {m.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
