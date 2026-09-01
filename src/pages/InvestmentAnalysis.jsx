@@ -385,9 +385,14 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                     {m.achieved ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                     <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}>
                       <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>{m.label}</span>
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginTop: '0.15rem' }}>
                         <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>₹{Math.ceil(m.revenue).toLocaleString()}</span>
-                        {m.occupancyRate > 0 && <span style={{ fontSize: '0.65rem', fontWeight: 600, opacity: 0.8 }}>{m.occupancyRate.toFixed(1)}% occ.</span>}
+                        {m.occupancyRate > 0 && (
+                          <>
+                            <span style={{ width: '1px', height: '12px', background: 'currentColor', opacity: 0.3 }}></span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 800, opacity: 0.9 }}>{m.occupancyRate.toFixed(1)}%</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
