@@ -223,13 +223,17 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       achieved: m.revenue >= breakEvenMonthlyTarget
     }));
 
-    const validBookings = (financials.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'no_show');
+    const validBookings = (financials.bookings || []).filter(b => b.status !== 'cancelled' && b.status !== 'no_show' && b.status !== 'Cancelled');
     let totalNightsSold = 0;
     validBookings.forEach(b => {
-      const cin = new Date(b.check_in);
-      const cout = new Date(b.check_out);
-      const nights = Math.max(1, Math.round((cout - cin) / (1000 * 60 * 60 * 24)));
-      totalNightsSold += nights;
+      const nights = Number(b.night_count);
+      if (nights > 0) {
+        totalNightsSold += nights;
+      } else {
+        const cin = new Date(b.check_in_date);
+        const cout = new Date(b.check_out_date);
+        totalNightsSold += Math.max(1, Math.round((cout - cin) / (1000 * 60 * 60 * 24)));
+      }
     });
 
     const actualADR = totalNightsSold > 0 ? (totalIncome / totalNightsSold) : 0;
@@ -460,7 +464,10 @@ export default function InvestmentHub() {
         supabase.from('investments').select('*').eq('resort_id', activeResortId).maybeSingle(),
         supabase.from('incomes').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
         supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
-        supabase.from('bookings').select('check_in, check_out, total_price, status').eq('resort_id', activeResortId)
+        supabase.from('bookings').select('check_in_date, check_out_date, total_amount, night_count, status')
+          .eq('resort_id', activeResortId)
+          .gte('check_in_date', range.start)
+          .lte('check_in_date', range.end)
       ]);
 
       if (inv.data) {
