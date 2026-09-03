@@ -1051,7 +1051,8 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
 
         {/* DETAILS DRAWER / PANEL */}
         {selectedBooking && (
-          <div style={{ padding: '2rem', borderTop: '2px solid var(--border)', background: 'var(--bg-secondary)', position: 'relative', animation: 'slideUp 0.3s ease-out' }}>
+          <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999 }}>
+            <div className="card" style={{ width: '95%', maxWidth: '900px', padding: '2rem', position: 'relative', animation: 'fadeInUp 0.3s ease', maxHeight: '90vh', overflowY: 'auto', background: 'var(--bg-secondary)', borderRadius: '1rem', boxShadow: 'var(--shadow-lg)' }}>
             <button className="btn-icon" style={{ position: 'absolute', right: '1.5rem', top: '1.5rem', background: 'var(--bg-color)' }} onClick={() => setSelectedBooking(null)}><X size={20}/></button>
             
             <div style={{ display: 'flex', gap: '2.5rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -1136,6 +1137,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                     </button>
                 </div>
             </div>
+          </div>
           </div>
         )}
       </div>
