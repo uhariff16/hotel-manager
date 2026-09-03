@@ -1570,10 +1570,19 @@ export default function Bookings() {
                   <span style={{ fontWeight: 600 }}>₹{(selectedDetailedBooking.extra_guest_charges || 0).toLocaleString()}</span>
                 </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '0.75rem', borderTop: '1px dashed var(--border)', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <span style={{ fontWeight: 700 }}>Total Value: <span style={{ color: 'var(--text-main)', fontSize: '1.2rem' }}>₹{(selectedDetailedBooking.total_amount || 0).toLocaleString()}</span></span>
-                <span style={{ fontWeight: 700 }}>Paid: <span style={{ color: 'var(--success)', fontSize: '1.2rem' }}>₹{(selectedDetailedBooking.total_amount - selectedDetailedBooking.balance_amount || 0).toLocaleString()}</span></span>
-                <span style={{ fontWeight: 700 }}>Balance: <span style={{ color: selectedDetailedBooking.balance_amount > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '1.2rem' }}>₹{(selectedDetailedBooking.balance_amount || 0).toLocaleString()}</span></span>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center', paddingTop: '0.75rem', borderTop: '1px dashed var(--border)', alignItems: 'center' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Total Value:</span>
+                  <span style={{ color: 'var(--text-main)', fontSize: '1.25rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.total_amount || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Paid:</span>
+                  <span style={{ color: 'var(--success)', fontSize: '1.25rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.total_amount - selectedDetailedBooking.balance_amount || 0).toLocaleString()}</span>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
+                  <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Balance:</span>
+                  <span style={{ color: selectedDetailedBooking.balance_amount > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '1.25rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.balance_amount || 0).toLocaleString()}</span>
+                </div>
               </div>
             </div>
 
@@ -1667,7 +1676,7 @@ export default function Bookings() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto', flex: 1, justifyContent: 'flex-end' }}>
                 
                 <button 
                   onClick={() => setSelectedDetailedBooking(null)} 
