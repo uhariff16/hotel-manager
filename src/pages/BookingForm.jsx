@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
@@ -126,6 +126,7 @@ export default function BookingForm() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [isEditing, setIsEditing] = useState(!id);
   const [originalStatus, setOriginalStatus] = useState(null);
   const [settlementPaid, setSettlementPaid] = useState(0);
   const [settlementDiscount, setSettlementDiscount] = useState(0);
@@ -938,7 +939,8 @@ export default function BookingForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="booking-layout">
+      <form id="booking-form-main" onSubmit={handleSubmit} className="booking-layout">
+        <fieldset disabled={!isEditing} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
         
         {/* LEFT COLUMN: FORM DETAILS */}
         <div className="form-left-col">
@@ -1547,6 +1549,7 @@ export default function BookingForm() {
               </div>
             </div>
 
+            {isEditing && (
             <button 
               type="submit" 
               className="btn btn-primary" 
@@ -1555,9 +1558,11 @@ export default function BookingForm() {
             >
               <CheckCircle2 size={20} /> {isSubmitting ? 'Processing...' : (id ? 'Save Reservation' : 'Confirm Booking')}
             </button>
+            )}
           </div>
         </div>
 
+        </fieldset>
       </form>
     </div>
   );

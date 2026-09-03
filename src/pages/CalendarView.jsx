@@ -1522,7 +1522,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                 <div key={b.id} 
                      onClick={() => {
                         setDayBookingsList(null);
-                        setSelectedBooking(b);
+                        navigate('/bookings/edit/' + b.id);
                      }}
                      style={{ padding: '1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderLeft: `4px solid ${b.status === 'Pending' ? 'var(--warning)' : 'var(--primary)'}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
