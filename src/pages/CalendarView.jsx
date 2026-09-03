@@ -81,6 +81,7 @@ export default function CalendarView() {
   const [isCopied, setIsCopied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [dayBookingsList, setDayBookingsList] = useState(null);
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);
@@ -938,7 +939,13 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                           
                           return (
                             <div key={d.toString()} 
-                                 onClick={() => { if (!isPast) handleMonthCellClick(d, c.id) }}
+                                 onClick={() => { 
+                                   if (dayBookings.length > 0) {
+                                     setDayBookingsList({ date: d, bookings: dayBookings, propertyName: c.name, cottageId: c.id });
+                                   } else if (!isPast) {
+                                     handleMonthCellClick(d, c.id);
+                                   }
+                                 }}
                                  style={{ 
                                    minWidth: 0, 
                                    overflow: 'hidden', 
@@ -1494,7 +1501,62 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
         />
       )}
 
-      <style>{`
+      
+      {dayBookingsList && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="card" style={{ width: '90%', maxWidth: '400px', padding: '1.5rem', position: 'relative', animation: 'fadeInUp 0.3s ease', maxHeight: '80vh', overflowY: 'auto' }}>
+            <button className="btn-icon" style={{ position: 'absolute', right: '1rem', top: '1rem', background: 'var(--bg-secondary)' }} onClick={() => setDayBookingsList(null)}>
+              <X size={20}/>
+            </button>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.25rem', paddingRight: '2rem' }}>
+              Bookings on {format(dayBookingsList.date, 'MMM d, yyyy')}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <Home size={14} /> {dayBookingsList.propertyName}
+            </p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {dayBookingsList.bookings.map(b => (
+                <div key={b.id} 
+                     onClick={() => {
+                        setDayBookingsList(null);
+                        setSelectedBooking(b);
+                     }}
+                     style={{ padding: '1rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', gap: '0.5rem', borderLeft: `4px solid ${b.status === 'Pending' ? 'var(--warning)' : 'var(--primary)'}` }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{b.guest_name}</div>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', background: b.status === 'Pending' ? 'rgba(245,158,11,0.1)' : 'rgba(5,150,105,0.1)', color: b.status === 'Pending' ? 'var(--warning)' : 'var(--available)' }}>
+                      {b.status}
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    {b.booking_type === 'Entire Property' ? 'Entire Property' : `Rooms: ${b.room_names || 'Standard'}`}
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <MapPin size={12} /> Ref: {b.reference_number || 'N/A'}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {startOfDay(dayBookingsList.date) >= startOfDay(new Date()) && (
+              <button className="btn btn-outline" 
+                      style={{ width: '100%', marginTop: '1.5rem', height: '42px', justifyContent: 'center' }} 
+                      onClick={() => {
+                         const date = dayBookingsList.date;
+                         const cottageId = dayBookingsList.cottageId;
+                         setDayBookingsList(null);
+                         handleMonthCellClick(date, cottageId);
+                      }}>
+                <Calendar size={16} style={{ marginRight: '0.5rem' }} /> Add New Booking
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      <style>{
+`
         @keyframes slideUp {
           from { transform: translateY(100%); opacity: 0; }
           to { transform: translateY(0); opacity: 1; }
