@@ -1377,6 +1377,16 @@ export default function Bookings() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <button 
+                  onClick={() => {
+                    setSelectedDetailedBooking(null);
+                    navigate(`/bookings/edit/${selectedDetailedBooking.id}`);
+                  }} 
+                  className="btn" 
+                  style={{ background: 'var(--danger)', color: 'white', height: '36px', padding: '0 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '4px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                >
+                  <Edit2 size={16} /> Edit Booking
+                </button>
+                <button 
                   className="btn-icon" 
                   title="Share Invoice"
                   onClick={handleShareInvoice}
@@ -1658,16 +1668,7 @@ export default function Bookings() {
               )}
 
               <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button 
-                  onClick={() => {
-                    setSelectedDetailedBooking(null);
-                    navigate(`/bookings/edit/${selectedDetailedBooking.id}`);
-                  }} 
-                  className="btn btn-outline" 
-                  style={{ height: '40px', padding: '0 1rem', fontSize: '0.85rem' }}
-                >
-                  <Edit2 size={16} /> Edit Booking
-                </button>
+                
                 <button 
                   onClick={() => setSelectedDetailedBooking(null)} 
                   className="btn btn-primary" 
