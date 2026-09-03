@@ -929,9 +929,32 @@ export default function BookingForm() {
         <ArrowLeft size={16} /> Back to Reservations
       </button>
 
-      <h2 className="booking-page-title">
-        <CalendarCheck size={28} /> {id ? `Update Reservation: ${bookingForm.reference_number}` : 'Create New Reservation'}
-      </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h2 className="booking-page-title" style={{ margin: 0 }}>
+            <CalendarCheck size={28} /> {id ? `Reservation: ${bookingForm.reference_number || ''}` : 'Create New Reservation'}
+          </h2>
+          {id && (
+            <button 
+              type="button" 
+              className={isEditing ? "btn btn-success" : "btn btn-primary"} 
+              onClick={(e) => {
+                e.preventDefault();
+                if (isEditing) {
+                  const form = document.getElementById('booking-form-main');
+                  if (form) {
+                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                  }
+                } else {
+                  setIsEditing(true);
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, padding: '0.6rem 1.25rem', height: '42px', zIndex: 10 }}
+            >
+              {isEditing ? <Save size={16} /> : <Edit2 size={16} />}
+              {isEditing ? 'Save Booking' : 'Edit Booking'}
+            </button>
+          )}
+      </div>
       
       {error && (
         <div style={{ color: 'var(--danger)', marginBottom: '1.5rem', padding: '1rem', background: 'rgba(229, 62, 62, 0.08)', borderRadius: '8px', border: '1px solid rgba(229, 62, 62, 0.15)', fontSize: '0.9rem' }}>
