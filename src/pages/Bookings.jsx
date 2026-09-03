@@ -1132,7 +1132,7 @@ export default function Bookings() {
                     </div>
                     
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon" style={{ background: 'var(--bg-color)', border: '1px solid var(--border)' }}><Edit2 size={18} /></button>
+                      <button onClick={() => navigate(`/bookings/edit/${b.id}?edit=true`)} className="btn-icon" style={{ background: 'var(--bg-color)', border: '1px solid var(--border)' }}><Edit2 size={18} /></button>
                       {b.status === 'Confirmed' && (
                         <button onClick={() => handleCheckIn(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Check-in</button>
                       )}
@@ -1278,7 +1278,7 @@ export default function Bookings() {
                           {(b.status === 'Completed' || b.status === 'Checked-out') && (
                             <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ color: '#6366f1' }}><RotateCcw size={16} /></button>
                           )}
-                          <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon"><Edit2 size={16} /></button>
+                          <button onClick={() => navigate(`/bookings/edit/${b.id}?edit=true`)} className="btn-icon"><Edit2 size={16} /></button>
                           {(b.status === 'Pending' || b.status === 'Confirmed') && (
                             <button onClick={() => deleteBooking(b.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={16} /></button>
                           )}
@@ -1379,7 +1379,7 @@ export default function Bookings() {
                 <button 
                   onClick={() => {
                     setSelectedDetailedBooking(null);
-                    navigate(`/bookings/edit/${selectedDetailedBooking.id}`);
+                    navigate(`/bookings/edit/${selectedDetailedBooking.id}?edit=true`);
                   }} 
                   className="btn" 
                   style={{ background: 'var(--danger)', color: 'white', height: '36px', padding: '0 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '4px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
