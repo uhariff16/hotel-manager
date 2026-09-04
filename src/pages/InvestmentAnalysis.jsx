@@ -253,7 +253,14 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     const monthlyAverageExpense = totalOperatingExpenses / actualMonthsElapsed;
     const monthlyAverageProfit = netProfit / actualMonthsElapsed;
     
-    const recoveryYears = Number(investmentData?.recovery_period_years) || 1;
+    let recoveryYears = Number(investmentData?.recovery_period_years) || 1;
+    if (investmentData?.property_ownership === 'leased' && investmentData?.lease_start_date && investmentData?.lease_end_date) {
+      const ls = new Date(investmentData.lease_start_date);
+      const le = new Date(investmentData.lease_end_date);
+      const diffYears = Math.abs(le - ls) / (1000 * 60 * 60 * 24 * 365.25);
+      recoveryYears = diffYears > 0 ? diffYears : 1;
+    }
+    
     const yearsToPayback = monthlyAverageProfit > 0 ? (capitalOutlay / (monthlyAverageProfit * 12)) : 0;
 
     const monthlyCapitalRecoveryGoal = capitalOutlay / (recoveryYears * 12);
@@ -269,7 +276,11 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     const annualOperatingExpense = Number(investmentData?.monthly_operating_expenses || 0) * 12;
     const annualTotalFixed = Number(investmentData?.annual_fixed_expenses || 0);
     const leaseInvestment = Number(investmentData?.total_investment || 0);
-    const totalAnnualCost = annualOperatingExpense + annualTotalFixed + leaseInvestment;
+    
+    // Fix: divide lease investment by recoveryYears
+    const annualCapitalCost = leaseInvestment / recoveryYears;
+    const totalAnnualCost = annualOperatingExpense + annualTotalFixed + annualCapitalCost;
+    
     const targetAnnualNetProfit = leaseInvestment * (targetROIPercent / 100);
     const requiredGrossAnnualRevenue = totalAnnualCost + targetAnnualNetProfit;
     const totalUnits = investmentData?.rental_model === 'property' ? 1 : (investmentData?.total_rooms || 1); 
@@ -324,15 +335,6 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       }
     });
 
-    const monthlyBreakdown = Object.values(monthlyPerformance).sort((a, b) => {
-      if (a.year !== b.year) return a.year - b.year;
-      return a.month - b.month;
-    }).map(m => ({
-      ...m,
-      achieved: m.revenue >= breakEvenMonthlyTarget,
-      occupancyRate: (m.nightsSold / (totalUnits * 30.4)) * 100
-    }));
-
     const actualADR = totalNightsSold > 0 ? (totalIncome / totalNightsSold) : 0;
     
     // Use user-defined expected price for projections if available, else fallback to historical ADR
@@ -347,6 +349,18 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     const breakEvenOccupancyRate = effectiveADR > 0
       ? (breakEvenMonthlyTarget / effectiveADR) / (totalUnits * 30.4) * 100
       : 0;
+
+    const monthlyBreakdown = Object.values(monthlyPerformance).sort((a, b) => {
+      if (a.year !== b.year) return a.year - b.year;
+      return a.month - b.month;
+    }).map(m => {
+      const occRate = (m.nightsSold / (totalUnits * 30.4)) * 100;
+      return {
+        ...m,
+        occupancyRate: occRate,
+        achieved: m.revenue >= breakEvenMonthlyTarget || occRate >= breakEvenOccupancyRate
+      };
+    });
       
     const totalAvailableNightsPast = totalUnits * actualMonthsElapsed * 30.4;
     const actualOccupancyRate = totalAvailableNightsPast > 0 ? (totalNightsSold / totalAvailableNightsPast) * 100 : 0;
