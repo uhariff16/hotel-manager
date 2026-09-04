@@ -887,3 +887,46 @@ input:checked + .slider:before {
     padding: 8px !important;
   }
 }
+
+/* Edit Toggle Button Styles */
+.btn-edit-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  padding: 0.5rem 1.5rem;
+  height: 42px;
+  z-index: 10;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateY(0);
+}
+
+.btn-edit-toggle:hover {
+  transform: translateY(-2px);
+}
+
+.btn-edit-toggle:active {
+  transform: translateY(1px);
+}
+
+.btn-edit-toggle.mode-edit {
+  background: linear-gradient(135deg, #f87171 0%, #ef4444 100%);
+  box-shadow: 0 4px 14px 0 rgba(239, 68, 68, 0.25);
+}
+
+.btn-edit-toggle.mode-edit:hover {
+  box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+}
+
+.btn-edit-toggle.mode-save {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 4px 14px 0 rgba(5, 150, 105, 0.25);
+}
+
+.btn-edit-toggle.mode-save:hover {
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
+}

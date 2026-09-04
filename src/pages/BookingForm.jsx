@@ -936,7 +936,7 @@ export default function BookingForm() {
           {id && (
             <button 
               type="button" 
-              className="btn" 
+              className={`btn-edit-toggle ${isEditing ? 'mode-save' : 'mode-edit'}`} 
               onClick={(e) => {
                 e.preventDefault();
                 if (isEditing) {
@@ -948,7 +948,7 @@ export default function BookingForm() {
                   setIsEditing(true);
                 }
               }}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, padding: '0.6rem 1.25rem', height: '42px', zIndex: 10, background: isEditing ? 'var(--success, #059669)' : 'var(--danger, #ef4444)', color: 'white', border: 'none', cursor: 'pointer', borderRadius: '8px' }}
+              
             >
               {isEditing ? <Save size={16} /> : <Edit2 size={16} />}
               {isEditing ? 'Save' : 'Edit'}

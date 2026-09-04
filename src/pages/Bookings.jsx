@@ -1381,8 +1381,8 @@ export default function Bookings() {
                     setSelectedDetailedBooking(null);
                     navigate(`/bookings/edit/${selectedDetailedBooking.id}?edit=true`);
                   }} 
-                  className="btn" 
-                  style={{ background: 'var(--danger)', color: 'white', height: '36px', padding: '0 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', borderRadius: '4px', border: 'none', fontWeight: 600, cursor: 'pointer' }}
+                  className="btn-edit-toggle mode-edit" 
+                  style={{ height: '36px', padding: '0 1rem', fontSize: '0.85rem', borderRadius: '6px' }}
                 >
                   <Edit2 size={16} /> Edit Booking
                 </button>
