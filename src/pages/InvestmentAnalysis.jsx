@@ -651,7 +651,7 @@ export default function InvestmentHub() {
         supabase.from('investments').select('*').eq('resort_id', activeResortId).maybeSingle(),
         supabase.from('incomes').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
         supabase.from('expenses').select('*').eq('resort_id', activeResortId).gte('date', range.start).lte('date', range.end),
-        supabase.from('bookings').select('check_in_date, check_out_date, total_amount, night_count, status')
+        supabase.from('bookings').select('check_in_date, check_out_date, total_amount, night_count, status, room_ids')
           .eq('resort_id', activeResortId)
           .gte('check_in_date', range.start)
           .lte('check_in_date', range.end)
