@@ -308,11 +308,19 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
         const cout = new Date(b.check_out_date);
         nights = Math.max(1, Math.round((cout - cin) / (1000 * 60 * 60 * 24)));
       }
-      totalNightsSold += nights;
+      
+      // Calculate true room-nights (multiple rooms in a single booking should count as multiple unit-nights)
+      let roomsCount = 1;
+      if (investmentData?.rental_model !== 'property' && b.room_ids && Array.isArray(b.room_ids) && b.room_ids.length > 0) {
+        roomsCount = b.room_ids.length;
+      }
+      const roomNights = nights * roomsCount;
+      
+      totalNightsSold += roomNights;
       
       if (b.check_in_date) {
         const monthKey = initMonth(new Date(b.check_in_date));
-        monthlyPerformance[monthKey].nightsSold += nights;
+        monthlyPerformance[monthKey].nightsSold += roomNights;
       }
     });
 
