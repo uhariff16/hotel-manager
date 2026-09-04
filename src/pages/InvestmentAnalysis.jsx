@@ -326,13 +326,19 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
     }));
 
     const actualADR = totalNightsSold > 0 ? (totalIncome / totalNightsSold) : 0;
-    const requiredOccupancyRate = actualADR > 0 
-      ? (totalMonthlyRevenueTarget / actualADR) / (totalUnits * 30.4) * 100 
-      : (suggestedRate > 0 ? (totalMonthlyRevenueTarget / suggestedRate) / (totalUnits * 30.4) * 100 : 0);
+    
+    // Use user-defined expected price for projections if available, else fallback to historical ADR
+    const effectiveADR = Number(investmentData?.average_selling_price) > 0 
+      ? Number(investmentData.average_selling_price) 
+      : (actualADR > 0 ? actualADR : suggestedRate);
+
+    const requiredOccupancyRate = effectiveADR > 0 
+      ? (totalMonthlyRevenueTarget / effectiveADR) / (totalUnits * 30.4) * 100 
+      : 0;
       
-    const breakEvenOccupancyRate = actualADR > 0
-      ? (breakEvenMonthlyTarget / actualADR) / (totalUnits * 30.4) * 100
-      : (suggestedRate > 0 ? (breakEvenMonthlyTarget / suggestedRate) / (totalUnits * 30.4) * 100 : 0);
+    const breakEvenOccupancyRate = effectiveADR > 0
+      ? (breakEvenMonthlyTarget / effectiveADR) / (totalUnits * 30.4) * 100
+      : 0;
       
     const totalAvailableNightsPast = totalUnits * actualMonthsElapsed * 30.4;
     const actualOccupancyRate = totalAvailableNightsPast > 0 ? (totalNightsSold / totalAvailableNightsPast) * 100 : 0;
@@ -344,7 +350,10 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       monthlyAverageRevenue, monthlyAverageExpense, totalMonthlyRevenueTarget, actualMonthsElapsed,
       suggestedRate, breakEvenRate, breakEvenRevenueTarget, achievedBreakEven,
       totalAnnualCost, breakEvenMonthlyTarget, monthlyBreakdown,
-      actualADR, requiredOccupancyRate, breakEvenOccupancyRate, actualOccupancyRate,
+      monthlyOperatingExpTarget: Number(investmentData?.monthly_operating_expenses || 0),
+      monthlyFixedExpTarget: Number(investmentData?.annual_fixed_expenses || 0) / 12,
+      monthlyCapitalRecoveryTarget: Number(investmentData?.total_investment || 0) / 12,
+      actualADR, effectiveADR, requiredOccupancyRate, breakEvenOccupancyRate, actualOccupancyRate,
       performanceRatio: targetPeriodProfit > 0 ? (netProfit / targetPeriodProfit) * 100 : 0
     };
   }, [financials, investmentData, range]);
@@ -433,18 +442,29 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
               <span style={{ color: 'var(--warning)', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>Goal 1: Break-Even Target</span>
               <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.1)', color: 'var(--warning)', fontWeight: 700 }}>Covers Expenses + Recovery</span>
             </div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--warning)', marginBottom: '1.25rem', lineHeight: 1 }}>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--warning)', lineHeight: 1 }}>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Actual Avg. Revenue</div>
+                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: stats.monthlyAverageRevenue >= stats.breakEvenMonthlyTarget ? 'var(--success)' : 'var(--danger)' }}>₹{Math.ceil(stats.monthlyAverageRevenue).toLocaleString()}</div>
+                <div style={{ fontSize: '0.65rem', fontWeight: 800, padding: '0.2rem 0.5rem', borderRadius: '4px', background: stats.monthlyAverageRevenue >= stats.breakEvenMonthlyTarget ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: stats.monthlyAverageRevenue >= stats.breakEvenMonthlyTarget ? 'var(--success)' : 'var(--warning)', marginTop: '0.15rem' }}>
+                  {stats.monthlyAverageRevenue >= stats.breakEvenMonthlyTarget ? 'ACHIEVED' : 'NOT ACHIEVED'}
+                </div>
+              </div>
+            </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid rgba(245, 158, 11, 0.1)', paddingTop: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Actual Avg. Revenue</span>
-                <span style={{ fontWeight: 800, color: stats.monthlyAverageRevenue >= stats.breakEvenMonthlyTarget ? 'var(--success)' : 'var(--danger)' }}>₹{Math.ceil(stats.monthlyAverageRevenue).toLocaleString()}</span>
+                <span style={{ color: 'var(--text-muted)' }}>Operating Expenses</span>
+                <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.monthlyOperatingExpTarget).toLocaleString()}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Status</span>
-                <span style={{ fontWeight: 800, color: stats.monthlyAverageRevenue >= stats.breakEvenMonthlyTarget ? 'var(--success)' : 'var(--warning)' }}>
-                  {stats.monthlyAverageRevenue >= stats.breakEvenMonthlyTarget ? 'ACHIEVED' : 'NOT ACHIEVED'}
-                </span>
+                <span style={{ color: 'var(--text-muted)' }}>Fixed Expenses</span>
+                <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.monthlyFixedExpTarget).toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Capital Recovery</span>
+                <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.monthlyCapitalRecoveryTarget).toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -452,24 +472,30 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
           <div className="card" style={{ borderLeft: '4px solid var(--primary)', background: 'rgba(59, 130, 246, 0.02)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <span style={{ color: 'var(--primary)', fontWeight: 800, textTransform: 'uppercase', fontSize: '0.85rem' }}>Goal 2: Strategic Target</span>
-              <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', fontWeight: 700 }}>Covers Break-Even + Profit</span>
+              <span style={{ padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.65rem', background: 'rgba(59, 130, 246, 0.1)', color: 'var(--primary)', fontWeight: 700 }}>Covers Actual Exp + Recovery + ROI</span>
             </div>
-            <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary)', marginBottom: '1.25rem', lineHeight: 1 }}>₹{Math.ceil(stats.totalMonthlyRevenueTarget).toLocaleString()}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+              <div style={{ fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1 }}>₹{Math.ceil(stats.totalMonthlyRevenueTarget).toLocaleString()}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.35rem' }}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Current Status</div>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, padding: '0.3rem 0.6rem', borderRadius: '4px', background: (stats.totalIncome / (stats.totalIncome / stats.monthlyAverageProfit || 1)) >= stats.totalMonthlyRevenueTarget ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: (stats.totalIncome / (stats.totalIncome / stats.monthlyAverageProfit || 1)) >= stats.totalMonthlyRevenueTarget ? 'var(--success)' : 'var(--danger)' }}>
+                  {(stats.totalIncome / (stats.totalIncome / stats.monthlyAverageProfit || 1)) >= stats.totalMonthlyRevenueTarget ? 'ON TRACK' : 'ACTION REQUIRED'}
+                </div>
+              </div>
+            </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', borderTop: '1px solid rgba(59, 130, 246, 0.1)', paddingTop: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Break-Even Cost</span>
-                <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</span>
+                <span style={{ color: 'var(--text-muted)' }}>Actual Avg. Expenses</span>
+                <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.monthlyAverageExpense).toLocaleString()}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Capital Recovery</span>
+                <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.monthlyCapitalRecoveryGoal).toLocaleString()}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>ROI Profit Target</span>
                 <span style={{ fontWeight: 600 }}>₹{Math.ceil(stats.monthlyROIGoal).toLocaleString()}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginTop: '0.25rem', paddingTop: '0.5rem', borderTop: '1px dashed rgba(59, 130, 246, 0.2)' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Status</span>
-                <span style={{ fontWeight: 800, color: (stats.totalIncome / (stats.totalIncome / stats.monthlyAverageProfit || 1)) >= stats.totalMonthlyRevenueTarget ? 'var(--success)' : 'var(--danger)' }}>
-                  {(stats.totalIncome / (stats.totalIncome / stats.monthlyAverageProfit || 1)) >= stats.totalMonthlyRevenueTarget ? 'ON TRACK' : 'ACTION REQUIRED'}
-                </span>
               </div>
             </div>
           </div>
@@ -503,9 +529,14 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                 <span style={{ color: 'var(--text-muted)' }}>Required for Break-Even (Goal 1):</span>
                 <span style={{ fontWeight: 700 }}>{stats.breakEvenOccupancyRate.toFixed(1)}%</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Required for Profit (Goal 2):</span>
                 <span style={{ fontWeight: 700 }}>{stats.requiredOccupancyRate.toFixed(1)}%</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border)' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>
+                  *Projections calculated using an ADR of ₹{Math.ceil(stats.effectiveADR).toLocaleString()} {Number(investmentData?.average_selling_price) > 0 ? '(Expected Price)' : '(Historical)'}
+                </span>
               </div>
             </div>
           </div>
@@ -515,7 +546,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 700 }}>Monthly Break-Even Timeline</span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.5rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.5rem' }}>
                 {stats.monthlyBreakdown.map((m, idx) => (
                   <div key={idx} style={{ 
                     padding: '0.35rem 0.6rem', 
@@ -530,7 +561,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                     {m.achieved ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', lineHeight: 1.2 }}>
                       <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>{m.label}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.1rem' }}>
                           <span style={{ fontSize: '0.55rem', textTransform: 'uppercase', opacity: 0.7, fontWeight: 800 }}>Revenue</span>
                           <span style={{ fontSize: '0.85rem', fontWeight: 900 }}>₹{Math.ceil(m.revenue).toLocaleString()}</span>
