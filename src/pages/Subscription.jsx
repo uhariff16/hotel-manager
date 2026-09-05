@@ -270,7 +270,7 @@ export default function Subscription() {
                 <div style={{ color: 'var(--text-muted)' }}>Status:</div>
                 <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>{activeSubscription.status.toUpperCase()}</div>
                 <div style={{ color: 'var(--text-muted)' }}>Next Billing Date:</div>
-                <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString() : 'Processing (Awaiting Sync)'}</div>
+                <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Processing (Awaiting Sync)'}</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: '200px' }}>
