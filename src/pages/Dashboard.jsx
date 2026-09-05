@@ -34,12 +34,13 @@ export default function Dashboard() {
     const fetchData = async () => {
       if (!isSupabaseConfigured() || !activeResortId) { setLoading(false); return; }
       try {
-        const [inc, exp, bks, cts, rms] = await Promise.all([
+        const [inc, exp, bks, cts, rms, inv] = await Promise.all([
           supabase.from('incomes').select('amount, date').eq('resort_id', activeResortId),
           supabase.from('expenses').select('amount, date').eq('resort_id', activeResortId),
           supabase.from('bookings').select('*').eq('resort_id', activeResortId).order('check_in_date', { ascending: true }),
           supabase.from('cottages').select('id').eq('resort_id', activeResortId),
-          supabase.from('rooms').select('id, cottage_id').eq('resort_id', activeResortId)
+          supabase.from('rooms').select('id, cottage_id').eq('resort_id', activeResortId),
+          supabase.from('investments').select('*').eq('resort_id', activeResortId).maybeSingle()
         ]);
         
         const rev = (inc.data || []).reduce((sum, item) => sum + Number(item.amount), 0);
@@ -83,6 +84,26 @@ export default function Dashboard() {
             }
         }, 0);
 
+        
+        // Calculate targets
+        const investmentData = inv?.data || {};
+        const annualOperatingExpense = Number(investmentData?.monthly_operating_expenses || 0) * 12;
+        const annualTotalFixed = Number(investmentData?.annual_fixed_expenses || 0);
+        const leaseInvestment = Number(investmentData?.total_investment || 0);
+        
+        let recoveryYears = Number(investmentData?.recovery_period_years) || 1;
+        if (investmentData?.property_ownership === 'leased' && investmentData?.lease_start_date && investmentData?.lease_end_date) {
+          const ls = new Date(investmentData.lease_start_date);
+          const le = new Date(investmentData.lease_end_date);
+          const diffYears = Math.abs(le - ls) / (1000 * 60 * 60 * 24 * 365.25);
+          recoveryYears = diffYears > 0 ? diffYears : 1;
+        }
+        
+        const annualCapitalCost = leaseInvestment / recoveryYears;
+        const totalAnnualCost = annualOperatingExpense + annualTotalFixed + annualCapitalCost;
+        const breakEvenMonthlyTarget = totalAnnualCost / 12;
+        const targetAnnualNetProfit = leaseInvestment * (Number(investmentData?.target_roi_percentage || 0) / 100);
+        const strategicMonthlyTarget = breakEvenMonthlyTarget + (targetAnnualNetProfit / 12);
         setStats({
           monthlyCollections,
           monthlyExpenses: monthlyExpr,
@@ -92,7 +113,9 @@ export default function Dashboard() {
           expenses: yearlyExpr,
           profit: yearlyCollections - yearlyExpr,
           totalBookings: (bks.data || []).filter(b => b.check_in_date >= startOfYearStr && b.check_in_date <= endOfYearStr).length,
-          occupancy: totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0
+          occupancy: totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0,
+          breakEvenMonthlyTarget,
+          strategicMonthlyTarget
         });
 
         // Chart Data (Group income & expenses by date)
@@ -206,6 +229,76 @@ export default function Dashboard() {
             Monthly Performance
         </h2>
         {renderKpiGrid(monthlyKpis)}
+
+        {stats.breakEvenMonthlyTarget !== undefined && (
+          <div className="card" style={{ marginTop: '1rem', padding: '1.25rem' }}>
+            <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', marginTop: 0 }}>Monthly Target Progress</h3>
+            
+            {/* The Bar */}
+            <div style={{ 
+              width: '100%', 
+              height: '24px', 
+              background: '#f1f5f9', 
+              borderRadius: '12px', 
+              position: 'relative', 
+              overflow: 'hidden',
+              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+            }}>
+              <div style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: `${Math.min(100, (stats.monthlyCollections / Math.max(1, stats.strategicMonthlyTarget)) * 100)}%`,
+                background: stats.monthlyCollections < stats.breakEvenMonthlyTarget 
+                  ? 'linear-gradient(90deg, #ef4444 0%, #f97316 100%)' // Red -> Orange
+                  : 'linear-gradient(90deg, #f97316 0%, #84cc16 50%, #16a34a 100%)', // Orange -> Light Green -> Dark Green
+                transition: 'width 1s ease-in-out',
+                borderRadius: '12px'
+              }}></div>
+              
+              {/* Break-even Marker */}
+              {stats.strategicMonthlyTarget !== undefined && (
+                <div style={{
+                  position: 'absolute',
+                  left: `${Math.min(99, (stats.breakEvenMonthlyTarget / Math.max(1, stats.strategicMonthlyTarget)) * 100)}%`,
+                  top: 0,
+                  bottom: 0,
+                  width: '2px',
+                  background: '#000',
+                  zIndex: 2,
+                  transform: 'translateX(-50%)'
+                }}></div>
+              )}
+            </div>
+            
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', fontSize: '0.75rem', position: 'relative' }}>
+              <div style={{ color: 'var(--text-main)', fontWeight: 600 }}>
+                Current: ₹{stats.monthlyCollections.toLocaleString()}
+              </div>
+              
+              {/* Break-Even Label positioned directly under its marker */}
+              {stats.strategicMonthlyTarget !== undefined && (
+                <div style={{ 
+                  position: 'absolute', 
+                  left: `${Math.min(95, (stats.breakEvenMonthlyTarget / Math.max(1, stats.strategicMonthlyTarget)) * 100)}%`, 
+                  transform: 'translateX(-50%)',
+                  textAlign: 'center',
+                  color: 'var(--text-muted)'
+                }}>
+                  <div style={{ fontWeight: 600, color: 'var(--warning)' }}>Break-Even</div>
+                  <div>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</div>
+                </div>
+              )}
+              
+              <div style={{ color: 'var(--text-muted)', textAlign: 'right' }}>
+                <div style={{ fontWeight: 600, color: 'var(--success)' }}>Strategic Target</div>
+                <div>₹{Math.ceil(stats.strategicMonthlyTarget).toLocaleString()}</div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </section>
 
       {/* Yearly Section */}
