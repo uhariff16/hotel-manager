@@ -464,6 +464,25 @@ export default function Subscription() {
         ))}
       </div>
 
+      {activeSubscription && (
+        <div style={{ textAlign: 'center', marginTop: '3rem' }}>
+          <button 
+            onClick={handleCancelSubscription}
+            disabled={loading === 'cancel'}
+            style={{
+              background: 'none',
+              border: 'none',
+              color: 'var(--text-muted)',
+              fontSize: '0.85rem',
+              cursor: 'pointer',
+              textDecoration: 'underline'
+            }}
+          >
+            {loading === 'cancel' ? 'Cancelling subscription...' : 'Need to downgrade to the free plan? Click here to cancel your subscription.'}
+          </button>
+        </div>
+      )}
+
       <div className="card" style={{ marginTop: '4rem', padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'rgba(0,0,0,0.1)' }}>
         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '50%', color: 'var(--primary)' }}>
           <Shield size={32} />
