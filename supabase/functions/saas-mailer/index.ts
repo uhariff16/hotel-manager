@@ -119,9 +119,9 @@ serve(async (req) => {
           "Your Subscription is Active: StayPilot",
           { 
             plan_name: nicePlanName, 
-            period_end: new Date(event_data.period_end).toLocaleDateString(),
-            next_payment_date: new Date(event_data.next_payment_date || event_data.period_end).toLocaleDateString(),
-            subscription_end_date: event_data.subscription_end_date ? new Date(event_data.subscription_end_date).toLocaleDateString() : 'N/A',
+            period_end: new Date(event_data.period_end).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            next_payment_date: new Date(event_data.next_payment_date || event_data.period_end).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+            subscription_end_date: event_data.subscription_end_date ? new Date(event_data.subscription_end_date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'N/A',
             tenant_email: event_data.tenant_email 
           }
         );
