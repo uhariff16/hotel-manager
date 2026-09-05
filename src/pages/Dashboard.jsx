@@ -234,42 +234,62 @@ export default function Dashboard() {
           <div className="card" style={{ marginTop: '1rem', padding: '1.25rem' }}>
             <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', marginTop: 0 }}>Monthly Target Progress</h3>
             
-            {/* The Bar */}
-            <div style={{ 
-              width: '100%', 
-              height: '24px', 
-              background: '#f1f5f9', 
-              borderRadius: '12px', 
-              position: 'relative', 
-              overflow: 'hidden',
-              boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
-            }}>
-              <div style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: `${Math.min(100, (stats.monthlyCollections / Math.max(1, stats.strategicMonthlyTarget)) * 100)}%`,
-                background: stats.monthlyCollections < stats.breakEvenMonthlyTarget 
-                  ? 'linear-gradient(90deg, #ef4444 0%, #f97316 100%)' // Red -> Orange
-                  : 'linear-gradient(90deg, #f97316 0%, #84cc16 50%, #16a34a 100%)', // Orange -> Light Green -> Dark Green
-                transition: 'width 1s ease-in-out',
-                borderRadius: '12px'
-              }}></div>
-              
-              {/* Break-even Marker */}
+            <div style={{ position: 'relative', marginTop: '1.5rem' }}>
+              {/* Break-Even Label (Above the Bar) */}
               {stats.strategicMonthlyTarget !== undefined && (
                 <div style={{
                   position: 'absolute',
                   left: `${Math.min(99, (stats.breakEvenMonthlyTarget / Math.max(1, stats.strategicMonthlyTarget)) * 100)}%`,
+                  bottom: '100%',
+                  marginBottom: '0.25rem',
+                  transform: 'translateX(-50%)',
+                  textAlign: 'center',
+                  fontSize: '0.7rem',
+                  color: 'var(--text-muted)',
+                  whiteSpace: 'nowrap'
+                }}>
+                  <div style={{ fontWeight: 600, color: 'var(--warning)' }}>Break-Even</div>
+                  <div>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</div>
+                </div>
+              )}
+
+              {/* The Bar */}
+              <div style={{ 
+                width: '100%', 
+                height: '24px', 
+                background: '#f1f5f9', 
+                borderRadius: '12px', 
+                position: 'relative', 
+                overflow: 'hidden',
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
+              }}>
+                <div style={{
+                  position: 'absolute',
+                  left: 0,
                   top: 0,
                   bottom: 0,
-                  width: '2px',
-                  background: '#000',
-                  zIndex: 2,
-                  transform: 'translateX(-50%)'
+                  width: `${Math.min(100, (stats.monthlyCollections / Math.max(1, stats.strategicMonthlyTarget)) * 100)}%`,
+                  background: stats.monthlyCollections < stats.breakEvenMonthlyTarget 
+                    ? 'linear-gradient(90deg, #ef4444 0%, #f97316 100%)' // Red -> Orange
+                    : 'linear-gradient(90deg, #f97316 0%, #84cc16 50%, #16a34a 100%)', // Orange -> Light Green -> Dark Green
+                  transition: 'width 1s ease-in-out',
+                  borderRadius: '12px'
                 }}></div>
-              )}
+                
+                {/* Break-even Marker */}
+                {stats.strategicMonthlyTarget !== undefined && (
+                  <div style={{
+                    position: 'absolute',
+                    left: `${Math.min(99, (stats.breakEvenMonthlyTarget / Math.max(1, stats.strategicMonthlyTarget)) * 100)}%`,
+                    top: 0,
+                    bottom: 0,
+                    width: '2px',
+                    background: '#000',
+                    zIndex: 2,
+                    transform: 'translateX(-50%)'
+                  }}></div>
+                )}
+              </div>
             </div>
             
             <div style={{ 
@@ -284,13 +304,6 @@ export default function Dashboard() {
                 <span style={{ fontWeight: 600 }}>Current</span>
                 <span>₹{stats.monthlyCollections.toLocaleString()}</span>
               </div>
-              
-              {stats.strategicMonthlyTarget !== undefined && (
-                <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  <span style={{ fontWeight: 600, color: 'var(--warning)' }}>Break-Even</span>
-                  <span>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</span>
-                </div>
-              )}
               
               <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--text-muted)', textAlign: 'right' }}>
                 <span style={{ fontWeight: 600, color: 'var(--success)' }}>Strategic Target</span>
