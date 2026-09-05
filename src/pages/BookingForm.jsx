@@ -121,7 +121,7 @@ export default function BookingForm() {
   const { id } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
-  const { activeResortId, profile } = useSettingsStore();
+  const { activeResortId, profile, globalPlans } = useSettingsStore();
   
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
