@@ -7,7 +7,11 @@ import { format, differenceInDays } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
 export default function Dashboard() {
-  const { activeResortId } = useSettingsStore();
+  const { activeResortId, profile, globalPlans } = useSettingsStore();
+  const userPlan = profile?.plan_type || 'free';
+  const planData = globalPlans?.[userPlan] || {};
+  const isSuper = profile?.role === 'super_admin';
+  const hasInvestmentAccess = planData.reports?.investment || profile?.feature_investment_enabled || isSuper;
   const [stats, setStats] = useState({ 
     monthlyCollections: 0, 
     monthlyExpenses: 0,
@@ -230,7 +234,7 @@ export default function Dashboard() {
         </h2>
         {renderKpiGrid(monthlyKpis)}
 
-        {stats.breakEvenMonthlyTarget !== undefined && (
+        {hasInvestmentAccess && stats.breakEvenMonthlyTarget !== undefined && (
           <div className="card" style={{ marginTop: '1rem', padding: '1.25rem' }}>
             <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', marginTop: 0 }}>Monthly Target Progress</h3>
             
