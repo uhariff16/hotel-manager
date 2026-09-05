@@ -269,8 +269,8 @@ export default function Subscription() {
               <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.9rem' }}>
                 <div style={{ color: 'var(--text-muted)' }}>Status:</div>
                 <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>{activeSubscription.status.toUpperCase()}</div>
-                <div style={{ color: 'var(--text-muted)' }}>Period Ends:</div>
-                <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString() : 'Pending (Updates shortly)'}</div>
+                <div style={{ color: 'var(--text-muted)' }}>Next Billing Date:</div>
+                <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString() : 'Processing (Awaiting Sync)'}</div>
               </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: '200px' }}>
