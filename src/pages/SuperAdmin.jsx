@@ -1566,7 +1566,7 @@ export default function SuperAdmin() {
                     </div>
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                       <label className="form-label">Test Key Secret</label>
-                      <input type="password" className="form-input" value={razorpayConfig.testKeySecret} onChange={e => setRazorpayConfig({...razorpayConfig, testKeySecret: e.target.value})} placeholder="••••••••••••••••" />
+                      <input type="text" className="form-input" value={razorpayConfig.testKeySecret} onChange={e => setRazorpayConfig({...razorpayConfig, testKeySecret: e.target.value})} placeholder="••••••••••••••••" />
                     </div>
                   </div>
 
@@ -1578,7 +1578,7 @@ export default function SuperAdmin() {
                     </div>
                     <div className="form-group" style={{ marginTop: '1rem' }}>
                       <label className="form-label">Live Key Secret</label>
-                      <input type="password" className="form-input" value={razorpayConfig.liveKeySecret} onChange={e => setRazorpayConfig({...razorpayConfig, liveKeySecret: e.target.value})} placeholder="••••••••••••••••" />
+                      <input type="text" className="form-input" value={razorpayConfig.liveKeySecret} onChange={e => setRazorpayConfig({...razorpayConfig, liveKeySecret: e.target.value})} placeholder="••••••••••••••••" />
                     </div>
                   </div>
 
@@ -1586,7 +1586,7 @@ export default function SuperAdmin() {
                     <h4 style={{ marginBottom: '1rem', color: '#334155' }}>Webhook Settings</h4>
                     <div className="form-group">
                       <label className="form-label">Webhook Secret</label>
-                      <input type="password" className="form-input" value={razorpayConfig.webhookSecret} onChange={e => setRazorpayConfig({...razorpayConfig, webhookSecret: e.target.value})} placeholder="••••••••••••••••" />
+                      <input type="text" className="form-input" value={razorpayConfig.webhookSecret} onChange={e => setRazorpayConfig({...razorpayConfig, webhookSecret: e.target.value})} placeholder="••••••••••••••••" />
                       <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>Used to verify incoming Razorpay webhook signatures.</p>
                     </div>
                   </div>
