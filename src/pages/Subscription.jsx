@@ -273,11 +273,7 @@ export default function Subscription() {
                 <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Processing (Awaiting Sync)'}</div>
               </div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: '200px' }}>
-              <button className="btn btn-outline" style={{ color: 'var(--danger)', borderColor: 'var(--danger)' }} onClick={handleCancelSubscription} disabled={loading === 'cancel'}>
-                {loading === 'cancel' ? 'Cancelling...' : 'Cancel Subscription'}
-              </button>
-            </div>
+            
           </div>
           {/* Payment History is moved out of this card */}
         </div>
