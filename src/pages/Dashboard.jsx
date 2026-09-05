@@ -272,28 +272,29 @@ export default function Dashboard() {
               )}
             </div>
             
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', fontSize: '0.75rem', position: 'relative' }}>
-              <div style={{ color: 'var(--text-main)', fontWeight: 600 }}>
-                Current: ₹{stats.monthlyCollections.toLocaleString()}
+            <div style={{ 
+              display: 'flex', 
+              flexWrap: 'wrap', 
+              justifyContent: 'space-between', 
+              marginTop: '1rem', 
+              fontSize: '0.75rem', 
+              gap: '0.5rem' 
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--text-main)' }}>
+                <span style={{ fontWeight: 600 }}>Current</span>
+                <span>₹{stats.monthlyCollections.toLocaleString()}</span>
               </div>
               
-              {/* Break-Even Label positioned directly under its marker */}
               {stats.strategicMonthlyTarget !== undefined && (
-                <div style={{ 
-                  position: 'absolute', 
-                  left: `${Math.min(95, (stats.breakEvenMonthlyTarget / Math.max(1, stats.strategicMonthlyTarget)) * 100)}%`, 
-                  transform: 'translateX(-50%)',
-                  textAlign: 'center',
-                  color: 'var(--text-muted)'
-                }}>
-                  <div style={{ fontWeight: 600, color: 'var(--warning)' }}>Break-Even</div>
-                  <div>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</div>
+                <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--text-muted)', textAlign: 'center' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--warning)' }}>Break-Even</span>
+                  <span>₹{Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()}</span>
                 </div>
               )}
               
-              <div style={{ color: 'var(--text-muted)', textAlign: 'right' }}>
-                <div style={{ fontWeight: 600, color: 'var(--success)' }}>Strategic Target</div>
-                <div>₹{Math.ceil(stats.strategicMonthlyTarget).toLocaleString()}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', color: 'var(--text-muted)', textAlign: 'right' }}>
+                <span style={{ fontWeight: 600, color: 'var(--success)' }}>Strategic Target</span>
+                <span>₹{Math.ceil(stats.strategicMonthlyTarget).toLocaleString()}</span>
               </div>
             </div>
           </div>
