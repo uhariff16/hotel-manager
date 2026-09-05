@@ -1158,7 +1158,7 @@ export default function BookingForm() {
                 <label className="premium-label">Select Property / Cottage</label>
                 <select className="premium-select" value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value})}>
                   <option value="">Choose property...</option>
-                  {cottages.filter(c => c.status === 'Available' || c.status === 'Active' || c.id === bookingForm.cottage_id).map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {cottages.filter(c => c.status === 'Available' || c.status === 'Active' || c.id === bookingForm.cottage_id).map(c => <option key={c.id} value={c.id} disabled={c.isPlanLocked}>{c.name} {c.isPlanLocked ? '(Locked by Plan)' : ''}</option>)}
                 </select>
               </div>
             </div>
@@ -1173,10 +1173,13 @@ export default function BookingForm() {
                     <label 
                       key={r.id} 
                       className={`badge-room ${bookingForm.room_ids.includes(r.id) ? 'selected' : ''}`}
+                      style={{ opacity: r.isPlanLocked ? 0.5 : 1, cursor: r.isPlanLocked ? 'not-allowed' : 'pointer', background: r.isPlanLocked ? '#f1f5f9' : '' }}
+                      title={r.isPlanLocked ? 'Locked by current plan limit' : ''}
                     >
                       <input 
                         type="checkbox" 
                         style={{ display: 'none' }}
+                        disabled={r.isPlanLocked}
                         checked={bookingForm.room_ids.includes(r.id)} 
                         onChange={e => {
                           const newIds = e.target.checked ? [...bookingForm.room_ids, r.id] : bookingForm.room_ids.filter(id => id !== r.id);
