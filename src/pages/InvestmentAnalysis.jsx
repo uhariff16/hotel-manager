@@ -358,7 +358,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       return {
         ...m,
         occupancyRate: occRate,
-        achieved: m.revenue >= breakEvenMonthlyTarget || occRate >= breakEvenOccupancyRate
+        achieved: m.revenue >= breakEvenMonthlyTarget && occRate >= breakEvenOccupancyRate
       };
     });
       
@@ -570,7 +570,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.5rem' }}>
                 {stats.monthlyBreakdown.map((m, idx) => (
-                  <div key={idx} style={{ 
+                  <div key={idx} title={`Required: ₹${Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()} Revenue & ${stats.breakEvenOccupancyRate.toFixed(1)}% Occupancy`} style={{ 
                     padding: '0.35rem 0.6rem', 
                     borderRadius: '8px', 
                     background: m.achieved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
