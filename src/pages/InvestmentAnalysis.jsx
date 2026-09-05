@@ -14,7 +14,7 @@ import {
   Briefcase,
   Zap,
   CheckCircle2,
-  AlertCircle,
+  AlertCircle, Clock,
   Calculator,
   LayoutDashboard,
   Save,
@@ -355,10 +355,19 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
       return a.month - b.month;
     }).map(m => {
       const occRate = (m.nightsSold / (totalUnits * 30.4)) * 100;
+      let status = 'failed';
+      if (m.revenue >= breakEvenMonthlyTarget) {
+        status = 'achieved';
+      } else if (occRate >= breakEvenOccupancyRate) {
+        status = 'on_track';
+      }
+      
       return {
         ...m,
         occupancyRate: occRate,
-        achieved: m.revenue >= breakEvenMonthlyTarget && occRate >= breakEvenOccupancyRate
+        status: status,
+        // keep achieved for backwards compatibility in other places if any
+        achieved: status === 'achieved' || status === 'on_track'
       };
     });
       
@@ -569,18 +578,36 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                 <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase', fontWeight: 700 }}>Monthly Break-Even Timeline</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(175px, 1fr))', gap: '0.5rem' }}>
-                {stats.monthlyBreakdown.map((m, idx) => (
-                  <div key={idx} title={`Required: ₹${Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()} Revenue & ${stats.breakEvenOccupancyRate.toFixed(1)}% Occupancy`} style={{ 
+                {stats.monthlyBreakdown.map((m, idx) => {
+                  let bgColor = 'rgba(245, 158, 11, 0.1)';
+                  let fgColor = 'var(--warning)';
+                  let borderColor = 'rgba(245, 158, 11, 0.3)';
+                  let Icon = AlertCircle;
+                  
+                  if (m.status === 'achieved') {
+                    bgColor = 'rgba(16, 185, 129, 0.1)';
+                    fgColor = 'var(--success)';
+                    borderColor = 'rgba(16, 185, 129, 0.3)';
+                    Icon = CheckCircle2;
+                  } else if (m.status === 'on_track') {
+                    bgColor = 'rgba(59, 130, 246, 0.1)';
+                    fgColor = 'var(--primary)';
+                    borderColor = 'rgba(59, 130, 246, 0.3)';
+                    Icon = Clock;
+                  }
+                  
+                  return (
+                  <div key={idx} title={`Required: ₹${Math.ceil(stats.breakEvenMonthlyTarget).toLocaleString()} Revenue or ${stats.breakEvenOccupancyRate.toFixed(1)}% Occupancy`} style={{ 
                     padding: '0.35rem 0.6rem', 
                     borderRadius: '8px', 
-                    background: m.achieved ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)',
-                    color: m.achieved ? 'var(--success)' : 'var(--warning)',
-                    border: `1px solid ${m.achieved ? 'rgba(16, 185, 129, 0.3)' : 'rgba(245, 158, 11, 0.3)'}`,
+                    background: bgColor,
+                    color: fgColor,
+                    border: `1px solid ${borderColor}`,
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.5rem'
                   }}>
-                    {m.achieved ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+                    <Icon size={16} />
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', lineHeight: 1.2 }}>
                       <span style={{ fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', opacity: 0.8 }}>{m.label}</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -600,7 +627,8 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
                       </div>
                     </div>
                   </div>
-                ))}
+                );
+                })}
               </div>
             </div>
           )}
