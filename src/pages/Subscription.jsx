@@ -81,7 +81,7 @@ export default function Subscription() {
 
   const isOfferValid = (planConfig) => {
     if (!planConfig || !planConfig.offerActive) return false;
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date().toLocaleDateString('en-CA');
     if (planConfig.offerStartDate && today < planConfig.offerStartDate) return false;
     if (planConfig.offerEndDate && today > planConfig.offerEndDate) return false;
     return true;

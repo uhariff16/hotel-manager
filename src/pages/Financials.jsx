@@ -15,8 +15,8 @@ export default function Financials() {
   const [selectedCottageId, setSelectedCottageId] = useState('all');
   const [loading, setLoading] = useState(true);
 
-  const [newIncome, setNewIncome] = useState({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', cottage_id: '' });
-  const [newExpense, setNewExpense] = useState({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', cottage_id: '' });
+  const [newIncome, setNewIncome] = useState({ date: format(new Date(), 'yyyy-MM-dd'), source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', cottage_id: '' });
+  const [newExpense, setNewExpense] = useState({ date: format(new Date(), 'yyyy-MM-dd'), category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', cottage_id: '' });
   const [editingExpenseId, setEditingExpenseId] = useState(null);
   const [editingIncomeId, setEditingIncomeId] = useState(null);
   
@@ -144,7 +144,7 @@ export default function Financials() {
         }
       }
 
-      setNewIncome({ date: new Date().toISOString().split('T')[0], source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', custom_source: '', cottage_id: '' });
+      setNewIncome({ date: format(new Date(), 'yyyy-MM-dd'), source: 'Room Rent', amount: 0, payment_mode: 'UPI', notes: '', reference_number: '', custom_source: '', cottage_id: '' });
       setShowIncomeForm(false);
     } catch(err) { alert(err.message); }
   };
@@ -190,7 +190,7 @@ export default function Financials() {
         setExpenses([data[0], ...expenses]);
       }
       
-      setNewExpense({ date: new Date().toISOString().split('T')[0], category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', custom_category: '', cottage_id: '' });
+      setNewExpense({ date: format(new Date(), 'yyyy-MM-dd'), category: 'Maintenance', amount: 0, vendor_name: '', payment_mode: 'Cash', notes: '', custom_category: '', cottage_id: '' });
       setShowExpenseForm(false);
     } catch(err) { alert(err.message); }
   };

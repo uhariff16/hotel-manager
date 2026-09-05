@@ -667,8 +667,8 @@ export default function InvestmentHub() {
     rental_model: 'room',
     property_ownership: 'leased',
     recovery_period_years: 1,
-    lease_start_date: new Date().toISOString().split('T')[0],
-    lease_end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+    lease_start_date: new Date().toLocaleDateString('en-CA'),
+    lease_end_date: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toLocaleDateString('en-CA'),
     average_selling_price: ''
   });
   const [financials, setFinancials] = useState({ incomes: [], expenses: [], bookings: [] });
@@ -704,8 +704,8 @@ export default function InvestmentHub() {
           ...inv.data,
           property_ownership: inv.data.property_ownership || 'leased',
           recovery_period_years: inv.data.recovery_period_years || 1,
-          lease_start_date: inv.data.lease_start_date || new Date().toISOString().split('T')[0],
-          lease_end_date: inv.data.lease_end_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+          lease_start_date: inv.data.lease_start_date || new Date().toLocaleDateString('en-CA'),
+          lease_end_date: inv.data.lease_end_date || new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toLocaleDateString('en-CA'),
           average_selling_price: inv.data.average_selling_price || ''
         });
       }

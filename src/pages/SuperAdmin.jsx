@@ -982,7 +982,7 @@ export default function SuperAdmin() {
                       t.bookingCount || 0,
                       pricingConfig[t.plan_type]?.name || t.plan_type || 'Free Starter',
                       t.subscription_status === 'active' ? 'Active' : 'Suspended',
-                      t.created_at ? new Date(t.created_at).toISOString().split('T')[0] : ''
+                      t.created_at ? new Date(t.created_at).toLocaleDateString('en-CA') : ''
                     ]);
 
                     const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);

@@ -48,10 +48,10 @@ export default function Dashboard() {
         
         // Yearly stats for KPIs
         const now = new Date();
-        const startOfYearStr = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-        const endOfYearStr = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
-        const startOfMonthStr = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        const endOfMonthStr = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+        const startOfYearStr = format(new Date(now.getFullYear(), 0, 1), 'yyyy-MM-dd');
+        const endOfYearStr = format(new Date(now.getFullYear(), 11, 31), 'yyyy-MM-dd');
+        const startOfMonthStr = format(new Date(now.getFullYear(), now.getMonth(), 1), 'yyyy-MM-dd');
+        const endOfMonthStr = format(new Date(now.getFullYear(), now.getMonth() + 1, 0), 'yyyy-MM-dd');
         
         const yearlyCollections = (inc.data || []).filter(i => i.date >= startOfYearStr && i.date <= endOfYearStr).reduce((sum, item) => sum + Number(item.amount), 0);
         const monthlyCollections = (inc.data || []).filter(i => i.date >= startOfMonthStr && i.date <= endOfMonthStr).reduce((sum, item) => sum + Number(item.amount), 0);
@@ -139,7 +139,7 @@ export default function Dashboard() {
         })));
 
         // Active check-ins + Upcoming arrivals
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = format(new Date(), 'yyyy-MM-dd');
         const active = (bks.data || []).filter(b => b.status === 'Checked-in');
         const upcoming = (bks.data || []).filter(b => b.status === 'Confirmed' && b.check_in_date >= todayStr);
         setRecentCheckins({ active, upcoming: upcoming.slice(0, 10) });

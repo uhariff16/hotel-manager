@@ -628,7 +628,7 @@ export default function Bookings() {
           amount: amtPaid,
           source: 'Room Rent',
           notes: `Settlement: ${settlingBooking.guest_name} (${settlingBooking.reference_number})${discount > 0 ? ` [Discount: ₹${discount}]` : ''}${settlementData.notes ? ` - ${settlementData.notes}` : ''}`,
-          date: new Date().toISOString().split('T')[0],
+          date: new Date().toLocaleDateString('en-CA'),
           payment_mode: settlementData.paymentMode || 'UPI'
         }]);
       }

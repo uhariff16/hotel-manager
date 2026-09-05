@@ -611,7 +611,7 @@ export default function BookingForm() {
                 notes: difference > 0 
                   ? `Advance Payment: ${bookingForm.guest_name} (${bookingForm.reference_number})`
                   : `Adjustment/Refund: ${bookingForm.guest_name} (${bookingForm.reference_number})`,
-                date: new Date().toISOString().split('T')[0],
+                date: new Date().toLocaleDateString('en-CA'),
                 payment_mode: 'UPI'
               }]);
             }
@@ -1129,7 +1129,7 @@ export default function BookingForm() {
                     const inDate = new Date(newInDate);
                     const outDate = new Date(inDate);
                     outDate.setDate(outDate.getDate() + 1);
-                    const newOutDate = outDate.toISOString().split('T')[0];
+                    const newOutDate = outDate.toLocaleDateString('en-CA');
                     setBookingForm({...bookingForm, check_in_date: newInDate, check_out_date: newOutDate});
                   }} 
                 />
