@@ -188,7 +188,8 @@ export default function SuperAdmin() {
     
     <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; padding: 20px; margin: 25px 0;">
       <p style="margin: 0; color: #166534; font-size: 15px;"><strong>Plan:</strong> {{plan_name}}</p>
-      <p style="margin: 10px 0 0 0; color: #166534; font-size: 15px;"><strong>Valid Until:</strong> {{period_end}}</p>
+      <p style="margin: 10px 0 0 0; color: #166534; font-size: 15px;"><strong>Next Payment Date:</strong> {{next_payment_date}}</p>
+      <p style="margin: 10px 0 0 0; color: #166534; font-size: 15px;"><strong>Subscription End Date:</strong> {{subscription_end_date}}</p>
     </div>
 
     <p style="font-size: 16px; line-height: 1.6; color: #475569;">You now have access to premium features to take your hospitality business to the next level. Let's maximize your revenue!</p>

@@ -117,7 +117,13 @@ serve(async (req) => {
         const { html, subject } = renderTemplate('subscription_activated',
           `<h1>Subscription Activated</h1>\n<p>Hello,</p>\n<p>Your subscription for the <strong>{{plan_name}}</strong> plan is now active!</p>\n<p>Your period runs until {{period_end}}. Enjoy using StayPilot.</p>`,
           "Your Subscription is Active: StayPilot",
-          { plan_name: nicePlanName, period_end: new Date(event_data.period_end).toLocaleDateString(), tenant_email: event_data.tenant_email }
+          { 
+            plan_name: nicePlanName, 
+            period_end: new Date(event_data.period_end).toLocaleDateString(),
+            next_payment_date: new Date(event_data.next_payment_date || event_data.period_end).toLocaleDateString(),
+            subscription_end_date: event_data.subscription_end_date ? new Date(event_data.subscription_end_date).toLocaleDateString() : 'N/A',
+            tenant_email: event_data.tenant_email 
+          }
         );
         emailsToSend.push({ to: event_data.tenant_email, subject, html });
       }
