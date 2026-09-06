@@ -667,6 +667,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
             <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: isMobile ? '0.85rem' : '1rem' }}>Monitor and manage resort occupancy across all units</p>
           </div>
           
+          {!isMobile && (
           <div style={{ display: 'flex', gap: '1rem', padding: isMobile ? '0.5rem 1rem' : '0.75rem 1.5rem', background: 'var(--bg-secondary)', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)', alignSelf: isMobile ? 'stretch' : 'auto', justifyContent: isMobile ? 'space-around' : 'flex-start' }}>
              <div style={{ textAlign: 'center' }}>
                 <div style={{ fontSize: '0.65rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Occupancy</div>
@@ -683,10 +684,12 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                 <div style={{ fontSize: '1.1rem', fontWeight: 900, color: 'var(--warning)' }}>{occupancyStats.departures}</div>
              </div>
           </div>
+        )}
         </div>
         
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: isMobile ? '100%' : 'auto', flexDirection: isMobile ? 'column' : 'row' }}>
-           <div className="search-bar" style={{ position: 'relative', width: isMobile ? '100%' : '300px' }}>
+           {!isMobile && (
+           <div className="search-bar" style={{ position: 'relative', width: '300px' }}>
               <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
               <input 
                 type="text" 
@@ -697,6 +700,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                 style={{ paddingLeft: '2.75rem', height: '44px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', width: '100%' }}
               />
            </div>
+           )}
            <button className="btn btn-primary" onClick={() => navigate('/bookings/new')} style={{ height: '44px', width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}>
              <Calendar size={18} /> New Booking
            </button>
