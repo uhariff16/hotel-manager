@@ -123,14 +123,18 @@ export default function Home() {
           position: relative;
         }
         .image-slider {
+          position: absolute;
+          top: 0;
+          left: 0;
           width: 100%;
           height: 100%;
-          object-fit: cover;
-          animation: fade 0.8s ease-in-out;
+          object-fit: contain; /* ensures nothing gets cropped */
+          object-position: center;
+          opacity: 0;
+          transition: opacity 0.8s ease-in-out;
         }
-        @keyframes fade {
-          from { opacity: 0.2; }
-          to { opacity: 1; }
+        .image-slider.active {
+          opacity: 1;
         }
         .mobile-mockup {
           position: absolute;
@@ -188,9 +192,11 @@ export default function Home() {
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#10b981' }}></div>
             </div>
             {/* WEB IMAGE SLIDER */}
-            <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.5rem', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.5rem', overflow: 'hidden', position: 'relative' }}>
               {webImages.length > 0 ? (
-                <img key={webIdx} src={webImages[webIdx]} className="image-slider" alt="Web Dashboard" />
+                webImages.map((src, i) => (
+                  <img key={i} src={src} className={`image-slider ${i === webIdx ? 'active' : ''}`} alt="Web Dashboard" />
+                ))
               ) : (
                 '[ Placeholder: Add Web Images in Super Admin ]'
               )}
@@ -199,9 +205,11 @@ export default function Home() {
           
           <div className="mobile-mockup float-anim-delayed">
             {/* MOBILE IMAGE SLIDER */}
-            <div style={{ width: '100%', height: '100%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', textAlign: 'center', padding: '1rem', overflow: 'hidden' }}>
+            <div style={{ width: '100%', height: '100%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', textAlign: 'center', padding: '1rem', overflow: 'hidden', position: 'relative' }}>
               {mobileImages.length > 0 ? (
-                <img key={mobileIdx} src={mobileImages[mobileIdx]} className="image-slider" alt="Mobile App" style={{ padding: 0 }} />
+                mobileImages.map((src, i) => (
+                  <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt="Mobile App" />
+                ))
               ) : (
                 '[ Add Mobile Images in Super Admin ]'
               )}
@@ -283,7 +291,9 @@ export default function Home() {
               <div style={{ width: '40%', height: '25px', background: '#1e293b', position: 'absolute', top: 0, left: '30%', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: 2 }}></div>
               <div style={{ width: '100%', height: '100%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', overflow: 'hidden' }}>
                 {mobileImages.length > 0 ? (
-                  <img key={mobileIdx} src={mobileImages[mobileIdx]} className="image-slider" alt="Mobile App" />
+                  mobileImages.map((src, i) => (
+                    <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt="Mobile App" />
+                  ))
                 ) : (
                   '[ Add Mobile Images in Super Admin ]'
                 )}
