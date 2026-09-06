@@ -1,7 +1,45 @@
 import React, { useState } from 'react';
+import { supabase } from '../lib/supabase';
 import { LayoutDashboard, BookOpenCheck, CalendarDays, Wallet, FileText, TrendingUp, Users, CreditCard, Sparkles, CheckCircle2, Save, Plus, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function WebsiteManagerTab({ landingContent, setLandingContent, onSave, isUpdating }) {
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleImageUpload = async (event, type) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `slider/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('public-assets')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('public-assets').getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+
+      const newUrls = type === 'web' 
+        ? [...(landingContent.webImages || []), publicUrl]
+        : [...(landingContent.mobileImages || []), publicUrl];
+
+      setLandingContent({ 
+        ...landingContent, 
+        [type === 'web' ? 'webImages' : 'mobileImages']: newUrls 
+      });
+
+    } catch (err) {
+      alert("Upload failed: " + err.message);
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
+    }
+  };
 
   const handleUpdateHero = (field, value) => {
     setLandingContent({ ...landingContent, [field]: value });
@@ -92,9 +130,15 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
           <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h4 style={{ margin: 0, color: '#334155', fontWeight: 700, fontSize: '1.1rem' }}>Web Dashboard Images</h4>
-              <button className="btn btn-sm btn-outline" onClick={() => setLandingContent({ ...landingContent, webImages: [...(landingContent.webImages || []), ''] })} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
-                <Plus size={14} /> Add
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <label className="btn btn-sm btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  {isUploading ? 'Uploading...' : <><Upload size={14} /> Upload Image</>}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'web')} disabled={isUploading} />
+                </label>
+                <button className="btn btn-sm btn-outline" onClick={() => setLandingContent({ ...landingContent, webImages: [...(landingContent.webImages || []), ''] })} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
+                  <Plus size={14} /> Add URL
+                </button>
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {(!landingContent.webImages || landingContent.webImages.length === 0) && <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>No web images added yet.</span>}
@@ -119,9 +163,15 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
           <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h4 style={{ margin: 0, color: '#334155', fontWeight: 700, fontSize: '1.1rem' }}>Mobile App Images</h4>
-              <button className="btn btn-sm btn-outline" onClick={() => setLandingContent({ ...landingContent, mobileImages: [...(landingContent.mobileImages || []), ''] })} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
-                <Plus size={14} /> Add
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <label className="btn btn-sm btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer' }}>
+                  {isUploading ? 'Uploading...' : <><Upload size={14} /> Upload Image</>}
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'mobile')} disabled={isUploading} />
+                </label>
+                <button className="btn btn-sm btn-outline" onClick={() => setLandingContent({ ...landingContent, mobileImages: [...(landingContent.mobileImages || []), ''] })} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
+                  <Plus size={14} /> Add URL
+                </button>
+              </div>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               {(!landingContent.mobileImages || landingContent.mobileImages.length === 0) && <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>No mobile images added yet.</span>}
