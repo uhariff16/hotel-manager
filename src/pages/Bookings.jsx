@@ -515,6 +515,20 @@ export default function Bookings() {
   const [activeTabs, setActiveTabs] = useState(['All']);
 
   const handleCheckIn = async (b) => {
+    // Only allow check-in on or after the check_in_date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    // Parse the check_in_date string (YYYY-MM-DD)
+    const [year, month, day] = b.check_in_date.split('-');
+    const checkInDate = new Date(year, month - 1, day);
+    checkInDate.setHours(0, 0, 0, 0);
+
+    if (today < checkInDate) {
+      alert(`Check-in is not allowed before the scheduled date (${b.check_in_date}).`);
+      return;
+    }
+
     try {
       const { error } = await supabase.from('bookings').update({ status: 'Checked-in' }).eq('id', b.id);
       if (error) throw error;
