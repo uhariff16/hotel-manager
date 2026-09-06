@@ -271,7 +271,7 @@ export default function Home() {
       </section>
 
       {/* FEATURES GRID */}
-      <section style={{ padding: '6rem 1.5rem', background: '#f8fafc' }}>
+      <section id="features" style={{ padding: '6rem 1.5rem', background: '#f8fafc' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
             <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem' }}>Everything you need to scale.</h2>
@@ -306,10 +306,10 @@ export default function Home() {
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', padding: '6px 16px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 600, marginBottom: '1.5rem' }}>
               <Smartphone size={16} /> Manage From Anywhere
             </div>
-            <h2 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1.5rem', lineHeight: 1.1 }}>
+            <h2 style={{ fontSize: '3rem', fontWeight: 800, marginBottom: '1.5rem', lineHeight: 1.1, color: 'white' }}>
               Your entire property in your pocket.
             </h2>
-            <p style={{ fontSize: '1.15rem', opacity: 0.9, marginBottom: '2rem', lineHeight: 1.6 }}>
+            <p style={{ fontSize: '1.15rem', opacity: 0.9, marginBottom: '2rem', lineHeight: 1.6, color: 'white' }}>
               Don't stay chained to the front desk. With the StayPilot Android App, you can manage bookings, check in guests, and monitor your daily revenue from anywhere in the world.
             </p>
             <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 2.5rem 0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
