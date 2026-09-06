@@ -357,6 +357,28 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer style={{ 
+        padding: '3rem 2rem 2rem', 
+        borderTop: '1px solid rgba(0,0,0,0.05)',
+        background: '#f8fafc',
+        color: '#64748b',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '2rem'
+      }}>
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: 600 }}>
+          <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
+          <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</Link>
+          <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
+          <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
+        </div>
+        <div style={{ fontSize: '0.9rem' }}>
+           © 2026 StayPilot. All rights reserved.
+        </div>
+      </footer>
     </div>
   );
 }
