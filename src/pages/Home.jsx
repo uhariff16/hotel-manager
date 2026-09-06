@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSettingsStore } from '../lib/store';
 import { 
@@ -10,6 +10,27 @@ import {
 export default function Home() {
   const { landingPageContent } = useSettingsStore();
   const location = useLocation();
+
+  const webImages = landingPageContent?.webImages?.filter(url => url && url.trim() !== '') || [];
+  const mobileImages = landingPageContent?.mobileImages?.filter(url => url && url.trim() !== '') || [];
+  
+  const [webIdx, setWebIdx] = useState(0);
+  const [mobileIdx, setMobileIdx] = useState(0);
+
+  useEffect(() => {
+    if (webImages.length <= 1 && mobileImages.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      if (webImages.length > 1) {
+        setWebIdx(prev => (prev + 1) % webImages.length);
+      }
+      if (mobileImages.length > 1) {
+        setMobileIdx(prev => (prev + 1) % mobileImages.length);
+      }
+    }, 3500);
+    
+    return () => clearInterval(interval);
+  }, [webImages.length, mobileImages.length]);
 
   useEffect(() => {
     if (location.hash) {
@@ -101,6 +122,16 @@ export default function Home() {
           overflow: hidden;
           position: relative;
         }
+        .image-slider {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          animation: fade 0.8s ease-in-out;
+        }
+        @keyframes fade {
+          from { opacity: 0.2; }
+          to { opacity: 1; }
+        }
         .mobile-mockup {
           position: absolute;
           bottom: -10%;
@@ -156,18 +187,24 @@ export default function Home() {
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#f59e0b' }}></div>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#10b981' }}></div>
             </div>
-            {/* REPLACE THIS DIV WITH AN IMG TAG FOR WEB SCREENSHOT */}
-            <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.5rem' }}>
-              [ Placeholder: Replace with Web App High-Res Screenshot ]
-              {/* <img src="/assets/web-screenshot.png" alt="StayPilot Web Dashboard" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> */}
+            {/* WEB IMAGE SLIDER */}
+            <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.5rem', overflow: 'hidden' }}>
+              {webImages.length > 0 ? (
+                <img key={webIdx} src={webImages[webIdx]} className="image-slider" alt="Web Dashboard" />
+              ) : (
+                '[ Placeholder: Add Web Images in Super Admin ]'
+              )}
             </div>
           </div>
           
           <div className="mobile-mockup float-anim-delayed">
-            {/* REPLACE THIS DIV WITH AN IMG TAG FOR MOBILE SCREENSHOT */}
-            <div style={{ width: '100%', height: '100%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', textAlign: 'center', padding: '1rem' }}>
-              [ Mobile App Screenshot ]
-              {/* <img src="/assets/mobile-screenshot.png" alt="StayPilot Mobile App" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> */}
+            {/* MOBILE IMAGE SLIDER */}
+            <div style={{ width: '100%', height: '100%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', textAlign: 'center', padding: '1rem', overflow: 'hidden' }}>
+              {mobileImages.length > 0 ? (
+                <img key={mobileIdx} src={mobileImages[mobileIdx]} className="image-slider" alt="Mobile App" style={{ padding: 0 }} />
+              ) : (
+                '[ Add Mobile Images in Super Admin ]'
+              )}
             </div>
           </div>
         </div>
@@ -241,12 +278,15 @@ export default function Home() {
             </a>
           </div>
           <div style={{ flex: '1 1 400px', display: 'flex', justifyContent: 'center' }}>
-            {/* LARGE MOBILE MOCKUP PLACEHOLDER */}
+            {/* LARGE MOBILE MOCKUP SLIDER */}
             <div style={{ width: '300px', height: '600px', background: '#0f172a', borderRadius: '40px', border: '8px solid #1e293b', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflow: 'hidden', position: 'relative' }}>
               <div style={{ width: '40%', height: '25px', background: '#1e293b', position: 'absolute', top: 0, left: '30%', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: 2 }}></div>
-              <div style={{ width: '100%', height: '100%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', padding: '2rem' }}>
-                [ High-Res App Screenshot (Home Tab) ]
-                {/* <img src="/assets/app-home.png" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> */}
+              <div style={{ width: '100%', height: '100%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', overflow: 'hidden' }}>
+                {mobileImages.length > 0 ? (
+                  <img key={mobileIdx} src={mobileImages[mobileIdx]} className="image-slider" alt="Mobile App" />
+                ) : (
+                  '[ Add Mobile Images in Super Admin ]'
+                )}
               </div>
             </div>
           </div>
