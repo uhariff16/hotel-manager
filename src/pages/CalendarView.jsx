@@ -713,6 +713,7 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
         <div style={{ padding: isMobile ? '0.75rem 1rem' : '1.25rem 1.5rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-secondary)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', width: isMobile ? '100%' : 'auto' }}>
 
+             {!isMobile && (
              <button 
                 className="btn btn-outline" 
                 onClick={() => setIsFullScreen(!isFullScreen)} 
@@ -720,12 +721,14 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                 title="Toggle Full Calendar Mode"
              >
                 {isFullScreen ? (
-                  <><Minimize2 size={16} color="var(--primary)" /> <span className={isMobile ? "desktop-only" : ""}>Collapse</span></>
+                  <><Minimize2 size={16} color="var(--primary)" /> <span>Collapse</span></>
                 ) : (
-                  <><Maximize2 size={16} /> <span className={isMobile ? "desktop-only" : ""}>Full View</span></>
+                  <><Maximize2 size={16} /> <span>Full View</span></>
                 )}
              </button>
+             )}
 
+             {!isMobile && (
              <button 
                 className="btn" 
                 onClick={handleShareScreenshot} 
@@ -742,15 +745,18 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                   flex: isMobile ? '1' : 'none'
                 }}
              >
-                <Copy size={16} /> <span className={isMobile ? "desktop-only" : ""}>Screenshot</span>
+                <Copy size={16} /> <span>Screenshot</span>
              </button>
+             )}
              <div className="view-switcher" style={{ display: 'flex', background: 'var(--bg-color)', padding: '0.25rem', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-start' }}>
                 <button onClick={() => setViewType('monthly')} style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.5rem 1rem', flex: isMobile ? '1' : 'none', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'monthly' ? 'var(--primary)' : 'transparent', color: viewType === 'monthly' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', transition: 'all 0.2s' }}>
                     <LayoutGrid size={14} /> Month
                 </button>
+                {!isMobile && (
                 <button onClick={() => setViewType('timeline')} style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.5rem 1rem', flex: isMobile ? '1' : 'none', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'timeline' ? 'var(--primary)' : 'transparent', color: viewType === 'timeline' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', transition: 'all 0.2s' }}>
                     <Columns size={14} /> Timeline
                 </button>
+                )}
                 <button onClick={() => setViewType('agenda')} style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.5rem 1rem', flex: isMobile ? '1' : 'none', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'agenda' ? 'var(--primary)' : 'transparent', color: viewType === 'agenda' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', transition: 'all 0.2s' }}>
                     <List size={14} /> Agenda
                 </button>
