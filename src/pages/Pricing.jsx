@@ -357,7 +357,7 @@ export default function Pricing() {
               <Link to="/auth" style={{ color: '#64748B', textDecoration: 'none' }}>Sign In</Link>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontWeight: 600 }}>
-              <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy Policy</a>
+              <Link to="/privacy" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy Policy</Link>
               <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Terms of Service</a>
             </div>
           </div>
