@@ -1078,16 +1078,13 @@ export default function BookingForm() {
                 style={{ resize: 'vertical' }}
               />
             </div>
-          </div>
-
-          {/* SECTION 2: ADDITIONAL CONTACTS */}
-          <div className={`form-section-card ${collapsedSections[2] ? 'collapsed' : ''}`} style={{ background: 'var(--bg-secondary)' }}>
-            <h3 className="form-section-title" onClick={() => toggleSection(2)}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={18} style={{ color: 'var(--primary)' }} /> Additional Occupants / Contacts</span>
-              {collapsedSections[2] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
-            </h3>
-            
-            {bookingForm.additional_guests && bookingForm.additional_guests.map((guest, index) => (
+          
+            {/* ADDITIONAL OCCUPANTS MERGED */}
+            <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border)' }}>
+              <h4 style={{ margin: '0 0 1.25rem 0', fontSize: '0.9rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Users size={16} /> Additional Occupants / Contacts
+              </h4>
+              {bookingForm.additional_guests && bookingForm.additional_guests.map((guest, index) => (
               <div key={index} style={{ border: '1px solid var(--border)', padding: '1.25rem', borderRadius: '12px', background: 'var(--bg-primary)', position: 'relative', marginBottom: '1rem' }}>
                 <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }}>
                   <button 
@@ -1126,15 +1123,23 @@ export default function BookingForm() {
               </div>
             ))}
             
-            <button 
-              type="button" 
-              className="btn btn-outline" 
-              onClick={handleAddAdditionalGuest} 
-              style={{ height: '42px', width: '100%', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderStyle: 'dashed', borderRadius: '10px', fontWeight: 600 }}
-            >
-              + Add More Guest / Contact Detail
-            </button>
+            
+            <div style={{ textAlign: 'center' }}>
+                <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={handleAddAdditionalGuest} 
+                style={{ height: '38px', width: 'auto', padding: '0 1.25rem', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', borderStyle: 'dashed', borderRadius: '8px', fontWeight: 700, marginTop: '0.5rem' }}
+                >
+                + Add More Guest / Contact Detail
+                </button>
+            </div>
+          
+            </div>
+
           </div>
+
+          
 
           <datalist id="country-codes">
             {COUNTRY_CODES.map(c => (
