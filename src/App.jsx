@@ -178,7 +178,7 @@ function App() {
     React.useEffect(() => {
       if (isAndroid) {
         const timer = setTimeout(() => {
-          window.location.href = "intent://#Intent;package=com.staypilot.app;end";
+          window.location.href = "staypilot://auth";
         }, 1500);
         return () => clearTimeout(timer);
       }
@@ -195,7 +195,7 @@ function App() {
           
           {isAndroid && (
             <button 
-              onClick={() => { window.location.href = "intent://#Intent;package=com.staypilot.app;end"; }}
+              onClick={() => { window.location.href = "staypilot://auth"; }}
               style={{ background: '#10b981', color: 'white', padding: '0.75rem 2rem', borderRadius: '0.5rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '1rem', width: '100%', marginBottom: '1rem' }}
             >
               Open Mobile App
