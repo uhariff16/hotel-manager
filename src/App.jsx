@@ -171,18 +171,19 @@ function App() {
     setIsDataLoaded(true);
   };
 
+  const isAndroid = /android/i.test(navigator.userAgent || navigator.vendor || window.opera);
+  
+  // Auto-redirect to mobile app if Android and newly verified
+  React.useEffect(() => {
+    if (isNewlyVerified && isAndroid) {
+      const timer = setTimeout(() => {
+        window.location.href = "staypilot://auth";
+      }, 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [isNewlyVerified, isAndroid]);
+
   if (isNewlyVerified) {
-    const isAndroid = /android/i.test(navigator.userAgent || navigator.vendor || window.opera);
-    
-    // Auto-redirect to mobile app if Android
-    React.useEffect(() => {
-      if (isAndroid) {
-        const timer = setTimeout(() => {
-          window.location.href = "staypilot://auth";
-        }, 1500);
-        return () => clearTimeout(timer);
-      }
-    }, [isAndroid]);
 
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
