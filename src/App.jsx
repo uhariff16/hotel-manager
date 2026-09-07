@@ -172,6 +172,18 @@ function App() {
   };
 
   if (isNewlyVerified) {
+    const isAndroid = /android/i.test(navigator.userAgent || navigator.vendor || window.opera);
+    
+    // Auto-redirect to mobile app if Android
+    React.useEffect(() => {
+      if (isAndroid) {
+        const timer = setTimeout(() => {
+          window.location.href = "intent://#Intent;package=com.staypilot.app;end";
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    }, [isAndroid]);
+
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
         <div style={{ background: 'white', padding: '3rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
@@ -179,12 +191,22 @@ function App() {
             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
           </div>
           <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>Email Verified!</h1>
-          <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '1.1rem' }}>Your email has been successfully confirmed.</p>
+          <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '1.1rem' }}>Your email has been successfully confirmed. {isAndroid && "Redirecting to the app..."}</p>
+          
+          {isAndroid && (
+            <button 
+              onClick={() => { window.location.href = "intent://#Intent;package=com.staypilot.app;end"; }}
+              style={{ background: '#10b981', color: 'white', padding: '0.75rem 2rem', borderRadius: '0.5rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '1rem', width: '100%', marginBottom: '1rem' }}
+            >
+              Open Mobile App
+            </button>
+          )}
+
           <button 
             onClick={() => setIsNewlyVerified(false)}
-            style={{ background: '#0F2C59', color: 'white', padding: '0.75rem 2rem', borderRadius: '0.5rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '1rem', width: '100%' }}
+            style={{ background: isAndroid ? '#f1f5f9' : '#0F2C59', color: isAndroid ? '#475569' : 'white', padding: '0.75rem 2rem', borderRadius: '0.5rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '1rem', width: '100%' }}
           >
-            Continue to Setup
+            {isAndroid ? 'Continue on Web' : 'Continue to Setup'}
           </button>
         </div>
       </div>
