@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
@@ -969,9 +969,10 @@ export default function BookingForm() {
         <div className="form-left-col">
           
           {/* SECTION 1: PRIMARY GUEST DETAILS */}
-          <div className="form-section-card">
-            <h3 className="form-section-title">
-              <User size={18} style={{ color: 'var(--primary)' }} /> Primary Guest Details
+          <div className={`form-section-card ${collapsedSections[1] ? 'collapsed' : ''}`}>
+            <h3 className="form-section-title" onClick={() => toggleSection(1)}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={18} style={{ color: 'var(--primary)' }} /> Primary Guest Details</span>
+              {collapsedSections[1] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
             
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
@@ -1046,9 +1047,10 @@ export default function BookingForm() {
           </div>
 
           {/* SECTION 2: ADDITIONAL CONTACTS */}
-          <div className="form-section-card" style={{ background: 'var(--bg-secondary)' }}>
-            <h3 className="form-section-title">
-              <Users size={18} style={{ color: 'var(--primary)' }} /> Additional Occupants / Contacts
+          <div className={`form-section-card ${collapsedSections[2] ? 'collapsed' : ''}`} style={{ background: 'var(--bg-secondary)' }}>
+            <h3 className="form-section-title" onClick={() => toggleSection(2)}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={18} style={{ color: 'var(--primary)' }} /> Additional Occupants / Contacts</span>
+              {collapsedSections[2] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
             
             {bookingForm.additional_guests && bookingForm.additional_guests.map((guest, index) => (
@@ -1107,9 +1109,10 @@ export default function BookingForm() {
           </datalist>
 
           {/* SECTION 3: STAY SCHEDULE */}
-          <div className="form-section-card">
-            <h3 className="form-section-title">
-              <Calendar size={18} style={{ color: 'var(--primary)' }} /> Booking Schedule & Property
+          <div className={`form-section-card ${collapsedSections[3] ? 'collapsed' : ''}`}>
+            <h3 className="form-section-title" onClick={() => toggleSection(3)}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={18} style={{ color: 'var(--primary)' }} /> Booking Schedule & Property</span>
+              {collapsedSections[3] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
             
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
@@ -1236,9 +1239,10 @@ export default function BookingForm() {
           </div>
 
           {/* SECTION 4: OCCUPANCY DETAILS */}
-          <div className="form-section-card">
-            <h3 className="form-section-title">
-              <Info size={18} style={{ color: 'var(--primary)' }} /> Occupancy & Document Details
+          <div className={`form-section-card ${collapsedSections[4] ? 'collapsed' : ''}`}>
+            <h3 className="form-section-title" onClick={() => toggleSection(4)}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Info size={18} style={{ color: 'var(--primary)' }} /> Occupancy & Document Details</span>
+              {collapsedSections[4] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
@@ -1308,9 +1312,10 @@ export default function BookingForm() {
           </div>
 
           {/* SECTION 5: SERVICES & RESERVATION CHANNEL */}
-          <div className="form-section-card">
-            <h3 className="form-section-title">
-              <Globe size={18} style={{ color: 'var(--primary)' }} /> Services & Distribution Channels
+          <div className={`form-section-card ${collapsedSections[5] ? 'collapsed' : ''}`}>
+            <h3 className="form-section-title" onClick={() => toggleSection(5)}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Globe size={18} style={{ color: 'var(--primary)' }} /> Services & Distribution Channels</span>
+              {collapsedSections[5] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
@@ -1428,9 +1433,10 @@ export default function BookingForm() {
           </div>
 
           {/* SECTION 6: FINANCIAL ADJUSTMENTS */}
-          <div className="form-section-card">
-            <h3 className="form-section-title">
-              <Wallet size={18} style={{ color: 'var(--primary)' }} /> Financial Adjustments & Status
+          <div className={`form-section-card ${collapsedSections[6] ? 'collapsed' : ''}`}>
+            <h3 className="form-section-title" onClick={() => toggleSection(6)}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Wallet size={18} style={{ color: 'var(--primary)' }} /> Financial Adjustments & Status</span>
+              {collapsedSections[6] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
             
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
