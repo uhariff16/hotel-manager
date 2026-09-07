@@ -927,6 +927,34 @@ export default function BookingForm() {
             top: 0;
           }
         }
+        .booking-page .premium-input, .booking-page .form-select, .booking-page select, .booking-page .premium-select {
+          border: 1px solid rgba(0, 0, 0, 0.2) !important;
+          background: #ffffff !important;
+          box-shadow: inset 0 1px 2px rgba(0,0,0,0.04) !important;
+          transition: all 0.2s ease !important;
+        }
+        .booking-page .premium-input:focus, .booking-page .form-select:focus, .booking-page select:focus, .booking-page .premium-select:focus {
+          border-color: var(--primary) !important;
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+          outline: none;
+        }
+        [data-theme='dark'] .booking-page .premium-input, [data-theme='dark'] .booking-page .form-select, [data-theme='dark'] .booking-page select, [data-theme='dark'] .booking-page .premium-select {
+          border: 1px solid rgba(255, 255, 255, 0.15) !important;
+          background: #0f172a !important;
+          box-shadow: inset 0 1px 2px rgba(0,0,0,0.2) !important;
+        }
+        .form-section-card.collapsed > :not(.form-section-title) {
+          display: none !important;
+        }
+        .form-section-title {
+          cursor: pointer;
+          user-select: none;
+          pointer-events: auto !important;
+        }
+        .form-section-title:hover {
+          opacity: 0.8;
+        }
+
       `}</style>
 
       <button 
