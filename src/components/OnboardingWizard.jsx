@@ -450,7 +450,7 @@ export default function OnboardingWizard() {
       background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
       padding: '2rem 1rem',
       fontFamily: "'Plus Jakarta Sans', sans-serif",
-      color: 'var(--text-color)'
+      color: 'var(--text-main)'
     }}>
       
       {/* Top Header Controls */}
@@ -487,7 +487,7 @@ export default function OnboardingWizard() {
               <div style={{ width: '64px', height: '64px', borderRadius: '16px', background: 'rgba(16, 185, 129, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
                 <Building size={32} color="#10b981" />
               </div>
-              <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-color)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Welcome to Stay Pilot!</h1>
+              <h1 style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Welcome to Stay Pilot!</h1>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Let's set up your property platform so you can manage bookings and tracking numbers.</p>
             </div>
 
@@ -495,25 +495,25 @@ export default function OnboardingWizard() {
               <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', margin: '0 0 0.5rem 0' }}>The Setup Process:</h3>
               
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-color)' }}>1</div>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>1</div>
                 <div>
-                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>Business Profile Setup</h4>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>Business Profile Setup</h4>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Fill in your entity name, owner identity, timezone, and base currency.</p>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-color)' }}>2</div>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0f766e', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>2</div>
                 <div>
-                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>Property Details</h4>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>Property Details</h4>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Define the overarching property, max capacity, and full property pricing.</p>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#6d28d9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-color)' }}>3</div>
+                <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#6d28d9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>3</div>
                 <div>
-                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-color)' }}>Create Rooms</h4>
+                  <h4 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-main)' }}>Create Rooms</h4>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>Specify individual rooms (auto-generated or manually typed) to populate your booking inventory.</p>
                 </div>
               </div>
@@ -535,7 +535,7 @@ export default function OnboardingWizard() {
                 border: 'none',
                 padding: '0.9rem 2rem',
                 borderRadius: '10px',
-                color: 'var(--text-color)',
+                color: 'var(--text-main)',
                 cursor: 'pointer',
                 fontWeight: 700,
                 fontSize: '1rem',
@@ -649,7 +649,7 @@ export default function OnboardingWizard() {
             {/* STEP 1: ENTITY DETAILS */}
             {step === 1 && (
               <div style={{ animation: 'fadeIn 0.2s ease-out', textAlign: 'left' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Welcome to Stay Pilot!</h2>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Welcome to Stay Pilot!</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>Let's set up your business identity profile details to configure your accounts.</p>
                 
                 <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
@@ -658,7 +658,7 @@ export default function OnboardingWizard() {
                     <input
                       type="text"
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={entityForm.name}
                       onChange={e => setEntityForm({ ...entityForm, name: e.target.value })}
                       placeholder="e.g. Greenwood Valley Resort"
@@ -670,7 +670,7 @@ export default function OnboardingWizard() {
                     <input
                       type="text"
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={entityForm.owner_name}
                       onChange={e => setEntityForm({ ...entityForm, owner_name: e.target.value })}
                       placeholder="Your Full Name"
@@ -681,7 +681,7 @@ export default function OnboardingWizard() {
                     <input
                       type="text"
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={entityForm.phone}
                       onChange={e => setEntityForm({ ...entityForm, phone: e.target.value })}
                       placeholder="e.g. +91 98765 43210"
@@ -693,7 +693,7 @@ export default function OnboardingWizard() {
                     <input
                       type="email"
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={entityForm.email}
                       onChange={e => setEntityForm({ ...entityForm, email: e.target.value })}
                       placeholder="you@example.com"
@@ -705,7 +705,7 @@ export default function OnboardingWizard() {
                     <input
                       type="text"
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={entityForm.address}
                       onChange={e => setEntityForm({ ...entityForm, address: e.target.value })}
                       placeholder="e.g. 12 High Street, Ooty"
@@ -715,7 +715,7 @@ export default function OnboardingWizard() {
                     <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Base Currency</label>
                     <select
                       className="form-select"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                       value={entityForm.currency}
                       onChange={e => setEntityForm({ ...entityForm, currency: e.target.value })}
                     >
@@ -729,7 +729,7 @@ export default function OnboardingWizard() {
                     <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Timezone</label>
                     <select
                       className="form-select"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                       value={entityForm.timezone}
                       onChange={e => setEntityForm({ ...entityForm, timezone: e.target.value })}
                     >
@@ -746,7 +746,7 @@ export default function OnboardingWizard() {
             {/* STEP 2: PROPERTY DETAILS */}
             {step === 2 && (
               <div style={{ animation: 'fadeIn 0.2s ease-out', textAlign: 'left' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Property Details (Entire Property Booking)</h2>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Property Details (Entire Property Booking)</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>Define the overarching property and the pricing for booking the entire property/estate.</p>
                 
                 <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
@@ -755,7 +755,7 @@ export default function OnboardingWizard() {
                     <input
                       type="text"
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={propertyForm.name}
                       onChange={e => setPropertyForm({ ...propertyForm, name: e.target.value })}
                       placeholder="e.g. The Grand Villa"
@@ -768,7 +768,7 @@ export default function OnboardingWizard() {
                       type="number"
                       min={1}
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={propertyForm.max_capacity}
                       onChange={e => setPropertyForm({ ...propertyForm, max_capacity: e.target.value === '' ? '' : Number(e.target.value) })}
                     />
@@ -782,7 +782,7 @@ export default function OnboardingWizard() {
                       min={1}
                       max={roomLimit}
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={propertyForm.number_of_rooms}
                       onChange={e => setPropertyForm({ ...propertyForm, number_of_rooms: e.target.value === '' ? '' : Number(e.target.value) })}
                     />
@@ -798,7 +798,7 @@ export default function OnboardingWizard() {
                             type="number"
                             min={0}
                             className="form-input"
-                            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                            style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                             value={propertyForm.rates[rp] || ''}
                             onChange={e => setPropertyForm({ ...propertyForm, rates: { ...propertyForm.rates, [rp]: e.target.value === '' ? '' : Number(e.target.value) } })}
                           />
@@ -809,7 +809,7 @@ export default function OnboardingWizard() {
                       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                         <select 
                           className="form-select"
-                          style={{ width: '200px', height: '40px', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.85rem' }}
+                          style={{ width: '200px', height: '40px', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border)', color: 'var(--text-muted)', fontSize: '0.85rem' }}
                           value=""
                           onChange={(e) => {
                             if (e.target.value) {
@@ -830,7 +830,7 @@ export default function OnboardingWizard() {
                     <input
                       type="text"
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={propertyForm.phone}
                       onChange={e => setPropertyForm({ ...propertyForm, phone: e.target.value })}
                       placeholder="e.g. +91 90000 00000"
@@ -841,7 +841,7 @@ export default function OnboardingWizard() {
                     <input
                       type="text"
                       className="form-input"
-                      style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
+                      style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
                       value={propertyForm.wifi_password}
                       onChange={e => setPropertyForm({ ...propertyForm, wifi_password: e.target.value })}
                       placeholder="e.g. guestwifi123"
@@ -854,7 +854,7 @@ export default function OnboardingWizard() {
             {/* STEP 3: INITIAL ROOMS SETUP */}
             {step === 3 && (
               <div style={{ animation: 'fadeIn 0.2s ease-out', textAlign: 'left' }}>
-                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-color)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Create Rooms</h2>
+                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>Create Rooms</h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '2rem' }}>Define each room in your property, including type and individual pricing.</p>
 
                 <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
@@ -865,7 +865,7 @@ export default function OnboardingWizard() {
                         <input
                           type="text"
                           className="form-input"
-                          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                          style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.name}
                           onChange={e => updateRoom(room.id, 'name', e.target.value)}
                         />
@@ -874,7 +874,7 @@ export default function OnboardingWizard() {
                         <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Room Type</label>
                         <select
                           className="form-select"
-                          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                          style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.room_type}
                           onChange={e => updateRoom(room.id, 'room_type', e.target.value)}
                         >
@@ -888,7 +888,7 @@ export default function OnboardingWizard() {
                         <input
                           type="number"
                           className="form-input"
-                          style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                          style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                           value={room.capacity}
                           onChange={e => updateRoom(room.id, 'capacity', Number(e.target.value))}
                         />
@@ -899,7 +899,7 @@ export default function OnboardingWizard() {
                           <input
                             type="number"
                             className="form-input"
-                            style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-color)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
+                            style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
                             value={room.rates?.[rp] || ''}
                             onChange={e => updateRoom(room.id, null, Number(e.target.value), rp)}
                           />
@@ -952,7 +952,7 @@ export default function OnboardingWizard() {
                       border: '1px solid rgba(0, 0, 0, 0.15)',
                       padding: '0.75rem 1.5rem',
                       borderRadius: '10px',
-                      color: 'var(--text-color)',
+                      color: 'var(--text-main)',
                       cursor: 'pointer',
                       fontWeight: 700,
                       fontSize: '0.9rem',
@@ -976,7 +976,7 @@ export default function OnboardingWizard() {
                     border: 'none',
                     padding: '0.75rem 1.5rem',
                     borderRadius: '10px',
-                    color: 'var(--text-color)',
+                    color: 'var(--text-main)',
                     cursor: 'pointer',
                     fontWeight: 700,
                     fontSize: '0.9rem',
@@ -997,7 +997,7 @@ export default function OnboardingWizard() {
                     border: 'none',
                     padding: '0.75rem 1.75rem',
                     borderRadius: '10px',
-                    color: 'var(--text-color)',
+                    color: 'var(--text-main)',
                     cursor: 'pointer',
                     fontWeight: 700,
                     fontSize: '0.9rem',
