@@ -1001,6 +1001,26 @@ export default function BookingForm() {
       <form id="booking-form-main" onSubmit={handleSubmit} className="booking-layout">
         {/* LEFT COLUMN: FORM DETAILS */}
         <div className="form-left-col">
+
+          {/* RESERVATION STATUS AT TOP */}
+          <div className="form-section-card" style={{ padding: '1.5rem 2.25rem', border: '1px solid var(--primary)', background: 'rgba(16, 185, 129, 0.02)' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="premium-label" style={{ fontWeight: 800, fontSize: '0.85rem', color: 'var(--primary)', textTransform: 'uppercase' }}>Reservation Booking Status</label>
+              <select disabled={!isEditing} className="premium-select" style={{ border: '2px solid rgba(16,185,129,0.3) !important' }} value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
+                <option value="Confirmed">Confirmed</option>
+                <option value="Pending">Pending</option>
+                {id && originalStatus !== 'Pending' && (
+                  <>
+                    <option value="Checked-in">Checked-in</option>
+                    <option value="Checked-out">Checked-out</option>
+                    <option value="Completed">Completed</option>
+                  </>
+                )}
+                <option value="Cancelled">Cancelled</option>
+              </select>
+            </div>
+          </div>
+
           
           {/* SECTION 1: PRIMARY GUEST DETAILS */}
           <div className={`form-section-card ${collapsedSections[1] ? 'collapsed' : ''}`}>
@@ -1500,23 +1520,7 @@ export default function BookingForm() {
               </div>
             </div>
 
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-              <div className="form-group">
-                <label className="premium-label">Reservation Booking Status</label>
-                <select disabled={!isEditing} className="premium-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
-                  <option value="Confirmed">Confirmed</option>
-                  <option value="Pending">Pending</option>
-                  {id && originalStatus !== 'Pending' && (
-                    <>
-                      <option value="Checked-in">Checked-in</option>
-                      <option value="Checked-out">Checked-out</option>
-                      <option value="Completed">Completed</option>
-                    </>
-                  )}
-                  <option value="Cancelled">Cancelled</option>
-                </select>
-              </div>
-            </div>
+            
           </div>
           
         </div>
