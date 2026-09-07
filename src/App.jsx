@@ -44,7 +44,7 @@ function App() {
           document.body.classList.add('capacitor-android');
         }
         import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
-          StatusBar.setStyle({ style: appliedTheme === 'dark' ? Style.Dark : Style.Light }).catch(() => {});
+          StatusBar.setStyle({ style: appliedTheme === 'dark' ? Style.Light : Style.Dark }).catch(() => {});
         }).catch(() => {});
       }
     };
