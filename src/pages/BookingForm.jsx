@@ -126,6 +126,14 @@ export default function BookingForm() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const [collapsedSections, setCollapsedSections] = useState({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
+  const toggleSection = (id) => setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
+  const toggleAllSections = () => {
+    const anyCollapsed = Object.values(collapsedSections).some(v => v);
+    if (anyCollapsed) setCollapsedSections({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
+    else setCollapsedSections({ 1: true, 2: true, 3: true, 4: true, 5: true, 6: true });
+  };
+
   const [isEditing, setIsEditing] = useState(!id || new URLSearchParams(location.search).get('edit') === 'true');
   const [originalStatus, setOriginalStatus] = useState(null);
   const [settlementPaid, setSettlementPaid] = useState(0);
