@@ -442,12 +442,30 @@ export default function OnboardingWizard() {
   ];
 
   return (
-    <div style={{
+    <>
+    <style>{`
+      .wizard-container .form-input, .wizard-container .form-select {
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
+        background: #ffffff !important;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.04) !important;
+        transition: all 0.2s ease !important;
+      }
+      .wizard-container .form-input:focus, .wizard-container .form-select:focus {
+        border-color: var(--primary) !important;
+        box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+      }
+      [data-theme='dark'] .wizard-container .form-input, [data-theme='dark'] .wizard-container .form-select {
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        background: #0f172a !important;
+        box-shadow: inset 0 1px 2px rgba(0,0,0,0.2) !important;
+      }
+    `}</style>
+    <div className="wizard-container" style={{
       minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)',
+      background: 'var(--bg-color)',
       padding: '2rem 1rem',
       fontFamily: "'Plus Jakarta Sans', sans-serif",
       color: 'var(--text-main)'
@@ -464,9 +482,9 @@ export default function OnboardingWizard() {
       <div style={{
         width: '100%',
         maxWidth: step === 3 ? '1000px' : '650px',
-        background: 'rgba(255, 255, 255, 0.95)',
+        background: 'var(--bg-secondary)',
         backdropFilter: 'blur(16px)',
-        border: '1px solid rgba(0, 0, 0, 0.08)',
+        border: '1px solid var(--border)',
         borderRadius: '24px',
         padding: '2.5rem',
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
@@ -491,8 +509,8 @@ export default function OnboardingWizard() {
               <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Let's set up your property platform so you can manage bookings and tracking numbers.</p>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'rgba(0, 0, 0, 0.03)', padding: '1.5rem', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.05)', marginBottom: '0.5rem' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#1e293b', margin: '0 0 0.5rem 0' }}>The Setup Process:</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', background: 'var(--bg-color)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '0.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 0.5rem 0' }}>The Setup Process:</h3>
               
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)' }}>1</div>
@@ -654,19 +672,19 @@ export default function OnboardingWizard() {
                 
                 <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Business/Entity Name *</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Business/Entity Name *</label>
                     <input
                       type="text"
                       className="form-input"
                       style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
-                      value={entityForm.name}
+                      id="wizard-name" value={entityForm.name}
                       onChange={e => setEntityForm({ ...entityForm, name: e.target.value })}
                       placeholder="e.g. Greenwood Valley Resort"
                       required
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Owner's Name</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Owner's Name</label>
                     <input
                       type="text"
                       className="form-input"
@@ -677,19 +695,19 @@ export default function OnboardingWizard() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Contact Phone *</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Contact Phone *</label>
                     <input
                       type="text"
                       className="form-input"
                       style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.75rem' }}
-                      value={entityForm.phone}
+                      id="wizard-phone" value={entityForm.phone}
                       onChange={e => setEntityForm({ ...entityForm, phone: e.target.value })}
                       placeholder="e.g. +91 98765 43210"
                       required
                     />
                   </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Email *</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Email *</label>
                     <input
                       type="email"
                       className="form-input"
@@ -701,7 +719,7 @@ export default function OnboardingWizard() {
                     />
                   </div>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Address</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Address</label>
                     <input
                       type="text"
                       className="form-input"
@@ -712,7 +730,7 @@ export default function OnboardingWizard() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Base Currency</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Base Currency</label>
                     <select
                       className="form-select"
                       style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
@@ -726,7 +744,7 @@ export default function OnboardingWizard() {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Timezone</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Timezone</label>
                     <select
                       className="form-select"
                       style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '44px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
@@ -751,7 +769,7 @@ export default function OnboardingWizard() {
                 
                 <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Property Name *</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Property Name *</label>
                     <input
                       type="text"
                       className="form-input"
@@ -763,7 +781,7 @@ export default function OnboardingWizard() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Capacity (Max Guests for Entire Property)</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Capacity (Max Guests for Entire Property)</label>
                     <input
                       type="number"
                       min={1}
@@ -793,7 +811,7 @@ export default function OnboardingWizard() {
                     <div className="mobile-stack" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1rem' }}>
                       {selectedRatePlans.map(rp => (
                         <div key={rp}>
-                          <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>{rp} Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
+                          <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>{rp} Price ({entityForm.currency === 'INR' ? '₹' : '$'})</label>
                           <input
                             type="number"
                             min={0}
@@ -826,7 +844,7 @@ export default function OnboardingWizard() {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>Property Phone Number</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>Property Phone Number</label>
                     <input
                       type="text"
                       className="form-input"
@@ -837,7 +855,7 @@ export default function OnboardingWizard() {
                     />
                   </div>
                   <div className="form-group">
-                    <label className="form-label" style={{ color: '#334155', fontSize: '0.85rem', fontWeight: 600 }}>WiFi Password (Optional)</label>
+                    <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 600 }}>WiFi Password (Optional)</label>
                     <input
                       type="text"
                       className="form-input"
@@ -859,9 +877,9 @@ export default function OnboardingWizard() {
 
                 <div style={{ maxHeight: '400px', overflowY: 'auto', paddingRight: '0.5rem' }}>
                   {rooms.map((room, index) => (
-                    <div key={room.id} className="mobile-room-stack" style={{ display: 'grid', gridTemplateColumns: `2fr 3fr 1fr ${selectedRatePlans.map(()=>'1fr').join(' ')} 40px`, gap: '1rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(0, 0, 0, 0.05)', marginBottom: '1rem', alignItems: 'end', overflowX: 'auto' }}>
+                    <div key={room.id} className="mobile-room-stack" style={{ display: 'grid', gridTemplateColumns: `2fr 3fr 1fr ${selectedRatePlans.map(()=>'1fr').join(' ')} 40px`, gap: '1rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '1rem', alignItems: 'end', overflowX: 'auto' }}>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Room Name</label>
+                        <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.75rem', fontWeight: 600 }}>Room Name</label>
                         <input
                           type="text"
                           className="form-input"
@@ -871,7 +889,7 @@ export default function OnboardingWizard() {
                         />
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Room Type</label>
+                        <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.75rem', fontWeight: 600 }}>Room Type</label>
                         <select
                           className="form-select"
                           style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', color: 'var(--text-main)', height: '40px', width: '100%', borderRadius: '8px', padding: '0.5rem' }}
@@ -884,7 +902,7 @@ export default function OnboardingWizard() {
                         </select>
                       </div>
                       <div className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600 }}>Capacity</label>
+                        <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.75rem', fontWeight: 600 }}>Capacity</label>
                         <input
                           type="number"
                           className="form-input"
@@ -895,7 +913,7 @@ export default function OnboardingWizard() {
                       </div>
                       {selectedRatePlans.map(rp => (
                         <div className="form-group" key={rp} style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ color: '#334155', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{rp} (₹)</label>
+                          <label className="form-label" style={{ color: 'var(--text-main)', fontSize: '0.75rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{rp} (₹)</label>
                           <input
                             type="number"
                             className="form-input"
@@ -1049,5 +1067,6 @@ export default function OnboardingWizard() {
         }
       `}} />
     </div>
+    </>
   );
 }
