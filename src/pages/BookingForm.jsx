@@ -971,8 +971,6 @@ export default function BookingForm() {
       )}
 
       <form id="booking-form-main" onSubmit={handleSubmit} className="booking-layout">
-        <fieldset disabled={!isEditing} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
-        
         {/* LEFT COLUMN: FORM DETAILS */}
         <div className="form-left-col">
           
@@ -986,7 +984,7 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Primary Guest Full Name</label>
-                <input 
+                <input disabled={!isEditing} 
                   type="text" 
                   required 
                   className="premium-input" 
@@ -997,7 +995,7 @@ export default function BookingForm() {
               </div>
               <div className="form-group">
                 <label className="premium-label">Email Address (Optional)</label>
-                <input 
+                <input disabled={!isEditing} 
                   type="email" 
                   className="premium-input" 
                   placeholder="guest@email.com" 
@@ -1011,14 +1009,14 @@ export default function BookingForm() {
               <div className="form-group">
                 <label className="premium-label">Mobile Contact Number (5/5 Layout)</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input 
+                  <input disabled={!isEditing} 
                     list="country-codes"
                     className="premium-input" 
                     value={bookingForm.phone_code || '+91'} 
                     placeholder="Code (e.g. +91)"
                     onChange={e => setBookingForm(prev => ({ ...prev, phone_code: e.target.value, phone_number: e.target.value + prev.phone_raw }))}
                   />
-                  <input 
+                  <input disabled={!isEditing} 
                     type="text" 
                     required 
                     className="premium-input" 
@@ -1030,7 +1028,7 @@ export default function BookingForm() {
               </div>
               <div className="form-group">
                 <label className="premium-label">Booking Reference Number</label>
-                <input 
+                <input disabled={!isEditing} 
                   type="text" 
                   required 
                   className="premium-input" 
@@ -1043,7 +1041,7 @@ export default function BookingForm() {
 
             <div className="form-group" style={{ marginTop: '1.25rem' }}>
               <label className="premium-label">Guest Address (Optional)</label>
-              <textarea 
+              <textarea disabled={!isEditing} 
                 className="premium-input" 
                 placeholder="Enter guest's full address"
                 rows="2"
@@ -1077,23 +1075,23 @@ export default function BookingForm() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                   <div className="form-group">
                     <label className="premium-label" style={{ fontSize: '0.7rem' }}>Guest Name</label>
-                    <input type="text" required className="premium-input" placeholder="Name" value={guest.name} onChange={e => handleUpdateAdditionalGuest(index, 'name', e.target.value)} />
+                    <input disabled={!isEditing} type="text" required className="premium-input" placeholder="Name" value={guest.name} onChange={e => handleUpdateAdditionalGuest(index, 'name', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label className="premium-label" style={{ fontSize: '0.7rem' }}>Email Address</label>
-                    <input type="email" className="premium-input" placeholder="Email" value={guest.email} onChange={e => handleUpdateAdditionalGuest(index, 'email', e.target.value)} />
+                    <input disabled={!isEditing} type="email" className="premium-input" placeholder="Email" value={guest.email} onChange={e => handleUpdateAdditionalGuest(index, 'email', e.target.value)} />
                   </div>
                   <div className="form-group">
                     <label className="premium-label" style={{ fontSize: '0.7rem' }}>Mobile Number</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
-                      <input 
+                      <input disabled={!isEditing} 
                         list="country-codes"
                         className="premium-input" 
                         value={guest.phone_code || '+91'} 
                         placeholder="Code"
                         onChange={e => handleUpdateAdditionalGuest(index, 'phone_code', e.target.value)}
                       />
-                      <input type="text" className="premium-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
+                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -1126,7 +1124,7 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Check-in Date</label>
-                <input 
+                <input disabled={!isEditing} 
                   type="date" 
                   required 
                   className="premium-input" 
@@ -1147,7 +1145,7 @@ export default function BookingForm() {
               </div>
               <div className="form-group">
                 <label className="premium-label">Check-out Date</label>
-                <input 
+                <input disabled={!isEditing} 
                   type="date" 
                   required 
                   className="premium-input" 
@@ -1160,14 +1158,14 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Accommodation Booking Scope</label>
-                <select className="premium-select" value={bookingForm.booking_type} onChange={e => setBookingForm({...bookingForm, booking_type: e.target.value, room_ids: []})}>
+                <select disabled={!isEditing} className="premium-select" value={bookingForm.booking_type} onChange={e => setBookingForm({...bookingForm, booking_type: e.target.value, room_ids: []})}>
                   <option value="Entire Property">Entire Property Booking</option>
                   <option value="Room">Individual Rooms Booking</option>
                 </select>
               </div>
               <div className="form-group">
                 <label className="premium-label">Select Property / Cottage</label>
-                <select className="premium-select" value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value})}>
+                <select disabled={!isEditing} className="premium-select" value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value})}>
                   <option value="">Choose property...</option>
                   {cottages.filter(c => c.status === 'Available' || c.status === 'Active' || c.id === bookingForm.cottage_id).map(c => <option key={c.id} value={c.id} disabled={c.isPlanLocked}>{c.name} {c.isPlanLocked ? '(Locked by Plan)' : ''}</option>)}
                 </select>
@@ -1238,7 +1236,7 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Breakfast Inclusions</label>
-                <select className="premium-select" value={bookingForm.breakfast} onChange={e => setBookingForm({...bookingForm, breakfast: e.target.value})}>
+                <select disabled={!isEditing} className="premium-select" value={bookingForm.breakfast} onChange={e => setBookingForm({...bookingForm, breakfast: e.target.value})}>
                   <option value="NA">No Breakfast (NA)</option>
                   <option value="Included">Breakfast Included</option>
                 </select>
@@ -1257,20 +1255,20 @@ export default function BookingForm() {
               <div className="form-group">
                 <label className="premium-label">Number of Guests (Adults & Children)</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input type="number" min="1" placeholder="Adults" className="premium-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: e.target.value === '' ? '' : Number(e.target.value)})} />
-                  <input type="number" min="0" placeholder="Kids" className="premium-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: e.target.value === '' ? '' : Number(e.target.value)})} />
+                  <input disabled={!isEditing} type="number" min="1" placeholder="Adults" className="premium-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: e.target.value === '' ? '' : Number(e.target.value)})} />
+                  <input disabled={!isEditing} type="number" min="0" placeholder="Kids" className="premium-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: e.target.value === '' ? '' : Number(e.target.value)})} />
                 </div>
               </div>
               <div className="form-group">
                 <label className="premium-label">Guest Vehicle Number (Optional)</label>
-                <input type="text" className="premium-input" placeholder="E.g. KA-01-MX-1234" value={bookingForm.vehicle_number || ''} onChange={e => setBookingForm({...bookingForm, vehicle_number: e.target.value})} />
+                <input disabled={!isEditing} type="text" className="premium-input" placeholder="E.g. KA-01-MX-1234" value={bookingForm.vehicle_number || ''} onChange={e => setBookingForm({...bookingForm, vehicle_number: e.target.value})} />
               </div>
             </div>
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: bookingForm.id_proof_type === 'Other' ? '1fr 1fr 2fr' : '1fr 2fr', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Identification Document (ID Type)</label>
-                <select className="premium-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => {
+                <select disabled={!isEditing} className="premium-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => {
                   const type = e.target.value;
                   let val = bookingForm.id_proof_number || '';
                   if (type === 'Aadhar') {
@@ -1293,12 +1291,12 @@ export default function BookingForm() {
               {bookingForm.id_proof_type === 'Other' && (
                 <div className="form-group">
                   <label className="premium-label">Specify Document Type</label>
-                  <input type="text" className="premium-input" placeholder="E.g. Company ID" value={bookingForm.id_proof_other_type || ''} onChange={e => setBookingForm({...bookingForm, id_proof_other_type: e.target.value})} />
+                  <input disabled={!isEditing} type="text" className="premium-input" placeholder="E.g. Company ID" value={bookingForm.id_proof_other_type || ''} onChange={e => setBookingForm({...bookingForm, id_proof_other_type: e.target.value})} />
                 </div>
               )}
               <div className="form-group">
                 <label className="premium-label">ID Document Number</label>
-                <input 
+                <input disabled={!isEditing} 
                   type="text" 
                   className="premium-input" 
                   placeholder="Enter identification card number" 
@@ -1332,7 +1330,7 @@ export default function BookingForm() {
                 <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   {['Food', 'Fire camp', 'BBQ'].map(addon => (
                     <label key={addon} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>
-                      <input 
+                      <input disabled={!isEditing} 
                         type="checkbox" 
                         style={{ accentColor: 'var(--primary)' }}
                         checked={bookingForm.addon_selections?.includes(addon)} 
@@ -1347,7 +1345,7 @@ export default function BookingForm() {
                     </label>
                   ))}
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>
-                    <input 
+                    <input disabled={!isEditing} 
                       type="checkbox" 
                       style={{ accentColor: 'var(--primary)' }}
                       checked={bookingForm.addon_selections?.includes('Others')} 
@@ -1361,14 +1359,14 @@ export default function BookingForm() {
                     Others
                   </label>
                   {bookingForm.addon_selections?.includes('Others') && (
-                    <input type="text" className="premium-input" style={{ width: '100%', marginTop: '0.5rem' }} placeholder="Specify custom add-on..." value={bookingForm.addon_others || ''} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
+                    <input disabled={!isEditing} type="text" className="premium-input" style={{ width: '100%', marginTop: '0.5rem' }} placeholder="Specify custom add-on..." value={bookingForm.addon_others || ''} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
                   )}
                 </div>
               </div>
 
               <div className="form-group">
                 <label className="premium-label">Booking Source Channel</label>
-                <select className="premium-select" value={bookingForm.booking_source} onChange={e => {
+                <select disabled={!isEditing} className="premium-select" value={bookingForm.booking_source} onChange={e => {
                   const src = e.target.value;
                   const defName = bookingForm.agent_name || agents[0] || '';
                   setBookingForm({
@@ -1387,7 +1385,7 @@ export default function BookingForm() {
                 
                 {bookingForm.booking_source === 'Agent' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
-                    <select 
+                    <select disabled={!isEditing} 
                       className="premium-select" 
                       value={agents.includes(bookingForm.agent_name) ? bookingForm.agent_name : (bookingForm.agent_name ? 'Other' : '')} 
                       onChange={e => {
@@ -1407,7 +1405,7 @@ export default function BookingForm() {
                     </select>
                     
                     {(bookingForm.is_custom_agent || (!agents.includes(bookingForm.agent_name) && bookingForm.agent_name)) && (
-                      <input 
+                      <input disabled={!isEditing} 
                         type="text" 
                         className="premium-input" 
                         placeholder="Enter new agent's name" 
@@ -1416,7 +1414,7 @@ export default function BookingForm() {
                         required 
                       />
                     )}
-                    <input 
+                    <input disabled={!isEditing} 
                       type="text" 
                       className="premium-input" 
                       placeholder="Agent's contact number" 
@@ -1426,7 +1424,7 @@ export default function BookingForm() {
                   </div>
                 )}
                 {bookingForm.booking_source === 'Other' && (
-                  <input 
+                  <input disabled={!isEditing} 
                     type="text" 
                     className="premium-input" 
                     style={{ marginTop: '0.5rem' }} 
@@ -1450,29 +1448,29 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Base Accommodation Charge (₹)</label>
-                <input type="number" className="premium-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: e.target.value === '' ? '' : Number(e.target.value)})} />
+                <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group">
                 <label className="premium-label">Advance Deposit Received (₹)</label>
-                <input type="number" className="premium-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: e.target.value === '' ? '' : Number(e.target.value)})} />
+                <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
             </div>
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Total Add-on Services Cost (₹)</label>
-                <input type="number" className="premium-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: e.target.value === '' ? '' : Number(e.target.value)})} />
+                <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group">
                 <label className="premium-label">Extra Guest / Occupancy Charges (₹)</label>
-                <input type="number" className="premium-input" value={bookingForm.extra_guest_charges} onChange={e => setBookingForm({...bookingForm, extra_guest_charges: e.target.value === '' ? '' : Number(e.target.value)})} />
+                <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.extra_guest_charges} onChange={e => setBookingForm({...bookingForm, extra_guest_charges: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
             </div>
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Reservation Booking Status</label>
-                <select className="premium-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
+                <select disabled={!isEditing} className="premium-select" value={bookingForm.status} onChange={e => setBookingForm({...bookingForm, status: e.target.value})}>
                   <option value="Confirmed">Confirmed</option>
                   <option value="Pending">Pending</option>
                   {id && originalStatus !== 'Pending' && (
@@ -1602,7 +1600,7 @@ export default function BookingForm() {
           </div>
         </div>
 
-        </fieldset>
+        
       </form>
     </div>
   );
