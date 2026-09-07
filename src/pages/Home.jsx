@@ -156,8 +156,23 @@ export default function Home() {
         }
         /* Mobile responsive adjustments */
         @media (max-width: 768px) {
-          .mockup-container { margin-top: 2rem; }
-          .mobile-mockup { right: 5%; bottom: -5%; width: 35%; border-width: 4px; border-radius: 20px; }
+          .mockup-container { 
+            margin-top: 3rem; 
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+          }
+          .mobile-mockup { 
+            position: relative;
+            right: auto;
+            bottom: auto;
+            width: 50%;
+            max-width: 250px;
+            min-width: 200px;
+            margin-top: -15%;
+            border-width: 4px; 
+            border-radius: 20px; 
+          }
           .hero-title { font-size: 2.5rem !important; line-height: 1.2 !important; }
         }
       `}</style>
