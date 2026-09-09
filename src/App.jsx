@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './lib/supabase';
 import { useSettingsStore } from './lib/store';
 import AppLayout from './layouts/AppLayout';
+import ErrorBoundary from './components/ErrorBoundary';
 import toast, { Toaster } from 'react-hot-toast';
 
 // Mock empty pages for now
@@ -246,6 +247,7 @@ function App() {
   return (
     <BrowserRouter>
       <Toaster position="top-right" />
+      <ErrorBoundary>
       <React.Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
         <Routes>
           <Route 
@@ -281,6 +283,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </React.Suspense>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
