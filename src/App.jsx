@@ -5,6 +5,8 @@ import { useSettingsStore } from './lib/store';
 import AppLayout from './layouts/AppLayout';
 import ErrorBoundary from './components/ErrorBoundary';
 import toast, { Toaster } from 'react-hot-toast';
+import { Capacitor } from '@capacitor/core';
+import { AppShortcuts } from '@capawesome/capacitor-app-shortcuts';
 
 // Mock empty pages for now
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
@@ -22,6 +24,8 @@ const InvestmentAnalysis = React.lazy(() => import('./pages/InvestmentAnalysis')
 const Staff = React.lazy(() => import('./pages/Staff'));
 const Support = React.lazy(() => import('./pages/Support'));
 const Auth = React.lazy(() => import('./pages/Auth'));
+const EnquiriesBoard = React.lazy(() => import('./pages/EnquiriesBoard'));
+const QuickEnquiryMobile = React.lazy(() => import('./pages/QuickEnquiryMobile'));
 const Home = React.lazy(() => import('./pages/Home'));
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
@@ -29,6 +33,27 @@ const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'));
 
 function App() {
+
+  React.useEffect(() => {
+    if (Capacitor.isNativePlatform()) {
+      AppShortcuts.set({
+        shortcuts: [
+          {
+            id: 'quick_enquiry',
+            title: 'Quick Enquiry',
+            description: 'Log a Quick Enquiry'
+          }
+        ]
+      }).catch(console.error);
+
+      AppShortcuts.addListener('click', (event) => {
+        if (event.shortcutId === 'quick_enquiry') {
+          window.location.href = '/enquiries/quick';
+        }
+      });
+    }
+  }, []);
+
   const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setOnboardingWizardEnabled, setIsDataLoaded } = useSettingsStore();
   const [isNewlyVerified, setIsNewlyVerified] = React.useState(false);
 
@@ -45,7 +70,7 @@ function App() {
           document.body.classList.add('capacitor-android');
         }
         import('@capacitor/status-bar').then(({ StatusBar, Style }) => {
-          StatusBar.setStyle({ style: appliedTheme === 'dark' ? Style.Light : Style.Dark }).catch(() => {});
+          StatusBar.setStyle({ style: appliedTheme === 'dark' ? Style.Dark : Style.Light }).catch(() => {});
         }).catch(() => {});
       }
     };
@@ -265,6 +290,8 @@ function App() {
             <Route path="setup" element={<CottagesRooms />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="bookings/new" element={<BookingForm />} />
+                <Route path="enquiries" element={<EnquiriesBoard />} />
+                <Route path="enquiries/quick" element={<QuickEnquiryMobile />} />
             <Route path="bookings/edit/:id" element={<BookingForm />} />
             <Route path="calendar" element={<CalendarView />} />
             <Route path="financials" element={<Financials />} />

@@ -1,7 +1,8 @@
+import toast from 'react-hot-toast';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2 } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
@@ -128,6 +129,53 @@ export default function BookingForm() {
   const [error, setError] = useState(null);
   const [collapsedSections, setCollapsedSections] = useState({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
   const toggleSection = (id) => setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
+  
+  const handleSaveAgent = async () => {
+    if (!profile?.tenant_id || !bookingForm.agent_name) return;
+    try {
+      const { error } = await supabase.from('agents').upsert({
+        tenant_id: profile.tenant_id,
+        name: bookingForm.agent_name.trim(),
+        phone: bookingForm.agent_phone ? bookingForm.agent_phone.trim() : null
+      }, { onConflict: 'tenant_id,name' });
+      if (error) throw error;
+      toast.success("Agent saved to directory");
+      
+      // Update local state
+      if (!agents.includes(bookingForm.agent_name.trim())) {
+        setAgents([...agents, bookingForm.agent_name.trim()].sort());
+      }
+      setAgentPhones(prev => ({...prev, [bookingForm.agent_name.trim()]: bookingForm.agent_phone || ''}));
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to save agent");
+    }
+  };
+
+  const handleDeleteAgent = async () => {
+    if (!profile?.tenant_id || !bookingForm.agent_name) return;
+    if (!window.confirm("Are you sure you want to delete this agent from your directory?")) return;
+    
+    try {
+      const { error } = await supabase.from('agents')
+        .delete()
+        .eq('tenant_id', profile.tenant_id)
+        .eq('name', bookingForm.agent_name.trim());
+      if (error) throw error;
+      toast.success("Agent deleted from directory");
+      
+      setAgents(agents.filter(a => a !== bookingForm.agent_name.trim()));
+      const newPhones = {...agentPhones};
+      delete newPhones[bookingForm.agent_name.trim()];
+      setAgentPhones(newPhones);
+      
+      setBookingForm({...bookingForm, agent_name: '', agent_phone: ''});
+    } catch (e) {
+      console.error(e);
+      toast.error("Failed to delete agent");
+    }
+  };
+
   const toggleAllSections = () => {
     const anyCollapsed = Object.values(collapsedSections).some(v => v);
     if (anyCollapsed) setCollapsedSections({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
@@ -211,8 +259,30 @@ export default function BookingForm() {
         }));
       }
 
-      // Fetch agents and active bookings from existing bookings
+      // Fetch agents from the new agents table
       let fetchedAgents = [];
+      try {
+        if (profile?.tenant_id) {
+          const { data: dbAgents, error: agentsErr } = await supabase
+            .from('agents')
+            .select('name, phone')
+            .eq('tenant_id', profile.tenant_id);
+            
+          if (!agentsErr && dbAgents) {
+            const dbAgentsMap = {};
+            dbAgents.forEach(a => {
+              if (a.name) dbAgentsMap[a.name] = a.phone || '';
+            });
+            fetchedAgents = dbAgents.map(a => a.name).sort();
+            setAgentPhones(dbAgentsMap);
+          }
+        }
+      } catch (e) {
+        console.warn("Could not load agents from table:", e);
+      }
+      setAgents(fetchedAgents);
+
+      // Fetch active bookings
       try {
         const { data: bks, error: bksErr } = await supabase
           .from('bookings')
@@ -223,19 +293,10 @@ export default function BookingForm() {
           
         if (!bksErr && bks) {
           setActiveBookings(bks);
-          const dbAgentsMap = {};
-           bks.forEach(b => {
-             const { isAgent, name, phone } = parseAgentSource(b.booking_source);
-             if (isAgent && name) {
-               dbAgentsMap[name] = phone;
-             }
-           });
-           fetchedAgents = Array.from(new Set([...fetchedAgents, ...Object.keys(dbAgentsMap)]));
-           setAgentPhones(dbAgentsMap);
-        }      } catch (e) {
-        console.warn("Could not load agents from bookings:", e);
+        }
+      } catch (e) {
+        console.warn("Could not load active bookings:", e);
       }
-      setAgents(fetchedAgents);
 
       if (id) {
         // Fetch existing booking for edit
@@ -523,6 +584,21 @@ export default function BookingForm() {
         phone: g.phone_code + g.phone_raw
       }));
 
+      // Auto-upsert Agent if applicable
+      if (bookingForm.booking_source === 'Agent' && profile?.tenant_id) {
+        const agName = (bookingForm.agent_name || agents[0] || 'Unknown').trim();
+        const agPhone = bookingForm.agent_phone ? bookingForm.agent_phone.trim() : null;
+        if (agName && agName !== 'Unknown' && agName !== 'Other') {
+          supabase.from('agents').upsert({
+            tenant_id: profile.tenant_id,
+            name: agName,
+            phone: agPhone
+          }, { onConflict: 'tenant_id,name' }).then(({ error }) => {
+            if (error) console.error("Auto-upsert agent error:", error);
+          });
+        }
+      }
+
       const bookingData = {
         resort_id: activeResortId || null,
         tenant_id: profile?.tenant_id || profile?.id || null,
@@ -747,215 +823,7 @@ export default function BookingForm() {
 
   return (
     <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
-        
-        .booking-page-title {
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 1.85rem;
-          font-weight: 800;
-          color: var(--text-color);
-          margin-bottom: 2rem;
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-        
-        .booking-layout {
-          display: grid;
-          grid-template-columns: 7fr 4fr;
-          gap: 2.5rem;
-          align-items: start;
-        }
-        
-        .form-section-card {
-          background: var(--bg-secondary);
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          padding: 2.25rem;
-          margin-bottom: 2rem;
-          box-shadow: 0 4px 20px -2px rgba(15, 44, 89, 0.03);
-          transition: all 0.2s;
-        }
-        
-        .form-section-card:hover {
-          box-shadow: 0 10px 30px -5px rgba(15, 44, 89, 0.05);
-        }
-        
-        .form-section-title {
-          font-size: 1.15rem;
-          color: var(--primary);
-          font-weight: 700;
-          margin: 0 0 1.5rem 0;
-          display: flex;
-          align-items: center;
-          gap: 0.6rem;
-          border-bottom: 1px solid var(--border);
-          padding-bottom: 0.75rem;
-          text-transform: tracking-tight;
-        }
-        
-        .premium-label {
-          display: block;
-          font-size: 0.75rem;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          color: var(--text-muted);
-          margin-bottom: 0.5rem;
-        }
-        
-        .premium-input, .premium-select {
-          width: 100%;
-          padding: 0.8rem 1rem;
-          border-radius: 10px;
-          border: 1.5px solid var(--border);
-          background-color: var(--bg-color);
-          color: var(--text-color);
-          font-family: 'Plus Jakarta Sans', sans-serif;
-          font-size: 0.9rem;
-          font-weight: 500;
-          transition: all 0.2s;
-        }
-        
-        .premium-input:focus, .premium-select:focus {
-          outline: none;
-          border-color: var(--primary);
-          box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
-        }
-        
-        /* Check-in / Check-out Timeline widget */
-        .timeline-widget {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          background: var(--bg-secondary);
-          border: 1px dashed var(--border);
-          border-radius: 12px;
-          padding: 1.25rem;
-          margin-bottom: 1.5rem;
-        }
-        .timeline-col {
-          display: flex;
-          flex-direction: column;
-          gap: 0.25rem;
-        }
-        .timeline-label {
-          font-size: 0.7rem;
-          font-weight: 700;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-        }
-        .timeline-val {
-          font-size: 0.95rem;
-          font-weight: 800;
-          color: var(--text-color);
-        }
-        
-        .sticky-receipt {
-          position: sticky;
-          top: 2rem;
-          background: var(--bg-secondary);
-          border: 1px solid var(--border);
-          border-radius: 16px;
-          padding: 2.25rem;
-          box-shadow: 0 15px 35px rgba(15, 44, 89, 0.06);
-        }
-        
-        .receipt-header {
-          font-size: 1rem;
-          font-weight: 800;
-          color: var(--text-muted);
-          text-transform: uppercase;
-          letter-spacing: 0.08em;
-          border-bottom: 2px solid var(--border);
-          padding-bottom: 0.75rem;
-          margin-bottom: 1.5rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-        }
-        
-        .receipt-row {
-          display: flex;
-          justify-content: space-between;
-          font-size: 0.9rem;
-          color: var(--text-muted);
-          margin-bottom: 0.85rem;
-          font-weight: 500;
-        }
-        .receipt-row.bold {
-          font-weight: 700;
-          color: var(--text-color);
-        }
-        
-        .receipt-total-box {
-          background: var(--bg-secondary);
-          border-radius: 12px;
-          padding: 1.25rem;
-          margin: 1.5rem 0;
-          border: 1px solid var(--border);
-        }
-        
-        .badge-room {
-          display: inline-flex;
-          align-items: center;
-          gap: 0.4rem;
-          background: var(--bg-secondary);
-          border: 1.5px solid var(--border);
-          color: var(--text-color);
-          font-size: 0.85rem;
-          font-weight: 600;
-          padding: 0.4rem 1rem;
-          border-radius: 20px;
-          cursor: pointer;
-          transition: all 0.2s;
-        }
-        .badge-room.selected {
-          background: rgba(5, 150, 105, 0.08);
-          border-color: var(--primary);
-          color: var(--primary);
-        }
-        
-        @media (max-width: 991px) {
-          .booking-layout {
-            grid-template-columns: 1fr;
-          }
-          .sticky-receipt {
-            position: relative;
-            top: 0;
-          }
-        }
-        .booking-page .premium-input, .booking-page .form-select, .booking-page select, .booking-page .premium-select {
-          border: 1px solid rgba(0, 0, 0, 0.2) !important;
-          background: #ffffff !important;
-          box-shadow: inset 0 1px 2px rgba(0,0,0,0.04) !important;
-          transition: all 0.2s ease !important;
-        }
-        .booking-page .premium-input:focus, .booking-page .form-select:focus, .booking-page select:focus, .booking-page .premium-select:focus {
-          border-color: var(--primary) !important;
-          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
-          outline: none;
-        }
-        [data-theme='dark'] .booking-page .premium-input, [data-theme='dark'] .booking-page .form-select, [data-theme='dark'] .booking-page select, [data-theme='dark'] .booking-page .premium-select {
-          border: 1px solid rgba(255, 255, 255, 0.15) !important;
-          background: #0f172a !important;
-          box-shadow: inset 0 1px 2px rgba(0,0,0,0.2) !important;
-        }
-        .form-section-card.collapsed > :not(.form-section-title) {
-          display: none !important;
-        }
-        .form-section-title {
-          cursor: pointer;
-          user-select: none;
-          pointer-events: auto !important;
-        }
-        .form-section-title:hover {
-          opacity: 0.8;
-        }
-
-      `}</style>
+      
 
       <button 
         className="btn btn-outline" 
@@ -1467,13 +1335,26 @@ export default function BookingForm() {
                         required 
                       />
                     )}
-                    <input disabled={!isEditing} 
-                      type="text" 
-                      className="premium-input" 
-                      placeholder="Agent's contact number" 
-                      value={bookingForm.agent_phone || ''} 
-                      onChange={e => setBookingForm({...bookingForm, agent_phone: e.target.value})} 
-                    />
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <input disabled={!isEditing} 
+                        type="text" 
+                        className="premium-input" 
+                        placeholder="Agent's contact number" 
+                        value={bookingForm.agent_phone || ''} 
+                        onChange={e => setBookingForm({...bookingForm, agent_phone: e.target.value})} 
+                        style={{ flex: 1 }}
+                      />
+                      {isEditing && (
+                        <>
+                          <button type="button" onClick={handleSaveAgent} title="Save Agent" className="btn" style={{ padding: '0.65rem', background: 'var(--bg-secondary)', color: 'var(--primary)', border: '1px solid var(--border-color)', borderRadius: '0.5rem' }}>
+                            <Save size={18} />
+                          </button>
+                          <button type="button" onClick={handleDeleteAgent} title="Delete Agent" className="btn" style={{ padding: '0.65rem', background: 'var(--bg-secondary)', color: 'red', border: '1px solid var(--border-color)', borderRadius: '0.5rem' }}>
+                            <Trash2 size={18} />
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 )}
                 {bookingForm.booking_source === 'Other' && (

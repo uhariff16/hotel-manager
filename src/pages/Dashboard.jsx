@@ -63,15 +63,18 @@ export default function Dashboard() {
         const yearlyExpr = (exp.data || []).filter(e => e.date >= startOfYearStr && e.date <= endOfYearStr).reduce((sum, item) => sum + Number(item.amount), 0);
         const monthlyExpr = (exp.data || []).filter(e => e.date >= startOfMonthStr && e.date <= endOfMonthStr).reduce((sum, item) => sum + Number(item.amount), 0);
 
-        // Calculate Today's Occupancy % correctly
+        // Calculate Today's Occupancy % correctly dynamically based on live inventory
         const today = new Date();
         today.setHours(0,0,0,0);
         
-        const totalUnits = (cts.data?.length || 0) + (rms.data?.length || 0);
+        // True physical capacity: All rooms + any cottages that do NOT have child rooms
+        const roomsCount = rms.data?.length || 0;
+        const emptyCottages = (cts.data || []).filter(c => !(rms.data || []).some(r => r.cottage_id === c.id)).length;
+        const liveTotalUnits = Math.max(1, roomsCount + emptyCottages);
         
         // Filter bookings that span TODAY and are not cancelled
         const todayBookings = (bks.data || []).filter(b => {
-            if (b.status === 'Cancelled') return false;
+            if (b.status === 'cancelled' || b.status === 'Cancelled' || b.status === 'no_show') return false;
             const start = new Date(b.check_in_date);
             const end = new Date(b.check_out_date);
             start.setHours(0,0,0,0);
@@ -81,12 +84,19 @@ export default function Dashboard() {
 
         const occupiedUnits = todayBookings.reduce((acc, b) => {
             if (b.booking_type === 'Entire Property') {
+                // If it's a full property booking, it occupies the entire capacity
+                return acc + liveTotalUnits;
+            } else if (b.booking_type === 'Entire Cottage') {
+                // Booking a specific cottage
                 const cottageRooms = (rms.data || []).filter(r => r.cottage_id === b.cottage_id).length;
-                return acc + 1 + cottageRooms; 
+                return acc + Math.max(1, cottageRooms);
             } else {
+                // Booking specific rooms
                 return acc + (b.room_ids?.length || 1);
             }
         }, 0);
+        
+        const totalUnits = liveTotalUnits;
 
         
         // Calculate targets

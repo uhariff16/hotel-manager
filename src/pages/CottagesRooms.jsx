@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { Plus, Trash2, Edit2, Tag, CalendarDays, X, Check } from 'lucide-react';
@@ -36,6 +37,7 @@ export default function CottagesRooms() {
 
   const [editingId, setEditingId] = useState(null);
   const [editingType, setEditingType] = useState(null);
+  const [showRoomModal, setShowRoomModal] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -406,7 +408,7 @@ export default function CottagesRooms() {
 
         {/* ROOM CATEGORIES LIST */}
         <div className="card">
-          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
+          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Tag size={22} /> Room Categories
             </div>
@@ -415,53 +417,9 @@ export default function CottagesRooms() {
             </button>
           </h2>
           
-          {editingCategory ? (
-            <form onSubmit={handleSaveCategory} style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
-              <h4>{editingCategory.id ? 'Edit Category' : 'Add Category'}</h4>
-              <div className="grid-2" style={{ gap: '1rem', marginTop: '1rem', marginBottom: '1rem' }}>
-                <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="form-label">Category Name</label>
-                  <select className="form-select" required value={editingCategory.name} onChange={e => setEditingCategory({...editingCategory, name: e.target.value})}>
-                    <option value="">-- Select Category --</option>
-                    {PREDEFINED_CATEGORIES.map(cat => (
-                      <option key={cat} value={cat}>{cat}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                  <label className="form-label">Capacity</label>
-                  <input type="number" className="form-input" required value={editingCategory.capacity} onChange={e => setEditingCategory({...editingCategory, capacity: e.target.value})} />
-                </div>
-                <div style={{ gridColumn: 'span 2' }}>
-                  <h5 style={{ marginBottom: '0.5rem', color: 'var(--text-muted)' }}>Prices per Rate Plan</h5>
-                  {ratePlans.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>No Rate Plans defined yet. Add some first!</p>}
-                  {ratePlans.map(rp => (
-                    <div key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                      <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{rp.name}</span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span>₹</span>
-                        <input 
-                          type="number" 
-                          className="form-input" 
-                          style={{ width: '100px', padding: '0.3rem' }}
-                          value={editingCategory.rates[rp.id]} 
-                          onChange={e => setEditingCategory({
-                            ...editingCategory, 
-                            rates: { ...editingCategory.rates, [rp.id]: e.target.value }
-                          })}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save</button>
-                <button type="button" className="btn btn-outline" onClick={() => setEditingCategory(null)}>Cancel</button>
-              </div>
-            </form>
-          ) : (
-            <div className="table-container">
+          
+
+          <div className="table-container">
               <table className="table">
                 <thead>
                   <tr>
@@ -485,7 +443,6 @@ export default function CottagesRooms() {
                 </tbody>
               </table>
             </div>
-          )}
         </div>
       </div>
 
@@ -493,74 +450,16 @@ export default function CottagesRooms() {
       
       {/* COTTAGES SECTION */}
       <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
+        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
           <span>Properties (Entire Property Booking)</span>
-          {!editingCottage && (
-            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => startCottageEdit()}>
-              <Plus size={16} /> New Property
-            </button>
-          )}
+          <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => startCottageEdit()}>
+            <Plus size={16} /> New Property
+          </button>
         </h2>
         
-        {editingCottage ? (
-          <form onSubmit={handleSaveCottage} style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
-            <h4>{editingCottage.id ? `Edit Property` : 'Add New Property'}</h4>
-            <div className="grid-2" style={{ gap: '1rem', marginTop: '1rem' }}>
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label className="form-label">Name</label>
-                <input type="text" className="form-input" required value={editingCottage.name} onChange={e => setEditingCottage({...editingCottage, name: e.target.value})} />
-              </div>
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label className="form-label">Capacity (Max Guests)</label>
-                <input type="number" className="form-input" min="1" required value={editingCottage.max_capacity} onChange={e => setEditingCottage({...editingCottage, max_capacity: e.target.value})} />
-              </div>
-              
-              <div style={{ gridColumn: 'span 2', padding: '1rem', background: '#fff', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <h5 style={{ marginBottom: '0.5rem', color: 'var(--primary)', fontWeight: 700 }}>Entire Property Prices per Rate Plan</h5>
-                {ratePlans.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>No Rate Plans defined yet. Add some first!</p>}
-                {ratePlans.map(rp => (
-                  <div key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{rp.name}</span>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span>₹</span>
-                      <input 
-                        type="number" 
-                        className="form-input" 
-                        style={{ width: '120px', padding: '0.3rem' }}
-                        value={editingCottage.rates[rp.id]} 
-                        onChange={e => setEditingCottage({
-                          ...editingCottage, 
-                          rates: { ...editingCottage.rates, [rp.id]: e.target.value }
-                        })}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </div>
+        
 
-              <div className="form-group">
-                <label className="form-label">Contact Number</label>
-                <input type="text" className="form-input" value={editingCottage.phone} onChange={e => setEditingCottage({...editingCottage, phone: e.target.value})} />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Wi-Fi Password</label>
-                <input type="text" className="form-input" value={editingCottage.wifi_password} onChange={e => setEditingCottage({...editingCottage, wifi_password: e.target.value})} />
-              </div>
-              <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                <label className="form-label">Status</label>
-                <select className="form-select" value={editingCottage.status} onChange={e => setEditingCottage({...editingCottage, status: e.target.value})}>
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-              <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Save Property</button>
-              <button type="button" className="btn btn-outline" onClick={() => setEditingCottage(null)}>Cancel</button>
-            </div>
-          </form>
-        ) : (
-          <div className="table-container">
+        <div className="table-container">
             <table className="table">
               <thead>
                 <tr>
@@ -623,73 +522,21 @@ export default function CottagesRooms() {
               </tbody>
             </table>
           </div>
-        )}
       </div>
 
       {/* ROOMS SECTION */}
       <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
+        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
           <span>Rooms (Individual Booking)</span>
+          <button className="btn btn-primary" onClick={() => {
+            setEditingId(null);
+            setEditingType(null);
+            setNewRoom({ cottage_id: '', name: '', capacity: 1, status: 'Active', category_id: '' });
+            setShowRoomModal(true);
+          }}>+ Add Room</button>
         </h2>
         
-        <form onSubmit={handleAddRoom} style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
-          <h4>{editingId && editingType === 'room' ? `Edit Room` : 'Add New Room'}</h4>
-          <div className="grid-2" style={{ gap: '1rem', marginTop: '1rem' }}>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Link to Property</label>
-              <select className="form-select" required value={newRoom.cottage_id} onChange={e => setNewRoom({...newRoom, cottage_id: e.target.value})}>
-                <option value="">-- Select Property --</option>
-                {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Room Name / Number</label>
-              <input type="text" className="form-input" required value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} />
-            </div>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label className="form-label">Pricing Category</label>
-              <select 
-                className="form-select" 
-                required 
-                value={newRoom.category_id} 
-                onChange={e => {
-                  const cat = categories.find(c => c.id === e.target.value);
-                  setNewRoom({
-                    ...newRoom,
-                    category_id: e.target.value,
-                    capacity: cat ? cat.capacity : 1
-                  });
-                }}
-              >
-                <option value="">-- Select Category --</option>
-                {categories.map(cat => (
-                  <option key={cat.id} value={cat.id}>
-                    {cat.name} (Cap: {cat.capacity})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="form-group">
-              <label className="form-label">Capacity (Auto)</label>
-              <input type="number" className="form-input" disabled value={newRoom.capacity} />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Status</label>
-              <select className="form-select" value={newRoom.status} onChange={e => setNewRoom({...newRoom, status: e.target.value})}>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-              </select>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-            <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>
-              {editingId && editingType === 'room' ? 'Update Room' : 'Add Room'}
-            </button>
-            {editingId && editingType === 'room' && (
-              <button type="button" className="btn btn-outline" onClick={() => { setEditingId(null); setEditingType(null); setNewRoom({ cottage_id: '', name: '', capacity: 1, status: 'Active', category_id: '' }); }}>Cancel</button>
-            )}
-          </div>
-        </form>
+        
 
         <div className="table-container">
           <table className="table">
@@ -730,6 +577,186 @@ export default function CottagesRooms() {
         </div>
       </div>
       </div>
+    
+      {/* MODALS WITH CREATEPORTAL */}
+      {editingCategory && createPortal(
+<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+              <div style={{ background: 'var(--bg-color)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+                <form onSubmit={handleSaveCategory}>
+                  <h4 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: 'var(--text-main)' }}>{editingCategory.id ? 'Edit Category' : 'Add Category'}</h4>
+                  <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Category Name</label>
+                      <select className="form-select" required value={editingCategory.name} onChange={e => setEditingCategory({...editingCategory, name: e.target.value})}>
+                        <option value="">-- Select Category --</option>
+                        {PREDEFINED_CATEGORIES.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Capacity (Max Guests)</label>
+                      <input type="number" className="form-input" min="1" required value={editingCategory.capacity} onChange={e => setEditingCategory({...editingCategory, capacity: e.target.value})} />
+                    </div>
+                    
+                    <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                      <h5 style={{ marginBottom: '0.5rem', color: 'var(--primary)', fontWeight: 700 }}>Rates per Rate Plan</h5>
+                      {ratePlans.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>No Rate Plans defined yet.</p>}
+                      {ratePlans.map(rp => (
+                        <div key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{rp.name}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span>₹</span>
+                            <input 
+                              type="number" 
+                              className="form-input" 
+                              style={{ width: '120px', padding: '0.3rem' }}
+                              value={editingCategory.rates[rp.id]} 
+                              onChange={e => setEditingCategory({
+                                ...editingCategory, 
+                                rates: { ...editingCategory.rates, [rp.id]: e.target.value }
+                              })}
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                    <button type="button" className="btn btn-outline" onClick={() => setEditingCategory(null)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.5rem' }}>Save</button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          , document.body)}
+
+      {editingCottage && createPortal(
+<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div style={{ background: 'var(--bg-color)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+              <form onSubmit={handleSaveCottage}>
+                <h4 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: 'var(--text-main)' }}>{editingCottage.id ? `Edit Property` : 'Add New Property'}</h4>
+                <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Name</label>
+                    <input type="text" className="form-input" required value={editingCottage.name} onChange={e => setEditingCottage({...editingCottage, name: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Capacity (Max Guests)</label>
+                    <input type="number" className="form-input" min="1" required value={editingCottage.max_capacity} onChange={e => setEditingCottage({...editingCottage, max_capacity: e.target.value})} />
+                  </div>
+                  
+                  <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <h5 style={{ marginBottom: '0.5rem', color: 'var(--primary)', fontWeight: 700 }}>Entire Property Prices per Rate Plan</h5>
+                    {ratePlans.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>No Rate Plans defined yet.</p>}
+                    {ratePlans.map(rp => (
+                      <div key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{rp.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <span>₹</span>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            style={{ width: '120px', padding: '0.3rem' }}
+                            value={editingCottage.rates[rp.id]} 
+                            onChange={e => setEditingCottage({
+                              ...editingCottage, 
+                              rates: { ...editingCottage.rates, [rp.id]: e.target.value }
+                            })}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Contact Number</label>
+                    <input type="text" className="form-input" value={editingCottage.phone} onChange={e => setEditingCottage({...editingCottage, phone: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Wi-Fi Password</label>
+                    <input type="text" className="form-input" value={editingCottage.wifi_password} onChange={e => setEditingCottage({...editingCottage, wifi_password: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Status</label>
+                    <select className="form-select" value={editingCottage.status} onChange={e => setEditingCottage({...editingCottage, status: e.target.value})}>
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn-outline" onClick={() => setEditingCottage(null)}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.5rem' }}>Save Property</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        , document.body)}
+
+      {showRoomModal && createPortal(
+<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+            <div style={{ background: 'var(--bg-color)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+              <form onSubmit={handleAddRoom}>
+                <h4 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: 'var(--text-main)' }}>{editingId && editingType === 'room' ? `Edit Room` : 'Add New Room'}</h4>
+                <div className="grid-2" style={{ gap: '1rem' }}>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Link to Property</label>
+                    <select className="form-select" required value={newRoom.cottage_id} onChange={e => setNewRoom({...newRoom, cottage_id: e.target.value})}>
+                      <option value="">-- Select Property --</option>
+                      {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Room Name / Number</label>
+                    <input type="text" className="form-input" required value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                    <label className="form-label">Pricing Category</label>
+                    <select 
+                      className="form-select" 
+                      required 
+                      value={newRoom.category_id} 
+                      onChange={e => {
+                        const cat = categories.find(c => c.id === e.target.value);
+                        setNewRoom({
+                          ...newRoom,
+                          category_id: e.target.value,
+                          capacity: cat ? cat.capacity : 1
+                        });
+                      }}
+                    >
+                      <option value="">-- Select Category --</option>
+                      {categories.map(cat => (
+                        <option key={cat.id} value={cat.id}>
+                          {cat.name} (Cap: {cat.capacity})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Capacity (Auto)</label>
+                    <input type="number" className="form-input" disabled value={newRoom.capacity} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Status</label>
+                    <select className="form-select" value={newRoom.status} onChange={e => setNewRoom({...newRoom, status: e.target.value})}>
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                  <button type="button" className="btn btn-outline" onClick={() => { setShowRoomModal(false); setEditingId(null); setEditingType(null); }}>Cancel</button>
+                  <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.5rem' }}>
+                    {editingId && editingType === 'room' ? 'Update Room' : 'Add Room'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        , document.body)}
+
     </div>
   );
 }

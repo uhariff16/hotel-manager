@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy } from 'lucide-react';
+import { ClipboardList, LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { Capacitor } from '@capacitor/core';
 
@@ -154,12 +154,14 @@ export default function AppLayout() {
   if (isStaff) {
     // Staff only see Bookings, Calendar, and Settings
     if (hasFeature('booking')) navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> });
+    navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
     if (hasFeature('booking') || hasFeature('calendar')) navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> });
   } else {
     // Tenants and Super Admins
     if (hasFeature('dashboard') || isSuper) navLinks.push({ to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> });
     if (hasFeature('booking') || isSuper) {
       navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> });
+    navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
       navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> });
     }
     if (hasFeature('financial') || isSuper) navLinks.push({ to: '/financials', label: 'Financials', icon: <Wallet size={20} /> });

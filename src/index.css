@@ -930,3 +930,215 @@ input:checked + .slider:before {
 .btn-edit-toggle.mode-save:hover {
   box-shadow: 0 6px 20px rgba(5, 150, 105, 0.4);
 }
+
+
+/* Global Form Styles (Extracted from BookingForm) */
+
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        .booking-page-title {
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 1.85rem;
+          font-weight: 800;
+          color: var(--text-main);
+          margin-bottom: 2rem;
+          display: flex;
+          align-items: center;
+          gap: 0.75rem;
+        }
+        
+        .booking-layout {
+          display: grid;
+          grid-template-columns: 7fr 4fr;
+          gap: 2.5rem;
+          align-items: start;
+        }
+        
+        .form-section-card {
+          background: var(--bg-secondary);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 2.25rem;
+          margin-bottom: 2rem;
+          box-shadow: 0 4px 20px -2px rgba(15, 44, 89, 0.03);
+          transition: all 0.2s;
+        }
+        
+        .form-section-card:hover {
+          box-shadow: 0 10px 30px -5px rgba(15, 44, 89, 0.05);
+        }
+        
+        .form-section-title {
+          font-size: 1.15rem;
+          color: var(--primary);
+          font-weight: 700;
+          margin: 0 0 1.5rem 0;
+          display: flex;
+          align-items: center;
+          gap: 0.6rem;
+          border-bottom: 1px solid var(--border);
+          padding-bottom: 0.75rem;
+          text-transform: tracking-tight;
+        }
+        
+        .premium-label {
+          display: block;
+          font-size: 0.75rem;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: var(--text-muted);
+          margin-bottom: 0.5rem;
+        }
+        
+        .premium-input, .premium-select {
+          width: 100%;
+          padding: 0.8rem 1rem;
+          border-radius: 10px;
+          border: 1.5px solid var(--border);
+          background-color: var(--bg-color);
+          color: var(--text-main);
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          font-size: 0.9rem;
+          font-weight: 500;
+          transition: all 0.2s;
+        }
+        
+        .premium-input:focus, .premium-select:focus {
+          outline: none;
+          border-color: var(--primary);
+          box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.1);
+        }
+        
+        /* Check-in / Check-out Timeline widget */
+        .timeline-widget {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          background: var(--bg-secondary);
+          border: 1px dashed var(--border);
+          border-radius: 12px;
+          padding: 1.25rem;
+          margin-bottom: 1.5rem;
+        }
+        .timeline-col {
+          display: flex;
+          flex-direction: column;
+          gap: 0.25rem;
+        }
+        .timeline-label {
+          font-size: 0.7rem;
+          font-weight: 700;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+        }
+        .timeline-val {
+          font-size: 0.95rem;
+          font-weight: 800;
+          color: var(--text-main);
+        }
+        
+        .sticky-receipt {
+          position: sticky;
+          top: 2rem;
+          background: var(--bg-secondary);
+          border: 1px solid var(--border);
+          border-radius: 16px;
+          padding: 2.25rem;
+          box-shadow: 0 15px 35px rgba(15, 44, 89, 0.06);
+        }
+        
+        .receipt-header {
+          font-size: 1rem;
+          font-weight: 800;
+          color: var(--text-muted);
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          border-bottom: 2px solid var(--border);
+          padding-bottom: 0.75rem;
+          margin-bottom: 1.5rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        }
+        
+        .receipt-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.9rem;
+          color: var(--text-muted);
+          margin-bottom: 0.85rem;
+          font-weight: 500;
+        }
+        .receipt-row.bold {
+          font-weight: 700;
+          color: var(--text-main);
+        }
+        
+        .receipt-total-box {
+          background: var(--bg-secondary);
+          border-radius: 12px;
+          padding: 1.25rem;
+          margin: 1.5rem 0;
+          border: 1px solid var(--border);
+        }
+        
+        .badge-room {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.4rem;
+          background: var(--bg-secondary);
+          border: 1.5px solid var(--border);
+          color: var(--text-main);
+          font-size: 0.85rem;
+          font-weight: 600;
+          padding: 0.4rem 1rem;
+          border-radius: 20px;
+          cursor: pointer;
+          transition: all 0.2s;
+        }
+        .badge-room.selected {
+          background: rgba(5, 150, 105, 0.08);
+          border-color: var(--primary);
+          color: var(--primary);
+        }
+        
+        @media (max-width: 991px) {
+          .booking-layout {
+            grid-template-columns: 1fr;
+          }
+          .sticky-receipt {
+            position: relative;
+            top: 0;
+          }
+        }
+        .premium-input, .form-select, select, .premium-select {
+          border: 1px solid rgba(0, 0, 0, 0.2) !important;
+          background: #ffffff !important;
+          box-shadow: inset 0 1px 2px rgba(0,0,0,0.04) !important;
+          transition: all 0.2s ease !important;
+        }
+        .premium-input:focus, .form-select:focus, select:focus, .premium-select:focus {
+          border-color: var(--primary) !important;
+          box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+          outline: none;
+        }
+        [data-theme='dark'] .premium-input, [data-theme='dark'] .form-select, [data-theme='dark'] select, [data-theme='dark'] .premium-select {
+          border: 1px solid rgba(255, 255, 255, 0.15) !important;
+          background: #0f172a !important;
+          box-shadow: inset 0 1px 2px rgba(0,0,0,0.2) !important;
+        }
+        .form-section-card.collapsed > :not(.form-section-title) {
+          display: none !important;
+        }
+        .form-section-title {
+          cursor: pointer;
+          user-select: none;
+          pointer-events: auto !important;
+        }
+        .form-section-title:hover {
+          opacity: 0.8;
+        }
+
+      
