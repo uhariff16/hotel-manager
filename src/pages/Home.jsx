@@ -123,7 +123,9 @@ export default function Home() {
         }
         @media (max-width: 768px) {
           .glass-badge {
-            display: none;
+            transform: scale(0.75);
+            padding: 6px 12px;
+            font-size: 0.8rem;
           }
         }
         .mockup-container {
@@ -271,6 +273,9 @@ export default function Home() {
           </div>
           <div className="glass-badge float-anim-delayed" style={{ position: 'absolute', top: '-5%', right: '8%', zIndex: 20, animationDelay: '2.5s' }}>
             📝 Lead Management
+          </div>
+          <div className="glass-badge float-anim" style={{ position: 'absolute', bottom: '5%', right: '-12%', zIndex: 30, animationDelay: '1.2s' }}>
+            📲 Quick Enquiry
           </div>
 
           <div className="web-mockup">
