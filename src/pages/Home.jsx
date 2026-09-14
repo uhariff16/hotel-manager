@@ -105,6 +105,27 @@ export default function Home() {
           50% { transform: translateY(-20px); }
           100% { transform: translateY(0px); }
         }
+        .glass-badge {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          background: rgba(255, 255, 255, 0.85);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          padding: 10px 20px;
+          border-radius: 30px;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+          font-weight: 700;
+          color: #0f172a;
+          font-size: 0.95rem;
+          white-space: nowrap;
+        }
+        @media (max-width: 768px) {
+          .glass-badge {
+            display: none;
+          }
+        }
         .mockup-container {
           position: relative;
           width: 100%;
@@ -238,6 +259,20 @@ export default function Home() {
 
         {/* MOCKUP SHOWCASE */}
         <div className="mockup-container float-anim">
+          {/* FLOATING BADGES */}
+          <div className="glass-badge float-anim-delayed" style={{ position: 'absolute', top: '15%', left: '-8%', zIndex: 20 }}>
+            📅 Visual Calendar
+          </div>
+          <div className="glass-badge float-anim" style={{ position: 'absolute', bottom: '25%', left: '-5%', zIndex: 20, animationDelay: '1.5s' }}>
+            💸 Auto Financials
+          </div>
+          <div className="glass-badge float-anim" style={{ position: 'absolute', top: '45%', right: '18%', zIndex: 20, animationDelay: '0.8s' }}>
+            ⚡ Instant Sync
+          </div>
+          <div className="glass-badge float-anim-delayed" style={{ position: 'absolute', top: '-5%', right: '8%', zIndex: 20, animationDelay: '2.5s' }}>
+            📝 Lead Management
+          </div>
+
           <div className="web-mockup">
             <div style={{ background: '#e2e8f0', padding: '12px', display: 'flex', gap: '8px', borderBottom: '1px solid #cbd5e1' }}>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ef4444' }}></div>
