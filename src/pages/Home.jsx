@@ -110,7 +110,7 @@ export default function Home() {
           width: 100%;
           max-width: 1000px;
           margin: 0 auto;
-          margin-top: 4rem;
+          margin-top: 2rem;
         }
         .web-mockup {
           width: 100%;
@@ -212,7 +212,7 @@ export default function Home() {
 
       {/* HERO SECTION */}
 
-      <section className="hero-bg" style={{ padding: '6rem 1.5rem', textAlign: 'center', minHeight: '90vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+      <section className="hero-bg" style={{ padding: '3rem 1.5rem 0', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', zIndex: 2 }}>
           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(5, 150, 105, 0.1)', color: 'var(--primary)', padding: '6px 16px', borderRadius: '30px', fontSize: '0.9rem', fontWeight: 600, marginBottom: '2rem' }}>
             <Sparkles size={16} /> New: StayPilot Android App is Live!
