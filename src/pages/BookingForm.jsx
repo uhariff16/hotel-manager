@@ -2,7 +2,7 @@ import toast from 'react-hot-toast';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2 } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
@@ -130,6 +130,71 @@ export default function BookingForm() {
   const [collapsedSections, setCollapsedSections] = useState({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
   const toggleSection = (id) => setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
   
+  const handleClearForm = () => {
+    setBookingForm({
+      guest_name: '', guest_email: '', phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
+      booking_type: 'Room', cottage_id: '', room_ids: [],
+      night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
+      total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Pending', is_loading_edit: false,
+      reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_other_type: '', id_proof_number: '',
+      addon_selections: [], addon_others: '',
+      room_type: 'Deluxe',
+      room_types_map: {},
+      breakfast: 'NA',
+      agent_name: '',
+      agent_phone: '',
+      is_custom_agent: false,
+      additional_guests: []
+    });
+    toast.success('Form cleared successfully');
+  };
+
+  const [isSearchingGuest, setIsSearchingGuest] = useState(false);
+  const handleSearchGuest = async () => {
+    const fullPhone = bookingForm.phone_code + bookingForm.phone_raw;
+    if (!bookingForm.phone_raw) {
+      toast.error('Please enter a phone number to search.');
+      return;
+    }
+    
+    setIsSearchingGuest(true);
+    try {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select('guest_name, guest_email, id_proof_type, id_proof_number, vehicle_number')
+        .eq('tenant_id', profile?.tenant_id)
+        .eq('phone_number', fullPhone)
+        .order('created_at', { ascending: false })
+        .limit(1);
+        
+      if (error) throw error;
+      
+      if (data && data.length > 0) {
+        const guest = data[0];
+        
+        const standardTypes = ['Aadhar', 'Pan Card', 'Driving License', 'Voter ID', 'Passport'];
+        const isStandard = standardTypes.includes(guest.id_proof_type || 'Aadhar');
+        
+        setBookingForm(prev => ({
+          ...prev,
+          guest_name: guest.guest_name || prev.guest_name,
+          guest_email: guest.guest_email || prev.guest_email,
+          vehicle_number: guest.vehicle_number || prev.vehicle_number,
+          id_proof_type: isStandard ? (guest.id_proof_type || 'Aadhar') : 'Other',
+          id_proof_other_type: isStandard ? prev.id_proof_other_type : (guest.id_proof_type || ''),
+          id_proof_number: guest.id_proof_number || prev.id_proof_number
+        }));
+        toast.success('Guest details found and populated!');
+      } else {
+        toast.error('No past guest found with this phone number.');
+      }
+    } catch (err) {
+      toast.error('Failed to search guest details.');
+    } finally {
+      setIsSearchingGuest(false);
+    }
+  };
+
   const handleSaveAgent = async () => {
     if (!profile?.tenant_id || !bookingForm.agent_name) return;
     try {
@@ -837,27 +902,39 @@ export default function BookingForm() {
           <h2 className="booking-page-title" style={{ margin: 0 }}>
             <CalendarCheck size={28} /> {id ? `Reservation: ${bookingForm.reference_number || ''}` : 'Create New Reservation'}
           </h2>
-          {id && (
-            <button 
-              type="button" 
-              className={`btn-edit-toggle ${isEditing ? 'mode-save' : 'mode-edit'}`} 
-              onClick={(e) => {
-                e.preventDefault();
-                if (isEditing) {
-                  const form = document.getElementById('booking-form-main');
-                  if (form) {
-                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            {!id && (
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={handleClearForm}
+                style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', padding: '0.5rem 1rem', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.3)' }}
+              >
+                <Trash2 size={16} /> Clear Form
+              </button>
+            )}
+            {id && (
+              <button 
+                type="button" 
+                className={`btn-edit-toggle ${isEditing ? 'mode-save' : 'mode-edit'}`} 
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (isEditing) {
+                    const form = document.getElementById('booking-form-main');
+                    if (form) {
+                      form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                    }
+                  } else {
+                    setIsEditing(true);
                   }
-                } else {
-                  setIsEditing(true);
-                }
-              }}
-              
-            >
-              {isEditing ? <Save size={16} /> : <Edit2 size={16} />}
-              {isEditing ? 'Save' : 'Edit'}
-            </button>
-          )}
+                }}
+                
+              >
+                {isEditing ? <Save size={16} /> : <Edit2 size={16} />}
+                {isEditing ? 'Save Changes' : 'Edit Booking'}
+              </button>
+            )}
+          </div>
       </div>
       
       {error && (
@@ -923,8 +1000,20 @@ export default function BookingForm() {
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div className="form-group">
-                <label className="premium-label">Mobile Contact Number (5/5 Layout)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                <label className="premium-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Mobile Contact Number</span>
+                  {bookingForm.phone_raw && (
+                    <button 
+                      type="button" 
+                      onClick={handleSearchGuest} 
+                      disabled={isSearchingGuest || !isEditing}
+                      style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0 }}
+                    >
+                      <Search size={14} /> {isSearchingGuest ? 'Searching...' : 'Search Past Guest'}
+                    </button>
+                  )}
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: '100px 1fr', gap: '0.5rem' }}>
                   <input disabled={!isEditing} 
                     list="country-codes"
                     className="premium-input" 
