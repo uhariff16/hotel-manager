@@ -28,6 +28,7 @@ const EnquiriesBoard = React.lazy(() => import('./pages/EnquiriesBoard'));
 const QuickEnquiryMobile = React.lazy(() => import('./pages/QuickEnquiryMobile'));
 const Home = React.lazy(() => import('./pages/Home'));
 const HowItWorks = React.lazy(() => import('./pages/HowItWorks'));
+const Features = React.lazy(() => import('./pages/Features'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'));
@@ -282,6 +283,7 @@ function App() {
           
           <Route path="/" element={!session ? (window.Capacitor?.isNativePlatform() ? <Navigate to="/auth" replace /> : <Home />) : (profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
           <Route path="/how-it-works" element={<HowItWorks />} />
+          <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           

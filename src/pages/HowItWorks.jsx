@@ -267,7 +267,7 @@ export default function HowItWorks() {
         
         <nav className="desktop-nav" style={{ display: 'flex', gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Home</Link>
-          <a href="/#features" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Features</a>
+          <Link to="/features" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Features</Link>
           <Link to="/how-it-works" style={{ color: '#059669', textDecoration: 'none' }}>How It Works</Link>
           <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Pricing</Link>
         </nav>
@@ -285,17 +285,17 @@ export default function HowItWorks() {
       </div>
 
       {/* HERO TITLE SECTION */}
-      <section style={{ padding: '5rem 2rem 4rem', textAlign: 'center', position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+      <section style={{ padding: '3rem 2rem 5.5rem', textAlign: 'center', position: 'relative', zIndex: 1, background: 'radial-gradient(circle at top center, #064e3b 0%, #020617 100%)', color: 'white', marginTop: '-1px' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div style={{ 
             display: 'inline-flex', 
             alignItems: 'center', 
             gap: '0.5rem', 
             padding: '0.4rem 0.8rem', 
-            background: 'rgba(5, 150, 105, 0.08)', 
+            background: 'rgba(52, 211, 153, 0.2)', 
             border: '1px solid rgba(5, 150, 105, 0.15)', 
             borderRadius: '20px', 
-            color: '#059669', 
+            color: '#34d399', 
             fontWeight: 700, 
             fontSize: '0.75rem', 
             textTransform: 'uppercase', 
@@ -304,10 +304,10 @@ export default function HowItWorks() {
           }}>
             <Sparkles size={14} /> How Stay Pilot Works
           </div>
-          <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 3.8rem)', fontWeight: 800, color: '#0F2C59', lineHeight: 1.15, marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.02em' }}>
+          <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 3.8rem)', fontWeight: 800, color: 'white', lineHeight: 1.15, marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #34d399 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
             From Booking to Better Business.
           </h1>
-          <p style={{ fontSize: '1.25rem', color: '#475569', lineHeight: 1.6, marginBottom: '2.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+          <p style={{ fontSize: '1.25rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '2.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
             Stay Pilot connects your property, bookings, and finances in one simple workflow — helping you know what is booked, what you earn, what you spend, and what you make.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -319,10 +319,17 @@ export default function HowItWorks() {
             </Link>
           </div>
         </div>
+
+        {/* Curved SVG Divider to blend into light section */}
+        <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', overflow: 'hidden', lineHeight: 0, transform: 'translateY(1px)' }}>
+          <svg viewBox="0 0 1200 120" preserveAspectRatio="none" style={{ position: 'relative', display: 'block', width: 'calc(100% + 1.3px)', height: '60px' }}>
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V0C52.42,28.17,133.72,67.6,214.34,71.2,251.69,72.84,288.08,62.6,321.39,56.44Z" fill="#f0fdf4"></path>
+          </svg>
+        </div>
       </section>
 
       {/* MAIN WORKFLOW TIMELINE SECTION */}
-      <section style={{ padding: '4rem 0', background: 'transparent', position: 'relative', zIndex: 1 }}>
+      <section style={{ padding: '2.5rem 0', background: 'transparent', position: 'relative', zIndex: 1 }}>
         <div style={{ textAlign: 'center', marginBottom: '3rem', padding: '0 2rem' }}>
           <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1rem', fontFamily: "'Outfit', sans-serif" }}>The Stay Pilot Workflow</h2>
           <p style={{ fontSize: '1.15rem', color: '#475569', maxWidth: '600px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.6 }}>
@@ -474,7 +481,7 @@ export default function HowItWorks() {
           <div style={{ display: 'flex', gap: '3rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontWeight: 600 }}>
               <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
-              <a href="/#features" style={{ color: '#64748B', textDecoration: 'none' }}>Features</a>
+              <Link to="/features" style={{ color: '#64748B', textDecoration: 'none' }}>Features</Link>
               <Link to="/how-it-works" style={{ color: '#64748B', textDecoration: 'none' }}>How It Works</Link>
               <Link to="/pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</Link>
               <Link to="/auth" style={{ color: '#64748B', textDecoration: 'none' }}>Sign In</Link>

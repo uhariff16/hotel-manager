@@ -153,7 +153,7 @@ serve(async (req) => {
       body: JSON.stringify({
         plan_id: rzpPlanId,
         customer_id: rzpCustomerId,
-        total_count: 480, // 40 years max allowed by Razorpay
+        total_count: 240, // 20 years max allowed to support UPI Autopay correctly
         customer_notify: 0,
         notes: {
           tenant_id: user.id,
