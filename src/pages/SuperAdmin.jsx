@@ -268,6 +268,9 @@ export default function SuperAdmin() {
   // Management modal states
   const [editingUser, setEditingUser] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+  const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [adminActiveTab, setAdminActiveTab] = useState(
     profile?.role === 'support_admin' ? 'support' : 
     profile?.role === 'billing_admin' ? 'overview' : 'overview'
@@ -403,6 +406,41 @@ export default function SuperAdmin() {
       console.error("SuperAdmin Fetch Error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleAdminResetPassword = async () => {
+    if (!newAdminPassword || newAdminPassword.length < 6) return alert("Password must be at least 6 characters.");
+    setIsResettingPassword(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+        body: { targetUserId: editingUser.id, action: 'reset_password', payload: { newPassword: newAdminPassword } }
+      });
+      if (error || data?.error) throw new Error(error?.message || data?.error || 'Unknown error');
+      alert("Password reset successfully.");
+      setNewAdminPassword('');
+    } catch (err) {
+      alert("Failed to reset password: " + err.message);
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handleAdminToggleStatus = async () => {
+    setIsTogglingStatus(true);
+    const currentlyDisabled = editingUser.global_settings?.is_disabled === true;
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+        body: { targetUserId: editingUser.id, action: 'toggle_status', payload: { isDisabled: !currentlyDisabled } }
+      });
+      if (error || data?.error) throw new Error(error?.message || data?.error || 'Unknown error');
+      alert(data.message || "Account status updated.");
+      setEditingUser({...editingUser, global_settings: { ...(editingUser.global_settings || {}), is_disabled: !currentlyDisabled } });
+      setTenants(tenants.map(t => t.id === editingUser.id ? {...t, global_settings: { ...(t.global_settings || {}), is_disabled: !currentlyDisabled } } : t));
+    } catch (err) {
+      alert("Failed to update status: " + err.message);
+    } finally {
+      setIsTogglingStatus(false);
     }
   };
 
@@ -1698,6 +1736,50 @@ export default function SuperAdmin() {
                   onChange={e => setEditingUser({...editingUser, email: e.target.value})}
                   placeholder="e.g. email@example.com"
                 />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}>
+                    <Lock size={16} /> Reset Password
+                  </label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input 
+                      type="password" 
+                      className="form-input" 
+                      value={newAdminPassword} 
+                      onChange={e => setNewAdminPassword(e.target.value)}
+                      placeholder="Enter new password (min 6 chars)"
+                    />
+                    <button 
+                      type="button" 
+                      className="btn btn-outline" 
+                      onClick={handleAdminResetPassword} 
+                      disabled={isResettingPassword || newAdminPassword.length < 6}
+                    >
+                      {isResettingPassword ? 'Resetting...' : 'Reset'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <ShieldAlert size={16} /> Login Access
+                  </label>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <span style={{ fontSize: '0.9rem', color: editingUser.global_settings?.is_disabled ? 'var(--danger)' : '#10b981', fontWeight: 600 }}>
+                      {editingUser.global_settings?.is_disabled ? 'Account is Disabled' : 'Account is Enabled'}
+                    </span>
+                    <button 
+                      type="button" 
+                      className="btn btn-outline" 
+                      onClick={handleAdminToggleStatus} 
+                      disabled={isTogglingStatus}
+                    >
+                      {isTogglingStatus ? 'Updating...' : (editingUser.global_settings?.is_disabled ? 'Enable Account' : 'Disable Account')}
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div className="form-group" style={{ marginBottom: '1rem' }}>
