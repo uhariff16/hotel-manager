@@ -333,15 +333,14 @@ export default function Pricing() {
                       }}>
                         ₹{currentPrice}
                       </span>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                          <span style={{ color: plan.highlightPlan ? '#cbd5e1' : '#64748B', fontWeight: 600, fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>/mo</span>
-                          {globalTaxSettings?.enabled && (
-                            <span style={{ color: plan.highlightPlan ? '#94a3b8' : '#94a3b8', fontWeight: 600, fontSize: '0.8rem', fontFamily: "'Plus Jakarta Sans', sans-serif", marginTop: '-4px' }}>
-                              + {globalTaxSettings.rate}% GST
-                            </span>
-                          )}
-                        </div>
+                      <span style={{ color: plan.highlightPlan ? '#cbd5e1' : '#64748B', fontWeight: 600, fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>/mo</span>
+                    </div>
+
+                    {globalTaxSettings?.enabled && currentPrice > 0 && (
+                      <div style={{ textAlign: 'center', color: plan.highlightPlan ? 'rgba(255,255,255,0.7)' : '#94a3b8', fontSize: '0.85rem', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif", marginTop: '0.25rem' }}>
+                        + {globalTaxSettings.rate}% GST
                       </div>
+                    )}
 
                     {/* SAVE % BADGE */}
                     {promoActive && offerText && (
@@ -449,3 +448,4 @@ export default function Pricing() {
     </div>
   );
 }
+
