@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { Check, Zap, Crown, CreditCard, Shield, X, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { createPortal } from 'react-dom';
 
 // Dynamic plans are now loaded from the global state
 
@@ -519,8 +520,8 @@ export default function Subscription() {
       </div>
 
       {/* Checkout Modal */}
-      {checkoutModal.isOpen && (
-        <div className="modal-overlay">
+      {checkoutModal.isOpen && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-content" style={{ maxWidth: '500px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -619,7 +620,7 @@ export default function Subscription() {
             })()}
           </div>
         </div>
-      )}
+      ), document.body)}
     </div>
   );
 }
