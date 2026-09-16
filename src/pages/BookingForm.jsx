@@ -132,7 +132,7 @@ export default function BookingForm() {
   
   const handleClearForm = () => {
     setBookingForm({
-      guest_name: '', guest_email: '', phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
+      guest_name: '', guest_email: '', guest_company_name: '', guest_gstin: '', gst_amount: 0, gst_rate: 0, phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
       booking_type: 'Room', cottage_id: '', room_ids: [],
       night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
       total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Pending', is_loading_edit: false,
@@ -257,7 +257,7 @@ export default function BookingForm() {
   const [activeBookings, setActiveBookings] = useState([]);
 
   const [bookingForm, setBookingForm] = useState({
-    guest_name: '', guest_email: '', phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
+    guest_name: '', guest_email: '', guest_company_name: '', guest_gstin: '', gst_amount: 0, gst_rate: 0, phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
     booking_type: 'Room', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
     total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Pending', is_loading_edit: false,
@@ -604,15 +604,37 @@ export default function BookingForm() {
   }, [bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, JSON.stringify(bookingForm.room_ids), cottages, rooms]);
 
   useEffect(() => {
-    const rawTotal = Number(bookingForm.base_amount || 0) + Number(bookingForm.addons_cost || 0) + Number(bookingForm.extra_guest_charges || 0);
+    const base = Number(bookingForm.base_amount || 0);
+    const addons = Number(bookingForm.addons_cost || 0);
+    const extraGuests = Number(bookingForm.extra_guest_charges || 0);
+    
+    let rawTotal = base + addons + extraGuests;
+    
+    const tenantGst = profile?.global_settings?.tenant_gst || {};
+    let computedGstAmount = 0;
+    let computedGstRate = 0;
+    
+    if (tenantGst.enabled) {
+      const nights = Number(bookingForm.night_count) || 1;
+      const numRooms = bookingForm.booking_type === 'Entire Property' ? 1 : Math.max(1, bookingForm.room_ids?.length || 1);
+      const roomValuePerDay = base / nights / numRooms;
+      
+      computedGstRate = roomValuePerDay <= 7500 ? 5 : 18;
+      computedGstAmount = Math.round(rawTotal * (computedGstRate / 100));
+      rawTotal += computedGstAmount;
+    }
+    
     const discountedTotal = Math.max(0, rawTotal - settlementDiscount);
     const balance = Math.max(0, discountedTotal - Number(bookingForm.advance_paid || 0) - settlementPaid);
+    
     setBookingForm(prev => ({
       ...prev,
+      gst_amount: computedGstAmount,
+      gst_rate: computedGstRate,
       total_amount: discountedTotal,
       balance_amount: balance
     }));
-  }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid, bookingForm.extra_guest_charges, settlementPaid, settlementDiscount]);
+  }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid, bookingForm.extra_guest_charges, bookingForm.night_count, bookingForm.booking_type, bookingForm.room_ids, settlementPaid, settlementDiscount, profile]);
 
   const handleAddAdditionalGuest = () => {
     setBookingForm(prev => ({
@@ -698,7 +720,11 @@ export default function BookingForm() {
         room_type: bookingForm.room_type,
         breakfast: bookingForm.breakfast,
         additional_guests: formattedAdditionalGuests,
-        guest_address: bookingForm.guest_address
+        guest_address: bookingForm.guest_address,
+        guest_company_name: bookingForm.guest_company_name,
+        guest_gstin: bookingForm.guest_gstin,
+        gst_amount: bookingForm.gst_amount,
+        gst_rate: bookingForm.gst_rate
       };
       
       // If status was Completed and now it's NOT, delete the auto-settled income record
@@ -713,7 +739,7 @@ export default function BookingForm() {
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
           alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_address, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_address, guest_company_name, guest_gstin, gst_amount, gst_rate, ...cleanData } = bookingData;
           result = await supabase.from('bookings').update(cleanData).eq('id', id);
         }
       } else {
@@ -721,7 +747,7 @@ export default function BookingForm() {
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
           alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_address, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_address, guest_company_name, guest_gstin, gst_amount, gst_rate, ...cleanData } = bookingData;
           result = await supabase.from('bookings').insert([cleanData]).select();
         }
       }
@@ -1374,6 +1400,31 @@ export default function BookingForm() {
                 </div>
               </div>
 
+              {profile?.global_settings?.tenant_gst?.enabled && (
+                <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', gridColumn: '1 / -1' }}>
+                  <div className="form-group">
+                    <label className="premium-label">Guest Company Name (B2B)</label>
+                    <input disabled={!isEditing} 
+                      type="text" 
+                      className="premium-input" 
+                      placeholder="Optional"
+                      value={bookingForm.guest_company_name || ''} 
+                      onChange={e => setBookingForm({...bookingForm, guest_company_name: e.target.value})} 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="premium-label">Guest GSTIN (B2B)</label>
+                    <input disabled={!isEditing} 
+                      type="text" 
+                      className="premium-input" 
+                      placeholder="Optional"
+                      value={bookingForm.guest_gstin || ''} 
+                      onChange={e => setBookingForm({...bookingForm, guest_gstin: e.target.value})} 
+                    />
+                  </div>
+                </div>
+              )}
+
               <div className="form-group">
                 <label className="premium-label">Booking Source Channel</label>
                 <select disabled={!isEditing} className="premium-select" value={bookingForm.booking_source} onChange={e => {
@@ -1570,6 +1621,13 @@ export default function BookingForm() {
               <div className="receipt-row">
                 <span>Add-on Amenities:</span>
                 <span>₹{Number(bookingForm.addons_cost).toLocaleString()}</span>
+              </div>
+            )}
+            
+            {profile?.global_settings?.tenant_gst?.enabled && (
+              <div className="receipt-row" style={{ color: 'var(--text-muted)' }}>
+                <span>GST ({bookingForm.gst_rate || 0}%):</span>
+                <span>₹{(bookingForm.gst_amount || 0).toLocaleString()}</span>
               </div>
             )}
 

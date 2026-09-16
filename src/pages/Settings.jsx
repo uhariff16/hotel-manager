@@ -80,6 +80,9 @@ export default function Settings() {
     gstin: profile?.global_settings?.tenant_billing?.gstin || '',
     address: profile?.global_settings?.tenant_billing?.address || ''
   });
+  const [tenantGst, setTenantGst] = useState({
+    enabled: profile?.global_settings?.tenant_gst?.enabled || false
+  });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -496,7 +499,8 @@ export default function Settings() {
       const currentGlobalSettings = profile?.global_settings || {};
       const newGlobalSettings = {
         ...currentGlobalSettings,
-        tenant_billing: billingDetails
+        tenant_billing: billingDetails,
+        tenant_gst: tenantGst
       };
 
       const { data: profileData, error: profileError } = await supabase
@@ -741,6 +745,25 @@ export default function Settings() {
                       disabled 
                       style={{ opacity: 0.6, cursor: 'not-allowed' }} 
                     />
+                  </div>
+
+                  <hr style={{ margin: '2rem 0', borderColor: 'var(--border)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />
+                  <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--text-main)' }}>Guest Billing & Taxation (GST India)</h3>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Enable and configure GST settings for generating tax-compliant invoices for your guests.</p>
+                  
+                  <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ flex: 1 }}>
+                      <label className="form-label" style={{ marginBottom: '0.25rem' }}>Enable GST Billing</label>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Automatically apply 5% or 18% GST to bookings based on the room tariff slab.</p>
+                    </div>
+                    <label className="switch">
+                      <input 
+                        type="checkbox" 
+                        checked={tenantGst.enabled}
+                        onChange={e => setTenantGst({...tenantGst, enabled: e.target.checked})}
+                      />
+                      <span className="slider round"></span>
+                    </label>
                   </div>
 
                   <hr style={{ margin: '2rem 0', borderColor: 'var(--border)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />

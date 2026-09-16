@@ -15,7 +15,12 @@ export default function BookingReceipt({ booking, resort, cottage }) {
   const displayEmail = prefs.email || resort?.email || '';
   const displayLogo = prefs.logo_url || resort?.logo_url || '';
   
-  const displayName = cottage?.name || resort?.name || 'Stay Pilot Property';
+  const tenantGst = profile?.global_settings?.tenant_gst || {};
+  const tenantBilling = profile?.global_settings?.tenant_billing || {};
+  const hotelGstin = tenantGst.enabled ? tenantBilling.gstin : null;
+  const hotelLegalName = tenantGst.enabled && tenantBilling.companyName ? tenantBilling.companyName : null;
+  
+  const displayName = hotelLegalName || cottage?.name || resort?.name || 'Stay Pilot Property';
 
   return (
     <div className={`print-receipt-container ${isA5 ? 'a5-format' : 'a4-format'}`} style={{ padding: isA5 ? '20px' : '40px', background: 'white', color: 'black', fontFamily: 'sans-serif' }}>
@@ -24,6 +29,8 @@ export default function BookingReceipt({ booking, resort, cottage }) {
         <div>
           {displayLogo && <img src={displayLogo} alt="Logo" style={{ maxHeight: isA5 ? '60px' : '90px', maxWidth: isA5 ? '150px' : '220px', objectFit: 'contain', marginBottom: '10px' }} />}
           <h1 style={{ margin: 0, fontSize: isA5 ? '20px' : '28px', color: '#111' }}>{displayName}</h1>
+          {hotelLegalName && <p style={{ margin: '2px 0 0', color: '#555', fontSize: isA5 ? '12px' : '14px' }}>{cottage?.name || resort?.name}</p>}
+          {hotelGstin && <p style={{ margin: '5px 0 0', color: '#555', fontSize: isA5 ? '12px' : '16px', fontWeight: 'bold' }}>GSTIN: {hotelGstin}</p>}
           <p style={{ margin: '5px 0 0', color: '#555', fontSize: isA5 ? '12px' : '16px' }}>Phone: {displayPhone}</p>
           {displayEmail && <p style={{ margin: '2px 0 0', color: '#555', fontSize: isA5 ? '12px' : '16px' }}>Email: {displayEmail}</p>}
         </div>
@@ -41,7 +48,9 @@ export default function BookingReceipt({ booking, resort, cottage }) {
         <div>
           <h3 style={{ margin: '0 0 10px', fontSize: '16px', color: '#555', textTransform: 'uppercase' }}>Billed To:</h3>
           <p style={{ margin: '0 0 5px', fontWeight: 'bold', fontSize: '18px' }}>{booking.guest_name}</p>
-          <p style={{ margin: '0 0 5px', color: '#444' }}>Phone: {booking.guest_phone || 'N/A'}</p>
+          {booking.guest_company_name && <p style={{ margin: '0 0 5px', color: '#444' }}><strong>Company:</strong> {booking.guest_company_name}</p>}
+          {booking.guest_gstin && <p style={{ margin: '0 0 5px', color: '#444' }}><strong>GSTIN:</strong> {booking.guest_gstin}</p>}
+          <p style={{ margin: '0 0 5px', color: '#444' }}>Phone: {booking.phone_number || booking.guest_phone || 'N/A'}</p>
         </div>
         <div style={{ textAlign: 'right' }}>
           <h3 style={{ margin: '0 0 10px', fontSize: '16px', color: '#555', textTransform: 'uppercase' }}>Stay Details:</h3>
@@ -87,6 +96,12 @@ export default function BookingReceipt({ booking, resort, cottage }) {
 
       {/* Totals */}
       <div style={{ width: '300px', marginLeft: 'auto', marginBottom: '40px' }}>
+        {(Number(booking.gst_amount) > 0) && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+            <strong style={{ color: '#555' }}>GST ({booking.gst_rate || 0}%):</strong>
+            <strong>₹{Number(booking.gst_amount || 0).toLocaleString()}</strong>
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
           <strong style={{ color: '#555' }}>Total Amount:</strong>
           <strong>₹{(booking.total_amount || 0).toLocaleString()}</strong>
