@@ -32,6 +32,7 @@ export default function Subscription() {
   
   const [activeSubscription, setActiveSubscription] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
+  const [detailsTab, setDetailsTab] = useState('subscription');
 
   useEffect(() => {
     if (profile?.id) {
@@ -256,57 +257,79 @@ export default function Subscription() {
         </div>
       </div>
 
-      {activeSubscription && (
-        <div className="card" style={{ marginBottom: '3rem', padding: '2rem', border: '1px solid rgba(59, 130, 246, 0.3)', background: 'rgba(59, 130, 246, 0.03)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
-            <div>
-              <h2 style={{ fontSize: '1.5rem', margin: '0 0 0.5rem 0', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Check size={24} /> Active Subscription
-              </h2>
-              <p style={{ margin: '0 0 1rem 0', color: 'var(--text-muted)' }}>
-                You are currently subscribed to the <strong>{plansList.find(p => p.id === activeSubscription.staypilot_plan_type)?.name || activeSubscription.staypilot_plan_type.toUpperCase()}</strong> plan.
-              </p>
-              <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.9rem' }}>
-                <div style={{ color: 'var(--text-muted)' }}>Status:</div>
-                <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>{activeSubscription.status.toUpperCase()}</div>
-                <div style={{ color: 'var(--text-muted)' }}>Next Billing Date:</div>
-                <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Processing (Awaiting Sync)'}</div>
-              </div>
-            </div>
-            
+      {(activeSubscription || paymentHistory.length > 0) && (
+        <div className="card" style={{ marginBottom: '3rem', padding: '0', overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'rgba(15, 44, 89, 0.02)' }}>
+            <button 
+              onClick={() => setDetailsTab('subscription')}
+              style={{ flex: 1, padding: '1rem', background: detailsTab === 'subscription' ? 'white' : 'transparent', border: 'none', borderBottom: detailsTab === 'subscription' ? '2px solid var(--primary)' : '2px solid transparent', color: detailsTab === 'subscription' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
+            >
+              <Check size={18} /> Active Subscription
+            </button>
+            <button 
+              onClick={() => setDetailsTab('history')}
+              style={{ flex: 1, padding: '1rem', background: detailsTab === 'history' ? 'white' : 'transparent', border: 'none', borderBottom: detailsTab === 'history' ? '2px solid var(--primary)' : '2px solid transparent', color: detailsTab === 'history' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
+            >
+              <CreditCard size={18} /> Payment History
+            </button>
           </div>
-          {/* Payment History is moved out of this card */}
-        </div>
-      )}
 
-      {paymentHistory.length > 0 && (
-        <div className="card" style={{ marginBottom: '3rem', padding: '2rem', border: '1px solid var(--border)' }}>
-          <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <CreditCard size={20} /> Payment History
-          </h3>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Date</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Amount</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
-                  <th style={{ padding: '0.75rem 0.5rem' }}>Transaction ID</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paymentHistory.slice(0, 10).map(payment => (
-                  <tr key={payment.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                    <td style={{ padding: '1rem 0.5rem' }}>{new Date(payment.created_at).toLocaleDateString()}</td>
-                    <td style={{ padding: '1rem 0.5rem', fontWeight: 600 }}>₹{payment.amount / 100}</td>
-                    <td style={{ padding: '1rem 0.5rem' }}>
-                      <span className={`badge ${payment.status === 'captured' ? 'badge-success' : 'badge-danger'}`}>{payment.status.toUpperCase()}</span>
-                    </td>
-                    <td style={{ padding: '1rem 0.5rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{payment.razorpay_payment_id || payment.id.split('-')[0]}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ padding: '2rem' }}>
+            {detailsTab === 'subscription' && (
+              activeSubscription ? (
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
+                    Subscription Details
+                  </h2>
+                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
+                    You are currently subscribed to the <strong>{plansList.find(p => p.id === activeSubscription.staypilot_plan_type)?.name || activeSubscription.staypilot_plan_type.toUpperCase()}</strong> plan.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '400px' }}>
+                    <div style={{ color: 'var(--text-muted)' }}>Status:</div>
+                    <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>{activeSubscription.status.toUpperCase()}</div>
+                    <div style={{ color: 'var(--text-muted)' }}>Next Billing Date:</div>
+                    <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Processing (Awaiting Sync)'}</div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
+                  No active subscription found.
+                </div>
+              )
+            )}
+
+            {detailsTab === 'history' && (
+              paymentHistory.length > 0 ? (
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
+                        <th style={{ padding: '0.75rem 0.5rem' }}>Date</th>
+                        <th style={{ padding: '0.75rem 0.5rem' }}>Amount</th>
+                        <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
+                        <th style={{ padding: '0.75rem 0.5rem' }}>Transaction ID</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {paymentHistory.slice(0, 10).map(payment => (
+                        <tr key={payment.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '1rem 0.5rem' }}>{new Date(payment.created_at).toLocaleDateString()}</td>
+                          <td style={{ padding: '1rem 0.5rem', fontWeight: 600 }}>₹{payment.amount / 100}</td>
+                          <td style={{ padding: '1rem 0.5rem' }}>
+                            <span className={`badge ${payment.status === 'captured' ? 'badge-success' : 'badge-danger'}`}>{payment.status.toUpperCase()}</span>
+                          </td>
+                          <td style={{ padding: '1rem 0.5rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{payment.razorpay_payment_id || payment.id.split('-')[0]}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
+                  No payment history available.
+                </div>
+              )
+            )}
           </div>
         </div>
       )}
