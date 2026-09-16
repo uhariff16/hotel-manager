@@ -248,7 +248,7 @@ export default function Dashboard() {
           <div className="card" style={{ marginTop: '1rem', padding: '1.25rem' }}>
             <h3 style={{ fontSize: '0.9rem', marginBottom: '1rem', marginTop: 0 }}>Monthly Target Progress</h3>
             
-            <div style={{ position: 'relative', marginTop: '1.5rem' }}>
+            <div style={{ position: 'relative', marginTop: '3rem' }}>
               {/* Break-Even Label (Above the Bar) */}
               {stats.strategicMonthlyTarget !== undefined && (
                 <div style={{
