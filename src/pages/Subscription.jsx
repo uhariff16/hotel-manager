@@ -104,6 +104,7 @@ export default function Subscription() {
           name: config.name || id.toUpperCase(),
           description: config.description || '',
           price: rawActive === 0 ? '₹0' : `₹${rawActive}`,
+          rawPrice: rawActive,
           basePrice: rawBase ? `₹${rawBase}` : null,
           discountPercent,
           offerEndDate: offerActive && config.offerEndDate ? config.offerEndDate : null,
@@ -139,11 +140,6 @@ export default function Subscription() {
   const handleSubscribe = async (planId) => {
     if (planId === profile?.plan_type) return;
 
-    if (window.location.protocol === 'capacitor:') {
-       setCheckoutModal({ isOpen: true, planId });
-       return;
-    }
-
     if (planId === 'free') {
        if (window.confirm("Are you sure you want to downgrade to Free Starter? This will remove access to paid features.")) {
           setLoading(planId);
@@ -161,6 +157,11 @@ export default function Subscription() {
        return;
     }
 
+    // Always open checkout modal for paid plans to show breakdown
+    setCheckoutModal({ isOpen: true, planId });
+  };
+
+  const processPayment = async (planId) => {
     setLoading(planId);
     try {
       const res = await loadRazorpayScript();
@@ -179,11 +180,9 @@ export default function Subscription() {
         description: `Subscription for ${planId}`,
         handler: async function (response) {
           try {
-            // Instant Verify using direct fetch to capture 400 errors
             const { data: { session } } = await supabase.auth.getSession();
             const token = session?.access_token || '';
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://lubkdxhqnnghnjhrebat.supabase.co';
-            const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
             const res = await fetch(`${supabaseUrl}/functions/v1/razorpay-verify`, {
               method: 'POST',
@@ -205,10 +204,7 @@ export default function Subscription() {
             }
 
             alert("Payment successful! Your plan has been upgraded.");
-            // Optimistic update
             setProfile({...profile, plan_type: planId});
-            
-            // Reload page to ensure all components pick up the new plan
             window.location.reload();
           } catch (err) {
             console.error(err);
@@ -565,7 +561,7 @@ export default function Subscription() {
                   </ol>
                 </div>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>
-                  ℹ️ Once your payment is complete on the web, this mobile app will immediately unlock all your premium features.
+                  💡 Once your payment is complete on the web, this mobile app will immediately unlock all your premium features.
                 </p>
                 <button 
                   type="button" 
@@ -577,6 +573,50 @@ export default function Subscription() {
                 </button>
               </div>
             )}
+
+            {window.location.protocol !== 'capacitor:' && (() => {
+              const selectedPlan = plansList.find(p => p.id === checkoutModal.planId);
+              if (!selectedPlan) return null;
+              
+              const rawPrice = selectedPlan.rawPrice || 0;
+              const gstAmount = globalTaxSettings?.enabled ? Math.round(rawPrice * (globalTaxSettings.rate / 100)) : 0;
+              const totalAmount = rawPrice + gstAmount;
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '1.25rem' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Payment Breakdown</h4>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
+                      <span>Base Plan Price</span>
+                      <span>{'₹' + rawPrice}</span>
+                    </div>
+                    
+                    {globalTaxSettings?.enabled && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
+                        <span>GST ({globalTaxSettings.rate}%)</span>
+                        <span>{'₹' + gstAmount}</span>
+                      </div>
+                    )}
+                    
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--border)', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '1.1rem' }}>
+                      <span>Total Amount</span>
+                      <span>{'₹' + totalAmount}</span>
+                    </div>
+                  </div>
+                  
+                  <button 
+                    type="button" 
+                    className="btn btn-primary" 
+                    style={{ width: '100%', height: '50px', fontSize: '1.1rem', marginTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                    onClick={() => processPayment(checkoutModal.planId)}
+                    disabled={loading === checkoutModal.planId}
+                  >
+                    {loading === checkoutModal.planId ? 'Connecting to Razorpay...' : 'Proceed to Payment (₹' + totalAmount + ')'}
+                  </button>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
