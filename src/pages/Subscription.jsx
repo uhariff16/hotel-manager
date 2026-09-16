@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { Check, Zap, Crown, CreditCard, Shield, X, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -620,7 +620,8 @@ export default function Subscription() {
             })()}
           </div>
         </div>
-      ), document.body)}
+      , document.body)}
     </div>
   );
 }
+
