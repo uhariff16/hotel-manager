@@ -6,9 +6,12 @@ import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff }
 import { Preferences } from '@capacitor/preferences';
 
 export default function Auth() {
+  const location = useLocation();
   const { isRecovering, setIsRecovering } = useSettingsStore();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
-  const [isLogin, setIsLogin] = useState(true);
+  const [isLogin, setIsLogin] = useState(() => {
+    return !(location.search.includes('mode=signup') || location.state?.isSignUp);
+  });
 
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth <= 768);

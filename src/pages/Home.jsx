@@ -286,7 +286,7 @@ export default function Home() {
           </p>
 
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link to="/auth" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1.1rem', borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(5, 150, 105, 0.4)' }}>
+            <Link to="/auth?mode=signup" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1.1rem', borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(5, 150, 105, 0.4)' }}>
               Start for Free
             </Link>
             <a href={PLAY_STORE_LINK} target="_blank" rel="noopener noreferrer" className="play-store-btn">
@@ -438,7 +438,7 @@ export default function Home() {
             Join the smart properties using StayPilot to maximize revenue and minimize headaches.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/auth" className="btn btn-primary" style={{ padding: '16px 40px', fontSize: '1.2rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <Link to="/auth?mode=signup" className="btn btn-primary" style={{ padding: '16px 40px', fontSize: '1.2rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
               Create Free Account <ArrowRight size={20} />
             </Link>
           </div>
