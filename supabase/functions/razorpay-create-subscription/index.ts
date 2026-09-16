@@ -70,7 +70,15 @@ serve(async (req) => {
     const today = new Date()
     const isPromoActive = planData.offerActive && planData.offerStartDate && planData.offerEndDate && 
                           new Date(planData.offerStartDate) <= today && new Date(planData.offerEndDate) >= today
-    const effectivePrice = isPromoActive ? planData.offerPrice : planData.price
+    let effectivePrice = isPromoActive ? planData.offerPrice : planData.price
+    
+    // Apply GST if enabled
+    const taxSettings = settings.tax_settings || {}
+    if (taxSettings.enabled && taxSettings.rate > 0) {
+      const gstAmount = effectivePrice * (taxSettings.rate / 100)
+      effectivePrice = effectivePrice + gstAmount
+    }
+    
     const priceInPaise = Math.round(effectivePrice * 100)
 
     // 4. Determine Razorpay Plan ID
@@ -123,18 +131,26 @@ serve(async (req) => {
     }
 
     // 5. Create Razorpay Customer
-    const { data: profile } = await supabaseAdmin.from('profiles').select('full_name').eq('id', user.id).single()
+    const { data: profile } = await supabaseAdmin.from('profiles').select('full_name, global_settings').eq('id', user.id).single()
+    const tenantBilling = profile?.global_settings?.tenant_billing || {}
+    
+    const customerPayload = {
+      name: tenantBilling.companyName || profile?.full_name || 'Stay Pilot Tenant',
+      email: user.email,
+      notes: { tenant_id: user.id }
+    }
+    
+    if (tenantBilling.gstin) {
+      customerPayload.gstin = tenantBilling.gstin
+    }
+
     const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
       method: 'POST',
       headers: {
         'Authorization': rzpAuthHeader,
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        name: profile?.full_name || 'Stay Pilot Tenant',
-        email: user.email,
-        notes: { tenant_id: user.id }
-      })
+      body: JSON.stringify(customerPayload)
     })
     
     let rzpCustomerId = null

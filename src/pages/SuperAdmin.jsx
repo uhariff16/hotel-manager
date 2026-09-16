@@ -89,6 +89,13 @@ export default function SuperAdmin() {
 
   const [pricingConfig, setPricingConfig] = useState(DEFAULT_PLANS);
   const [pricingTab, setPricingTab] = useState('plans'); // 'plans', 'website', 'razorpay', 'history'
+  const [taxSettings, setTaxSettings] = useState({
+    enabled: false,
+    rate: 18,
+    gstin: '',
+    companyName: '',
+    address: ''
+  });
   const [razorpayConfig, setRazorpayConfig] = useState({
     mode: 'test',
     testKeyId: '',
@@ -375,6 +382,10 @@ export default function SuperAdmin() {
         setGlobalTemplatesEnabled(superAdminProfile.global_settings.templates_enabled !== false);
         setGlobalOnboardingWizardEnabled(superAdminProfile.global_settings.onboarding_wizard_enabled !== false);
         
+        if (superAdminProfile.global_settings.tax_settings) {
+          setTaxSettings(superAdminProfile.global_settings.tax_settings);
+        }
+        
         if (superAdminProfile.global_settings.razorpay_settings) {
           setRazorpayConfig(superAdminProfile.global_settings.razorpay_settings);
         }
@@ -659,6 +670,24 @@ export default function SuperAdmin() {
       alert("Website Pricing Published Successfully!");
     } catch (err) {
       alert("Failed to publish website pricing: " + err.message);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleSaveTaxSettings = async () => {
+    try {
+      setIsUpdating(true);
+      const masterAdmin = getMasterSuperAdmin();
+      const settings = masterAdmin.global_settings || {};
+      settings.tax_settings = taxSettings;
+      
+      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
+      if (error) throw error;
+      
+      alert("Tax Settings Saved Successfully!");
+    } catch (err) {
+      alert("Failed to save Tax settings: " + err.message);
     } finally {
       setIsUpdating(false);
     }
@@ -1696,6 +1725,58 @@ export default function SuperAdmin() {
             <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
               <button className="btn btn-primary" onClick={handleSaveGlobalFeatures} disabled={isUpdating} style={{ padding: '0.75rem 2rem', fontWeight: 700 }}>
                 {isUpdating ? 'Saving...' : 'Broadcast Feature Controls'}
+              </button>
+            </div>
+          </div>
+
+          {/* Tax Settings Controls */}
+          <div className="card" style={{ marginBottom: '2.5rem', background: 'white', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)', textAlign: 'left' }}>
+            <h3 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
+              <DollarSign size={20} /> Billing & Taxation (GST)
+            </h3>
+            <p style={{ color: '#64748B', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+              Configure platform-wide GST settings for B2B invoicing on subscriptions.
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#f8fafc', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                <input 
+                  type="checkbox" 
+                  id="global_tax_enabled"
+                  checked={taxSettings.enabled}
+                  onChange={(e) => setTaxSettings(prev => ({ ...prev, enabled: e.target.checked }))}
+                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
+                />
+                <label htmlFor="global_tax_enabled" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer', fontSize: '0.9rem' }}>
+                  Enable GST on Subscriptions
+                </label>
+              </div>
+
+              {taxSettings.enabled && (
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div className="form-group">
+                    <label className="form-label">GST Rate (%)</label>
+                    <input type="number" className="form-input" value={taxSettings.rate} onChange={e => setTaxSettings({...taxSettings, rate: parseFloat(e.target.value) || 0})} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Platform GSTIN</label>
+                    <input type="text" className="form-input" value={taxSettings.gstin} onChange={e => setTaxSettings({...taxSettings, gstin: e.target.value})} placeholder="e.g. 29GGGGG1314R9Z6" />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Billing Company Name</label>
+                    <input type="text" className="form-input" value={taxSettings.companyName} onChange={e => setTaxSettings({...taxSettings, companyName: e.target.value})} placeholder="Your SaaS Company Name" />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Billing Address</label>
+                    <textarea className="form-input" value={taxSettings.address} onChange={e => setTaxSettings({...taxSettings, address: e.target.value})} placeholder="Registered Address" rows={3}></textarea>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
+              <button className="btn btn-primary" onClick={handleSaveTaxSettings} disabled={isUpdating} style={{ padding: '0.75rem 2rem', fontWeight: 700 }}>
+                {isUpdating ? 'Saving...' : 'Save Tax Settings'}
               </button>
             </div>
           </div>

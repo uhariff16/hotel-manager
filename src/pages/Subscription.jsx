@@ -24,7 +24,7 @@ const formatOfferDate = (dateString) => {
 };
 
 export default function Subscription() {
-  const { profile, setProfile, globalPlans, websitePricing } = useSettingsStore();
+  const { profile, setProfile, globalPlans, websitePricing, globalTaxSettings } = useSettingsStore();
   const [loading, setLoading] = useState(null);
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
@@ -419,7 +419,12 @@ export default function Subscription() {
               )}
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
                 <span style={{ fontSize: '3rem', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.05em' }}>{plan.price}</span>
-                {plan.period && <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500' }}>{plan.period}</span>}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                  {plan.period && <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500' }}>{plan.period}</span>}
+                  {globalTaxSettings?.enabled && plan.id !== 'free' && (
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '600', marginTop: '-4px' }}>+ {globalTaxSettings.rate}% GST</span>
+                  )}
+                </div>
               </div>
               
               {plan.basePrice && (
@@ -539,6 +544,11 @@ export default function Subscription() {
                 {plansList.find(p => p.id === checkoutModal.planId)?.price} 
                 <span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>{plansList.find(p => p.id === checkoutModal.planId)?.period || ''}</span>
               </div>
+              {globalTaxSettings?.enabled && (
+                <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                  + {globalTaxSettings.rate}% GST will be added during checkout.
+                </div>
+              )}
             </div>
 
             {window.location.protocol === 'capacitor:' && (

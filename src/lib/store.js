@@ -20,6 +20,7 @@ export const useSettingsStore = create(
       globalPlans: null,
       landingPageContent: null,
       websitePricing: null,
+      globalTaxSettings: null,
       onboardingWizardEnabled: true,
       isDataLoaded: false,
       
@@ -35,8 +36,9 @@ export const useSettingsStore = create(
       setGlobalPlans: (globalPlans) => set({ globalPlans }),
       setLandingPageContent: (landingPageContent) => set({ landingPageContent }),
       setWebsitePricing: (websitePricing) => set({ websitePricing }),
+      setGlobalTaxSettings: (globalTaxSettings) => set({ globalTaxSettings }),
       setOnboardingWizardEnabled: (enabled) => set({ onboardingWizardEnabled: enabled }),
-      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false, globalPlans: null, landingPageContent: null, websitePricing: null, onboardingWizardEnabled: true })
+      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false, globalPlans: null, landingPageContent: null, websitePricing: null, globalTaxSettings: null, onboardingWizardEnabled: true })
     }),
     {
       name: 'hotel-manager-settings',

@@ -75,6 +75,11 @@ Please clear the dues at your earliest convenience to ensure a smooth check-in.
 export default function Settings() {
   const { profile, setProfile, theme, updateSettings, session, activeResortId, resorts } = useSettingsStore();
   const [userName, setUserName] = useState(profile?.full_name || '');
+  const [billingDetails, setBillingDetails] = useState({
+    companyName: profile?.global_settings?.tenant_billing?.companyName || '',
+    gstin: profile?.global_settings?.tenant_billing?.gstin || '',
+    address: profile?.global_settings?.tenant_billing?.address || ''
+  });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -487,17 +492,26 @@ export default function Settings() {
     e.preventDefault();
     setSavingGeneral(true);
     try {
-      // Update Profile (User Name)
+      // Update Profile (User Name and Billing Details)
+      const currentGlobalSettings = profile?.global_settings || {};
+      const newGlobalSettings = {
+        ...currentGlobalSettings,
+        tenant_billing: billingDetails
+      };
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .update({ full_name: userName })
+        .update({ 
+          full_name: userName,
+          global_settings: newGlobalSettings
+        })
         .eq('id', profile.id)
         .select();
       if (profileError) throw profileError;
       if (profileData && profileData.length > 0) {
         setProfile(profileData[0]);
       }
-      alert("Profile updated successfully!");
+      alert("Profile and Billing Details updated successfully!");
     } catch (err) {
       alert("Error updating profile: " + err.message);
     } finally {
@@ -728,6 +742,42 @@ export default function Settings() {
                       style={{ opacity: 0.6, cursor: 'not-allowed' }} 
                     />
                   </div>
+
+                  <hr style={{ margin: '2rem 0', borderColor: 'var(--border)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />
+                  <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--text-main)' }}>B2B Billing Details (Optional)</h3>
+                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Fill these out if you require GST invoices for your StayPilot software subscription.</p>
+                  
+                  <div className="form-group">
+                    <label className="form-label">Company/Legal Name</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={billingDetails.companyName} 
+                      onChange={e => setBillingDetails({...billingDetails, companyName: e.target.value})} 
+                      placeholder="e.g. Grand Resort Pvt Ltd" 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">GSTIN</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={billingDetails.gstin} 
+                      onChange={e => setBillingDetails({...billingDetails, gstin: e.target.value})} 
+                      placeholder="e.g. 29GGGGG1314R9Z6" 
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Billing Address</label>
+                    <textarea 
+                      className="form-input" 
+                      value={billingDetails.address} 
+                      onChange={e => setBillingDetails({...billingDetails, address: e.target.value})} 
+                      placeholder="Registered business address"
+                      rows={3}
+                    />
+                  </div>
+
                   <button type="submit" className="btn btn-primary" disabled={savingGeneral}>
                     {savingGeneral ? 'Saving...' : 'Update Profile'}
                   </button>

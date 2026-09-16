@@ -4,7 +4,7 @@ import { Check, Loader2 } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 
 export default function Pricing() {
-  const { websitePricing, profile, globalPlans } = useSettingsStore();
+  const { websitePricing, profile, globalPlans, globalTaxSettings } = useSettingsStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [processingPlanId, setProcessingPlanId] = useState(null);
@@ -333,8 +333,15 @@ export default function Pricing() {
                       }}>
                         ₹{currentPrice}
                       </span>
-                      <span style={{ color: plan.highlightPlan ? '#cbd5e1' : '#64748B', fontWeight: 600, fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>/mo</span>
-                    </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                          <span style={{ color: plan.highlightPlan ? '#cbd5e1' : '#64748B', fontWeight: 600, fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>/mo</span>
+                          {globalTaxSettings?.enabled && (
+                            <span style={{ color: plan.highlightPlan ? '#94a3b8' : '#94a3b8', fontWeight: 600, fontSize: '0.8rem', fontFamily: "'Plus Jakarta Sans', sans-serif", marginTop: '-4px' }}>
+                              + {globalTaxSettings.rate}% GST
+                            </span>
+                          )}
+                        </div>
+                      </div>
 
                     {/* SAVE % BADGE */}
                     {promoActive && offerText && (

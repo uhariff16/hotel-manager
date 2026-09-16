@@ -55,7 +55,7 @@ function App() {
     }
   }, []);
 
-  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setOnboardingWizardEnabled, setIsDataLoaded } = useSettingsStore();
+  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setGlobalTaxSettings, setOnboardingWizardEnabled, setIsDataLoaded } = useSettingsStore();
   const [isNewlyVerified, setIsNewlyVerified] = React.useState(false);
 
   useEffect(() => {
@@ -142,6 +142,9 @@ function App() {
         }
         if (settings.website_pricing) {
           setWebsitePricing(settings.website_pricing);
+        }
+        if (settings.tax_settings) {
+          setGlobalTaxSettings(settings.tax_settings);
         }
         if (settings.onboarding_wizard_enabled !== undefined) {
           setOnboardingWizardEnabled(settings.onboarding_wizard_enabled !== false);
