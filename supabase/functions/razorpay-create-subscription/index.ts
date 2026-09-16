@@ -83,12 +83,13 @@ serve(async (req) => {
 
     // 4. Determine Razorpay Plan ID
     let rzpPlanId = isLive ? planData.razorpay_live_plan_id : planData.razorpay_test_plan_id
+    const cachedPrice = isLive ? planData.razorpay_live_price : planData.razorpay_test_price
     let needToSaveConfig = false
 
     const rzpAuthHeader = `Basic ${btoa(`${keyId}:${keySecret}`)}`
 
-    // If no plan ID exists, create one
-    if (!rzpPlanId) {
+    // If no plan ID exists or the price changed, create a new one
+    if (!rzpPlanId || cachedPrice !== priceInPaise) {
       // Create Razorpay Plan
       const planRes = await fetch('https://api.razorpay.com/v1/plans', {
         method: 'POST',
@@ -103,8 +104,9 @@ serve(async (req) => {
             name: `Stay Pilot ${planData.name || plan_type} (${isPromoActive ? 'Promo' : 'Base'})`,
             amount: priceInPaise,
             currency: 'INR',
-            description: `SaaS Subscription for ${plan_type}`
-          }
+            description: 'Monthly SaaS Subscription'
+          },
+          notes: { plan_type }
         })
       })
 
@@ -119,8 +121,10 @@ serve(async (req) => {
       // Update global settings
       if (isLive) {
         planData.razorpay_live_plan_id = rzpPlanId
+        planData.razorpay_live_price = priceInPaise
       } else {
         planData.razorpay_test_plan_id = rzpPlanId
+        planData.razorpay_test_price = priceInPaise
       }
       needToSaveConfig = true
     }
