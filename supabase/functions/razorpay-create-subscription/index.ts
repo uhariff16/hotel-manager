@@ -185,6 +185,13 @@ serve(async (req) => {
 
     const subData = await subRes.json()
 
+    // 6.5. Detach old payments to prevent foreign key violations on upsert
+    // Since we are replacing the subscription ID, we must sever the FK constraint on existing payments
+    await supabaseAdmin
+      .from('saas_payments')
+      .update({ razorpay_subscription_id: null })
+      .eq('tenant_id', user.id)
+
     // 7. Store in saas_subscriptions
     // Upsert to handle retries cleanly
     const { error: dbErr } = await supabaseAdmin
