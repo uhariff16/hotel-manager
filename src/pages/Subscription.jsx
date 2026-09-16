@@ -316,7 +316,9 @@ export default function Subscription() {
                           <td style={{ padding: '1rem 0.5rem' }}>{new Date(payment.created_at).toLocaleDateString()}</td>
                           <td style={{ padding: '1rem 0.5rem', fontWeight: 600 }}>₹{payment.amount / 100}</td>
                           <td style={{ padding: '1rem 0.5rem' }}>
-                            <span className={`badge ${payment.status === 'captured' ? 'badge-success' : 'badge-danger'}`}>{payment.status.toUpperCase()}</span>
+                            <span className={`badge ${payment.status === 'captured' ? 'badge-success' : 'badge-danger'}`}>
+                              {payment.status === 'captured' ? 'SUCCESSFUL' : payment.status.toUpperCase()}
+                            </span>
                           </td>
                           <td style={{ padding: '1rem 0.5rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{payment.razorpay_payment_id || payment.id.split('-')[0]}</td>
                         </tr>
