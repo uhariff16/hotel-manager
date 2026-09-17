@@ -1904,12 +1904,13 @@ export default function Bookings() {
       )}
 
       {/* Hidden print receipt rendered when a booking is selected */}
-      {selectedDetailedBooking && (
+      {selectedDetailedBooking && createPortal(
         <BookingReceipt 
           booking={selectedDetailedBooking} 
           resort={activeResort} 
           cottage={cottages.find(c => c.id === selectedDetailedBooking.cottage_id)}
-        />
+        />,
+        document.body
       )}
     </div>
   );

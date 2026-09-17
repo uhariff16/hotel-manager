@@ -28,7 +28,6 @@ export default function BookingReceipt({ booking, resort, cottage }) {
         <div>
           {displayLogo && <img src={displayLogo} alt="Logo" style={{ maxHeight: isA5 ? '60px' : '90px', maxWidth: isA5 ? '150px' : '220px', objectFit: 'contain', marginBottom: '10px' }} />}
           <h1 style={{ margin: 0, fontSize: isA5 ? '20px' : '28px', color: '#111' }}>{displayName}</h1>
-          {hotelLegalName && <p style={{ margin: '2px 0 0', color: '#555', fontSize: isA5 ? '12px' : '14px' }}>{cottage?.name || resort?.name}</p>}
           {hotelGstin && <p style={{ margin: '5px 0 0', color: '#555', fontSize: isA5 ? '12px' : '16px', fontWeight: 'bold' }}>GSTIN: {hotelGstin}</p>}
           <p style={{ margin: '5px 0 0', color: '#555', fontSize: isA5 ? '12px' : '16px' }}>Phone: {displayPhone}</p>
           {displayEmail && <p style={{ margin: '2px 0 0', color: '#555', fontSize: isA5 ? '12px' : '16px' }}>Email: {displayEmail}</p>}
