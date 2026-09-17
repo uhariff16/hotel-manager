@@ -850,7 +850,7 @@ export default function BookingForm() {
       }
     });
     
-    return baseRooms.filter(r => !bookedRoomIds.has(r.id) || bookingForm.room_ids.includes(r.id));
+        return baseRooms.map(r => ({ ...r, isAvailable: !bookedRoomIds.has(r.id) || bookingForm.room_ids.includes(r.id) }));
   }, [rooms, bookingForm.cottage_id, bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.room_ids, activeBookings, id]);
 
   const dailyAvailability = React.useMemo(() => {
@@ -1218,18 +1218,31 @@ export default function BookingForm() {
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   {relevantRooms.length === 0 ? (
                     <span style={{ fontSize: '0.85rem', color: !bookingForm.cottage_id ? 'var(--text-muted)' : 'var(--danger)', fontStyle: !bookingForm.cottage_id ? 'italic' : 'normal', fontWeight: !bookingForm.cottage_id ? 'normal' : '600' }}>{!bookingForm.cottage_id ? 'Please select a property/cottage first' : 'No rooms available for the entire selected duration.'}</span>
-                  ) : relevantRooms.map(r => (
+                  ) : relevantRooms.map(r => {
+                    const isSelected = bookingForm.room_ids.includes(r.id);
+                    const isAvail = r.isAvailable;
+                    
+                    let overrideStyle = {};
+                    if (r.isPlanLocked) {
+                      overrideStyle = { opacity: 0.5, cursor: 'not-allowed', background: '#f1f5f9' };
+                    } else if (!isAvail) {
+                      overrideStyle = { cursor: 'not-allowed', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--danger)', color: 'var(--danger)' };
+                    } else if (!isSelected) {
+                      overrideStyle = { background: 'rgba(16, 185, 129, 0.1)', borderColor: 'var(--success)', color: 'var(--success)' };
+                    }
+
+                    return (
                     <label 
                       key={r.id} 
-                      className={`badge-room ${bookingForm.room_ids.includes(r.id) ? 'selected' : ''}`}
-                      style={{ opacity: r.isPlanLocked ? 0.5 : 1, cursor: r.isPlanLocked ? 'not-allowed' : 'pointer', background: r.isPlanLocked ? '#f1f5f9' : '' }}
-                      title={r.isPlanLocked ? 'Locked by current plan limit' : ''}
+                      className={`badge-room ${isSelected ? 'selected' : ''}`}
+                      style={overrideStyle}
+                      title={r.isPlanLocked ? 'Locked by current plan limit' : (!isAvail ? 'Not available for selected dates' : 'Available')}
                     >
                       <input 
                         type="checkbox" 
                         style={{ display: 'none' }}
-                        disabled={r.isPlanLocked}
-                        checked={bookingForm.room_ids.includes(r.id)} 
+                        disabled={r.isPlanLocked || !isAvail}
+                        checked={isSelected} 
                         onChange={e => {
                           const newIds = e.target.checked ? [...bookingForm.room_ids, r.id] : bookingForm.room_ids.filter(id => id !== r.id);
                           const newMap = { ...bookingForm.room_types_map };
@@ -1251,8 +1264,9 @@ export default function BookingForm() {
                         }} 
                       />
                       {r.name}
-                    </label>
-                  ))}
+                      </label>
+                  );
+                  })}
                 </div>
 
                 {dailyAvailability.length > 0 && (
