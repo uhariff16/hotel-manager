@@ -23,7 +23,7 @@ export default function BookingReceipt({ booking, resort, cottage }) {
   const displayName = hotelLegalName || cottage?.name || resort?.name || 'Stay Pilot Property';
 
   return (
-    <div className={`print-receipt-container ${isA5 ? 'a5-format' : 'a4-format'}`} style={{ width: isA5 ? '559px' : '794px', maxWidth: '100%', padding: isA5 ? '20px' : '40px', background: 'white', color: 'black', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
+    <div className={`print-receipt-container ${isA5 ? 'a5-format' : 'a4-format'}`} style={{ width: isA5 ? '559px' : '794px', minHeight: isA5 ? '794px' : '1123px', maxWidth: '100%', padding: isA5 ? '20px' : '40px', background: 'white', color: 'black', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', paddingBottom: isA5 ? '10px' : '20px', marginBottom: isA5 ? '15px' : '30px' }}>
         <div>
