@@ -70,22 +70,24 @@ export default function FeatureTour() {
     if (['finished', 'skipped'].includes(status) || action === 'close') {
       setRun(false);
       
+      const updatedSettings = {
+        ...(profile.global_settings || {}),
+        has_seen_tour: true
+      };
+
       // 1. Update Zustand store
-      setProfile({ ...profile, has_seen_tour: true });
+      setProfile({ ...profile, global_settings: updatedSettings });
       
-      // 2. Set strict localStorage fallback to guarantee it doesn't run again on this browser
-      localStorage.setItem('has_seen_feature_tour', 'true');
-      
-      // 3. Update DB
+      // 2. Update DB
       if (profile?.id) {
         try {
           const { error } = await supabase
             .from('profiles')
-            .update({ has_seen_tour: true })
+            .update({ global_settings: updatedSettings })
             .eq('id', profile.id);
             
           if (error) {
-            console.error("Failed to update tour status in DB. It might be missing the column.", error);
+            console.error("Failed to update tour status in DB.", error);
           }
         } catch (err) {
           console.error("Failed to update tour status in DB", err);
@@ -94,11 +96,10 @@ export default function FeatureTour() {
     }
   };
 
-  // Check both DB flag and localStorage fallback
+  // Check DB flag (no local storage needed)
   if (
     !profile || 
-    profile.has_seen_tour || 
-    localStorage.getItem('has_seen_feature_tour') === 'true' || 
+    profile.global_settings?.has_seen_tour === true || 
     Capacitor.isNativePlatform()
   ) {
     return null;
