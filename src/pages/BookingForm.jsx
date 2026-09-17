@@ -1227,8 +1227,10 @@ export default function BookingForm() {
                       overrideStyle = { opacity: 0.5, cursor: 'not-allowed', background: '#f1f5f9' };
                     } else if (!isAvail) {
                       overrideStyle = { cursor: 'not-allowed', background: 'rgba(239, 68, 68, 0.1)', borderColor: 'var(--danger)', color: 'var(--danger)' };
-                    } else if (!isSelected) {
-                      overrideStyle = { background: 'rgba(16, 185, 129, 0.1)', borderColor: 'var(--success)', color: 'var(--success)' };
+                    } else if (isSelected) {
+                      overrideStyle = { background: 'var(--success)', borderColor: 'var(--success)', color: '#fff' };
+                    } else {
+                      overrideStyle = { background: 'transparent', borderColor: 'var(--success)', color: 'var(--success)' };
                     }
 
                     return (
@@ -1264,6 +1266,7 @@ export default function BookingForm() {
                         }} 
                       />
                       {r.name}
+                      {!isAvail && <X size={14} style={{ marginLeft: '4px' }} />}
                       </label>
                   );
                   })}
