@@ -774,8 +774,8 @@ export default function Settings() {
                       <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-main)' }}>GST Slab Configuration</h4>
                       
                       <div className="form-group">
-                        <label className="form-label">Slab Threshold (₹)</label>
-                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>The Per-Room-Per-Night value where the GST rate changes.</p>
+                        <label className="form-label">Tariff Slab Threshold (₹)</label>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>What is the maximum Per-Room-Per-Night price before the higher tax bracket applies?</p>
                         <input 
                           type="number" 
                           className="form-input" 
@@ -786,7 +786,8 @@ export default function Settings() {
 
                       <div style={{ display: 'flex', gap: '1rem' }}>
                         <div className="form-group" style={{ flex: 1 }}>
-                          <label className="form-label">Rate Below Threshold (%)</label>
+                          <label className="form-label">Lower GST Rate (%)</label>
+                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>at or below</strong> ₹{tenantGst.slabThreshold || 0}</p>
                           <input 
                             type="number" 
                             className="form-input" 
@@ -795,7 +796,8 @@ export default function Settings() {
                           />
                         </div>
                         <div className="form-group" style={{ flex: 1 }}>
-                          <label className="form-label">Rate Above Threshold (%)</label>
+                          <label className="form-label">Higher GST Rate (%)</label>
+                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>above</strong> ₹{tenantGst.slabThreshold || 0}</p>
                           <input 
                             type="number" 
                             className="form-input" 
