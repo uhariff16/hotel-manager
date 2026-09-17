@@ -96,12 +96,10 @@ export default function BookingReceipt({ booking, resort, cottage }) {
 
       {/* Totals */}
       <div style={{ width: '300px', marginLeft: 'auto', marginBottom: '40px' }}>
-        {(Number(booking.gst_amount) > 0) && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-            <strong style={{ color: '#555' }}>GST ({booking.gst_rate || 0}%):</strong>
-            <strong>₹{Number(booking.gst_amount || 0).toLocaleString()}</strong>
-          </div>
-        )}
+        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+          <strong style={{ color: '#555' }}>GST ({booking.gst_rate || 0}%):</strong>
+          <strong>₹{Number(booking.gst_amount || 0).toLocaleString()} (Raw: {JSON.stringify(booking.gst_amount)})</strong>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
           <strong style={{ color: '#555' }}>Total Amount:</strong>
           <strong>₹{(booking.total_amount || 0).toLocaleString()}</strong>
