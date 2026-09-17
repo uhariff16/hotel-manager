@@ -117,7 +117,7 @@ export default function BookingReceipt({ booking, resort, cottage }) {
 
       {/* Footer */}
       <div style={{ textAlign: 'center', color: '#777', fontSize: '14px', borderTop: '1px solid #eee', paddingTop: '20px' }}>
-        <p style={{ margin: '0 0 5px' }}>Thank you for choosing {resort?.name || 'us'}!</p>
+        <p style={{ margin: '0 0 5px' }}>Thank you for choosing {cottage?.name || resort?.name || 'us'}!</p>
         <p style={{ margin: 0, fontSize: '12px' }}>This is a computer-generated receipt.</p>
       </div>
     </div>
