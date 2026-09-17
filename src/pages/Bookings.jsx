@@ -1577,7 +1577,7 @@ export default function Bookings() {
             {/* Financial Summary */}
             <div style={{ background: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
               <h3 style={{ fontSize: '0.95rem', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', fontWeight: 700 }}>Financial Summary</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: Number(selectedDetailedBooking.gst_amount) > 0 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center', marginBottom: '0.75rem' }}>
                 <div>
                   <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase' }}>Base Cost</small>
                   <span style={{ fontWeight: 600 }}>₹{(selectedDetailedBooking.base_amount || 0).toLocaleString()}</span>
@@ -1590,6 +1590,12 @@ export default function Bookings() {
                   <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase' }}>Extra Guest</small>
                   <span style={{ fontWeight: 600 }}>₹{(selectedDetailedBooking.extra_guest_charges || 0).toLocaleString()}</span>
                 </div>
+                {Number(selectedDetailedBooking.gst_amount) > 0 && (
+                  <div>
+                    <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase' }}>GST ({selectedDetailedBooking.gst_rate}%)</small>
+                    <span style={{ fontWeight: 600 }}>₹{Number(selectedDetailedBooking.gst_amount).toLocaleString()}</span>
+                  </div>
+                )}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center', paddingTop: '0.75rem', borderTop: '1px dashed var(--border)', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
