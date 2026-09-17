@@ -86,16 +86,19 @@ export default function FeatureTour() {
 
   // Check Auth metadata flag
   const [hasSeenAuth, setHasSeenAuth] = useState(false);
+  const [isChecking, setIsChecking] = useState(true);
   
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user?.user_metadata?.has_seen_feature_tour) {
         setHasSeenAuth(true);
       }
+      setIsChecking(false);
     });
   }, []);
 
   if (
+    isChecking ||
     !profile || 
     profile.has_seen_tour || 
     hasSeenAuth ||
@@ -117,11 +120,12 @@ export default function FeatureTour() {
         last: 'End Tour',
         skip: 'Skip Tour'
       }}
-      steps={steps}
+      steps={steps.map(s => ({ ...s, showSkipButton: true }))}
       styles={{
         options: {
           zIndex: 10000,
-          primaryColor: 'var(--primary)',
+          primaryColor: '#056143', // Use brand green
+          textColor: '#333',
         }
       }}
     />
