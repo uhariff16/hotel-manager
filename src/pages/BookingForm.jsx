@@ -991,7 +991,7 @@ export default function BookingForm() {
                     <option value="Completed">Completed</option>
                   </>
                 )}
-                <option value="Cancelled">Cancelled</option>
+                {id && <option value="Cancelled">Cancelled</option>}
               </select>
             </div>
           </div>
