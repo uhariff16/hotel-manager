@@ -378,8 +378,12 @@ export default function Bookings() {
     const rname = booking.booking_type === 'Entire Property' ? rooms.filter(r => r.cottage_id === booking.cottage_id).map(r => r.name).filter(Boolean).join(', ') : (booking.room_ids || []).map(id => rooms.find(r => r.id === id)?.name).filter(Boolean).join(', ');
     
     // Custom logic for extra tags
-    const checkInDateFormatted = new Date(booking.check_in_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
-    const checkOutDateFormatted = new Date(booking.check_out_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const checkInDateFormatted = booking.check_in_date && !isNaN(new Date(booking.check_in_date).getTime()) 
+      ? new Date(booking.check_in_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'N/A';
+    const checkOutDateFormatted = booking.check_out_date && !isNaN(new Date(booking.check_out_date).getTime()) 
+      ? new Date(booking.check_out_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+      : 'N/A';
     
     const duration = booking.night_count === 1 ? '1 Night' : `${booking.night_count || 0} Nights`;
     const numRoomsVal = booking.booking_type === 'Entire Property' ? 'Entire Property' : (booking.room_ids?.length || 1);
@@ -1239,9 +1243,9 @@ export default function Bookings() {
                       <td>
                         <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
                            <Calendar size={14} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
-                           {new Date(b.check_in_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })} 
+                           {formatDateShort(b.check_in_date)} 
                            <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>→</span> 
-                           {new Date(b.check_out_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                           {formatDateShort(b.check_out_date)}
                         </div>
                         <small style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{b.night_count} nights stay</small>
                       </td>
@@ -1556,9 +1560,9 @@ export default function Bookings() {
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Stay Dates</small>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, fontSize: '0.95rem' }}>
                       <Calendar size={14} style={{ color: 'var(--primary)' }} />
-                      {new Date(selectedDetailedBooking.check_in_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {selectedDetailedBooking.check_in_date ? new Date(selectedDetailedBooking.check_in_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                       <span style={{ color: 'var(--text-muted)' }}>→</span>
-                      {new Date(selectedDetailedBooking.check_out_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {selectedDetailedBooking.check_out_date ? new Date(selectedDetailedBooking.check_out_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
                       <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>({selectedDetailedBooking.night_count} nights)</span>
                     </div>
                   </div>
@@ -1922,7 +1926,9 @@ export default function Bookings() {
   );
 }
 function formatDateShort(dateStr) {
+  if (!dateStr) return 'N/A';
   const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return 'Invalid Date';
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
 }
  

@@ -35,8 +35,8 @@ export default function BookingReceipt({ booking, resort, cottage }) {
         <div style={{ textAlign: 'right' }}>
           <h2 style={{ margin: 0, fontSize: isA5 ? '18px' : '24px', color: '#333' }}>PAYMENT RECEIPT</h2>
           <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Date: {format(new Date(), 'dd MMM yyyy')}</p>
-          <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Receipt #: {displayName ? displayName.substring(0,3).toUpperCase() : 'RC'}-{booking.reference_number.split('-').pop()}</p>
-          <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Ref #: <strong style={{ color: '#111' }}>{booking.reference_number}</strong></p>
+          <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Receipt #: {displayName ? displayName.substring(0,3).toUpperCase() : 'RC'}-{booking.reference_number ? booking.reference_number.split('-').pop() : 'N/A'}</p>
+          <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Ref #: <strong style={{ color: '#111' }}>{booking.reference_number || 'N/A'}</strong></p>
           <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Status: <strong style={{ color: booking.status === 'Confirmed' ? '#16a34a' : booking.status === 'Cancelled' ? '#dc2626' : '#ca8a04' }}>{booking.status?.toUpperCase()}</strong></p>
         </div>
       </div>
@@ -52,8 +52,8 @@ export default function BookingReceipt({ booking, resort, cottage }) {
         </div>
         <div style={{ textAlign: 'right' }}>
           <h3 style={{ margin: '0 0 10px', fontSize: '16px', color: '#555', textTransform: 'uppercase' }}>Stay Details:</h3>
-          <p style={{ margin: '0 0 5px' }}><strong>Check-in:</strong> {format(new Date(booking.check_in_date), 'dd MMM yyyy')} {booking.check_in_time && `(${booking.check_in_time})`}</p>
-          <p style={{ margin: '0 0 5px' }}><strong>Check-out:</strong> {format(new Date(booking.check_out_date), 'dd MMM yyyy')} {booking.check_out_time && `(${booking.check_out_time})`}</p>
+          <p style={{ margin: '0 0 5px' }}><strong>Check-in:</strong> {booking.check_in_date && !isNaN(new Date(booking.check_in_date).getTime()) ? format(new Date(booking.check_in_date), 'dd MMM yyyy') : 'N/A'} {booking.check_in_time && `(${booking.check_in_time})`}</p>
+          <p style={{ margin: '0 0 5px' }}><strong>Check-out:</strong> {booking.check_out_date && !isNaN(new Date(booking.check_out_date).getTime()) ? format(new Date(booking.check_out_date), 'dd MMM yyyy') : 'N/A'} {booking.check_out_time && `(${booking.check_out_time})`}</p>
           <p style={{ margin: '0 0 5px' }}><strong>Units:</strong> {booking.room_numbers || 'N/A'}</p>
         </div>
       </div>
