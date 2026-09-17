@@ -23,7 +23,7 @@ export default function BookingReceipt({ booking, resort, cottage }) {
   const displayName = hotelLegalName || cottage?.name || resort?.name || 'Stay Pilot Property';
 
   return (
-    <div className={`print-receipt-container ${isA5 ? 'a5-format' : 'a4-format'}`} style={{ padding: isA5 ? '20px' : '40px', background: 'white', color: 'black', fontFamily: 'sans-serif' }}>
+    <div className={`print-receipt-container ${isA5 ? 'a5-format' : 'a4-format'}`} style={{ width: isA5 ? '559px' : '794px', maxWidth: '100%', padding: isA5 ? '20px' : '40px', background: 'white', color: 'black', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', paddingBottom: isA5 ? '10px' : '20px', marginBottom: isA5 ? '15px' : '30px' }}>
         <div>
@@ -96,10 +96,12 @@ export default function BookingReceipt({ booking, resort, cottage }) {
 
       {/* Totals */}
       <div style={{ width: '300px', marginLeft: 'auto', marginBottom: '40px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
-          <strong style={{ color: '#555' }}>GST ({booking.gst_rate || 0}%):</strong>
-          <strong>₹{Number(booking.gst_amount || 0).toLocaleString()} (Raw: {JSON.stringify(booking.gst_amount)})</strong>
-        </div>
+        {(Number(booking.gst_amount) > 0) && (
+          <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
+            <strong style={{ color: '#555' }}>GST ({booking.gst_rate || 0}%):</strong>
+            <strong>₹{Number(booking.gst_amount || 0).toLocaleString()}</strong>
+          </div>
+        )}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
           <strong style={{ color: '#555' }}>Total Amount:</strong>
           <strong>₹{(booking.total_amount || 0).toLocaleString()}</strong>
