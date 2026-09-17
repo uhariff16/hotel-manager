@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { ClipboardList, LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import FeatureTour from '../components/FeatureTour';
 import { Capacitor } from '@capacitor/core';
 
 import { supabase } from '../lib/supabase';
@@ -153,18 +154,18 @@ export default function AppLayout() {
 
   if (isStaff) {
     // Staff only see Bookings, Calendar, and Settings
-    if (hasFeature('booking')) navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> });
+    if (hasFeature('booking')) navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} />, tourClass: 'tour-bookings' });
     navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
-    if (hasFeature('booking') || hasFeature('calendar')) navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> });
+    if (hasFeature('booking') || hasFeature('calendar')) navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} />, tourClass: 'tour-calendar' });
   } else {
     // Tenants and Super Admins
-    if (hasFeature('dashboard') || isSuper) navLinks.push({ to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} /> });
+    if (hasFeature('dashboard') || isSuper) navLinks.push({ to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} />, tourClass: 'tour-dashboard' });
     if (hasFeature('booking') || isSuper) {
       navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> });
     navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
       navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> });
     }
-    if (hasFeature('financial') || isSuper) navLinks.push({ to: '/financials', label: 'Financials', icon: <Wallet size={20} /> });
+    if (hasFeature('financial') || isSuper) navLinks.push({ to: '/financials', label: 'Financials', icon: <Wallet size={20} />, tourClass: 'tour-financials' });
     if (hasFeature('report') || isSuper) navLinks.push({ to: '/reports', label: 'Reports', icon: <FileText size={20} /> });
     const managementMenu = { 
       label: 'Management', 
@@ -188,7 +189,7 @@ export default function AppLayout() {
   }
 
   // Settings is shared but will be simplified in its own page logic
-  navLinks.push({ to: '/settings', label: 'Settings', icon: <SettingsIcon size={20} /> });
+  navLinks.push({ to: '/settings', label: 'Settings', icon: <SettingsIcon size={20} />, tourClass: 'tour-settings' });
 
   if (hasInvestmentAccess || isSuper) {
     navLinks.push({ to: '/investment-analysis', label: 'Investment Analysis', icon: <TrendingUp size={20} /> });
@@ -245,7 +246,7 @@ export default function AppLayout() {
                 <div key={link.label} style={{ display: 'flex', flexDirection: 'column' }}>
                   <button
                     onClick={() => setIsManagementOpen(!isManagementOpen)}
-                    className="nav-item"
+                    className={`nav-item ${child.tourClass || ''}`}
                     style={{
                       width: '100%',
                       background: 'none',
@@ -307,7 +308,7 @@ export default function AppLayout() {
               <NavLink
                 key={link.to}
                 to={link.to}
-                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}
+                className={({ isActive }) => `nav-item ${isActive ? 'active' : ''} ${link.tourClass || ''}`}
               >
                 {link.icon}
                 {link.label}
@@ -370,6 +371,7 @@ export default function AppLayout() {
 
         <div className="page-content">
           <Outlet />
+            <FeatureTour />
         </div>
 
         {/* Mobile Bottom Navigation */}
