@@ -165,22 +165,29 @@ export default function Bookings() {
         return;
       }
       
-      const oldDisplay = receiptEl.style.display;
-      const oldPosition = receiptEl.style.position;
-      const oldLeft = receiptEl.style.left;
-      const oldTop = receiptEl.style.top;
-      
-      receiptEl.style.display = 'block';
-      receiptEl.style.position = 'absolute';
-      receiptEl.style.left = '-9999px';
-      receiptEl.style.top = '-9999px';
-
-      const canvas = await html2canvas(receiptEl, { scale: 2, useCORS: true });
-      
-      receiptEl.style.display = oldDisplay;
-      receiptEl.style.position = oldPosition;
-      receiptEl.style.left = oldLeft;
-      receiptEl.style.top = oldTop;
+        const oldDisplay = receiptEl.style.display;
+        const oldPosition = receiptEl.style.position;
+        const oldLeft = receiptEl.style.left;
+        const oldTop = receiptEl.style.top;
+        const oldWidth = receiptEl.style.width;
+        const oldMinHeight = receiptEl.style.minHeight;
+        
+        receiptEl.style.display = 'block';
+        receiptEl.style.position = 'absolute';
+        receiptEl.style.left = '-9999px';
+        receiptEl.style.top = '-9999px';
+        const isA5 = receiptEl.classList.contains('a5-format');
+        receiptEl.style.width = isA5 ? '559px' : '794px';
+        receiptEl.style.minHeight = isA5 ? '794px' : '1123px';
+  
+        const canvas = await html2canvas(receiptEl, { scale: 2, useCORS: true });
+        
+        receiptEl.style.display = oldDisplay;
+        receiptEl.style.position = oldPosition;
+        receiptEl.style.left = oldLeft;
+        receiptEl.style.top = oldTop;
+        receiptEl.style.width = oldWidth;
+        receiptEl.style.minHeight = oldMinHeight;
       
       canvas.toBlob(async (blob) => {
         if (!blob) {
