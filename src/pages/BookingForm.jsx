@@ -619,7 +619,11 @@ export default function BookingForm() {
       const numRooms = bookingForm.booking_type === 'Entire Property' ? 1 : Math.max(1, bookingForm.room_ids?.length || 1);
       const roomValuePerDay = base / nights / numRooms;
       
-      computedGstRate = roomValuePerDay <= 7500 ? 5 : 18;
+      const threshold = Number(tenantGst.slabThreshold) || 7500;
+      const lowerRate = Number(tenantGst.lowerRate) || 5;
+      const higherRate = Number(tenantGst.higherRate) || 18;
+
+      computedGstRate = roomValuePerDay <= threshold ? lowerRate : higherRate;
       computedGstAmount = Math.round(rawTotal * (computedGstRate / 100));
       rawTotal += computedGstAmount;
     }

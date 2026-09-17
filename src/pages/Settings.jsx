@@ -81,7 +81,10 @@ export default function Settings() {
     address: profile?.global_settings?.tenant_billing?.address || ''
   });
   const [tenantGst, setTenantGst] = useState({
-    enabled: profile?.global_settings?.tenant_gst?.enabled || false
+    enabled: profile?.global_settings?.tenant_gst?.enabled || false,
+    slabThreshold: profile?.global_settings?.tenant_gst?.slabThreshold ?? 7500,
+    lowerRate: profile?.global_settings?.tenant_gst?.lowerRate ?? 5,
+    higherRate: profile?.global_settings?.tenant_gst?.higherRate ?? 18
   });
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -754,7 +757,7 @@ export default function Settings() {
                   <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
                     <div style={{ flex: 1 }}>
                       <label className="form-label" style={{ marginBottom: '0.25rem' }}>Enable GST Billing</label>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Automatically apply 5% or 18% GST to bookings based on the room tariff slab.</p>
+                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Automatically apply GST to bookings based on the room tariff slab.</p>
                     </div>
                     <label className="switch">
                       <input 
@@ -765,6 +768,44 @@ export default function Settings() {
                       <span className="slider round"></span>
                     </label>
                   </div>
+
+                  {tenantGst.enabled && (
+                    <div style={{ background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                      <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-main)' }}>GST Slab Configuration</h4>
+                      
+                      <div className="form-group">
+                        <label className="form-label">Slab Threshold (₹)</label>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>The Per-Room-Per-Night value where the GST rate changes.</p>
+                        <input 
+                          type="number" 
+                          className="form-input" 
+                          value={tenantGst.slabThreshold} 
+                          onChange={e => setTenantGst({...tenantGst, slabThreshold: e.target.value})}
+                        />
+                      </div>
+
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label">Rate Below Threshold (%)</label>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            value={tenantGst.lowerRate} 
+                            onChange={e => setTenantGst({...tenantGst, lowerRate: e.target.value})}
+                          />
+                        </div>
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label">Rate Above Threshold (%)</label>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            value={tenantGst.higherRate} 
+                            onChange={e => setTenantGst({...tenantGst, higherRate: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
 
                   <hr style={{ margin: '2rem 0', borderColor: 'var(--border)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />
                   <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--text-main)' }}>B2B Billing Details (Optional)</h3>
