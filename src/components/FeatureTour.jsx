@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import Joyride, { STATUS } from 'react-joyride';
+import * as ReactJoyride from 'react-joyride';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
+
+const Joyride = ReactJoyride.default?.Joyride || ReactJoyride.default || ReactJoyride.Joyride || ReactJoyride;
+const STATUS = ReactJoyride.STATUS || ReactJoyride.default?.STATUS;
 
 export default function FeatureTour() {
   const { profile, setProfile } = useSettingsStore();
@@ -59,6 +62,18 @@ export default function FeatureTour() {
     }
   ];
 
+  // Filter steps to only include those whose targets exist in the DOM (except 'body')
+  // We use a small delay or just rely on the component mounting.
+  const [activeSteps, setActiveSteps] = useState(steps);
+  
+  useEffect(() => {
+      // Small timeout to allow AppLayout navlinks to render
+      setTimeout(() => {
+          const validSteps = steps.filter(s => s.target === 'body' || document.querySelector(s.target));
+          setActiveSteps(validSteps);
+      }, 500);
+  }, [profile, location.pathname]);
+
   const handleJoyrideCallback = async (data) => {
     const { status, type, index } = data;
     const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
@@ -93,7 +108,7 @@ export default function FeatureTour() {
       scrollToFirstStep
       showProgress
       showSkipButton
-      steps={steps}
+      steps={activeSteps}
       styles={{
         options: {
           zIndex: 10000,

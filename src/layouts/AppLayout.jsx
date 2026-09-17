@@ -246,7 +246,7 @@ export default function AppLayout() {
                 <div key={link.label} style={{ display: 'flex', flexDirection: 'column' }}>
                   <button
                     onClick={() => setIsManagementOpen(!isManagementOpen)}
-                    className={`nav-item ${child.tourClass || ''}`}
+                    className={`nav-item ${link.tourClass || ''}`}
                     style={{
                       width: '100%',
                       background: 'none',
