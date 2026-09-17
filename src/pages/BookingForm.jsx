@@ -1217,7 +1217,7 @@ export default function BookingForm() {
                 <label className="premium-label">Assign Specific Rooms (Available for Entire Stay)</label>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   {relevantRooms.length === 0 ? (
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>{(!bookingForm.cottage_id) ? 'Please select a property/cottage first' : 'No rooms available for the entire selected duration.'}</span>
+                    <span style={{ fontSize: '0.85rem', color: !bookingForm.cottage_id ? 'var(--text-muted)' : 'var(--danger)', fontStyle: !bookingForm.cottage_id ? 'italic' : 'normal', fontWeight: !bookingForm.cottage_id ? 'normal' : '600' }}>{!bookingForm.cottage_id ? 'Please select a property/cottage first' : 'No rooms available for the entire selected duration.'}</span>
                   ) : relevantRooms.map(r => (
                     <label 
                       key={r.id} 
