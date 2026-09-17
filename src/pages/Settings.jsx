@@ -373,11 +373,27 @@ export default function Settings() {
         if (data.whatsapp_custom_tags) {
           try {
             const tags = typeof data.whatsapp_custom_tags === 'string' ? JSON.parse(data.whatsapp_custom_tags) : data.whatsapp_custom_tags;
-            setCustomTags(tags.filter(t => t.key !== '__template_payment_reminder'));
+            setCustomTags(tags.filter(t => t.key !== 'wifi_password' && !t.key.startsWith('__template_')));
             
             const wifiTag = tags.find(t => t.key === 'wifi_password');
             if (wifiTag) setWifiPassword(wifiTag.value);
 
+            const storedConfirm = tags.find(t => t.key === '__template_confirm');
+            if (storedConfirm && !data.whatsapp_confirm_msg_template) {
+               setCommSettings(prev => ({ ...prev, whatsapp_confirm_msg_template: storedConfirm.value }));
+            }
+            const storedReceipt = tags.find(t => t.key === '__template_receipt');
+            if (storedReceipt && !data.whatsapp_receipt_msg_template) {
+               setCommSettings(prev => ({ ...prev, whatsapp_receipt_msg_template: storedReceipt.value }));
+            }
+            const storedReminder = tags.find(t => t.key === '__template_reminder');
+            if (storedReminder && !data.whatsapp_reminder_msg_template) {
+               setCommSettings(prev => ({ ...prev, whatsapp_reminder_msg_template: storedReminder.value }));
+            }
+            const storedReview = tags.find(t => t.key === '__template_review');
+            if (storedReview && !data.whatsapp_review_msg_template) {
+               setCommSettings(prev => ({ ...prev, whatsapp_review_msg_template: storedReview.value }));
+            }
             const storedPaymentReminder = tags.find(t => t.key === '__template_payment_reminder');
             if (storedPaymentReminder && !data.whatsapp_payment_reminder_msg_template) {
                setCommSettings(prev => ({ ...prev, whatsapp_payment_reminder_msg_template: storedPaymentReminder.value }));

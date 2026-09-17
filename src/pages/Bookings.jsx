@@ -294,7 +294,7 @@ export default function Bookings() {
         bookingsQuery.order('created_at', { ascending: false }),
         cottagesQuery,
         roomsQuery,
-        supabase.from('tenant_integrations').select('whatsapp_confirm_msg_template, whatsapp_receipt_msg_template, whatsapp_reminder_msg_template, whatsapp_review_msg_template, whatsapp_custom_tags').eq('resort_id', activeResortId).maybeSingle(),
+        supabase.from('tenant_integrations').select('*').eq('resort_id', activeResortId).maybeSingle(),
         supabase.from('resorts').select('*').eq('id', activeResortId).maybeSingle()
       ]);
       setBookings(bks.data || []);
@@ -302,18 +302,20 @@ export default function Bookings() {
       setRooms(rms.data || []);
       setActiveResort(resortRes?.data || null);
 
-      const dbConfirm = integrationsRes?.data?.whatsapp_confirm_msg_template;
-      const dbReceipt = integrationsRes?.data?.whatsapp_receipt_msg_template;
-      const dbReminder = integrationsRes?.data?.whatsapp_reminder_msg_template;
-      const dbReview = integrationsRes?.data?.whatsapp_review_msg_template;
-      
       const customTagsRaw = integrationsRes?.data?.whatsapp_custom_tags;
       const parsedTags = customTagsRaw ? (typeof customTagsRaw === 'string' ? JSON.parse(customTagsRaw) : customTagsRaw) : [];
-      const storedPaymentReminderTag = parsedTags.find(t => t.key === '__template_payment_reminder');
-      let dbPaymentReminder = storedPaymentReminderTag ? storedPaymentReminderTag.value : null;
-      if (!dbPaymentReminder && integrationsRes?.data?.whatsapp_payment_reminder_msg_template) {
-         dbPaymentReminder = integrationsRes?.data?.whatsapp_payment_reminder_msg_template;
-      }
+      
+      const getTemplateVal = (key, dbVal) => {
+        if (dbVal) return dbVal;
+        const tag = parsedTags.find(t => t.key === key);
+        return tag ? tag.value : null;
+      };
+
+      const dbConfirm = getTemplateVal('__template_confirm', integrationsRes?.data?.whatsapp_confirm_msg_template);
+      const dbReceipt = getTemplateVal('__template_receipt', integrationsRes?.data?.whatsapp_receipt_msg_template);
+      const dbReminder = getTemplateVal('__template_reminder', integrationsRes?.data?.whatsapp_reminder_msg_template);
+      const dbReview = getTemplateVal('__template_review', integrationsRes?.data?.whatsapp_review_msg_template);
+      const dbPaymentReminder = getTemplateVal('__template_payment_reminder', integrationsRes?.data?.whatsapp_payment_reminder_msg_template);
       
       setWhatsappTemplates({
         confirm: dbConfirm || DEFAULT_CONFIRM_TEMPLATE,
@@ -325,7 +327,7 @@ export default function Bookings() {
 
       if (customTagsRaw) {
         try {
-          setCustomTags(parsedTags.filter(t => t.key !== '__template_payment_reminder'));
+          setCustomTags(parsedTags.filter(t => t.key !== 'wifi_password' && !t.key.startsWith('__template_')));
         } catch (e) {
           console.error("Failed to parse custom tags:", e);
         }
