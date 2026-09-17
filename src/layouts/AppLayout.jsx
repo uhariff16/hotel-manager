@@ -171,6 +171,7 @@ export default function AppLayout() {
       label: 'Management', 
       icon: <Activity size={20} />, 
       isSubmenu: true,
+      tourClass: 'tour-management',
       children: [
         { to: '/resorts', label: 'Tenant Management', icon: <Hotel size={16} /> },
         { to: '/setup', label: 'Property Management', icon: <Home size={16} /> },

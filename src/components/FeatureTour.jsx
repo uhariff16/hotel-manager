@@ -3,6 +3,7 @@ import * as ReactJoyride from 'react-joyride';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 
 const Joyride = ReactJoyride.default?.Joyride || ReactJoyride.default || ReactJoyride.Joyride || ReactJoyride;
 const STATUS = ReactJoyride.STATUS || ReactJoyride.default?.STATUS;
@@ -51,8 +52,8 @@ export default function FeatureTour() {
       placement: 'right',
     },
     {
-      target: '.tour-properties',
-      content: 'Need to add a new cottage or room? Head over to the Properties section to define your real estate layout.',
+      target: '.tour-management',
+      content: 'Need to add a new cottage or room? Open the Management menu to define your real estate layout and manage staff.',
       placement: 'right',
     },
     {
@@ -61,18 +62,6 @@ export default function FeatureTour() {
       placement: 'right',
     }
   ];
-
-  // Filter steps to only include those whose targets exist in the DOM (except 'body')
-  // We use a small delay or just rely on the component mounting.
-  const [activeSteps, setActiveSteps] = useState(steps);
-  
-  useEffect(() => {
-      // Small timeout to allow AppLayout navlinks to render
-      setTimeout(() => {
-          const validSteps = steps.filter(s => s.target === 'body' || document.querySelector(s.target));
-          setActiveSteps(validSteps);
-      }, 500);
-  }, [profile, location.pathname]);
 
   const handleJoyrideCallback = async (data) => {
     const { status, type, index } = data;
@@ -97,7 +86,7 @@ export default function FeatureTour() {
     }
   };
 
-  if (!profile || profile.has_seen_tour) return null;
+  if (!profile || profile.has_seen_tour || Capacitor.isNativePlatform()) return null;
 
   return (
     <Joyride
@@ -108,7 +97,7 @@ export default function FeatureTour() {
       scrollToFirstStep
       showProgress
       showSkipButton
-      steps={activeSteps}
+      steps={steps}
       styles={{
         options: {
           zIndex: 10000,
