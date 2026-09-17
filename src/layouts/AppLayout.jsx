@@ -160,11 +160,11 @@ export default function AppLayout() {
   } else {
     // Tenants and Super Admins
     if (hasFeature('dashboard') || isSuper) navLinks.push({ to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} />, tourClass: 'tour-dashboard' });
-    if (hasFeature('booking') || isSuper) {
-      navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} /> });
-    navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
-      navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} /> });
-    }
+      if (hasFeature('booking') || isSuper) {
+        navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} />, tourClass: 'tour-bookings' });
+      navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
+        navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} />, tourClass: 'tour-calendar' });
+      }
     if (hasFeature('financial') || isSuper) navLinks.push({ to: '/financials', label: 'Financials', icon: <Wallet size={20} />, tourClass: 'tour-financials' });
     if (hasFeature('report') || isSuper) navLinks.push({ to: '/reports', label: 'Reports', icon: <FileText size={20} /> });
     const managementMenu = { 

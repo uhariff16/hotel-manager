@@ -64,21 +64,29 @@ export default function FeatureTour() {
   ];
 
   const handleJoyrideCallback = async (data) => {
-    const { status, type, index } = data;
-    const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
-
-    if (finishedStatuses.includes(status)) {
+    const { status, type, action } = data;
+    
+    // If the user clicks skip, close, or finishes the tour
+    if (['finished', 'skipped'].includes(status) || action === 'close') {
       setRun(false);
-      // Update local state so it doesn't trigger again
+      
+      // 1. Update Zustand store
       setProfile({ ...profile, has_seen_tour: true });
       
-      // Update DB
-      if (profile.id) {
+      // 2. Set strict localStorage fallback to guarantee it doesn't run again on this browser
+      localStorage.setItem('has_seen_feature_tour', 'true');
+      
+      // 3. Update DB
+      if (profile?.id) {
         try {
-          await supabase
+          const { error } = await supabase
             .from('profiles')
             .update({ has_seen_tour: true })
             .eq('id', profile.id);
+            
+          if (error) {
+            console.error("Failed to update tour status in DB. It might be missing the column.", error);
+          }
         } catch (err) {
           console.error("Failed to update tour status in DB", err);
         }
@@ -86,7 +94,15 @@ export default function FeatureTour() {
     }
   };
 
-  if (!profile || profile.has_seen_tour || Capacitor.isNativePlatform()) return null;
+  // Check both DB flag and localStorage fallback
+  if (
+    !profile || 
+    profile.has_seen_tour || 
+    localStorage.getItem('has_seen_feature_tour') === 'true' || 
+    Capacitor.isNativePlatform()
+  ) {
+    return null;
+  }
 
   return (
     <Joyride
