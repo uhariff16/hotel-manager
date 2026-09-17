@@ -11,9 +11,9 @@ export default function BookingReceipt({ booking, resort, cottage }) {
   const prefs = profile?.global_settings?.invoice_preferences?.[lookupId] || {};
   const isA5 = prefs.format === 'A5';
   
-  const displayPhone = prefs.phone || resort?.phone || 'N/A';
-  const displayEmail = prefs.email || resort?.email || '';
-  const displayLogo = prefs.logo_url || resort?.logo_url || '';
+  const displayPhone = prefs.phone || cottage?.phone || resort?.phone || 'N/A';
+  const displayEmail = prefs.email || cottage?.email || resort?.email || '';
+  const displayLogo = prefs.logo_url || cottage?.logo_url || resort?.logo_url || '';
   
   const tenantGst = profile?.global_settings?.tenant_gst || {};
   const tenantBilling = profile?.global_settings?.tenant_billing || {};
