@@ -51,21 +51,36 @@ const parseAgentSource = (sourceStr) => {
   return { isAgent: true, name: cleaned, phone: '' };
 };
 
-const DEFAULT_CONFIRM_TEMPLATE = `Dear {guest_name},
+const DEFAULT_CONFIRM_TEMPLATE = `🏡 Booking Confirmed – {resort_name}
 
-Thank you for choosing Cheerful Chalet! Your booking is confirmed.
-Reference: {reference_number}
-Dates: {check_in_date} to {check_out_date} ({night_count} nights)
-Accommodation: {room_name}
-Total Amount: ₹{total_amount}
-Advance Paid: ₹{advance_paid}
-Balance: ₹{balance_amount}
+Dear {guest_name},
 
-We look forward to welcoming you!`;
+Thank you for choosing {resort_name}.
+
+We are pleased to confirm your reservation:
+
+🔖 Booking ID: {booking_id}
+📅 Check-in Date & Time : {check_in_date} & {check_in_time}
+📅 Check-out Date & Time: {check_out_date} & {check_out_time}
+🌙 Duration of Stay: {duration_of_stay}
+🛏 Room Type: {room_type}
+🏠 Number of Rooms: {num_rooms}
+👥 Number of Guests: {num_guests}
+👨 Adults: {adults_count}
+👧 Kids: {kids_count}
+🍳 Breakfast: {breakfast}
+
+💰 Total Amount: ₹{total_amount}
+✅ Advance Paid: ₹{advance_paid}
+💳 Balance Amount: ₹{balance_amount} (Payable at Check-in)
+
+Your reservation has been successfully confirmed. We look forward to welcoming you and ensuring a pleasant stay.
+
+📞 For any queries or assistance, please contact: {resort_phone}`;
 
 const DEFAULT_RECEIPT_TEMPLATE = `Dear {guest_name},
 
-We have received your payment for booking {reference_number}.
+We have received your payment for booking {booking_id}.
 Amount Paid: ₹{payment_amount}
 Balance Amount: ₹{balance_amount}
 
@@ -73,11 +88,10 @@ Thank you!`;
 
 const DEFAULT_REMINDER_TEMPLATE = `Dear {guest_name},
 
-This is a friendly reminder for your upcoming stay at Cheerful Chalet.
-Reference: {reference_number}
-Check-in Date: {check_in_date}
-Check-in Time: 1:00 PM
-Accommodation: {room_name}
+This is a friendly reminder for your upcoming stay at {resort_name}.
+Booking ID: {booking_id}
+Check-in Date & Time: {check_in_date} & {check_in_time}
+Accommodation: {room_type}
 Vehicle: {vehicle_number}
 
 We look forward to hosting you!`;
@@ -96,13 +110,12 @@ Thank you again, and we look forward to welcoming you back soon!
 
 const DEFAULT_PAYMENT_REMINDER_TEMPLATE = `Dear {guest_name},
 
-This is a gentle reminder regarding the pending balance for your booking {reference_number} at {resort_name}.
-Total Amount: ₹{total_amount}
-Advance Paid: ₹{advance_paid}
-Balance Due: ₹{balance_amount}
+This is a gentle reminder that there is a pending balance of ₹{balance_amount} for your upcoming stay at {resort_name}.
+Booking ID: {booking_id}
 
-Please let us know if you need any assistance with the payment.
-Thank you!`;
+Please clear the dues at your earliest convenience to ensure a smooth check-in.
+
+📞 Contact: {resort_phone}`;
 
 export default function Bookings() {
   const navigate = useNavigate();
