@@ -6,6 +6,7 @@ import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
 import BookingReceipt from '../components/BookingReceipt';
+import { WhatsAppErrorBoundary } from '../components/WhatsAppErrorBoundary';
 import html2canvas from 'html2canvas';
 import { Capacitor } from '@capacitor/core';
 import { Share } from '@capacitor/share';
@@ -1725,192 +1726,201 @@ export default function Bookings() {
 
       {/* WhatsApp Modal */}
       {whatsappGenerator.open && selectedDetailedBooking && createPortal(
-        <div className="modal-overlay" style={{ zIndex: 2600 }} onClick={() => setWhatsappGenerator({ ...whatsappGenerator, open: false })}>
-          <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
-              <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <MessageSquare color="#22c55e" size={20} /> WhatsApp Generator
-              </h2>
-              <button className="btn-icon" onClick={() => setWhatsappGenerator({ ...whatsappGenerator, open: false })}><X size={20} /></button>
-            </div>
-
-            {whatsappGenerator.templateType === 'receipt' && (
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label className="form-label" style={{ fontWeight: 600 }}>Payment Amount Received (₹)</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  style={{ height: '40px' }}
-                  value={whatsappGenerator.paymentAmount} 
-                  onChange={(e) => {
-                    const amt = e.target.value;
-                    const text = compileWhatsAppTemplate(whatsappTemplates.receipt, selectedDetailedBooking, amt);
-                    setWhatsappGenerator({
-                      ...whatsappGenerator,
-                      paymentAmount: amt,
-                      messageText: text
-                    });
-                  }} 
-                />
+        <WhatsAppErrorBoundary>
+          <div className="modal-overlay" style={{ zIndex: 2600 }} onClick={() => setWhatsappGenerator({ ...whatsappGenerator, open: false })}>
+            <div className="modal-content" style={{ maxWidth: '500px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.75rem' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <MessageSquare color="#22c55e" size={20} /> WhatsApp Generator
+                </h2>
+                <button className="btn-icon" onClick={() => setWhatsappGenerator({ ...whatsappGenerator, open: false })}><X size={20} /></button>
               </div>
-            )}
 
-            {whatsappGenerator.templateType === 'confirm' && (
-              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Payment Option</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
-                  {[
-                    { id: 'online', label: 'Online Payment' },
-                    { id: 'agent', label: 'Payable to Agent' },
-                    { id: 'property', label: 'Pay at Property' }
-                  ].map(opt => {
-                    const isSelected = whatsappGenerator.paymentOption === opt.id;
-                    return (
-                      <button
-                        type="button"
-                        key={opt.id}
-                        onClick={() => {
-                          const text = compileWhatsAppTemplate(whatsappTemplates.confirm, selectedDetailedBooking, '', opt.id);
-                          setWhatsappGenerator({
-                            ...whatsappGenerator,
-                            paymentOption: opt.id,
-                            messageText: text
-                          });
-                        }}
-                        style={{
-                          padding: '0.5rem',
-                          fontSize: '0.8rem',
-                          fontWeight: 600,
-                          borderRadius: '8px',
-                          border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
-                          background: isSelected ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-secondary)',
-                          color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
-                          cursor: 'pointer',
-                          textAlign: 'center',
-                          transition: 'all 0.15s'
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            <div className="form-group">
-              <label className="form-label" style={{ fontWeight: 600 }}>Message Text Preview</label>
-              <textarea 
-                className="form-input" 
-                rows={9} 
-                style={{ fontFamily: 'inherit', resize: 'vertical', height: 'auto', padding: '0.75rem', fontSize: '0.9rem', marginBottom: '1rem' }}
-                value={whatsappGenerator.messageText} 
-                onChange={(e) => setWhatsappGenerator({ ...whatsappGenerator, messageText: e.target.value })}
-              />
-            </div>
-
-            {/* Contact Selector if additional guests exist */}
-            {(() => {
-              let guests = [];
-              try {
-                guests = typeof selectedDetailedBooking.additional_guests === 'string' 
-                  ? JSON.parse(selectedDetailedBooking.additional_guests) 
-                  : selectedDetailedBooking.additional_guests;
-              } catch (e) {
-                console.error(e);
-              }
-              
-              const contacts = [
-                { name: `${selectedDetailedBooking.guest_name} (Primary)`, phone: selectedDetailedBooking.phone_number, guestNameOnly: selectedDetailedBooking.guest_name },
-                ...(Array.isArray(guests) ? guests : []).map(g => ({ name: g.name, phone: g.phone || g.phone_number, guestNameOnly: g.name })).filter(c => c.phone)
-              ];
-
-              if (contacts.length <= 1) return null;
-
-              return (
+              {whatsappGenerator.templateType === 'receipt' && (
                 <div className="form-group" style={{ marginBottom: '1rem' }}>
-                  <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary)' }}>Send to Contact</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {contacts.map((contact, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => {
-                          let rawPhone = contact.phone || '';
-                          let cleanedPhone = rawPhone.replace(/\D/g, '');
-                          if (!rawPhone.trim().startsWith('+') && cleanedPhone.length === 10) {
-                            cleanedPhone = '91' + cleanedPhone;
-                          }
-                          
-                          let textToSend = whatsappGenerator.messageText;
-                          if (contact.guestNameOnly && contact.guestNameOnly !== selectedDetailedBooking.guest_name) {
-                            textToSend = textToSend.split(selectedDetailedBooking.guest_name).join(contact.guestNameOnly);
-                          }
-                          
-                          const encodedText = encodeURIComponent(textToSend);
-                          const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
-                          window.open(waUrl, '_blank');
-                        }}
-                        className="btn btn-outline"
-                        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1rem', fontSize: '0.85rem', height: 'auto', textAlign: 'left', borderColor: '#22c55e', background: 'rgba(34, 197, 94, 0.03)' }}
-                      >
-                        <div>
-                          <strong style={{ color: 'var(--text-main)' }}>{contact.name}</strong>
-                          <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>({contact.phone})</span>
-                        </div>
-                        <span style={{ color: '#22c55e', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                          Send <Send size={12} />
-                        </span>
-                      </button>
-                    ))}
+                  <label className="form-label" style={{ fontWeight: 600 }}>Payment Amount Received (₹)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    style={{ height: '40px' }}
+                    value={whatsappGenerator.paymentAmount} 
+                    onChange={(e) => {
+                      const amt = e.target.value;
+                      const text = compileWhatsAppTemplate(whatsappTemplates.receipt, selectedDetailedBooking, amt);
+                      setWhatsappGenerator({
+                        ...whatsappGenerator,
+                        paymentAmount: amt,
+                        messageText: text
+                      });
+                    }} 
+                  />
+                </div>
+              )}
+
+              {whatsappGenerator.templateType === 'confirm' && (
+                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                  <label className="form-label" style={{ fontWeight: 600, marginBottom: '0.5rem', display: 'block' }}>Payment Option</label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                    {[
+                      { id: 'online', label: 'Online Payment' },
+                      { id: 'agent', label: 'Payable to Agent' },
+                      { id: 'property', label: 'Pay at Property' }
+                    ].map(opt => {
+                      const isSelected = whatsappGenerator.paymentOption === opt.id;
+                      return (
+                        <button
+                          type="button"
+                          key={opt.id}
+                          onClick={() => {
+                            const text = compileWhatsAppTemplate(whatsappTemplates.confirm, selectedDetailedBooking, '', opt.id);
+                            setWhatsappGenerator({
+                              ...whatsappGenerator,
+                              paymentOption: opt.id,
+                              messageText: text
+                            });
+                          }}
+                          style={{
+                            padding: '0.5rem',
+                            fontSize: '0.8rem',
+                            fontWeight: 600,
+                            borderRadius: '8px',
+                            border: isSelected ? '1px solid var(--primary)' : '1px solid var(--border)',
+                            background: isSelected ? 'rgba(34, 197, 94, 0.1)' : 'var(--bg-secondary)',
+                            color: isSelected ? 'var(--primary)' : 'var(--text-muted)',
+                            cursor: 'pointer',
+                            textAlign: 'center',
+                            transition: 'all 0.15s'
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              );
-            })()}
+              )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1.5rem' }}>
-              <button 
-                onClick={() => {
-                  navigator.clipboard.writeText(whatsappGenerator.messageText);
-                  alert("Message copied to clipboard!");
-                }} 
-                className="btn btn-outline"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', height: '40px' }}
-              >
-                <Copy size={16} /> Copy Message
-              </button>
-              
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: 600 }}>Message Text Preview</label>
+                <textarea 
+                  className="form-input" 
+                  rows={9} 
+                  style={{ fontFamily: 'inherit', resize: 'vertical', height: 'auto', padding: '0.75rem', fontSize: '0.9rem', marginBottom: '1rem' }}
+                  value={whatsappGenerator.messageText} 
+                  onChange={(e) => setWhatsappGenerator({ ...whatsappGenerator, messageText: e.target.value })}
+                />
+              </div>
+
+              {/* Contact Selector if additional guests exist */}
               {(() => {
                 let guests = [];
                 try {
                   guests = typeof selectedDetailedBooking.additional_guests === 'string' 
                     ? JSON.parse(selectedDetailedBooking.additional_guests) 
                     : selectedDetailedBooking.additional_guests;
-                } catch (e) {}
-                const hasAdditional = Array.isArray(guests) && guests.some(g => g.phone || g.phone_number);
-                if (hasAdditional) return null; // Recipients are selected individually above
+                } catch (e) {
+                  console.error(e);
+                }
+                
+                const contacts = [
+                  { name: `${selectedDetailedBooking.guest_name} (Primary)`, phone: selectedDetailedBooking.phone_number, guestNameOnly: selectedDetailedBooking.guest_name },
+                  ...(Array.isArray(guests) ? guests : []).map(g => ({ name: g.name, phone: g.phone || g.phone_number, guestNameOnly: g.name })).filter(c => c.phone)
+                ];
+
+                if (contacts.length <= 1) return null;
 
                 return (
-                  <button 
-                    onClick={() => {
-                      const rawPhone = selectedDetailedBooking.phone_number || '';
-                      let cleanedPhone = rawPhone.replace(/\D/g, '');
-                      if (!rawPhone.trim().startsWith('+') && cleanedPhone.length === 10) {
-                        cleanedPhone = '91' + cleanedPhone;
-                      }
-                      const encodedText = encodeURIComponent(whatsappGenerator.messageText);
-                      const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
-                      window.open(waUrl, '_blank');
-                    }} 
-                    className="btn btn-primary"
-                    style={{ background: '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', height: '40px' }}
-                  >
-                    <Send size={16} /> Send via WhatsApp
-                  </button>
+                  <div className="form-group" style={{ marginBottom: '1rem' }}>
+                    <label className="form-label" style={{ fontWeight: 600, color: 'var(--primary)' }}>Send to Contact</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {contacts.map((contact, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            let rawPhone = contact.phone || '';
+                            let cleanedPhone = rawPhone.replace(/\D/g, '');
+                            if (!rawPhone.trim().startsWith('+') && cleanedPhone.length === 10) {
+                              cleanedPhone = '91' + cleanedPhone;
+                            }
+                            
+                            let textToSend = whatsappGenerator.messageText;
+                            if (contact.guestNameOnly && contact.guestNameOnly !== selectedDetailedBooking.guest_name) {
+                              textToSend = textToSend.split(selectedDetailedBooking.guest_name).join(contact.guestNameOnly);
+                            }
+                            
+                            const encodedText = encodeURIComponent(textToSend);
+                            const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
+                            window.open(waUrl, '_blank');
+                          }}
+                          className="btn btn-outline"
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.6rem 1rem', fontSize: '0.85rem', height: 'auto', textAlign: 'left', borderColor: '#22c55e', background: 'rgba(34, 197, 94, 0.03)' }}
+                        >
+                          <div>
+                            <strong style={{ color: 'var(--text-main)' }}>{contact.name}</strong>
+                            <span style={{ marginLeft: '0.5rem', color: 'var(--text-muted)' }}>({contact.phone})</span>
+                          </div>
+                          <span style={{ color: '#22c55e', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                            Send <Send size={12} />
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 );
               })()}
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1.5rem' }}>
+                <button 
+                  onClick={() => {
+                    navigator.clipboard.writeText(whatsappGenerator.messageText);
+                    alert("Message copied to clipboard!");
+                  }} 
+                  className="btn btn-outline"
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', height: '40px' }}
+                >
+                  <Copy size={16} /> Copy Message
+                </button>
+                
+                {(() => {
+                  let guests = [];
+                  try {
+                    guests = typeof selectedDetailedBooking.additional_guests === 'string' 
+                      ? JSON.parse(selectedDetailedBooking.additional_guests) 
+                      : selectedDetailedBooking.additional_guests;
+                  } catch (e) {}
+                  
+                  const contacts = [
+                    { name: `${selectedDetailedBooking.guest_name} (Primary)`, phone: selectedDetailedBooking.phone_number },
+                    ...(Array.isArray(guests) ? guests : []).map(g => ({ name: g.name, phone: g.phone || g.phone_number })).filter(c => c.phone)
+                  ];
+                  
+                  if (contacts.length > 1) return null; // Let the selector above handle it
+                  
+                  return (
+                    <button 
+                      onClick={() => {
+                        let rawPhone = selectedDetailedBooking.phone_number || '';
+                        let cleanedPhone = rawPhone.replace(/\D/g, '');
+                        if (!rawPhone.trim().startsWith('+') && cleanedPhone.length === 10) {
+                          cleanedPhone = '91' + cleanedPhone;
+                        }
+                        
+                        const encodedText = encodeURIComponent(whatsappGenerator.messageText);
+                        const waUrl = `https://api.whatsapp.com/send?phone=${cleanedPhone}&text=${encodedText}`;
+                        window.open(waUrl, '_blank');
+                      }} 
+                      className="btn btn-primary"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', height: '40px', background: '#22c55e', borderColor: '#22c55e' }}
+                    >
+                      <Send size={16} /> Send WhatsApp
+                    </button>
+                  );
+                })()}
+              </div>
             </div>
           </div>
-        </div>
+        </WhatsAppErrorBoundary>,
+        document.body
       )}
 
       {/* Hidden print receipt rendered when a booking is selected */}
