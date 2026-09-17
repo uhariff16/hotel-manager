@@ -69,37 +69,36 @@ export default function FeatureTour() {
     // If the user clicks skip, close, or finishes the tour
     if (['finished', 'skipped'].includes(status) || action === 'close') {
       setRun(false);
-      
-      const updatedSettings = {
-        ...(profile.global_settings || {}),
-        has_seen_tour: true
-      };
 
-      // 1. Update Zustand store
-      setProfile({ ...profile, global_settings: updatedSettings });
+      // 1. Update Zustand store so it stops immediately
+      setProfile({ ...profile, has_seen_tour: true });
       
-      // 2. Update DB
-      if (profile?.id) {
-        try {
-          const { error } = await supabase
-            .from('profiles')
-            .update({ global_settings: updatedSettings })
-            .eq('id', profile.id);
-            
-          if (error) {
-            console.error("Failed to update tour status in DB.", error);
-          }
-        } catch (err) {
-          console.error("Failed to update tour status in DB", err);
-        }
+      // 2. Safely update Supabase Auth metadata (bypasses all DB RLS restrictions)
+      try {
+        await supabase.auth.updateUser({
+          data: { has_seen_feature_tour: true }
+        });
+      } catch (err) {
+        console.error("Failed to update auth metadata", err);
       }
     }
   };
 
-  // Check DB flag (no local storage needed)
+  // Check Auth metadata flag
+  const [hasSeenAuth, setHasSeenAuth] = useState(false);
+  
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user?.user_metadata?.has_seen_feature_tour) {
+        setHasSeenAuth(true);
+      }
+    });
+  }, []);
+
   if (
     !profile || 
-    profile.global_settings?.has_seen_tour === true || 
+    profile.has_seen_tour || 
+    hasSeenAuth ||
     Capacitor.isNativePlatform()
   ) {
     return null;
@@ -113,7 +112,11 @@ export default function FeatureTour() {
       run={run}
       scrollToFirstStep
       showProgress
-      showSkipButton
+      showSkipButton={true}
+      locale={{
+        last: 'End Tour',
+        skip: 'Skip Tour'
+      }}
       steps={steps}
       styles={{
         options: {
