@@ -4,7 +4,7 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 
-export function usePushNotifications() {
+export function usePushNotifications(navigate) {
   const { session } = useSettingsStore();
 
   useEffect(() => {
@@ -28,6 +28,13 @@ export function usePushNotifications() {
               { user_id: session.user.id, token: token.value, platform: Capacitor.getPlatform() },
               { onConflict: 'user_id,token' }
             );
+          }
+        });
+
+        PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+          const data = notification.notification.data;
+          if (data?.type === 'booking' && data?.id && navigate) {
+            navigate(`/bookings/edit/${data.id}?edit=true`);
           }
         });
       } catch (error) {

@@ -64,7 +64,11 @@ serve(async (req) => {
     )
 
     const { record, type, table } = await req.json()
+    console.log(`Received Webhook! Table: ${table}, Type: ${type}`);
+    console.log('Record ID:', record.id);
+
     if (type !== 'INSERT') {
+       console.log('Ignoring non-insert');
        return new Response(JSON.stringify({ message: 'Ignored non-inserts' }), { headers: corsHeaders })
     }
 
@@ -74,11 +78,17 @@ serve(async (req) => {
     let notificationData = {};
 
     if (table === 'bookings') {
-      const resortId = record.resort_id;
-      const { data: profiles } = await supabaseClient.from('profiles').select('id').eq('active_resort_id', resortId)
+      const tenantId = record.tenant_id;
+      console.log('Processing booking for tenant:', tenantId);
+      
+      const { data: profiles } = await supabaseClient
+        .from('profiles')
+        .select('id')
+        .or(`tenant_id.eq.${tenantId},id.eq.${tenantId}`);
+        
       userIdsToNotify = profiles?.map(p => p.id) || [];
-      title = 'New Booking Alert 🏨'
-      body = 'A new booking was just created in your property.'
+      title = `New Booking: ${record.guest_name || 'Guest'}`
+      body = `A new booking was just created in your property!`
       notificationData = { type: 'booking', id: record.id }
     }
     else if (table === 'broadcast_messages') {
@@ -111,17 +121,21 @@ serve(async (req) => {
     }
 
     if (userIdsToNotify.length === 0) {
+      console.log('No users to notify');
       return new Response(JSON.stringify({ message: 'No target users found' }), { headers: corsHeaders })
     }
 
+    console.log('Fetching FCM tokens for users:', userIdsToNotify);
     const { data: tokens } = await supabaseClient
       .from('fcm_tokens')
       .select('token')
       .in('user_id', userIdsToNotify)
 
     if (!tokens || tokens.length === 0) {
+      console.log('No devices found for target users');
       return new Response(JSON.stringify({ message: 'No devices found' }), { headers: corsHeaders })
     }
+    console.log(`Found ${tokens.length} devices to notify!`);
 
     const serviceAccountJson = Deno.env.get('FIREBASE_SERVICE_ACCOUNT')
     if (!serviceAccountJson) throw new Error('FIREBASE_SERVICE_ACCOUNT secret is missing')
@@ -130,8 +144,9 @@ serve(async (req) => {
     const projectId = serviceAccount.project_id
     const accessToken = await getAccessToken(serviceAccount)
 
-    const fcmPromises = tokens.map((device) => {
-      return fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+    console.log('Dispatching to Firebase...');
+    const fcmPromises = tokens.map(async (device) => {
+      const res = await fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${accessToken}`,
@@ -144,7 +159,14 @@ serve(async (req) => {
             data: notificationData
           }
         })
-      })
+      });
+      const responseText = await res.text();
+      if (!res.ok) {
+        console.error('Firebase Error:', responseText);
+      } else {
+        console.log('Firebase Success:', responseText);
+      }
+      return res;
     })
 
     await Promise.all(fcmPromises)

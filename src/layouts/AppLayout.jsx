@@ -15,7 +15,7 @@ export default function AppLayout() {
   const navigate = useNavigate();
 
   // Initialize push notifications
-  usePushNotifications();
+  usePushNotifications(navigate);
 
   const isManagementActive = ['/resorts', '/setup', '/staff'].includes(location.pathname);
   const [isManagementOpen, setIsManagementOpen] = React.useState(isManagementActive);
