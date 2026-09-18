@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { ClipboardList, LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
-import FeatureTour from '../components/FeatureTour';
 import { Capacitor } from '@capacitor/core';
 
 import { supabase } from '../lib/supabase';
@@ -372,7 +371,6 @@ export default function AppLayout() {
 
         <div className="page-content">
           <Outlet />
-            <FeatureTour />
         </div>
 
         {/* Mobile Bottom Navigation */}
