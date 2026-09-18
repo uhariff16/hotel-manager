@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
@@ -823,6 +823,7 @@ export default function SuperAdmin() {
         flexWrap: 'nowrap'
       }}>
         {[
+          { id: 'broadcast', label: 'Broadcast Alerts', icon: <AlertCircle size={16} />, roles: ['super_admin'] },
           { id: 'overview', label: 'Dashboard Overview', icon: <TrendingUp size={16} />, roles: ['super_admin', 'billing_admin'] },
           { id: 'accounts', label: `Tenants & Staff (${tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role)).length})`, icon: <Users size={16} />, roles: ['super_admin'] },
           { id: 'platform_staff', label: `Platform Staff (${tenants.filter(t => ['super_admin', 'support_admin', 'billing_admin'].includes(t.role)).length})`, icon: <ShieldAlert size={16} />, roles: ['super_admin'] },
@@ -1672,6 +1673,69 @@ export default function SuperAdmin() {
       )}
 
       {/* TAB 4: PLATFORM CONFIGURATION */}
+      {adminActiveTab === 'broadcast' && (
+        <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <div style={{ background: '#fff', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px rgba(0,0,0,0.03)' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#0F2C59', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Send size={24} color="var(--primary)" />
+              Send Push Notification Broadcast
+            </h3>
+            <p style={{ color: '#64748b', marginBottom: '2rem', lineHeight: 1.5 }}>
+              Use this tool to instantly send a native Push Notification to all users' mobile devices, or specifically target one Tenant Admin.
+            </p>
+
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              const fd = new FormData(e.target);
+              const title = fd.get('title');
+              const body = fd.get('body');
+              const target = fd.get('target');
+
+              const payload = {
+                title,
+                body,
+                created_by: profile.id,
+                ...(target !== 'all' ? { target_user_id: target } : {})
+              };
+
+              const promise = supabase.from('broadcast_messages').insert(payload);
+              toast.promise(promise, {
+                loading: 'Sending broadcast...',
+                success: 'Broadcast notification sent successfully!',
+                error: 'Failed to send broadcast.'
+              });
+              e.target.reset();
+            }} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '600px' }}>
+              
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#334155' }}>Target Audience</label>
+                <select name="target" className="form-control" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                  <option value="all">All Users (Global Blast)</option>
+                  {tenants.filter(t => t.role === 'tenant_admin').map(t => (
+                    <option key={t.id} value={t.id}>Target Tenant: {t.resort_name || t.full_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#334155' }}>Notification Title</label>
+                <input required name="title" type="text" placeholder="e.g. Version 2.0 is Live!" className="form-control" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 600, color: '#334155' }}>Notification Message</label>
+                <textarea required name="body" rows="3" placeholder="Enter the message body..." className="form-control" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', resize: 'vertical' }}></textarea>
+              </div>
+
+              <button type="submit" style={{ background: 'var(--primary)', color: 'white', padding: '1rem', borderRadius: '8px', fontWeight: 700, border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', fontSize: '1rem' }}>
+                <Send size={20} />
+                Send Notification Now
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {adminActiveTab === 'settings' && (
         <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
           {/* Global Feature Controls */}

@@ -1,4 +1,5 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+const fs = require('fs');
+const content = \import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.38.4'
 import { create } from 'https://deno.land/x/djwt@v2.9.1/mod.ts'
 
@@ -21,7 +22,7 @@ async function getAccessToken(serviceAccount) {
   const pemContents = serviceAccount.private_key.substring(
     pemHeader.length,
     serviceAccount.private_key.length - pemFooter.length - 1
-  ).replace(/\n/g, '')
+  ).replace(/\\n/g, '')
 
   const binaryDerString = atob(pemContents)
   const binaryDer = new Uint8Array(binaryDerString.length)
@@ -64,60 +65,28 @@ serve(async (req) => {
     )
 
     const { record, type, table } = await req.json()
-    if (type !== 'INSERT') {
-       return new Response(JSON.stringify({ message: 'Ignored non-inserts' }), { headers: corsHeaders })
+    if (table !== 'bookings' || type !== 'INSERT') {
+       return new Response(JSON.stringify({ message: 'Ignored' }), { headers: corsHeaders })
     }
 
-    let userIdsToNotify = [];
-    let title = '';
-    let body = '';
-    let notificationData = {};
-
-    if (table === 'bookings') {
-      const resortId = record.resort_id;
-      const { data: profiles } = await supabaseClient.from('profiles').select('id').eq('active_resort_id', resortId)
-      userIdsToNotify = profiles?.map(p => p.id) || [];
-      title = 'New Booking Alert 🏨'
-      body = 'A new booking was just created in your property.'
-      notificationData = { type: 'booking', id: record.id }
+    const resortId = record.resort_id
+    
+    // Notify all staff and admins for this resort
+    const { data: profiles } = await supabaseClient
+      .from('profiles')
+      .select('id')
+      .eq('active_resort_id', resortId)
+      
+    if (!profiles || profiles.length === 0) {
+      return new Response(JSON.stringify({ message: 'No users found' }), { headers: corsHeaders })
     }
-    else if (table === 'broadcast_messages') {
-      if (record.target_user_id) {
-        userIdsToNotify = [record.target_user_id];
-      } else {
-        const { data: tokens } = await supabaseClient.from('fcm_tokens').select('user_id');
-        userIdsToNotify = tokens?.map(t => t.user_id) || [];
-      }
-      title = record.title;
-      body = record.body;
-      notificationData = { type: 'broadcast', id: record.id }
-    }
-    else if (table === 'support_messages') {
-      if (record.is_from_admin) {
-        // Find the tenant who owns the ticket
-        const { data: ticket } = await supabaseClient.from('support_tickets').select('tenant_id').eq('id', record.ticket_id).single()
-        if (ticket) {
-          userIdsToNotify = [ticket.tenant_id];
-          title = 'Support Update 📩'
-          body = 'You have a new reply from StayPilot Support.'
-          notificationData = { type: 'support', id: record.ticket_id }
-        }
-      } else {
-        return new Response(JSON.stringify({ message: 'Ignored tenant message' }), { headers: corsHeaders })
-      }
-    }
-    else {
-      return new Response(JSON.stringify({ message: 'Unsupported table' }), { headers: corsHeaders })
-    }
-
-    if (userIdsToNotify.length === 0) {
-      return new Response(JSON.stringify({ message: 'No target users found' }), { headers: corsHeaders })
-    }
+    
+    const userIds = profiles.map(p => p.id)
 
     const { data: tokens } = await supabaseClient
       .from('fcm_tokens')
       .select('token')
-      .in('user_id', userIdsToNotify)
+      .in('user_id', userIds)
 
     if (!tokens || tokens.length === 0) {
       return new Response(JSON.stringify({ message: 'No devices found' }), { headers: corsHeaders })
@@ -130,18 +99,21 @@ serve(async (req) => {
     const projectId = serviceAccount.project_id
     const accessToken = await getAccessToken(serviceAccount)
 
+    const title = 'New Booking Alert ??'
+    const body = 'A new booking was just created in your property.'
+
     const fcmPromises = tokens.map((device) => {
-      return fetch(`https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`, {
+      return fetch(\https://fcm.googleapis.com/v1/projects/\/messages:send\, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${accessToken}`,
+          'Authorization': \Bearer \\,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           message: {
             token: device.token,
             notification: { title, body },
-            data: notificationData
+            data: { booking_id: record.id }
           }
         })
       })
@@ -159,5 +131,6 @@ serve(async (req) => {
       status: 400,
     })
   }
-})
+})\;
+fs.writeFileSync('supabase/functions/send-push/index.ts', content);
 
