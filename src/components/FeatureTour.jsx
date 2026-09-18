@@ -17,7 +17,8 @@ export default function FeatureTour() {
 
   // Determine if we should start the tour.
   useEffect(() => {
-    if (profile && profile.has_seen_tour === false) {
+    const localSkipped = localStorage.getItem('staypilot_tour_skipped') === 'true';
+    if (profile && profile.has_seen_tour === false && !localSkipped) {
       if (location.pathname === '/' || location.pathname === '/dashboard') {
         setRun(true);
       }
@@ -26,15 +27,10 @@ export default function FeatureTour() {
 
   const steps = [
     {
-      target: 'body',
-      content: 'Welcome to StayPilot! Let us show you around so you can start managing your properties effortlessly.',
-      placement: 'center',
-      disableBeacon: true,
-    },
-    {
       target: '.tour-dashboard',
-      content: 'Here you can view your Dashboard metrics—see your total revenue, pending bookings, check-ins, and check-outs at a glance.',
+      content: 'Welcome to StayPilot! Let us show you around. Here you can view your Dashboard metrics—see your total revenue, pending bookings, check-ins, and check-outs at a glance.',
       placement: 'right',
+      disableBeacon: true,
     },
     {
       target: '.tour-calendar',
@@ -70,6 +66,9 @@ export default function FeatureTour() {
     if (['finished', 'skipped'].includes(status) || action === 'close') {
       setRun(false);
 
+      // Immediate local cache to prevent refresh race condition
+      localStorage.setItem('staypilot_tour_skipped', 'true');
+
       // 1. Update Zustand store so it stops immediately
       setProfile({ ...profile, has_seen_tour: true });
       
@@ -97,8 +96,11 @@ export default function FeatureTour() {
     });
   }, []);
 
+  const localSkipped = localStorage.getItem('staypilot_tour_skipped') === 'true';
+
   if (
     isChecking ||
+    localSkipped ||
     !profile || 
     profile.has_seen_tour || 
     hasSeenAuth ||
