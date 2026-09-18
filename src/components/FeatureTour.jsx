@@ -68,36 +68,45 @@ export default function FeatureTour() {
   ];
 
   const handleJoyrideCallback = async (data) => {
-    const { status, type, action } = data;
+    const { status, type, action, index } = data;
     
-    // If the tour ends for ANY reason (finished, skipped, crashed/error, or closed)
-    if (
+    // Aggressively save local cache the moment they interact with the tour
+    if (action === 'next' || action === 'prev' || action === 'close' || type === 'tour:end') {
+      localStorage.setItem('staypilot_tour_skipped', 'true');
+    }
+    
+    const isFinished = 
       ['finished', 'skipped', 'error'].includes(status) || 
       action === 'close' || 
-      type === 'tour:end'
-    ) {
-      setRun(false);
+      type === 'tour:end' ||
+      type === 'error:target_not_found' ||
+      (index === steps.length - 1 && action === 'next');
 
-      // Immediate local cache to prevent refresh race condition
-      localStorage.setItem('staypilot_tour_skipped', 'true');
+    if (isFinished) {
+      setRun(false);
+      localStorage.setItem('staypilot_tour_skipped', 'true'); // Double check
 
       // 1. Update Zustand store so it stops immediately
-      setProfile({ ...profile, has_seen_tour: true });
+      if (profile) {
+        setProfile({ ...profile, has_seen_tour: true });
+      }
       
       // 2. Safely update Supabase profiles table directly via global_settings
-      try {
-        const currentGlobal = profile?.global_settings || {};
-        const newGlobal = { ...currentGlobal, has_seen_tour: true };
-        
-        await supabase.from('profiles').update({ 
-          global_settings: newGlobal 
-        }).eq('id', profile.id);
-        
-        await supabase.auth.updateUser({
-          data: { has_seen_feature_tour: true }
-        });
-      } catch (err) {
-        console.error("Failed to update tour metadata", err);
+      if (profile && profile.id) {
+        try {
+          const currentGlobal = profile.global_settings || {};
+          const newGlobal = { ...currentGlobal, has_seen_tour: true };
+          
+          await supabase.from('profiles').update({ 
+            global_settings: newGlobal 
+          }).eq('id', profile.id);
+          
+          await supabase.auth.updateUser({
+            data: { has_seen_feature_tour: true }
+          });
+        } catch (err) {
+          console.error("Failed to update tour metadata", err);
+        }
       }
     }
   };
