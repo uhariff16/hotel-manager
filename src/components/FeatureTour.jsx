@@ -68,8 +68,12 @@ export default function FeatureTour() {
   const handleJoyrideCallback = async (data) => {
     const { status, type, action } = data;
     
-    // If the user clicks skip, close, or finishes the tour
-    if (['finished', 'skipped'].includes(status) || action === 'close') {
+    // If the tour ends for ANY reason (finished, skipped, crashed/error, or closed)
+    if (
+      ['finished', 'skipped', 'error'].includes(status) || 
+      action === 'close' || 
+      type === 'tour:end'
+    ) {
       setRun(false);
 
       // Immediate local cache to prevent refresh race condition
