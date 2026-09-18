@@ -18,7 +18,8 @@ export default function FeatureTour() {
   // Determine if we should start the tour.
   useEffect(() => {
     const localSkipped = localStorage.getItem('staypilot_tour_skipped') === 'true';
-    if (profile && profile.has_seen_tour === false && !localSkipped) {
+    // profile.has_seen_tour might be undefined, so we check !== true
+    if (profile && profile.has_seen_tour !== true && !localSkipped) {
       if (location.pathname === '/' || location.pathname === '/dashboard') {
         setRun(true);
       }
@@ -27,10 +28,15 @@ export default function FeatureTour() {
 
   const steps = [
     {
-      target: '.tour-dashboard',
-      content: 'Welcome to StayPilot! Let us show you around. Here you can view your Dashboard metrics—see your total revenue, pending bookings, check-ins, and check-outs at a glance.',
-      placement: 'right',
+      target: 'body',
+      content: 'Welcome to StayPilot! Let us show you around so you can start managing your properties effortlessly.',
+      placement: 'center',
       disableBeacon: true,
+    },
+    {
+      target: '.tour-dashboard',
+      content: 'Here you can view your Dashboard metrics—see your total revenue, pending bookings, check-ins, and check-outs at a glance.',
+      placement: 'right',
     },
     {
       target: '.tour-calendar',
@@ -117,12 +123,10 @@ export default function FeatureTour() {
       run={run}
       scrollToFirstStep
       showProgress
-      showSkipButton={true}
       locale={{
-        last: 'End Tour',
-        skip: 'Skip Tour'
+        last: 'End Tour'
       }}
-      steps={steps.map(s => ({ ...s, showSkipButton: true }))}
+      steps={steps}
       styles={{
         options: {
           zIndex: 10000,
