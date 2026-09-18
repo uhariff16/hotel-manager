@@ -18,8 +18,10 @@ export default function FeatureTour() {
   // Determine if we should start the tour.
   useEffect(() => {
     const localSkipped = localStorage.getItem('staypilot_tour_skipped') === 'true';
+    const dbSkipped = profile?.global_settings?.has_seen_tour === true;
+    
     // profile.has_seen_tour might be undefined, so we check !== true
-    if (profile && profile.has_seen_tour !== true && !localSkipped) {
+    if (profile && profile.has_seen_tour !== true && !localSkipped && !dbSkipped) {
       if (location.pathname === '/' || location.pathname === '/dashboard') {
         setRun(true);
       }
@@ -82,13 +84,20 @@ export default function FeatureTour() {
       // 1. Update Zustand store so it stops immediately
       setProfile({ ...profile, has_seen_tour: true });
       
-      // 2. Safely update Supabase Auth metadata (bypasses all DB RLS restrictions)
+      // 2. Safely update Supabase profiles table directly via global_settings
       try {
+        const currentGlobal = profile?.global_settings || {};
+        const newGlobal = { ...currentGlobal, has_seen_tour: true };
+        
+        await supabase.from('profiles').update({ 
+          global_settings: newGlobal 
+        }).eq('id', profile.id);
+        
         await supabase.auth.updateUser({
           data: { has_seen_feature_tour: true }
         });
       } catch (err) {
-        console.error("Failed to update auth metadata", err);
+        console.error("Failed to update tour metadata", err);
       }
     }
   };
@@ -107,10 +116,12 @@ export default function FeatureTour() {
   }, []);
 
   const localSkipped = localStorage.getItem('staypilot_tour_skipped') === 'true';
+  const dbSkipped = profile?.global_settings?.has_seen_tour === true;
 
   if (
     isChecking ||
     localSkipped ||
+    dbSkipped ||
     !profile || 
     profile.has_seen_tour || 
     hasSeenAuth ||
