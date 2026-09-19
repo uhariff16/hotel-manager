@@ -65,7 +65,7 @@ serve(async (req) => {
 
     const { record, old_record, type, table } = await req.json()
     console.log(`Received Webhook! Table: ${table}, Type: ${type}`);
-    console.log('Record ID:', record.id);
+    console.log('Record ID:', record?.id || old_record?.id);
 
     if (type !== 'INSERT' && type !== 'UPDATE' && type !== 'DELETE') {
        console.log('Ignoring irrelevant event');
