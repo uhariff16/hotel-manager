@@ -664,6 +664,20 @@ export default function BookingForm() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (bookingForm.booking_type === 'Entire Property') {
+       const unavailableRooms = relevantRooms.filter(r => !r.isAvailable);
+       if (unavailableRooms.length > 0) {
+          setError(`Cannot book Entire Property. The following rooms are already booked for these dates: ${unavailableRooms.map(r => r.name).join(', ')}`);
+          window.scrollTo(0, 0);
+          return;
+       }
+    } else if (bookingForm.booking_type === 'Room' && bookingForm.room_ids.length === 0) {
+       setError("Please select at least one room.");
+       window.scrollTo(0, 0);
+       return;
+    }
+
     if (isSubmitting) return;
     setIsSubmitting(true);
     setError(null);
