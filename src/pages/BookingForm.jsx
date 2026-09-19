@@ -1226,14 +1226,16 @@ export default function BookingForm() {
               </div>
             </div>
 
-            {bookingForm.booking_type === 'Room' && (
+            {(bookingForm.booking_type === 'Room' || bookingForm.booking_type === 'Entire Property') && (
               <div className="form-group" style={{ marginBottom: '1.25rem' }}>
-                <label className="premium-label">Assign Specific Rooms (Available for Entire Stay)</label>
+                <label className="premium-label">
+                  {bookingForm.booking_type === 'Entire Property' ? 'Rooms Included (All assigned automatically)' : 'Assign Specific Rooms (Available for Entire Stay)'}
+                </label>
                 <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   {relevantRooms.length === 0 ? (
                     <span style={{ fontSize: '0.85rem', color: !bookingForm.cottage_id ? 'var(--text-muted)' : 'var(--danger)', fontStyle: !bookingForm.cottage_id ? 'italic' : 'normal', fontWeight: !bookingForm.cottage_id ? 'normal' : '600' }}>{!bookingForm.cottage_id ? 'Please select a property/cottage first' : 'No rooms available for the entire selected duration.'}</span>
                   ) : relevantRooms.map(r => {
-                    const isSelected = bookingForm.room_ids.includes(r.id);
+                    const isSelected = bookingForm.booking_type === 'Entire Property' ? r.isAvailable : bookingForm.room_ids.includes(r.id);
                     const isAvail = r.isAvailable;
                     
                     let overrideStyle = {};
@@ -1257,9 +1259,10 @@ export default function BookingForm() {
                       <input 
                         type="checkbox" 
                         style={{ display: 'none' }}
-                        disabled={r.isPlanLocked || !isAvail}
+                        disabled={r.isPlanLocked || !isAvail || bookingForm.booking_type === 'Entire Property'}
                         checked={isSelected} 
                         onChange={e => {
+                          if (bookingForm.booking_type === 'Entire Property') return;
                           const newIds = e.target.checked ? [...bookingForm.room_ids, r.id] : bookingForm.room_ids.filter(id => id !== r.id);
                           const newMap = { ...bookingForm.room_types_map };
                           if (e.target.checked) {
@@ -1282,7 +1285,7 @@ export default function BookingForm() {
                       {r.name}
                       {!isAvail && <X size={14} style={{ marginLeft: '4px' }} />}
                       </label>
-                  );
+                    );
                   })}
                 </div>
 
