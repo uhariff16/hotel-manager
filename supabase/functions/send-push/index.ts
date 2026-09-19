@@ -63,13 +63,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { record, type, table } = await req.json()
+    const { record, old_record, type, table } = await req.json()
     console.log(`Received Webhook! Table: ${table}, Type: ${type}`);
     console.log('Record ID:', record.id);
 
-    if (type !== 'INSERT') {
-       console.log('Ignoring non-insert');
-       return new Response(JSON.stringify({ message: 'Ignored non-inserts' }), { headers: corsHeaders })
+    if (type !== 'INSERT' && type !== 'UPDATE') {
+       console.log('Ignoring irrelevant event');
+       return new Response(JSON.stringify({ message: 'Ignored irrelevant event' }), { headers: corsHeaders })
     }
 
     let userIdsToNotify = [];
@@ -78,6 +78,14 @@ serve(async (req) => {
     let notificationData = {};
 
     if (table === 'bookings') {
+      const isNewBooking = type === 'INSERT';
+      const isCancellation = type === 'UPDATE' && record.status === 'Cancelled' && old_record?.status !== 'Cancelled';
+
+      if (!isNewBooking && !isCancellation) {
+        console.log('Booking update, but not a cancellation. Ignoring.');
+        return new Response(JSON.stringify({ message: 'Ignored booking update' }), { headers: corsHeaders });
+      }
+
       const tenantId = record.tenant_id;
       console.log('Processing booking for tenant:', tenantId);
       
@@ -87,8 +95,8 @@ serve(async (req) => {
         .or(`tenant_id.eq.${tenantId},id.eq.${tenantId}`);
         
       userIdsToNotify = profiles?.map(p => p.id) || [];
-      title = `New Booking: ${record.guest_name || 'Guest'}`
-      body = `A new booking was just created in your property!`
+      title = isCancellation ? `Booking Cancelled: ${record.guest_name || 'Guest'}` : `New Booking: ${record.guest_name || 'Guest'}`;
+      body = isCancellation ? `A booking has been cancelled.` : `A new booking was just created in your property!`;
       notificationData = { type: 'booking', id: record.id }
     }
     else if (table === 'broadcast_messages') {

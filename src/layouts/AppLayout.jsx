@@ -7,6 +7,7 @@ import { Capacitor } from '@capacitor/core';
 import { supabase } from '../lib/supabase';
 import OnboardingWizard from '../components/OnboardingWizard';
 import { usePushNotifications } from '../hooks/usePushNotifications';
+import { useRealtimeWebNotifications } from '../hooks/useRealtimeWebNotifications';
 
 export default function AppLayout() {
   const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled, isDataLoaded, globalPlans } = useSettingsStore();
@@ -14,8 +15,9 @@ export default function AppLayout() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Initialize push notifications
+  // Initialize notifications
   usePushNotifications(navigate);
+  useRealtimeWebNotifications();
 
   const isManagementActive = ['/resorts', '/setup', '/staff'].includes(location.pathname);
   const [isManagementOpen, setIsManagementOpen] = React.useState(isManagementActive);
