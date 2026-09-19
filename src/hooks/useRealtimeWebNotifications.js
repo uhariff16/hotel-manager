@@ -27,6 +27,8 @@ export function useRealtimeWebNotifications() {
             if (newRecord.status === 'Cancelled' && oldRecord?.status !== 'Cancelled') {
               toast.error(`Booking Cancelled: ${newRecord.guest_name || 'Guest'}`, { duration: 5000, icon: '❌' });
             }
+          } else if (eventType === 'DELETE') {
+            toast.error(`Booking Deleted: ${oldRecord?.guest_name || 'Guest'}`, { duration: 5000, icon: '🗑️' });
           }
         }
       )

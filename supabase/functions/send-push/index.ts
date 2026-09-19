@@ -67,7 +67,7 @@ serve(async (req) => {
     console.log(`Received Webhook! Table: ${table}, Type: ${type}`);
     console.log('Record ID:', record.id);
 
-    if (type !== 'INSERT' && type !== 'UPDATE') {
+    if (type !== 'INSERT' && type !== 'UPDATE' && type !== 'DELETE') {
        console.log('Ignoring irrelevant event');
        return new Response(JSON.stringify({ message: 'Ignored irrelevant event' }), { headers: corsHeaders })
     }
@@ -79,14 +79,22 @@ serve(async (req) => {
 
     if (table === 'bookings') {
       const isNewBooking = type === 'INSERT';
-      const isCancellation = type === 'UPDATE' && record.status === 'Cancelled' && old_record?.status !== 'Cancelled';
+      const isCancellation = type === 'UPDATE' && record?.status === 'Cancelled' && old_record?.status !== 'Cancelled';
+      const isDeletion = type === 'DELETE';
 
-      if (!isNewBooking && !isCancellation) {
-        console.log('Booking update, but not a cancellation. Ignoring.');
+      if (!isNewBooking && !isCancellation && !isDeletion) {
+        console.log('Booking update, but not a cancellation or deletion. Ignoring.');
         return new Response(JSON.stringify({ message: 'Ignored booking update' }), { headers: corsHeaders });
       }
 
-      const tenantId = record.tenant_id;
+      const activeRecord = isDeletion ? old_record : record;
+      const tenantId = activeRecord?.tenant_id;
+      
+      if (!tenantId) {
+         console.log('No tenant ID found in record (needs REPLICA IDENTITY FULL for deletes)');
+         return new Response(JSON.stringify({ message: 'Missing tenant_id' }), { headers: corsHeaders });
+      }
+
       console.log('Processing booking for tenant:', tenantId);
       
       const { data: profiles } = await supabaseClient
@@ -95,9 +103,19 @@ serve(async (req) => {
         .or(`tenant_id.eq.${tenantId},id.eq.${tenantId}`);
         
       userIdsToNotify = profiles?.map(p => p.id) || [];
-      title = isCancellation ? `Booking Cancelled: ${record.guest_name || 'Guest'}` : `New Booking: ${record.guest_name || 'Guest'}`;
-      body = isCancellation ? `A booking has been cancelled.` : `A new booking was just created in your property!`;
-      notificationData = { type: 'booking', id: record.id }
+      
+      if (isDeletion) {
+        title = `Booking Deleted: ${activeRecord?.guest_name || 'Guest'}`;
+        body = `A booking was permanently deleted from the system.`;
+      } else if (isCancellation) {
+        title = `Booking Cancelled: ${activeRecord?.guest_name || 'Guest'}`;
+        body = `A booking has been cancelled.`;
+      } else {
+        title = `New Booking: ${activeRecord?.guest_name || 'Guest'}`;
+        body = `A new booking was just created in your property!`;
+      }
+      
+      notificationData = { type: 'booking', id: activeRecord?.id }
     }
     else if (table === 'broadcast_messages') {
       if (record.target_user_id) {
