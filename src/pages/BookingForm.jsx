@@ -2,7 +2,7 @@ import toast from 'react-hot-toast';
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X, Lock } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 
@@ -137,14 +137,18 @@ export default function BookingForm() {
       night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
       total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Pending', is_loading_edit: false,
       reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_other_type: '', id_proof_number: '',
-      addon_selections: [], addon_others: '',
+      addon_selections: [], addon_others: '', addon_costs_itemized: {},
       room_type: 'Deluxe',
       room_types_map: {},
       breakfast: 'NA',
       agent_name: '',
       agent_phone: '',
       is_custom_agent: false,
-      additional_guests: []
+      additional_guests: [],
+      is_ota_collected: false,
+      ota_payment_status: 'Not Applicable',
+      ota_channel: 'Airbnb',
+      custom_ota_channel: ''
     });
     toast.success('Form cleared successfully');
   };
@@ -248,11 +252,12 @@ export default function BookingForm() {
   };
 
   const [isEditing, setIsEditing] = useState(!id || new URLSearchParams(location.search).get('edit') === 'true');
+  const [financialsLocked, setFinancialsLocked] = useState(true);
   const [originalStatus, setOriginalStatus] = useState(null);
   const [settlementPaid, setSettlementPaid] = useState(0);
-  const [settlementDiscount, setSettlementDiscount] = useState(0);
   
   const [cottages, setCottages] = useState([]);
+  const [globalAddonPricing, setGlobalAddonPricing] = useState({});
   const [rooms, setRooms] = useState([]);
   const [activeBookings, setActiveBookings] = useState([]);
 
@@ -260,16 +265,20 @@ export default function BookingForm() {
     guest_name: '', guest_email: '', guest_company_name: '', guest_gstin: '', gst_amount: 0, gst_rate: 0, phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
     booking_type: 'Room', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
-    total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Pending', is_loading_edit: false,
+    total_amount: 0, advance_paid: 0, balance_amount: 0, discount_amount: 0, booking_source: 'Direct', status: 'Pending', is_loading_edit: false,
     reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_other_type: '', id_proof_number: '',
-    addon_selections: [], addon_others: '',
+    addon_selections: [], addon_others: '', addon_costs_itemized: {},
     room_type: 'Deluxe',
     room_types_map: {},
     breakfast: 'NA',
     agent_name: '',
     agent_phone: '',
     is_custom_agent: false,
-    additional_guests: []
+    additional_guests: [],
+    is_ota_collected: false,
+    ota_payment_status: 'Not Applicable',
+    ota_channel: 'Airbnb',
+    custom_ota_channel: ''
   });
 
   const [agents, setAgents] = useState([]);
@@ -301,15 +310,19 @@ export default function BookingForm() {
         roomsQuery = roomsQuery.eq('cottage_id', profile.cottage_id);
       }
 
-      const [cts, rms, plansRes, ratesRes, propRatesRes] = await Promise.all([
+      const [cts, rms, plansRes, ratesRes, propRatesRes, resortRes] = await Promise.all([
         cottagesQuery,
         roomsQuery,
         supabase.from('rate_plans').select('*').eq('resort_id', activeResortId),
         supabase.from('category_rates').select('*, rate_plans!inner(resort_id)').eq('rate_plans.resort_id', activeResortId),
-        supabase.from('property_rates').select('*, rate_plans!inner(resort_id)').eq('rate_plans.resort_id', activeResortId)
+        supabase.from('property_rates').select('*, rate_plans!inner(resort_id)').eq('rate_plans.resort_id', activeResortId),
+        supabase.from('resorts').select('addon_pricing').eq('id', activeResortId).single()
       ]);
       setCottages(cts.data || []);
       setRooms(rms.data || []);
+      if (resortRes.data?.addon_pricing) {
+        setGlobalAddonPricing(resortRes.data.addon_pricing);
+      }
       
       // Store globally for calculateBasePrice
       window.__bookingRatePlans = plansRes.data || [];
@@ -354,7 +367,8 @@ export default function BookingForm() {
           .select('id, cottage_id, room_ids, booking_type, status, check_in_date, check_out_date, booking_source')
           .eq('resort_id', activeResortId)
           .neq('status', 'Cancelled')
-          .neq('status', 'Checked Out');
+          .neq('status', 'Checked-out')
+          .neq('status', 'Completed');
           
         if (!bksErr && bks) {
           setActiveBookings(bks);
@@ -438,8 +452,27 @@ export default function BookingForm() {
             addons_cost: b.addons_cost || 0,
             total_amount: b.total_amount || 0,
             advance_paid: b.advance_paid || 0,
+            discount_amount: b.discount_amount || 0,
             balance_amount: b.balance_amount || 0,
-            booking_source: b.booking_source ? (b.booking_source.startsWith('Agent') ? 'Agent' : (['Direct', 'Airbnb', 'Booking.com', 'Agent'].includes(b.booking_source) ? b.booking_source : 'Other')) : 'Direct',
+            booking_source: (() => {
+              if (!b.booking_source) return 'Direct';
+              if (b.booking_source.startsWith('Agent')) return 'Agent';
+              if (b.booking_source === 'Direct') return 'Direct';
+              const otas = ['Airbnb', 'Booking.com', 'Agoda', 'MakeMyTrip', 'Goibibo', 'Expedia', 'Cleartrip', 'EaseMyTrip'];
+              if (otas.includes(b.booking_source) || (b.ota_payment_status && b.ota_payment_status !== 'Not Applicable')) return 'OTA';
+              return 'Other';
+            })(),
+            ota_channel: (() => {
+              const otas = ['Airbnb', 'Booking.com', 'Agoda', 'MakeMyTrip', 'Goibibo', 'Expedia', 'Cleartrip', 'EaseMyTrip'];
+              if (otas.includes(b.booking_source)) return b.booking_source;
+              if (b.ota_payment_status && b.ota_payment_status !== 'Not Applicable') return 'Other OTA';
+              return 'Airbnb';
+            })(),
+            custom_ota_channel: (() => {
+              const otas = ['Airbnb', 'Booking.com', 'Agoda', 'MakeMyTrip', 'Goibibo', 'Expedia', 'Cleartrip', 'EaseMyTrip'];
+              if (b.ota_payment_status && b.ota_payment_status !== 'Not Applicable' && !otas.includes(b.booking_source)) return b.booking_source;
+              return '';
+            })(),
             agent_name: (() => {
               const { isAgent, name } = parseAgentSource(b.booking_source);
               return isAgent ? name : '';
@@ -449,7 +482,13 @@ export default function BookingForm() {
               return isAgent ? phone : '';
             })(),
             is_custom_agent: false,
-            custom_booking_source: b.booking_source && !['Direct', 'Airbnb', 'Booking.com', 'Agent'].includes(b.booking_source) && !b.booking_source.startsWith('Agent') ? b.booking_source : '',
+            custom_booking_source: (() => {
+              if (!b.booking_source) return '';
+              if (b.booking_source.startsWith('Agent') || b.booking_source === 'Direct') return '';
+              const otas = ['Airbnb', 'Booking.com', 'Agoda', 'MakeMyTrip', 'Goibibo', 'Expedia', 'Cleartrip', 'EaseMyTrip'];
+              if (otas.includes(b.booking_source) || (b.ota_payment_status && b.ota_payment_status !== 'Not Applicable')) return '';
+              return b.booking_source;
+            })(),
             status: b.status,
             reference_number: b.reference_number || '',
             vehicle_number: b.vehicle_number || '',
@@ -458,12 +497,15 @@ export default function BookingForm() {
             id_proof_number: b.id_proof_number || '',
             price_type: b.price_type || 'Calculated',
             addon_selections: selections,
+            addon_costs_itemized: b.addon_costs_itemized || {},
             addon_others: othersText.join(', '),
             is_loading_edit: true,
             room_type: b.room_type || 'Deluxe',
             room_types_map: initialMap,
             breakfast: b.breakfast || 'NA',
-            additional_guests: rawAdditionalGuests
+            additional_guests: rawAdditionalGuests,
+            is_ota_collected: b.ota_payment_status === 'Pending OTA Settlement' || b.ota_payment_status === 'Settled',
+            ota_payment_status: b.ota_payment_status || 'Not Applicable'
           });
           setOriginalStatus(b.status);
 
@@ -476,17 +518,8 @@ export default function BookingForm() {
           const totalSettled = (bookingIncomes || [])
             .filter(inc => inc.notes?.toLowerCase().includes('settlement'))
             .reduce((sum, inc) => sum + Number(inc.amount), 0);
-            
-          let totalDiscount = 0;
-          (bookingIncomes || []).forEach(inc => {
-            const match = inc.notes?.match(/\[Discount:\s*₹?(\d+)\]/i);
-            if (match) {
-              totalDiscount += Number(match[1]);
-            }
-          });
           
           setSettlementPaid(totalSettled);
-          setSettlementDiscount(totalDiscount);
         }
       } else {
         // Generate new reference if not editing
@@ -604,6 +637,53 @@ export default function BookingForm() {
   }, [bookingForm.check_in_date, bookingForm.check_out_date, bookingForm.booking_type, bookingForm.cottage_id, JSON.stringify(bookingForm.room_ids), cottages, rooms]);
 
   useEffect(() => {
+    const cottagePricing = cottages.find(c => c.id === bookingForm.cottage_id)?.addon_pricing || {};
+    const effectivePricing = { ...globalAddonPricing, ...cottagePricing };
+    const totalGuests = Number(bookingForm.adults_count || 0) + Number(bookingForm.kids_count || 0);
+
+    let updatedItemized = { ...(bookingForm.addon_costs_itemized || {}) };
+    let totalCost = 0;
+    
+    // Check if guest count changed to trigger recalculation for per-person items
+    const guestsChanged = updatedItemized['_last_guests'] !== undefined && updatedItemized['_last_guests'] !== totalGuests;
+
+    const processAddon = (item, isSelected, isPerPerson = false) => {
+      if (isSelected) {
+        if (updatedItemized[item] === undefined || (isPerPerson && guestsChanged)) {
+           const basePrice = effectivePricing[item] || 0;
+           updatedItemized[item] = isPerPerson ? basePrice * Math.max(1, totalGuests) : basePrice;
+        }
+        totalCost += Number(updatedItemized[item] || 0);
+      } else {
+        delete updatedItemized[item];
+      }
+    };
+
+    processAddon('breakfast', bookingForm.breakfast === 'Included', true);
+    
+    ['Fire camp', 'BBQ', 'Food'].forEach(addon => {
+      // Assuming Food is also per person? The user only specified Breakfast, but let's just keep others as flat unless specified. 
+      // User said "Like-wise other add-ons as well" - meaning if they are selected, they should be highlighted and cost included (which we did).
+      // We will make Food per-person as well just in case, and BBQ/Fire camp flat.
+      processAddon(addon, (bookingForm.addon_selections || []).includes(addon), addon === 'Food');
+    });
+    
+    const isOthers = (bookingForm.addon_selections || []).includes('Others');
+    if (isOthers) {
+      if (updatedItemized['Others'] === undefined) updatedItemized['Others'] = 0;
+      totalCost += Number(updatedItemized['Others'] || 0);
+    } else {
+      delete updatedItemized['Others'];
+    }
+
+    updatedItemized['_last_guests'] = totalGuests;
+
+    if (JSON.stringify(updatedItemized) !== JSON.stringify(bookingForm.addon_costs_itemized) || totalCost !== bookingForm.addons_cost) {
+      setBookingForm(prev => ({ ...prev, addon_costs_itemized: updatedItemized, addons_cost: totalCost }));
+    }
+  }, [bookingForm.cottage_id, JSON.stringify(bookingForm.addon_selections), bookingForm.breakfast, JSON.stringify(bookingForm.addon_costs_itemized), JSON.stringify(globalAddonPricing), cottages, bookingForm.adults_count, bookingForm.kids_count]);
+
+  useEffect(() => {
     const base = Number(bookingForm.base_amount || 0);
     const addons = Number(bookingForm.addons_cost || 0);
     const extraGuests = Number(bookingForm.extra_guest_charges || 0);
@@ -628,8 +708,25 @@ export default function BookingForm() {
       rawTotal += computedGstAmount;
     }
     
-    const discountedTotal = Math.max(0, rawTotal - settlementDiscount);
-    const balance = Math.max(0, discountedTotal - Number(bookingForm.advance_paid || 0) - settlementPaid);
+    const discountedTotal = Math.max(0, rawTotal - Number(bookingForm.discount_amount || 0));
+    let balance = Math.max(0, discountedTotal - Number(bookingForm.advance_paid || 0));
+    
+    if (bookingForm.is_ota_collected) {
+      // OTA only owes base + their portion of GST. Guest owes extra guests + addons + their GST
+      let guestLiabilityRaw = addons + extraGuests;
+      let otaLiabilityRaw = base;
+      
+      let otaGst = 0;
+      let guestGst = 0;
+      if (tenantGst.enabled) {
+          const ratio = (computedGstAmount > 0 && rawTotal > 0) ? (computedGstAmount / rawTotal) : 0;
+          otaGst = Math.round(otaLiabilityRaw * ratio);
+          guestGst = computedGstAmount - otaGst;
+      }
+      
+      const discountedGuestLiability = Math.max(0, guestLiabilityRaw + guestGst - Number(bookingForm.discount_amount || 0));
+      balance = Math.max(0, discountedGuestLiability - Number(bookingForm.advance_paid || 0));
+    }
     
     setBookingForm(prev => ({
       ...prev,
@@ -638,7 +735,7 @@ export default function BookingForm() {
       total_amount: discountedTotal,
       balance_amount: balance
     }));
-  }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid, bookingForm.extra_guest_charges, bookingForm.night_count, bookingForm.booking_type, bookingForm.room_ids, settlementPaid, settlementDiscount, profile]);
+  }, [bookingForm.base_amount, bookingForm.addons_cost, bookingForm.advance_paid, bookingForm.extra_guest_charges, bookingForm.night_count, bookingForm.booking_type, bookingForm.room_ids, bookingForm.is_ota_collected, bookingForm.discount_amount, settlementPaid, profile]);
 
   const handleAddAdditionalGuest = () => {
     setBookingForm(prev => ({
@@ -724,14 +821,17 @@ export default function BookingForm() {
         addons_cost: bookingForm.addons_cost,
         total_amount: bookingForm.total_amount,
         advance_paid: bookingForm.advance_paid,
+        discount_amount: bookingForm.discount_amount,
         balance_amount: bookingForm.balance_amount,
         status: bookingForm.status,
         reference_number: bookingForm.reference_number,
         vehicle_number: bookingForm.vehicle_number,
         id_proof_type: bookingForm.id_proof_type === 'Other' ? bookingForm.id_proof_other_type : bookingForm.id_proof_type,
         id_proof_number: bookingForm.id_proof_number,
+        addon_costs_itemized: bookingForm.addon_costs_itemized,
         addon_details: bookingForm.addon_selections.map(s => s === 'Others' ? bookingForm.addon_others : s).filter(Boolean).join(', '),
-        booking_source: bookingForm.booking_source === 'Other' ? bookingForm.custom_booking_source 
+        booking_source: bookingForm.booking_source === 'OTA' ? (bookingForm.ota_channel === 'Other OTA' ? bookingForm.custom_ota_channel : bookingForm.ota_channel)
+                      : bookingForm.booking_source === 'Other' ? bookingForm.custom_booking_source 
                       : bookingForm.booking_source === 'Agent' ? `Agent: ${(bookingForm.agent_name || agents[0] || 'Unknown').trim()}${bookingForm.agent_phone ? ' | ' + bookingForm.agent_phone.trim() : ''}`
                       : bookingForm.booking_source,
         price_type: bookingForm.price_type,
@@ -742,7 +842,11 @@ export default function BookingForm() {
         guest_company_name: bookingForm.guest_company_name,
         guest_gstin: bookingForm.guest_gstin,
         gst_amount: bookingForm.gst_amount,
-        gst_rate: bookingForm.gst_rate
+        gst_rate: bookingForm.gst_rate,
+        payment_method: bookingForm.is_ota_collected ? 'OTA' : 'Direct',
+        ota_payment_status: bookingForm.is_ota_collected 
+          ? (bookingForm.ota_payment_status === 'Settled' ? 'Settled' : 'Pending OTA Settlement')
+          : 'Not Applicable'
       };
       
       // If status was Completed and now it's NOT, delete the auto-settled income record
@@ -757,7 +861,7 @@ export default function BookingForm() {
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
           alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_address, guest_company_name, guest_gstin, gst_amount, gst_rate, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_address, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
           result = await supabase.from('bookings').update(cleanData).eq('id', id);
         }
       } else {
@@ -765,7 +869,7 @@ export default function BookingForm() {
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
           alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_address, guest_company_name, guest_gstin, gst_amount, gst_rate, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_address, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
           result = await supabase.from('bookings').insert([cleanData]).select();
         }
       }
@@ -777,37 +881,33 @@ export default function BookingForm() {
       // Synchronize advance payment with incomes table
       if (targetId) {
         try {
-          if (bookingForm.status === 'Pending') {
-            // Delete any existing advance payment records if status is set to Pending
-            await supabase
-              .from('incomes')
-              .delete()
-              .eq('booking_id', targetId)
-              .or('notes.ilike.%Advance%,notes.ilike.%Adjustment%,notes.ilike.%Refund%');
-          } else {
-            const { data: existingIncomes } = await supabase
-              .from('incomes')
-              .select('id, amount')
-              .eq('booking_id', targetId)
-              .or('notes.ilike.%Advance%,notes.ilike.%Adjustment%,notes.ilike.%Refund%');
-              
-            const totalLogged = (existingIncomes || []).reduce((sum, inc) => sum + Number(inc.amount), 0);
-            const difference = Number(bookingForm.advance_paid || 0) - totalLogged;
+          const { data: existingIncomes } = await supabase
+            .from('incomes')
+            .select('id, amount, notes')
+            .eq('booking_id', targetId);
             
-            if (difference !== 0) {
-              await supabase.from('incomes').insert([{
-                resort_id: activeResortId,
-                tenant_id: profile?.tenant_id,
-                booking_id: targetId,
-                amount: difference,
-                source: 'Room Rent',
-                notes: difference > 0 
-                  ? `Advance Payment: ${bookingForm.guest_name} (${bookingForm.reference_number})`
-                  : `Adjustment/Refund: ${bookingForm.guest_name} (${bookingForm.reference_number})`,
-                date: new Date().toLocaleDateString('en-CA'),
-                payment_mode: 'UPI'
-              }]);
-            }
+          const guestIncomes = (existingIncomes || []).filter(inc => {
+            const notes = inc.notes?.toLowerCase() || '';
+            if (notes.includes('ota settlement')) return false;
+            return notes.includes('advance') || notes.includes('adjustment') || notes.includes('refund') || notes.includes('settlement');
+          });
+          
+          const totalLogged = guestIncomes.reduce((sum, inc) => sum + Number(inc.amount), 0);
+          const difference = Number(bookingForm.advance_paid || 0) - totalLogged;
+          
+          if (difference !== 0) {
+            await supabase.from('incomes').insert([{
+              resort_id: activeResortId,
+              tenant_id: profile?.tenant_id,
+              booking_id: targetId,
+              amount: difference,
+              source: 'Room Rent',
+              notes: difference > 0 
+                ? `Advance Payment: ${bookingForm.guest_name} (${bookingForm.reference_number})`
+                : `Adjustment/Refund: ${bookingForm.guest_name} (${bookingForm.reference_number})`,
+              date: new Date().toLocaleDateString('en-CA'),
+              payment_mode: 'UPI'
+            }]);
           }
         } catch (syncErr) {
           console.error("Error syncing advance payment to incomes:", syncErr);
@@ -930,6 +1030,14 @@ export default function BookingForm() {
     );
   }
 
+  // Helper derived state for Masked Guest Receipt (OTA bookings)
+  let guestGstReceipt = 0;
+  if (bookingForm.is_ota_collected && bookingForm.gst_rate > 0) {
+      const guestLiabilityRaw = Number(bookingForm.addons_cost || 0) + Number(bookingForm.extra_guest_charges || 0);
+      guestGstReceipt = Math.round(guestLiabilityRaw * (bookingForm.gst_rate / 100));
+  }
+  const guestTotalReceipt = Math.max(0, Number(bookingForm.addons_cost || 0) + Number(bookingForm.extra_guest_charges || 0) + guestGstReceipt - Number(bookingForm.discount_amount || 0));
+
   return (
     <div className="container" style={{ maxWidth: '1200px', margin: '0 auto', padding: '2rem 1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
       
@@ -987,8 +1095,22 @@ export default function BookingForm() {
         </div>
       )}
 
+      {id && bookingForm.status === 'Completed' && isEditing && (
+        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fff3cd', color: '#856404', borderRadius: '8px', border: '1px solid #ffeeba', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <strong style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Lock size={18} /> This booking is Completed and fully settled.
+          </strong>
+          <span style={{ fontSize: '0.9rem' }}>Editing a completed booking may alter financial records and historical receipts. Please confirm before making changes.</span>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: 600, marginTop: '0.5rem' }}>
+            <input type="checkbox" checked={!financialsLocked} onChange={() => setFinancialsLocked(!financialsLocked)} style={{ accentColor: '#856404', width: '16px', height: '16px' }} />
+            Unlock booking for editing
+          </label>
+        </div>
+      )}
+
       <form id="booking-form-main" onSubmit={handleSubmit} className="booking-layout">
-        {/* LEFT COLUMN: FORM DETAILS */}
+        <fieldset disabled={!isEditing || (bookingForm.status === 'Completed' && financialsLocked)} style={{ border: 'none', padding: 0, margin: 0, display: 'contents' }}>
+          {/* LEFT COLUMN: FORM DETAILS */}
         <div className="form-left-col">
 
           {/* RESERVATION STATUS AT TOP */}
@@ -1076,7 +1198,18 @@ export default function BookingForm() {
                 </div>
               </div>
               <div className="form-group">
-                <label className="premium-label">Booking Reference Number</label>
+                <label className="premium-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Booking Reference Number</span>
+                  {isEditing && (
+                    <button 
+                      type="button" 
+                      onClick={() => setBookingForm({...bookingForm, reference_number: generateReference()})}
+                      style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', padding: 0, textDecoration: 'underline' }}
+                    >
+                      Generate New
+                    </button>
+                  )}
+                </label>
                 <input disabled={!isEditing} 
                   type="text" 
                   required 
@@ -1307,13 +1440,49 @@ export default function BookingForm() {
               </div>
             )}
 
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Breakfast Inclusions</label>
-                <select disabled={!isEditing} className="premium-select" value={bookingForm.breakfast} onChange={e => setBookingForm({...bookingForm, breakfast: e.target.value})}>
-                  <option value="NA">No Breakfast (NA)</option>
-                  <option value="Included">Breakfast Included</option>
-                </select>
+                <div 
+                  className="addon-card" 
+                  style={{ 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', 
+                    border: bookingForm.breakfast === 'Included' ? '2px solid var(--primary)' : '1px solid var(--border)', 
+                    borderRadius: '8px', background: bookingForm.breakfast === 'Included' ? 'rgba(16, 185, 129, 0.05)' : '#fff',
+                    cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.2s'
+                  }}
+                  onClick={() => {
+                    if (!isEditing) return;
+                    setBookingForm({...bookingForm, breakfast: bookingForm.breakfast === 'Included' ? 'NA' : 'Included'});
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: bookingForm.breakfast === 'Included' ? 'none' : '2px solid #cbd5e1', background: bookingForm.breakfast === 'Included' ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {bookingForm.breakfast === 'Included' && <CheckCircle2 size={14} color="#fff" />}
+                    </div>
+                    <span style={{ fontWeight: bookingForm.breakfast === 'Included' ? 700 : 500, color: bookingForm.breakfast === 'Included' ? 'var(--primary)' : 'inherit' }}>Breakfast Included</span>
+                  </div>
+                  {bookingForm.breakfast === 'Included' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={e => e.stopPropagation()}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Cost (₹):</span>
+                      <input 
+                        type="number" 
+                        disabled={!isEditing}
+                        value={bookingForm.addon_costs_itemized?.['breakfast'] ?? ''} 
+                        onChange={e => {
+                          const oldVal = Number(bookingForm.addon_costs_itemized?.['breakfast'] || 0);
+                          const newVal = Number(e.target.value);
+                          setBookingForm({
+                            ...bookingForm, 
+                            addon_costs_itemized: { ...bookingForm.addon_costs_itemized, 'breakfast': newVal },
+                            addons_cost: (bookingForm.addons_cost || 0) - oldVal + newVal
+                          });
+                        }}
+                        style={{ width: '80px', padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, color: 'var(--primary)', textAlign: 'right' }}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
@@ -1399,42 +1568,63 @@ export default function BookingForm() {
             </h3>
 
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-              <div className="form-group">
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="premium-label">Extra Add-on Services</label>
-                <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  {['Food', 'Fire camp', 'BBQ'].map(addon => (
-                    <label key={addon} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>
-                      <input disabled={!isEditing} 
-                        type="checkbox" 
-                        style={{ accentColor: 'var(--primary)' }}
-                        checked={bookingForm.addon_selections?.includes(addon)} 
-                        onChange={e => {
-                          const newSels = e.target.checked 
-                            ? [...(bookingForm.addon_selections || []), addon] 
-                            : (bookingForm.addon_selections || []).filter(a => a !== addon);
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
+                  {['Food', 'Fire camp', 'BBQ', 'Others'].map(addon => {
+                    const isSelected = bookingForm.addon_selections?.includes(addon);
+                    return (
+                      <div 
+                        key={addon}
+                        className="addon-card" 
+                        style={{ 
+                          display: 'flex', flexDirection: 'column', padding: '1rem', 
+                          border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)', 
+                          borderRadius: '8px', background: isSelected ? 'rgba(16, 185, 129, 0.05)' : '#fff',
+                          cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.2s', gap: '0.75rem'
+                        }}
+                        onClick={() => {
+                          if (!isEditing) return;
+                          const newSels = isSelected 
+                            ? (bookingForm.addon_selections || []).filter(a => a !== addon)
+                            : [...(bookingForm.addon_selections || []), addon];
                           setBookingForm({...bookingForm, addon_selections: newSels});
-                        }} 
-                      />
-                      {addon}
-                    </label>
-                  ))}
-                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>
-                    <input disabled={!isEditing} 
-                      type="checkbox" 
-                      style={{ accentColor: 'var(--primary)' }}
-                      checked={bookingForm.addon_selections?.includes('Others')} 
-                      onChange={e => {
-                        const newSels = e.target.checked 
-                          ? [...(bookingForm.addon_selections || []), 'Others'] 
-                          : (bookingForm.addon_selections || []).filter(a => a !== 'Others');
-                        setBookingForm({...bookingForm, addon_selections: newSels});
-                      }} 
-                    />
-                    Others
-                  </label>
-                  {bookingForm.addon_selections?.includes('Others') && (
-                    <input disabled={!isEditing} type="text" className="premium-input" style={{ width: '100%', marginTop: '0.5rem' }} placeholder="Specify custom add-on..." value={bookingForm.addon_others || ''} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
-                  )}
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: isSelected ? 'none' : '2px solid #cbd5e1', background: isSelected ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            {isSelected && <CheckCircle2 size={14} color="#fff" />}
+                          </div>
+                          <span style={{ fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--primary)' : 'inherit' }}>{addon}</span>
+                        </div>
+                        
+                        {isSelected && addon === 'Others' && (
+                          <input disabled={!isEditing} type="text" className="premium-input" style={{ width: '100%', marginTop: '0.25rem', padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} placeholder="Specify custom add-on..." value={bookingForm.addon_others || ''} onClick={e => e.stopPropagation()} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
+                        )}
+
+                        {isSelected && (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Cost (₹):</span>
+                            <input 
+                              type="number" 
+                              disabled={!isEditing}
+                              value={bookingForm.addon_costs_itemized?.[addon] ?? ''} 
+                              onChange={e => {
+                                const oldVal = Number(bookingForm.addon_costs_itemized?.[addon] || 0);
+                                const newVal = Number(e.target.value);
+                                setBookingForm({
+                                  ...bookingForm, 
+                                  addon_costs_itemized: { ...bookingForm.addon_costs_itemized, [addon]: newVal },
+                                  addons_cost: (bookingForm.addons_cost || 0) - oldVal + newVal
+                                });
+                              }}
+                              style={{ width: '100px', padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, color: 'var(--primary)', textAlign: 'right' }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1472,15 +1662,54 @@ export default function BookingForm() {
                     ...bookingForm,
                     booking_source: src,
                     agent_name: src === 'Agent' ? defName : '',
-                    agent_phone: src === 'Agent' ? (bookingForm.agent_phone || agentPhones[defName] || '') : ''
+                    agent_phone: src === 'Agent' ? (bookingForm.agent_phone || agentPhones[defName] || '') : '',
+                    is_ota_collected: (src === 'OTA') ? bookingForm.is_ota_collected : false
                   });
                 }}>
                   <option value="Direct">Direct Booking</option>
-                  <option value="Airbnb">Airbnb</option>
-                  <option value="Booking.com">Booking.com</option>
+                  <option value="OTA">OTA (Online Travel Agency)</option>
                   <option value="Agent">Agent Booking</option>
                   <option value="Other">Other Channel</option>
                 </select>
+
+                {bookingForm.booking_source === 'OTA' && (
+                  <div style={{ marginTop: '0.5rem' }}>
+                    <select disabled={!isEditing} className="premium-select" value={bookingForm.ota_channel} onChange={e => setBookingForm({...bookingForm, ota_channel: e.target.value})}>
+                      <option value="Airbnb">Airbnb</option>
+                      <option value="Booking.com">Booking.com</option>
+                      <option value="Agoda">Agoda</option>
+                      <option value="MakeMyTrip">MakeMyTrip</option>
+                      <option value="Goibibo">Goibibo</option>
+                      <option value="Expedia">Expedia</option>
+                      <option value="Cleartrip">Cleartrip</option>
+                      <option value="EaseMyTrip">EaseMyTrip</option>
+                      <option value="Other OTA">Other OTA</option>
+                    </select>
+                    {bookingForm.ota_channel === 'Other OTA' && (
+                      <input disabled={!isEditing} 
+                        type="text" 
+                        className="premium-input" 
+                        style={{ marginTop: '0.5rem' }} 
+                        placeholder="Specify OTA Name" 
+                        value={bookingForm.custom_ota_channel || ''} 
+                        onChange={e => setBookingForm({...bookingForm, custom_ota_channel: e.target.value})} 
+                        required
+                      />
+                    )}
+                  </div>
+                )}
+
+                {(bookingForm.booking_source === 'OTA' || bookingForm.booking_source === 'Other' || bookingForm.booking_source === 'Agent') && (
+                  <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)', marginTop: '0.75rem' }}>
+                    <input disabled={!isEditing} 
+                      type="checkbox" 
+                      style={{ accentColor: 'var(--primary)' }}
+                      checked={bookingForm.is_ota_collected} 
+                      onChange={e => setBookingForm({...bookingForm, is_ota_collected: e.target.checked})} 
+                    />
+                    Payment collected by OTA/Channel (Pending Settlement)
+                  </label>
+                )}
                 
                 {bookingForm.booking_source === 'Agent' && (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
@@ -1563,7 +1792,7 @@ export default function BookingForm() {
                 <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group">
-                <label className="premium-label">Advance Deposit Received (₹)</label>
+                <label className="premium-label">Total Amount Paid (₹)</label>
                 <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.advance_paid} onChange={e => setBookingForm({...bookingForm, advance_paid: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
             </div>
@@ -1571,7 +1800,7 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Total Add-on Services Cost (₹)</label>
-                <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.addons_cost} onChange={e => setBookingForm({...bookingForm, addons_cost: e.target.value === '' ? '' : Number(e.target.value)})} />
+                <input readOnly type="number" className="premium-input" value={bookingForm.addons_cost} style={{ background: 'var(--bg-secondary)', color: 'var(--text-muted)' }} />
               </div>
               <div className="form-group">
                 <label className="premium-label">Extra Guest / Occupancy Charges (₹)</label>
@@ -1579,16 +1808,38 @@ export default function BookingForm() {
               </div>
             </div>
 
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+              <div className="form-group">
+                <label className="premium-label">Discount Amount (₹)</label>
+                <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.discount_amount} onChange={e => setBookingForm({...bookingForm, discount_amount: e.target.value === '' ? '' : Number(e.target.value)})} />
+              </div>
+              <div className="form-group">
+                {/* Empty placeholder for alignment */}
+              </div>
+            </div>
             
           </div>
           
+          {isEditing && !window.Capacitor?.isNativePlatform() && (
+            <div style={{ marginTop: '2rem' }}>
+              <button 
+                type="submit" 
+                className="btn btn-primary" 
+                disabled={isSubmitting} 
+                style={{ width: '100%', padding: '1.1rem', fontSize: '1.05rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', borderRadius: '12px', fontWeight: 800, boxShadow: '0 4px 15px rgba(5, 150, 105, 0.2)' }}
+              >
+                <CheckCircle2 size={20} /> {isSubmitting ? 'Processing...' : (id ? 'Save Reservation' : 'Confirm Booking')}
+              </button>
+            </div>
+          )}
+
         </div>
 
         {/* RIGHT COLUMN: STICKY RESERVATION RECEIPT */}
         <div className="form-right-col">
           <div className="sticky-receipt">
             <div className="receipt-header">
-              <span>Booking Summary</span>
+              <span>{bookingForm.is_ota_collected ? "Guest Add-on Receipt" : "Booking Summary"}</span>
               <span className={`badge badge-${bookingForm.status === 'Confirmed' || bookingForm.status === 'Completed' ? 'success' : (bookingForm.status === 'Pending' ? 'warning' : 'danger')}`} style={{ fontSize: '0.75rem', padding: '0.25rem 0.75rem' }}>
                 {bookingForm.status}
               </span>
@@ -1645,10 +1896,12 @@ export default function BookingForm() {
             <div style={{ width: '100%', height: '1px', background: '#cbd5e1', margin: '1.25rem 0' }}></div>
 
             {/* Financials list */}
-            <div className="receipt-row">
-              <span>Base Accommodation:</span>
-              <span>₹{(bookingForm.base_amount || 0).toLocaleString()}</span>
-            </div>
+            {!bookingForm.is_ota_collected && (
+              <div className="receipt-row">
+                <span>Base Accommodation:</span>
+                <span>₹{(bookingForm.base_amount || 0).toLocaleString()}</span>
+              </div>
+            )}
             {Number(bookingForm.extra_guest_charges || 0) > 0 && (
               <div className="receipt-row">
                 <span>Extra Guest Fee:</span>
@@ -1656,24 +1909,44 @@ export default function BookingForm() {
               </div>
             )}
             {Number(bookingForm.addons_cost || 0) > 0 && (
-              <div className="receipt-row">
-                <span>Add-on Amenities:</span>
-                <span>₹{Number(bookingForm.addons_cost).toLocaleString()}</span>
+              <>
+                {Object.entries(bookingForm.addon_costs_itemized || {}).map(([key, val]) => {
+                  if (key !== '_last_guests' && Number(val) > 0) {
+                    return (
+                      <div key={key} className="receipt-row" style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                        <span style={{ textTransform: 'capitalize' }}>+ {key}:</span>
+                        <span>₹{Number(val).toLocaleString()}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })}
+                <div className="receipt-row" style={{ fontWeight: 600 }}>
+                  <span>Total Add-ons:</span>
+                  <span>₹{Number(bookingForm.addons_cost).toLocaleString()}</span>
+                </div>
+              </>
+            )}
+
+            {Number(bookingForm.discount_amount || 0) > 0 && (
+              <div className="receipt-row" style={{ color: 'var(--danger)' }}>
+                <span>Discount Applied:</span>
+                <span>- ₹{Number(bookingForm.discount_amount || 0).toLocaleString()}</span>
               </div>
             )}
             
             {profile?.global_settings?.tenant_gst?.enabled && (
               <div className="receipt-row" style={{ color: 'var(--text-muted)' }}>
-                <span>GST ({bookingForm.gst_rate || 0}%):</span>
-                <span>₹{(bookingForm.gst_amount || 0).toLocaleString()}</span>
+                <span>{bookingForm.is_ota_collected ? "GST (On Add-ons):" : `GST (${bookingForm.gst_rate || 0}%):`}</span>
+                <span>₹{(bookingForm.is_ota_collected ? guestGstReceipt : (bookingForm.gst_amount || 0)).toLocaleString()}</span>
               </div>
             )}
 
             <div className="receipt-total-box">
               <div className="receipt-row bold" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
-                <span>Gross Total:</span>
+                <span>{bookingForm.is_ota_collected ? "Guest Payable Total:" : "Gross Total:"}</span>
                 <span style={{ color: '#0F2C59', fontSize: '1.2rem', fontWeight: 800 }}>
-                  ₹{(bookingForm.total_amount || 0).toLocaleString()}
+                  ₹{(bookingForm.is_ota_collected ? guestTotalReceipt : (bookingForm.total_amount || 0)).toLocaleString()}
                 </span>
               </div>
               <div className="receipt-row" style={{ fontSize: '0.85rem', marginBottom: '0.5rem' }}>
@@ -1688,6 +1961,11 @@ export default function BookingForm() {
                   ₹{(bookingForm.balance_amount || 0).toLocaleString()}
                 </span>
               </div>
+              {bookingForm.is_ota_collected && (
+                <div style={{ marginTop: '0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', textAlign: 'center' }}>
+                  *Room accommodation charges are prepaid and settled separately via {bookingForm.ota_channel || 'OTA'}.
+                </div>
+              )}
             </div>
 
             {isEditing && (
@@ -1704,6 +1982,7 @@ export default function BookingForm() {
         </div>
 
         
+        </fieldset>
       </form>
     </div>
   );

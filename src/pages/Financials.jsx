@@ -402,7 +402,11 @@ export default function Financials() {
                              {(i.notes?.toLowerCase().includes('advance') || i.notes?.toLowerCase().includes('settlement') || i.notes?.toLowerCase().includes('adjustment')) && (
                                 <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
                                   {i.notes?.toLowerCase().includes('advance') && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700 }}>Advance</span>}
-                                  {i.notes?.toLowerCase().includes('settlement') && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700 }}>Settlement</span>}
+                                  {i.notes?.toLowerCase().includes('ota settlement') ? (
+                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', fontWeight: 700 }}>OTA Settlement</span>
+                                  ) : i.notes?.toLowerCase().includes('settlement') ? (
+                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700 }}>Settlement</span>
+                                  ) : null}
                                   {i.notes?.toLowerCase().includes('adjustment') && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>Adjustment</span>}
                                 </div>
                              )}
@@ -464,11 +468,15 @@ export default function Financials() {
                                   Advance
                                 </span>
                               )}
-                              {i.notes?.toLowerCase().includes('settlement') && (
+                              {i.notes?.toLowerCase().includes('ota settlement') ? (
+                                <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', fontWeight: 700 }}>
+                                  OTA Settlement
+                                </span>
+                              ) : i.notes?.toLowerCase().includes('settlement') ? (
                                 <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700 }}>
                                   Settlement
                                 </span>
-                              )}
+                              ) : null}
                               {i.notes?.toLowerCase().includes('adjustment') && (
                                 <span style={{ fontSize: '0.65rem', padding: '1px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>
                                   Adjustment

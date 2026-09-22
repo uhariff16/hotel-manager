@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor, X } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor, X, Tag } from 'lucide-react';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
@@ -71,6 +71,119 @@ Booking ID: {booking_id}
 Please clear the dues at your earliest convenience to ensure a smooth check-in.
 
 📞 Contact: {resort_phone}`;
+
+// Add-on & Pricing Settings Component
+const PricingSettings = ({ activeResortId, resorts }) => {
+  const [globalPricing, setGlobalPricing] = useState({ breakfast: '', 'Fire camp': '', 'BBQ': '', 'Food': '' });
+  const [cottages, setCottages] = useState([]);
+  const [selectedCottage, setSelectedCottage] = useState('global');
+  const [propertyPricing, setPropertyPricing] = useState({ breakfast: '', 'Fire camp': '', 'BBQ': '', 'Food': '' });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState({ text: '', type: '' });
+
+  useEffect(() => {
+    fetchPricing();
+  }, [activeResortId, selectedCottage]);
+
+  const fetchPricing = async () => {
+    if (!activeResortId) return;
+    
+    // Fetch global pricing
+    if (selectedCottage === 'global') {
+      const { data, error } = await supabase.from('resorts').select('addon_pricing').eq('id', activeResortId).single();
+      if (!error && data) {
+        setGlobalPricing(data.addon_pricing || { breakfast: '', 'Fire camp': '', 'BBQ': '', 'Food': '' });
+      }
+    } else {
+      // Fetch property pricing
+      const { data, error } = await supabase.from('cottages').select('addon_pricing').eq('id', selectedCottage).single();
+      if (!error && data) {
+        setPropertyPricing(data.addon_pricing || { breakfast: '', 'Fire camp': '', 'BBQ': '', 'Food': '' });
+      }
+    }
+
+    // Load cottages list once
+    if (cottages.length === 0) {
+      const { data } = await supabase.from('cottages').select('id, name').eq('resort_id', activeResortId);
+      if (data) setCottages(data);
+    }
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setMsg({ text: '', type: '' });
+    
+    try {
+      if (selectedCottage === 'global') {
+        const { error } = await supabase.from('resorts').update({ addon_pricing: globalPricing }).eq('id', activeResortId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('cottages').update({ addon_pricing: propertyPricing }).eq('id', selectedCottage);
+        if (error) throw error;
+      }
+      setMsg({ text: 'Pricing saved successfully!', type: 'success' });
+      setTimeout(() => setMsg({ text: '', type: '' }), 3000);
+    } catch (e) {
+      setMsg({ text: e.message, type: 'error' });
+    }
+    
+    setSaving(false);
+  };
+
+  const currentPricing = selectedCottage === 'global' ? globalPricing : propertyPricing;
+  const setPricing = selectedCottage === 'global' ? setGlobalPricing : setPropertyPricing;
+
+  const handlePriceChange = (key, val) => {
+    setPricing({ ...currentPricing, [key]: val === '' ? '' : Number(val) });
+  };
+
+  return (
+    <div className="settings-card">
+      <div className="card-header">
+        <h3 className="card-title"><Tag size={20} /> Add-ons & Pricing Configuration</h3>
+        <p className="card-description">Set global default prices for add-ons, or override them for specific properties.</p>
+      </div>
+      <div className="card-body">
+        
+        <div className="form-group" style={{ marginBottom: '2rem' }}>
+          <label className="premium-label">Configuration Level</label>
+          <select className="premium-select" value={selectedCottage} onChange={(e) => setSelectedCottage(e.target.value)}>
+            <option value="global">🌍 Global Default (All Properties)</option>
+            {cottages.map(c => (
+              <option key={c.id} value={c.id}>🏠 Property: {c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+          {['breakfast', 'Fire camp', 'BBQ', 'Food'].map(addon => (
+            <div key={addon} className="form-group">
+              <label className="premium-label" style={{ textTransform: 'capitalize' }}>{addon} Price (₹)</label>
+              <input 
+                type="number" 
+                className="premium-input" 
+                placeholder="0" 
+                value={currentPricing[addon] ?? ''} 
+                onChange={(e) => handlePriceChange(addon, e.target.value)} 
+              />
+            </div>
+          ))}
+        </div>
+
+        {msg.text && (
+          <div style={{ padding: '0.75rem', marginBottom: '1.5rem', borderRadius: '8px', background: msg.type === 'success' ? '#d1fae5' : '#fee2e2', color: msg.type === 'success' ? '#065f46' : '#991b1b', fontSize: '0.9rem' }}>
+            {msg.text}
+          </div>
+        )}
+
+        <button onClick={handleSave} disabled={saving} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          {saving ? <Loader2 size={16} className="spin" /> : <Save size={16} />} 
+          Save {selectedCottage === 'global' ? 'Global' : 'Property'} Pricing
+        </button>
+      </div>
+    </div>
+  );
+};
 
 export default function Settings() {
   const { profile, setProfile, theme, updateSettings, session, activeResortId, resorts } = useSettingsStore();
@@ -653,6 +766,29 @@ export default function Settings() {
             <SettingsIcon size={18} /> General Settings
           </button>
 
+          <button 
+            type="button"
+            onClick={() => setActiveTab('pricing')}
+            style={{ 
+              padding: '0.75rem 1rem', 
+              background: activeTab === 'pricing' ? 'var(--primary)' : 'transparent', 
+              color: activeTab === 'pricing' ? 'white' : 'var(--text-muted)', 
+              borderRadius: '8px', 
+              cursor: 'pointer', 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '0.75rem',
+              border: 'none',
+              textAlign: 'left',
+              width: '100%',
+              fontSize: '0.95rem',
+              fontWeight: 500,
+              transition: 'all 0.2s'
+            }}
+          >
+            <Tag size={18} /> Add-ons & Pricing
+          </button>
+
           {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalTemplatesEnabled && profile?.feature_comm_enabled !== false)) && (
             <button 
               type="button"
@@ -1109,6 +1245,10 @@ export default function Settings() {
           )}
 
           {/* TEMPLATES MANAGEMENT TAB */}
+          {activeTab === 'pricing' && (
+            <PricingSettings activeResortId={activeResortId} resorts={resorts} />
+          )}
+
           {activeTab === 'templates' && (profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
             <div className="card">
               <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

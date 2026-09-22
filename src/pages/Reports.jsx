@@ -91,7 +91,9 @@ export default function Reports() {
   const completedBookings = cottageBookings.filter(b => b.status === 'Completed');
   const completedValue = completedBookings.reduce((acc, b) => acc + Number(b.total_amount || 0), 0);
   const completedGuests = completedBookings.reduce((acc, b) => acc + (Number(b.adults_count || 0) + Number(b.kids_count || 0)), 0);
-
+  const otaReceivables = validBookings
+    .filter(b => b.ota_payment_status === 'Pending OTA Settlement')
+    .reduce((acc, b) => acc + Math.max(0, Number(b.total_amount || 0) - Number(b.advance_paid || 0)), 0);
   // Sorting configs
   const [bookingSort, setBookingSort] = useState({ key: 'check_in_date', direction: 'ascending' });
   const [incomeSort, setIncomeSort] = useState({ key: 'date', direction: 'descending' });
@@ -822,10 +824,14 @@ export default function Reports() {
               {/* REPORT VIEW: SUMMARY */}
               {activeReportType === 'summary' && (
                 <div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '1rem', marginBottom: '1rem' }}>
                     <div style={{ background: 'rgba(5, 150, 105, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.2)' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--primary)' }}>TOTAL COLLECTIONS</span>
                       <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0', color: 'var(--primary)' }}>₹{(totalCollections || 0).toLocaleString()}</h3>
+                    </div>
+                    <div style={{ background: 'rgba(245, 158, 11, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)' }}>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#d97706' }}>OTA RECEIVABLES</span>
+                      <h3 style={{ fontSize: '1.5rem', fontWeight: 800, margin: '0.25rem 0 0', color: '#d97706' }}>₹{(otaReceivables || 0).toLocaleString()}</h3>
                     </div>
                     <div style={{ background: 'rgba(239, 68, 68, 0.1)', padding: '1rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
                       <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--danger)' }}>TOTAL EXPENSES</span>

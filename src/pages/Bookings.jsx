@@ -121,6 +121,7 @@ export default function Bookings() {
   const navigate = useNavigate();
   const { activeResortId, profile } = useSettingsStore();
   const [bookings, setBookings] = useState([]);
+  const clickTimeoutRef = React.useRef(null);
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [activeResort, setActiveResort] = useState(null);
@@ -433,7 +434,14 @@ export default function Bookings() {
       .replace(/{kids_count}/g, (booking.kids_count || 0).toString())
       .replace(/{breakfast}/g, breakfastVal)
       .replace(/{night_count}/g, (booking.night_count || '0').toString())
-      .replace(/{total_amount}/g, (booking.total_amount || 0).toLocaleString())
+      .replace(/{total_amount}/g, (() => {
+        if (booking.payment_method === 'OTA' || booking.ota_payment_status === 'Pending OTA Settlement' || booking.ota_payment_status === 'Settled') {
+          const guestLiabilityRaw = Number(booking.addons_cost || 0) + Number(booking.extra_guest_charges || 0);
+          const guestGst = booking.gst_rate > 0 ? Math.round(guestLiabilityRaw * (booking.gst_rate / 100)) : 0;
+          return (guestLiabilityRaw + guestGst).toLocaleString();
+        }
+        return (booking.total_amount || 0).toLocaleString();
+      })())
       .replace(/{advance_paid}/g, (booking.advance_paid || 0).toLocaleString())
       .replace(/{balance_amount}/g, (booking.balance_amount || 0).toLocaleString())
       .replace(/{vehicle_number}/g, booking.vehicle_number || 'N/A')
@@ -455,7 +463,13 @@ export default function Bookings() {
         }
         return booking.booking_source || 'Direct';
       })())
-      .replace(/{payment_amount}/g, customPaymentAmount || (booking.total_amount - booking.balance_amount || 0).toLocaleString());
+      .replace(/{payment_amount}/g, (() => {
+        if (customPaymentAmount) return customPaymentAmount;
+        if (booking.payment_method === 'OTA' || booking.ota_payment_status === 'Pending OTA Settlement' || booking.ota_payment_status === 'Settled') {
+          return (booking.advance_paid || 0).toLocaleString();
+        }
+        return (booking.total_amount - booking.balance_amount || 0).toLocaleString();
+      })());
 
     // Substitute custom tags dynamically
     try {
@@ -526,6 +540,48 @@ export default function Bookings() {
       const displayStatus = (b.status === 'Completed' && b.balance_amount > 0) ? 'Pending Payment' : b.status;
       return displayStatus === status;
     }).length;
+  };
+
+  const handleMarkOTASettled = async (b) => {
+    if (!window.confirm(`Mark OTA payment as settled for ${b.reference_number}?`)) return;
+    
+    const otaLiabilityRaw = Number(b.base_amount || 0);
+    const guestLiabilityRaw = Number(b.addons_cost || 0) + Number(b.extra_guest_charges || 0);
+    const rawTotal = otaLiabilityRaw + guestLiabilityRaw;
+    
+    const computedGstAmount = Number(b.gst_amount || 0);
+    const ratio = (computedGstAmount > 0 && rawTotal > 0) ? (computedGstAmount / rawTotal) : 0;
+    const otaGst = Math.round(otaLiabilityRaw * ratio);
+    
+    // OTA portion is strictly the base accommodation + their portion of GST
+    const amtSettled = Math.max(0, otaLiabilityRaw + otaGst);
+
+    try {
+      const { error } = await supabase.from('bookings').update({ ota_payment_status: 'Settled' }).eq('id', b.id);
+      if (error) throw error;
+
+      if (amtSettled > 0) {
+        const { error: incomeErr } = await supabase.from('incomes').insert([{
+          resort_id: activeResortId,
+          tenant_id: profile?.tenant_id,
+          booking_id: b.id,
+          amount: amtSettled,
+          source: 'Room Rent',
+          notes: `OTA Settlement: ${b.guest_name} (${b.reference_number}) - via OTA`,
+          date: new Date().toLocaleDateString('en-CA'),
+          payment_mode: 'Bank Transfer'
+        }]);
+        if (incomeErr) console.error("Error inserting OTA income", incomeErr);
+      }
+
+      setBookings(prev => prev.map(x => x.id === b.id ? { ...x, ota_payment_status: 'Settled' } : x));
+      if (selectedDetailedBooking?.id === b.id) {
+        setSelectedDetailedBooking(prev => ({...prev, ota_payment_status: 'Settled'}));
+      }
+      alert("OTA payment marked as settled and income recorded.");
+    } catch(err) {
+      alert("Failed to mark OTA as settled: " + err.message);
+    }
   };
 
   const statusOptions = [
@@ -643,6 +699,7 @@ export default function Bookings() {
       const newTotal = Math.max(0, Number(settlingBooking.total_amount || 0) - discount);
       const newBalance = Math.max(0, Number(settlingBooking.balance_amount || 0) - amtPaid - discount);
       const newAdvancePaid = Number(settlingBooking.advance_paid || 0) + amtPaid;
+      const newDiscountAmount = Number(settlingBooking.discount_amount || 0) + discount;
       
       let targetStatus = settlingBooking.status;
       if (newBalance === 0 && (settlingBooking.status === 'Checked-out' || settlingBooking.status === 'Completed')) {
@@ -655,7 +712,8 @@ export default function Bookings() {
           status: targetStatus,
           total_amount: newTotal,
           balance_amount: newBalance,
-          advance_paid: newAdvancePaid
+          advance_paid: newAdvancePaid,
+          discount_amount: newDiscountAmount
         })
         .eq('id', settlingBooking.id);
         
@@ -679,7 +737,8 @@ export default function Bookings() {
         status: targetStatus,
         total_amount: newTotal,
         balance_amount: newBalance,
-        advance_paid: newAdvancePaid
+        advance_paid: newAdvancePaid,
+        discount_amount: newDiscountAmount
       } : x));
       const bookingId = settlingBooking.id;
       setSettlingBooking(null);
@@ -1094,7 +1153,12 @@ export default function Bookings() {
                 <div style={{ padding: '1rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem', gap: '0.5rem' }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
-                      <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.reference_number}</small>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.75rem', display: 'block', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.reference_number}</small>
+                        {b.ota_payment_status === 'Pending OTA Settlement' && (
+                          <span style={{ fontSize: '0.65rem', padding: '0.1rem 0.4rem', background: '#f59e0b', color: '#fff', borderRadius: '4px', fontWeight: 'bold' }}>OTA Pending</span>
+                        )}
+                      </div>
                       <h3 style={{ margin: '0.1rem 0 0.25rem 0', fontSize: '1.1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{b.guest_name}</h3>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
@@ -1173,7 +1237,7 @@ export default function Bookings() {
                     </div>
                     
                     <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => navigate(`/bookings/edit/${b.id}?edit=true`)} className="btn-icon" style={{ background: 'var(--bg-color)', border: '1px solid var(--border)' }}><Edit2 size={18} /></button>
+                      <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon" style={{ background: 'var(--bg-color)', border: '1px solid var(--border)' }}><Edit2 size={18} /></button>
                       {b.status === 'Confirmed' && (
                         <button onClick={() => handleCheckIn(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Check-in</button>
                       )}
@@ -1227,12 +1291,30 @@ export default function Bookings() {
                   const opt = statusOptions.find(o => o.label === displayStatus) || statusOptions[1];
 
                   return (
-                    <tr key={b.id} className="table-row-hover" onClick={(e) => { if (e.target.tagName !== 'INPUT' && !e.target.closest('button') && !e.target.closest('.btn-icon') && !e.target.closest('a')) setSelectedDetailedBooking(b); }} style={{ opacity: b.status === 'Cancelled' ? 0.6 : 1, cursor: 'pointer' }}>
+                    <tr key={b.id} className="table-row-hover" onClick={(e) => { 
+                      if (e.target.tagName === 'INPUT' || e.target.closest('button') || e.target.closest('.btn-icon') || e.target.closest('a')) return;
+                      
+                      if (clickTimeoutRef.current) {
+                        clearTimeout(clickTimeoutRef.current);
+                        clickTimeoutRef.current = null;
+                        navigate(`/bookings/edit/${b.id}`);
+                      } else {
+                        clickTimeoutRef.current = setTimeout(() => {
+                          setSelectedDetailedBooking(b);
+                          clickTimeoutRef.current = null;
+                        }, 200);
+                      }
+                    }} style={{ opacity: b.status === 'Cancelled' ? 0.6 : 1, cursor: 'pointer' }}>
                       <td>
                         <input type="checkbox" checked={selectedBookings.includes(b.id)} onChange={() => toggleSelectBooking(b.id)} />
                       </td>
                       <td>
-                        <small style={{ color: 'var(--primary)', fontWeight: 800 }}>{b.reference_number}</small>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <small style={{ color: 'var(--primary)', fontWeight: 800 }}>{b.reference_number}</small>
+                          {b.ota_payment_status === 'Pending OTA Settlement' && (
+                            <span style={{ fontSize: '0.65rem', padding: '0.2rem 0.5rem', background: '#f59e0b', color: '#fff', borderRadius: '4px', fontWeight: 'bold' }}>OTA Pending</span>
+                          )}
+                        </div>
                         <div style={{ fontWeight: 700, fontSize: '1rem' }}>{b.guest_name}</div>
                         <small style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <Phone size={12} /> {b.phone_number}
@@ -1319,7 +1401,7 @@ export default function Bookings() {
                           {(b.status === 'Completed' || b.status === 'Checked-out') && (
                             <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ color: '#6366f1' }}><RotateCcw size={16} /></button>
                           )}
-                          <button onClick={() => navigate(`/bookings/edit/${b.id}?edit=true`)} className="btn-icon"><Edit2 size={16} /></button>
+                          <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon"><Edit2 size={16} /></button>
                           {(b.status === 'Pending' || b.status === 'Confirmed') && (
                             <button onClick={() => deleteBooking(b.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={16} /></button>
                           )}
@@ -1366,7 +1448,15 @@ export default function Bookings() {
                 type="number" 
                 className="form-input" 
                 value={settlementData.discount} 
-                onChange={e => setSettlementData({ ...settlementData, discount: e.target.value === '' ? '' : Number(e.target.value) })} 
+                onChange={e => {
+                  const newDiscount = e.target.value === '' ? '' : Number(e.target.value);
+                  const currentBalance = settlingBooking.balance_amount || 0;
+                  setSettlementData({ 
+                    ...settlementData, 
+                    discount: newDiscount,
+                    amountPaid: Math.max(0, currentBalance - (newDiscount || 0))
+                  });
+                }} 
               />
             </div>
 
@@ -1411,21 +1501,37 @@ export default function Bookings() {
       {selectedDetailedBooking && createPortal(
         <div className="modal-overlay" onClick={() => setSelectedDetailedBooking(null)}>
           <div className="modal-content" style={{ maxWidth: '650px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-              <div>
-                <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.8rem' }}>{selectedDetailedBooking.reference_number}</small>
-                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800 }}>Booking Details</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+              <div style={{ minWidth: '200px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
+                  <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{selectedDetailedBooking.reference_number}</small>
+                  {selectedDetailedBooking.ota_payment_status === 'Pending OTA Settlement' && (
+                    <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', borderRadius: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>OTA Pending</span>
+                  )}
+                  {selectedDetailedBooking.ota_payment_status === 'Settled' && (
+                    <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', background: '#d1fae5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>OTA Settled</span>
+                  )}
+                </div>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.2 }}>Booking Details</h2>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                {selectedDetailedBooking.ota_payment_status === 'Pending OTA Settlement' && (
+                  <button 
+                    onClick={() => handleMarkOTASettled(selectedDetailedBooking)} 
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '36px', padding: '0 0.75rem', fontSize: '0.8rem', borderRadius: '6px', background: '#fff', color: '#d97706', border: '1px solid #f59e0b', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                  >
+                    <CheckCircle2 size={14} /> Settle OTA
+                  </button>
+                )}
                 <button 
                   onClick={() => {
                     setSelectedDetailedBooking(null);
-                    navigate(`/bookings/edit/${selectedDetailedBooking.id}?edit=true`);
+                    navigate(`/bookings/edit/${selectedDetailedBooking.id}`);
                   }} 
                   className="btn-edit-toggle mode-edit" 
-                  style={{ height: '36px', padding: '0 1rem', fontSize: '0.85rem', borderRadius: '6px' }}
+                  style={{ height: '36px', padding: '0 1rem', fontSize: '0.85rem', borderRadius: '6px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
                 >
-                  <Edit2 size={16} /> Edit Booking
+                  <Edit2 size={14} /> Edit Booking
                 </button>
                 <button 
                   className="btn-icon" 

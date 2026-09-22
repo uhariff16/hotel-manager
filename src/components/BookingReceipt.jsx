@@ -22,6 +22,24 @@ export default function BookingReceipt({ booking, resort, cottage }) {
   
   const displayName = hotelLegalName || cottage?.name || resort?.name || 'Stay Pilot Property';
 
+  // Helper derived state for Masked Guest Receipt (OTA bookings)
+  const isOta = booking.payment_method === 'OTA' || booking.ota_payment_status === 'Pending OTA Settlement' || booking.ota_payment_status === 'Settled';
+  const guestLiabilityRaw = Number(booking.addons_cost || 0) + Number(booking.extra_guest_charges || 0);
+  const guestGst = (booking.gst_rate > 0) ? Math.round(guestLiabilityRaw * (Number(booking.gst_rate) / 100)) : 0;
+  
+  // Apply any checkout discounts specifically to the guest's portion
+  const guestTotal = Math.max(0, guestLiabilityRaw + guestGst - Number(booking.discount_amount || 0));
+
+  const displayGst = isOta ? guestGst : Number(booking.gst_amount || 0);
+  const displayTotal = isOta ? guestTotal : Number(booking.total_amount || 0);
+  
+  // Calculate Amount Paid accurately. If OTA, total amount is guestTotal and balance is the guest's balance.
+  // We need to account for discount applied during settlement. Wait, booking.total_amount ALREADY accounts for discount!
+  // If the total_amount is reduced by discount, guestTotal might not be?
+  // Let's just use the advance_paid if it's OTA, because OTA guests pay advance_paid. Or displayTotal - booking.balance_amount.
+  const displayBalance = Number(booking.balance_amount || 0);
+  const displayAmountPaid = displayTotal - displayBalance;
+
   return (
     <div className={`print-receipt-container ${isA5 ? 'a5-format' : 'a4-format'}`} style={{ padding: isA5 ? '20px' : '40px', background: 'white', color: 'black', fontFamily: 'sans-serif', boxSizing: 'border-box' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '2px solid #eee', paddingBottom: isA5 ? '10px' : '20px', marginBottom: isA5 ? '15px' : '30px' }}>
@@ -33,7 +51,7 @@ export default function BookingReceipt({ booking, resort, cottage }) {
           {displayEmail && <p style={{ margin: '2px 0 0', color: '#555', fontSize: isA5 ? '12px' : '16px' }}>Email: {displayEmail}</p>}
         </div>
         <div style={{ textAlign: 'right' }}>
-          <h2 style={{ margin: 0, fontSize: isA5 ? '18px' : '24px', color: '#333' }}>PAYMENT RECEIPT</h2>
+          <h2 style={{ margin: 0, fontSize: isA5 ? '18px' : '24px', color: '#333' }}>{isOta ? 'GUEST ADD-ON RECEIPT' : 'PAYMENT RECEIPT'}</h2>
           <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Date: {format(new Date(), 'dd MMM yyyy')}</p>
           <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Receipt #: {displayName ? displayName.substring(0,3).toUpperCase() : 'RC'}-{booking.reference_number ? booking.reference_number.split('-').pop() : 'N/A'}</p>
           <p style={{ margin: '5px 0 0', color: '#777', fontSize: isA5 ? '12px' : '16px' }}>Ref #: <strong style={{ color: '#111' }}>{booking.reference_number || 'N/A'}</strong></p>
@@ -67,16 +85,39 @@ export default function BookingReceipt({ booking, resort, cottage }) {
           </tr>
         </thead>
         <tbody>
-          <tr style={{ borderBottom: '1px solid #eee' }}>
-            <td style={{ padding: '12px' }}>Base Accommodation Charge</td>
-            <td style={{ padding: '12px', textAlign: 'right' }}>₹{(booking.base_amount || 0).toLocaleString()}</td>
-          </tr>
-          {(booking.addons_cost > 0) && (
+          {!isOta && (
             <tr style={{ borderBottom: '1px solid #eee' }}>
-              <td style={{ padding: '12px' }}>Add-ons / Extra Services</td>
-              <td style={{ padding: '12px', textAlign: 'right' }}>₹{(booking.addons_cost || 0).toLocaleString()}</td>
+              <td style={{ padding: '12px' }}>Base Accommodation Charge</td>
+              <td style={{ padding: '12px', textAlign: 'right' }}>₹{(booking.base_amount || 0).toLocaleString()}</td>
             </tr>
           )}
+          {(() => {
+            let itemized = booking.addon_costs_itemized;
+            if (typeof itemized === 'string') {
+              try { itemized = JSON.parse(itemized); } catch(e) { itemized = null; }
+            }
+            if (itemized && Object.keys(itemized).filter(k => k !== '_last_guests' && itemized[k] > 0).length > 0) {
+              return Object.entries(itemized).map(([key, val]) => {
+                if (key === '_last_guests' || Number(val) <= 0) return null;
+                const formattedKey = key.charAt(0).toUpperCase() + key.slice(1);
+                return (
+                  <tr key={key} style={{ borderBottom: '1px solid #eee' }}>
+                    <td style={{ padding: '12px', paddingLeft: '24px' }}>+ {formattedKey} (Add-on)</td>
+                    <td style={{ padding: '12px', textAlign: 'right' }}>₹{Number(val).toLocaleString()}</td>
+                  </tr>
+                );
+              });
+            }
+            if (booking.addons_cost > 0) {
+              return (
+                <tr style={{ borderBottom: '1px solid #eee' }}>
+                  <td style={{ padding: '12px' }}>Add-ons / Extra Services</td>
+                  <td style={{ padding: '12px', textAlign: 'right' }}>₹{(booking.addons_cost || 0).toLocaleString()}</td>
+                </tr>
+              );
+            }
+            return null;
+          })()}
           {(booking.extra_guest_charges > 0) && (
             <tr style={{ borderBottom: '1px solid #eee' }}>
               <td style={{ padding: '12px' }}>Extra Guest Charges</td>
@@ -94,23 +135,23 @@ export default function BookingReceipt({ booking, resort, cottage }) {
 
       {/* Totals */}
       <div style={{ width: '300px', marginLeft: 'auto', marginBottom: '40px' }}>
-        {(Number(booking.gst_amount) > 0) && (
+        {displayGst > 0 && (
           <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
             <strong style={{ color: '#555' }}>GST ({booking.gst_rate || 0}%):</strong>
-            <strong>₹{Number(booking.gst_amount || 0).toLocaleString()}</strong>
+            <strong>₹{displayGst.toLocaleString()}</strong>
           </div>
         )}
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
           <strong style={{ color: '#555' }}>Total Amount:</strong>
-          <strong>₹{(booking.total_amount || 0).toLocaleString()}</strong>
+          <strong>₹{displayTotal.toLocaleString()}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: '1px solid #eee' }}>
           <strong style={{ color: '#555' }}>Amount Paid:</strong>
-          <strong style={{ color: '#2e7d32' }}>₹{((booking.total_amount || 0) - (booking.balance_amount || 0)).toLocaleString()}</strong>
+          <strong style={{ color: '#2e7d32' }}>₹{displayAmountPaid.toLocaleString()}</strong>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', fontSize: '18px' }}>
           <strong>Balance Due:</strong>
-          <strong style={{ color: booking.balance_amount > 0 ? '#d32f2f' : '#333' }}>₹{(booking.balance_amount || 0).toLocaleString()}</strong>
+          <strong style={{ color: displayBalance > 0 ? '#d32f2f' : '#333' }}>₹{displayBalance.toLocaleString()}</strong>
         </div>
       </div>
 
