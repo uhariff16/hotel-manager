@@ -121,30 +121,49 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
     
     // Basic HTML5 Canvas Compression
     const reader = new FileReader();
-    reader.onload = (event) => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX_WIDTH = 1200;
-        let width = img.width;
-        let height = img.height;
-        
-        if (width > MAX_WIDTH) {
-          height = Math.round((height * MAX_WIDTH) / width);
-          width = MAX_WIDTH;
-        }
-        
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        ctx.drawImage(img, 0, 0, width, height);
-        
-        canvas.toBlob((blob) => {
-          processImage(blob, true);
-        }, 'image/jpeg', 0.6); // 60% quality
+          reader.onload = (event) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+          const MAX_WIDTH = 1200;
+          
+          if (width > MAX_WIDTH) {
+            height = Math.round((height * MAX_WIDTH) / width);
+            width = MAX_WIDTH;
+          }
+          
+          const canvas = document.createElement('canvas');
+          let ctx = canvas.getContext('2d');
+          
+          const targetBytes = 200 * 1024; // 200 KB
+          let quality = 0.8;
+          
+          const attemptCompression = () => {
+            canvas.width = width;
+            canvas.height = height;
+            ctx.drawImage(img, 0, 0, width, height);
+            
+            canvas.toBlob((blob) => {
+              if (blob.size > targetBytes && quality > 0.1) {
+                quality -= 0.1;
+                attemptCompression();
+              } else if (blob.size > targetBytes && quality <= 0.1) {
+                // Image is still too large at lowest quality, shrink dimensions
+                width = Math.round(width * 0.8);
+                height = Math.round(height * 0.8);
+                quality = 0.6; // reset quality slightly for new dimensions
+                attemptCompression();
+              } else {
+                processImage(blob, true);
+              }
+            }, 'image/jpeg', quality);
+          };
+          
+          attemptCompression();
+        };
+        img.src = event.target.result;
       };
-      img.src = event.target.result;
-    };
     reader.readAsDataURL(file);
   };
 
