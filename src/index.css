@@ -2,6 +2,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&display=swap');
 
 :root {
+  color-scheme: light;
   /* Green + White (Eco Resort) - Default */
   --bg-color: #f8fafc;
   --bg-secondary: #ffffff;
@@ -1151,3 +1152,18 @@ input:checked + .slider:before {
         }
 
       
+
+input[type="date"], input[type="time"] {
+  color-scheme: inherit;
+}
+
+
+[data-theme="dark"] ::-webkit-calendar-picker-indicator {
+  filter: invert(1) brightness(200%);
+}
+
+/* AI Form Highlight */
+.ai-highlight {
+  border: 2px solid #10b981 !important;
+  background-color: #ecfdf5 !important;
+}

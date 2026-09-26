@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, MessageCircle, Mail, CheckSquare, Square, Printer, Share2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, MessageCircle, Mail, CheckSquare, Square, Printer, Share2, CalendarCheck } from 'lucide-react';
 import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
@@ -1500,11 +1500,73 @@ export default function Bookings() {
       {/* Booking Details Modal */}
       {selectedDetailedBooking && createPortal(
         <div className="modal-overlay" onClick={() => setSelectedDetailedBooking(null)}>
-          <div className="modal-content" style={{ maxWidth: '650px', width: '90%' }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
-              <div style={{ minWidth: '200px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '4px' }}>
-                  <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{selectedDetailedBooking.reference_number}</small>
+          <div className="modal-content" style={{ position: 'relative', maxWidth: '650px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
+              <button 
+                className="btn-icon" 
+                onClick={() => setSelectedDetailedBooking(null)}
+                style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', color: 'var(--text-muted)' }}
+              >
+                <X size={24} />
+              </button>
+                          <div style={{ marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem', paddingRight: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '8px' }}>
+                  <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: 800, lineHeight: 1.2 }}>Booking Details</h2>
+                  
+                  {/* Action Bar */}
+                  <div style={{ 
+                    display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap',
+                    background: 'var(--bg-color)', padding: '0.4rem', borderRadius: '8px', border: '1px solid var(--border)' 
+                  }}>
+                    {selectedDetailedBooking.ota_payment_status === 'Pending OTA Settlement' && (
+                      <button 
+                        onClick={() => handleMarkOTASettled(selectedDetailedBooking)} 
+                        style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '30px', padding: '0 0.5rem', fontSize: '0.75rem', borderRadius: '4px', background: '#fff', color: '#d97706', border: '1px solid #f59e0b', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      >
+                        <CheckCircle2 size={12} /> Settle OTA
+                      </button>
+                    )}
+                    {selectedDetailedBooking.status !== 'Completed' && selectedDetailedBooking.status !== 'Checked-out' && selectedDetailedBooking.status !== 'Cancelled' && (
+                      <button 
+                        onClick={() => {
+                          setSelectedDetailedBooking(null);
+                          navigate(`/bookings/edit/${selectedDetailedBooking.id}?focus=checkout`);
+                        }} 
+                        style={{ height: '30px', padding: '0 0.6rem', fontSize: '0.75rem', borderRadius: '4px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px', background: '#3b82f6', color: '#fff', border: 'none', cursor: 'pointer' }}
+                      >
+                        <CalendarCheck size={12} /> Extend
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => {
+                        setSelectedDetailedBooking(null);
+                        navigate(`/bookings/edit/${selectedDetailedBooking.id}`);
+                      }} 
+                      style={{ height: '30px', padding: '0 0.6rem', fontSize: '0.75rem', borderRadius: '4px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px', background: '#ef4444', color: '#fff', border: 'none', cursor: 'pointer' }}
+                    >
+                      <Edit2 size={12} /> Edit Booking
+                    </button>
+                    <button 
+                      title="Share Invoice"
+                      onClick={handleShareInvoice}
+                      disabled={isSharingInvoice}
+                      style={{ background: '#3b82f6', color: 'white', padding: '0 0.6rem', height: '30px', borderRadius: '4px', border: 'none', opacity: isSharingInvoice ? 0.7 : 1, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      <Share2 size={14} />
+                    </button>
+                    {!Capacitor.isNativePlatform() && (
+                      <button 
+                        title="Print Receipt"
+                        onClick={() => setTimeout(() => window.print(), 100)}
+                        style={{ background: 'var(--primary)', color: 'white', padding: '0 0.6rem', height: '30px', borderRadius: '4px', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      >
+                        <Printer size={14} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <small style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{selectedDetailedBooking.reference_number}</small>
                   {selectedDetailedBooking.ota_payment_status === 'Pending OTA Settlement' && (
                     <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', borderRadius: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>OTA Pending</span>
                   )}
@@ -1512,64 +1574,22 @@ export default function Bookings() {
                     <span style={{ fontSize: '0.65rem', padding: '0.15rem 0.5rem', background: '#d1fae5', color: '#059669', border: '1px solid #a7f3d0', borderRadius: '12px', fontWeight: 'bold', whiteSpace: 'nowrap' }}>OTA Settled</span>
                   )}
                 </div>
-                <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: 800, lineHeight: 1.2 }}>Booking Details</h2>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                {selectedDetailedBooking.ota_payment_status === 'Pending OTA Settlement' && (
-                  <button 
-                    onClick={() => handleMarkOTASettled(selectedDetailedBooking)} 
-                    style={{ display: 'flex', alignItems: 'center', gap: '4px', height: '36px', padding: '0 0.75rem', fontSize: '0.8rem', borderRadius: '6px', background: '#fff', color: '#d97706', border: '1px solid #f59e0b', fontWeight: 'bold', cursor: 'pointer', whiteSpace: 'nowrap' }}
-                  >
-                    <CheckCircle2 size={14} /> Settle OTA
-                  </button>
-                )}
-                <button 
-                  onClick={() => {
-                    setSelectedDetailedBooking(null);
-                    navigate(`/bookings/edit/${selectedDetailedBooking.id}`);
-                  }} 
-                  className="btn-edit-toggle mode-edit" 
-                  style={{ height: '36px', padding: '0 1rem', fontSize: '0.85rem', borderRadius: '6px', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px' }}
-                >
-                  <Edit2 size={14} /> Edit Booking
-                </button>
-                <button 
-                  className="btn-icon" 
-                  title="Share Invoice"
-                  onClick={handleShareInvoice}
-                  disabled={isSharingInvoice}
-                  style={{ background: '#3b82f6', color: 'white', padding: '0.4rem', borderRadius: '4px', opacity: isSharingInvoice ? 0.7 : 1 }}
-                >
-                  <Share2 size={20} />
-                </button>
-                {!Capacitor.isNativePlatform() && (
-                  <button 
-                    className="btn-icon" 
-                    title="Print Receipt"
-                    onClick={() => setTimeout(() => window.print(), 100)}
-                    style={{ background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '4px' }}
-                  >
-                    <Printer size={20} />
-                  </button>
-                )}
-                <button className="btn-icon" onClick={() => setSelectedDetailedBooking(null)}><X size={20} /></button>
-              </div>
-            </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
               {/* Guest Details */}
               <div>
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', color: 'var(--primary)' }}>Guest Information</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <h3 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', color: 'var(--primary)' }}>Guest Information</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Guest Name</small>
-                    <span style={{ fontWeight: 700, fontSize: '1.1rem' }}>{selectedDetailedBooking.guest_name}</span>
+                    <span style={{ fontWeight: 700, fontSize: '0.95rem' }}>{selectedDetailedBooking.guest_name}</span>
                   </div>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Mobile Number</small>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.1rem' }}>
                       <Phone size={14} style={{ color: 'var(--text-muted)' }} />
-                      <span style={{ fontWeight: 600 }}>{selectedDetailedBooking.phone_number}</span>
+                      <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{selectedDetailedBooking.phone_number}</span>
                       <button 
                         onClick={() => handleCopyToClipboard(selectedDetailedBooking.phone_number, 'phone')} 
                         className="btn-icon" 
@@ -1585,7 +1605,7 @@ export default function Bookings() {
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Email ID</small>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.1rem' }}>
                       <Mail size={14} style={{ color: 'var(--text-muted)' }} />
-                      <span style={{ fontWeight: 600 }}>{selectedDetailedBooking.guest_email || 'No email provided'}</span>
+                      <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{selectedDetailedBooking.guest_email || 'No email provided'}</span>
                       {selectedDetailedBooking.guest_email && (
                         <>
                           <button 
@@ -1603,17 +1623,17 @@ export default function Bookings() {
                   </div>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>ID Proof</small>
-                    <span style={{ fontWeight: 600 }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
                       {selectedDetailedBooking.id_proof_type || 'Aadhar'}: {selectedDetailedBooking.id_proof_number || 'Not provided'}
                     </span>
                   </div>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Vehicle Number</small>
-                    <span style={{ fontWeight: 600 }}>{selectedDetailedBooking.vehicle_number || 'None'}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{selectedDetailedBooking.vehicle_number || 'None'}</span>
                   </div>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Booking Source</small>
-                    <span style={{ fontWeight: 600 }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
                       {(() => {
                         const { isAgent, name, phone } = parseAgentSource(selectedDetailedBooking.booking_source);
                         if (isAgent) {
@@ -1664,11 +1684,11 @@ export default function Bookings() {
 
               {/* Stay Details */}
               <div>
-                <h3 style={{ fontSize: '1rem', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', color: 'var(--primary)' }}>Stay Information</h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <h3 style={{ fontSize: '0.9rem', marginBottom: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.25rem', color: 'var(--primary)' }}>Stay Information</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Cottage / Property</small>
-                    <span style={{ fontWeight: 600 }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>
                       {cottages.find(x => x.id === selectedDetailedBooking.cottage_id)?.name || 'Unknown'}
                     </span>
                   </div>
@@ -1680,21 +1700,21 @@ export default function Bookings() {
                   </div>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Stay Dates</small>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, fontSize: '0.95rem' }}>
-                      <Calendar size={14} style={{ color: 'var(--primary)' }} />
-                      {selectedDetailedBooking.check_in_date ? new Date(selectedDetailedBooking.check_in_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
-                      <span style={{ color: 'var(--text-muted)' }}>→</span>
-                      {selectedDetailedBooking.check_out_date ? new Date(selectedDetailedBooking.check_out_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'N/A'}
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>({selectedDetailedBooking.night_count} nights)</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                        <Calendar size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                        <span>{selectedDetailedBooking.check_in_date ? new Date(selectedDetailedBooking.check_in_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : 'N/A'}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>→</span>
+                        <span>{selectedDetailedBooking.check_out_date ? new Date(selectedDetailedBooking.check_out_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' }) : 'N/A'}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>({selectedDetailedBooking.night_count}N)</span>
+                      </div>
                     </div>
-                  </div>
-                  <div>
+                    <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Occupants</small>
-                    <span style={{ fontWeight: 600 }}>{selectedDetailedBooking.adults_count || 1} Adults, {selectedDetailedBooking.kids_count || 0} Kids</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{selectedDetailedBooking.adults_count || 1} Adults, {selectedDetailedBooking.kids_count || 0} Kids</span>
                   </div>
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Add-ons Details</small>
-                    <span style={{ fontWeight: 600 }}>{selectedDetailedBooking.addon_details || 'None selected'}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>{selectedDetailedBooking.addon_details || 'None selected'}</span>
                   </div>
                 </div>
               </div>
@@ -1703,44 +1723,50 @@ export default function Bookings() {
             {/* Financial Summary */}
             <div style={{ background: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid var(--border)' }}>
               <h3 style={{ fontSize: '0.95rem', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem', fontWeight: 700 }}>Financial Summary</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: Number(selectedDetailedBooking.gst_amount) > 0 ? 'repeat(4, 1fr)' : 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(70px, 1fr))', gap: '0.5rem', textAlign: 'center', marginBottom: '0.4rem' }}>
                 <div>
                   <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase' }}>Base Cost</small>
-                  <span style={{ fontWeight: 600 }}>₹{(selectedDetailedBooking.base_amount || 0).toLocaleString()}</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>₹{(selectedDetailedBooking.base_amount || 0).toLocaleString()}</span>
                 </div>
                 <div>
                   <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase' }}>Add-ons Cost</small>
-                  <span style={{ fontWeight: 600 }}>₹{(selectedDetailedBooking.addons_cost || 0).toLocaleString()}</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>₹{(selectedDetailedBooking.addons_cost || 0).toLocaleString()}</span>
                 </div>
                 <div>
                   <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase' }}>Extra Guest</small>
-                  <span style={{ fontWeight: 600 }}>₹{(selectedDetailedBooking.extra_guest_charges || 0).toLocaleString()}</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>₹{(selectedDetailedBooking.extra_guest_charges || 0).toLocaleString()}</span>
                 </div>
+                {Number(selectedDetailedBooking.discount_amount) > 0 && (
+                  <div>
+                    <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase' }}>Discount</small>
+                    <span style={{ color: '#ef4444', fontWeight: 600, fontSize: '0.85rem' }}>-₹{Number(selectedDetailedBooking.discount_amount).toLocaleString()}</span>
+                  </div>
+                )}
                 {Number(selectedDetailedBooking.gst_amount) > 0 && (
                   <div>
                     <small style={{ color: 'var(--text-muted)', display: 'block', fontSize: '0.65rem', textTransform: 'uppercase' }}>GST ({selectedDetailedBooking.gst_rate}%)</small>
-                    <span style={{ fontWeight: 600 }}>₹{Number(selectedDetailedBooking.gst_amount).toLocaleString()}</span>
+                    <span style={{ fontWeight: 600, fontSize: '0.85rem' }}>₹{Number(selectedDetailedBooking.gst_amount).toLocaleString()}</span>
                   </div>
                 )}
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', textAlign: 'center', paddingTop: '0.75rem', borderTop: '1px dashed var(--border)', alignItems: 'center' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Total Value:</span>
-                  <span style={{ color: 'var(--text-main)', fontSize: '1.25rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.total_amount || 0).toLocaleString()}</span>
+                  <span style={{ color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.total_amount || 0).toLocaleString()}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Paid:</span>
-                  <span style={{ color: 'var(--success)', fontSize: '1.25rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.total_amount - selectedDetailedBooking.balance_amount || 0).toLocaleString()}</span>
+                  <span style={{ color: 'var(--success)', fontSize: '1.1rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.total_amount - selectedDetailedBooking.balance_amount || 0).toLocaleString()}</span>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.2rem' }}>
                   <span style={{ fontWeight: 700, fontSize: '0.85rem' }}>Balance:</span>
-                  <span style={{ color: selectedDetailedBooking.balance_amount > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '1.25rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.balance_amount || 0).toLocaleString()}</span>
+                  <span style={{ color: selectedDetailedBooking.balance_amount > 0 ? 'var(--warning)' : 'var(--success)', fontSize: '1.1rem', fontWeight: 900 }}>₹{(selectedDetailedBooking.balance_amount || 0).toLocaleString()}</span>
                 </div>
               </div>
             </div>
 
             {/* Modal Actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '1.25rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.4rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
               {!Capacitor.isNativePlatform() && (
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   <button 
@@ -1757,7 +1783,7 @@ export default function Bookings() {
                       });
                     }} 
                     className="btn btn-outline" 
-                    style={{ borderColor: '#22c55e', color: '#15803d', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                    style={{ borderColor: '#22c55e', color: '#15803d', display: 'flex', alignItems: 'center', gap: '0.2rem', height: '32px', padding: '0 0.5rem', fontSize: '0.75rem' }}
                   >
                     <MessageSquare size={16} /> WhatsApp Confirm
                   </button>
@@ -1774,7 +1800,7 @@ export default function Bookings() {
                       });
                     }} 
                     className="btn btn-outline" 
-                    style={{ borderColor: '#3b82f6', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                    style={{ borderColor: '#3b82f6', color: '#1d4ed8', display: 'flex', alignItems: 'center', gap: '0.2rem', height: '32px', padding: '0 0.5rem', fontSize: '0.75rem' }}
                   >
                     <MessageSquare size={16} /> WhatsApp Receipt
                   </button>
@@ -1790,7 +1816,7 @@ export default function Bookings() {
                       });
                     }} 
                     className="btn btn-outline" 
-                    style={{ borderColor: '#f59e0b', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                    style={{ borderColor: '#f59e0b', color: '#b45309', display: 'flex', alignItems: 'center', gap: '0.2rem', height: '32px', padding: '0 0.5rem', fontSize: '0.75rem' }}
                   >
                     <MessageSquare size={16} /> WhatsApp Reminder
                   </button>
@@ -1806,7 +1832,7 @@ export default function Bookings() {
                       });
                     }} 
                     className="btn btn-outline" 
-                    style={{ borderColor: '#8b5cf6', color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                    style={{ borderColor: '#8b5cf6', color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '0.2rem', height: '32px', padding: '0 0.5rem', fontSize: '0.75rem' }}
                   >
                     <MessageSquare size={16} /> WhatsApp Review
                   </button>
@@ -1822,7 +1848,7 @@ export default function Bookings() {
                       });
                     }} 
                     className="btn btn-outline" 
-                    style={{ borderColor: '#ef4444', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.4rem', height: '40px', padding: '0 0.8rem', fontSize: '0.85rem' }}
+                    style={{ borderColor: '#ef4444', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.2rem', height: '32px', padding: '0 0.5rem', fontSize: '0.75rem' }}
                   >
                     <MessageSquare size={16} /> WhatsApp Payment Reminder
                   </button>

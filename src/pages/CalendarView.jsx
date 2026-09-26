@@ -76,6 +76,17 @@ export default function CalendarView() {
   const [shareEndDate, setShareEndDate] = useState(format(addDays(new Date(), 14), 'yyyy-MM-dd'));
   const [selectedCottages, setSelectedCottages] = useState([]);
   const [selectedRooms, setSelectedRooms] = useState([]);
+  const [ratePlans, setRatePlans] = useState([]);
+  const [catRates, setCatRates] = useState([]);
+  const [propRates, setPropRates] = useState([]);
+  const [showRates, setShowRates] = useState(() => {
+      const saved = localStorage.getItem('calendar_show_rates');
+      return saved !== null ? saved === 'true' : true;
+    });
+
+    useEffect(() => {
+      localStorage.setItem('calendar_show_rates', showRates);
+    }, [showRates]);
   const [shareTemplate, setShareTemplate] = useState('');
   const [whatsappNumber, setWhatsappNumber] = useState('');
   const [isCopied, setIsCopied] = useState(false);
@@ -135,11 +146,17 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
           cottagesQuery = cottagesQuery.eq('id', profile.cottage_id);
         }
 
-        const [bks, cts, rms] = await Promise.all([
+        const [bks, cts, rms, rpRes, crRes, prRes] = await Promise.all([
           bookingsQuery,
           cottagesQuery,
-          roomsQuery
+          roomsQuery,
+          supabase.from('rate_plans').select('*').eq('resort_id', activeResortId),
+          supabase.from('category_rates').select('*, rate_plans!inner(resort_id)').eq('rate_plans.resort_id', activeResortId),
+          supabase.from('property_rates').select('*, rate_plans!inner(resort_id)').eq('rate_plans.resort_id', activeResortId)
         ]);
+        setRatePlans(rpRes.data || []);
+        setCatRates(crRes.data || []);
+        setPropRates(prRes.data || []);
 
         setBookings(bks.data || []);
         setCottages(cts.data || []);
@@ -421,6 +438,66 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
     });
 
     return shareTemplate.replace('{slots}', slotsText.trim());
+  };
+
+  const getDailyPrice = (d, type, itemId) => {
+    let daily = 0;
+    const isWknd = (d.getDay() === 5 || d.getDay() === 6);
+    const dayOfWeek = d.getDay();
+    const dateStr = d.toISOString().split('T')[0];
+
+    const activePlans = ratePlans.filter(rp => {
+      if (rp.start_date && dateStr < rp.start_date) return false;
+      if (rp.end_date && dateStr > rp.end_date) return false;
+      if (rp.days_of_week && rp.days_of_week.length > 0 && !rp.days_of_week.includes(dayOfWeek)) return false;
+      return true;
+    }).sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+    if (activePlans.length === 0) {
+      const legacyName = isWknd ? 'weekend' : 'weekday';
+      const legacyPlan = ratePlans.find(rp => rp.name.toLowerCase() === legacyName);
+      if (legacyPlan) activePlans.push(legacyPlan);
+    }
+
+    let foundPrice = false;
+    let tooltip = '';
+
+    if (type === 'Property') {
+      const cottage = cottages.find(c => c.id === itemId);
+      for (const plan of activePlans) {
+        const propRateRecord = propRates.find(r => r.cottage_id === itemId && r.rate_plan_id === plan.id);
+        if (propRateRecord) {
+          daily = Number(propRateRecord.price || 0);
+          tooltip = plan.name;
+          foundPrice = true;
+          break;
+        }
+      }
+      if (!foundPrice && cottage) {
+         daily = isWknd ? Number(cottage.weekend_price || 0) : Number(cottage.weekday_price || 0);
+         tooltip = isWknd ? 'Base Weekend' : 'Base Weekday';
+      }
+    } else {
+      const room = rooms.find(r => r.id === itemId);
+      if (room) {
+        for (const plan of activePlans) {
+          if (room.category_id) {
+            const rateRecord = catRates.find(r => r.category_id === room.category_id && r.rate_plan_id === plan.id);
+            if (rateRecord) {
+              daily = Number(rateRecord.price || 0);
+              tooltip = plan.name;
+              foundPrice = true;
+              break;
+            }
+          }
+        }
+        if (!foundPrice) {
+          daily = isWknd ? Number(room.weekend_price || 0) : Number(room.weekday_price || 0);
+          tooltip = isWknd ? 'Base Weekend' : 'Base Weekday';
+        }
+      }
+    }
+    return { price: daily > 0 ? '₹' + daily : '-', tooltip };
   };
 
   const getCellStatus = (date, type, itemId) => {
@@ -760,6 +837,14 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                 <button onClick={() => setViewType('agenda')} style={{ padding: isMobile ? '0.4rem 0.5rem' : '0.5rem 1rem', flex: isMobile ? '1' : 'none', border: 'none', borderRadius: 'var(--radius-md)', background: viewType === 'agenda' ? 'var(--primary)' : 'transparent', color: viewType === 'agenda' ? 'white' : 'var(--text-muted)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, fontSize: isMobile ? '0.75rem' : '0.85rem', transition: 'all 0.2s' }}>
                     <List size={14} /> Agenda
                 </button>
+                <div style={{ width: '1px', height: '20px', background: 'var(--border)', margin: '0 0.5rem' }}></div>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', color: showRates ? 'var(--primary)' : 'var(--text-muted)', padding: '0 0.5rem' }}>
+                  <input type="checkbox" checked={showRates} onChange={e => setShowRates(e.target.checked)} style={{ display: 'none' }} />
+                  <span style={{ width: '32px', height: '18px', background: showRates ? 'var(--primary)' : 'var(--border)', borderRadius: '10px', position: 'relative', transition: '0.3s' }}>
+                    <span style={{ width: '14px', height: '14px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: showRates ? '16px' : '2px', transition: '0.3s' }}></span>
+                  </span>
+                  {!isMobile && 'Rates'}
+                </label>
              </div>
           </div>
 
@@ -971,8 +1056,25 @@ Let us know if you have any guests looking for a beautiful getaway! 😊`;
                               <div style={{ fontWeight: '900', marginBottom: isMobile ? '0.25rem' : '0.5rem', fontSize: isMobile ? '0.8rem' : '0.9rem', color: isSelected || (occupancyColor !== 'var(--available)' && occupancyColor !== 'var(--bg-secondary)') ? 'white' : (isTodayDate ? 'var(--primary)' : 'var(--text-main)'), display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'center' : 'space-between' }}>
                                   {format(d, 'd')}
                                   {isTodayDate && !isMobile && <span style={{ fontSize: '0.5rem', background: isSelected ? 'white' : 'var(--primary)', color: isSelected ? '#3182ce' : 'white', padding: '1px 4px', borderRadius: '10px', textTransform: 'uppercase' }}>Today</span>}
+                                </div>
+                                {showRates && dayBookings.length === 0 && !isPast && (
+                                  <div 
+                                    title={getDailyPrice(d, 'Property', c.id).tooltip} 
+                                    style={{ 
+                                      fontSize: isMobile ? '0.55rem' : '0.65rem', 
+                                      color: isSelected ? 'rgba(255,255,255,0.9)' : 'var(--text-main)', opacity: isSelected ? 1 : 0.6,
+                                      textAlign: isMobile ? 'center' : 'right',
+                                      marginTop: 'auto',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: isMobile ? 'center' : 'flex-end',
+                                      gap: '0.2rem'
+                                    }}
+                                  >
+                                    <span style={{opacity: 0.6}}>₹</span>{getDailyPrice(d, 'Property', c.id).price.replace('₹', '')}
+                                  </div>
+                                )}
                               </div>
-                            </div>
                           );
                         });
                       })()}

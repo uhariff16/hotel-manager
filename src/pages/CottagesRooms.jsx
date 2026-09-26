@@ -27,7 +27,19 @@ export default function CottagesRooms() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const [newRatePlanName, setNewRatePlanName] = useState('');
+  const toggleDayOfWeek = (dayIndex) => {
+    setRatePlanForm(prev => {
+      const exists = prev.days_of_week.includes(dayIndex);
+      if (exists) {
+        return { ...prev, days_of_week: prev.days_of_week.filter(d => d !== dayIndex) };
+      } else {
+        return { ...prev, days_of_week: [...prev.days_of_week, dayIndex] };
+      }
+    });
+  };
+
+
+  const [ratePlanForm, setRatePlanForm] = useState({ id: null, name: '', start_date: '', end_date: '', priority: '', days_of_week: [] });
 
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingCottage, setEditingCottage] = useState(null);
@@ -103,18 +115,47 @@ export default function CottagesRooms() {
   // --- RATE PLANS ---
   const handleAddRatePlan = async (e) => {
     e.preventDefault();
-    if (!newRatePlanName.trim()) return;
+    if (!ratePlanForm.name.trim()) return;
     
-    const { data, error } = await supabase.from('rate_plans').insert([{
-      name: newRatePlanName, resort_id: activeResortId, tenant_id: session.user.id
-    }]).select();
+    const payload = {
+      name: ratePlanForm.name,
+      start_date: ratePlanForm.start_date || null,
+      end_date: ratePlanForm.end_date || null,
+      priority: ratePlanForm.priority ? parseInt(ratePlanForm.priority) : 0,
+      days_of_week: ratePlanForm.days_of_week,
+      resort_id: activeResortId,
+      tenant_id: session.user.id
+    };
 
-    if (error) {
-      alert("Error adding rate plan: " + error.message);
+    if (ratePlanForm.id) {
+       const { error } = await supabase.from('rate_plans').update(payload).eq('id', ratePlanForm.id);
+       if (error) {
+         alert('Error updating rate plan: ' + error.message);
+       } else {
+         setRatePlans(ratePlans.map(rp => rp.id === ratePlanForm.id ? { ...rp, ...payload } : rp));
+         setRatePlanForm({ id: null, name: '', start_date: '', end_date: '', priority: '', days_of_week: [] });
+       }
     } else {
-      setRatePlans([...ratePlans, data[0]]);
-      setNewRatePlanName('');
+       const { data, error } = await supabase.from('rate_plans').insert([payload]).select();
+       if (error) {
+         alert('Error adding rate plan: ' + error.message);
+       } else {
+         setRatePlans([...ratePlans, data[0]]);
+         setRatePlanForm({ id: null, name: '', start_date: '', end_date: '', priority: '', days_of_week: [] });
+       }
     }
+  };
+
+  const startEditRatePlan = (rp) => {
+    setRatePlanForm({
+      id: rp.id,
+      name: rp.name,
+      start_date: rp.start_date || '',
+      end_date: rp.end_date || '',
+      priority: rp.priority || '',
+      days_of_week: rp.days_of_week || []
+    });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteRatePlan = async (id) => {
@@ -131,7 +172,8 @@ export default function CottagesRooms() {
       name: editingCategory.name,
       capacity: Number(editingCategory.capacity),
       resort_id: activeResortId,
-      tenant_id: session.user.id
+      tenant_id: session.user.id,
+      cottage_id: editingCategory.cottage_id || null
     };
 
     let catId = editingCategory.id;
@@ -179,11 +221,11 @@ export default function CottagesRooms() {
         const r = categoryRates.find(cr => cr.category_id === cat.id && cr.rate_plan_id === rp.id);
         rates[rp.id] = r ? r.price : 0;
       });
-      setEditingCategory({ ...cat, rates });
+      setEditingCategory({ ...cat, cottage_id: cat.cottage_id || '', rates });
     } else {
       const rates = {};
       ratePlans.forEach(rp => rates[rp.id] = 0);
-      setEditingCategory({ name: '', capacity: 2, rates });
+      setEditingCategory({ name: '', capacity: 2, cottage_id: '', rates });
     }
   };
 
@@ -339,6 +381,7 @@ export default function CottagesRooms() {
       status: (r.status === 'Available' || r.status === 'Active') ? 'Active' : 'Inactive',
       category_id: r.category_id || ''
     });
+    setShowRoomModal(true);
   };
 
   const deleteRoom = async (id) => {
@@ -377,29 +420,61 @@ export default function CottagesRooms() {
           </h2>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
             Define the pricing concepts (e.g. Weekday, Weekend) that apply across your property. Prices are attached to specific categories or properties.
+            </p>
+            <div style={{ background: '#e0e7ff', color: '#3730a3', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid #c7d2fe' }}>
+              <strong>💡 Pro Tip: How Priority Works</strong><br/>
+              If multiple rate plans overlap on the same dates, the plan with the <strong>highest Priority number</strong> always wins! <br/><br/>
+              For example, you could have a "Standard Year-Round" rate (Priority: 0) from Jan 1 - Dec 31, and a "Diwali Weekend" rate (Priority: 10) for just a few days. The system will automatically use the Diwali rate during those days because 10 is higher than 0.
+            </div><p style={{display:'none'}}>
           </p>
-          <form onSubmit={handleAddRatePlan} style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', alignItems: 'center' }}>
-            <select 
-              className="form-select" 
-              value={newRatePlanName}
-              onChange={e => setNewRatePlanName(e.target.value)}
-              required
-            >
-              <option value="">-- Select Rate Plan --</option>
-              {PREDEFINED_RATE_PLANS.filter(rp => !ratePlans.find(existing => existing.name === rp)).map(rp => (
-                <option key={rp} value={rp}>{rp}</option>
-              ))}
-            </select>
-            <button type="submit" className="btn btn-primary" disabled={!newRatePlanName}>Add</button>
+          <form onSubmit={handleAddRatePlan} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Rate Plan Name</label>
+              <input type="text" className="form-input" placeholder="e.g. Peak Season, Diwali Weekend, Summer Special" value={ratePlanForm.name} onChange={e => setRatePlanForm({...ratePlanForm, name: e.target.value})} required />
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Start Date</label>
+                <input type="date" className="form-input" value={ratePlanForm.start_date} onChange={e => setRatePlanForm({...ratePlanForm, start_date: e.target.value})} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>End Date</label>
+                <input type="date" className="form-input" value={ratePlanForm.end_date} onChange={e => setRatePlanForm({...ratePlanForm, end_date: e.target.value})} />
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Priority</label>
+                <input type="number" className="form-input" value={ratePlanForm.priority} onChange={e => setRatePlanForm({...ratePlanForm, priority: e.target.value})} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Days of Week (Optional)</label>
+              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+                  <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
+                    <input type="checkbox" checked={ratePlanForm.days_of_week.includes(i)} onChange={() => toggleDayOfWeek(i)} /> {d}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }} disabled={!ratePlanForm.name} style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>{ratePlanForm.id ? 'Update Rate Plan' : 'Create Rate Plan'}</button>
           </form>
           
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
             {ratePlans.map(rp => (
-              <li key={rp.id} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', marginBottom: '0.5rem' }}>
-                <span style={{ fontWeight: 600 }}>{rp.name}</span>
-                <button type="button" className="btn" style={{ padding: '0', background: 'none', color: 'var(--danger)', border: 'none' }} onClick={() => handleDeleteRatePlan(rp.id)}>
-                  <X size={16} />
-                </button>
+              <li key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontWeight: 600 }}>{rp.name}</span>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                    {rp.start_date ? `${rp.start_date} to ${rp.end_date || 'Ongoing'}` : 'All Year'} | 
+                    Priority: {rp.priority || 0} | 
+                    Days: {rp.days_of_week && rp.days_of_week.length ? rp.days_of_week.map(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ') : 'All Days'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--primary)' }} onClick={() => startEditRatePlan(rp)}><Edit2 size={16}/></button>
+                  <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--danger)' }} onClick={() => handleDeleteRatePlan(rp.id)}><X size={16} /></button>
+                </div>
               </li>
             ))}
             {ratePlans.length === 0 && <li style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>No rate plans defined.</li>}
@@ -429,16 +504,22 @@ export default function CottagesRooms() {
                   </tr>
                 </thead>
                 <tbody>
-                  {categories.map(cat => (
+                  {categories.map(cat => {
+                    const cottageName = cat.cottage_id ? (cottages.find(c => c.id === cat.cottage_id)?.name || 'Unknown') : 'Global';
+                    return (
                     <tr key={cat.id}>
-                      <td><strong>{cat.name}</strong></td>
+                      <td>
+                        <strong>{cat.name}</strong>
+                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cottageName}</div>
+                      </td>
                       <td>{cat.capacity}</td>
                       <td style={{ display: 'flex', gap: '0.5rem' }}>
                         <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--primary)' }} onClick={() => startCategoryEdit(cat)}><Edit2 size={16}/></button>
                         <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--danger)' }} onClick={() => handleDeleteCategory(cat.id)}><Trash2 size={16}/></button>
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                   {categories.length === 0 && <tr><td colSpan="3" style={{textAlign:'center'}}>No categories defined.</td></tr>}
                 </tbody>
               </table>
@@ -502,11 +583,11 @@ export default function CottagesRooms() {
                               <strong style={{ color: 'var(--text-muted)' }}>Rate Plan Pricing:</strong>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem' }}>
                                 {ratePlans.map(rp => {
-                                  const propertyRates = c.rates || {};
+                                  const propertyRateRecord = propertyRates.find(pr => pr.cottage_id === c.id && pr.rate_plan_id === rp.id); const ratePrice = propertyRateRecord ? propertyRateRecord.price : 0;
                                   return (
                                     <div key={rp.id} style={{ background: 'var(--bg-color)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)' }}>
                                       <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{rp.name}</div>
-                                      <div style={{ fontWeight: 600 }}>₹{propertyRates[rp.id] || 0}</div>
+                                      <div style={{ fontWeight: 600 }}>₹{ratePrice}</div>
                                     </div>
                                   );
                                 })}
@@ -585,6 +666,13 @@ export default function CottagesRooms() {
                 <form onSubmit={handleSaveCategory}>
                   <h4 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: 'var(--text-main)' }}>{editingCategory.id ? 'Edit Category' : 'Add Category'}</h4>
                   <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <label className="form-label">Property Assignment</label>
+                      <select className="form-select" value={editingCategory.cottage_id || ''} onChange={e => setEditingCategory({...editingCategory, cottage_id: e.target.value})}>
+                        <option value="">Global (All Properties)</option>
+                        {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                      </select>
+                    </div>
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
                       <label className="form-label">Category Name</label>
                       <select className="form-select" required value={editingCategory.name} onChange={e => setEditingCategory({...editingCategory, name: e.target.value})}>
@@ -727,7 +815,7 @@ export default function CottagesRooms() {
                       }}
                     >
                       <option value="">-- Select Category --</option>
-                      {categories.map(cat => (
+                      {categories.filter(cat => !cat.cottage_id || cat.cottage_id === newRoom.cottage_id).map(cat => (
                         <option key={cat.id} value={cat.id}>
                           {cat.name} (Cap: {cat.capacity})
                         </option>

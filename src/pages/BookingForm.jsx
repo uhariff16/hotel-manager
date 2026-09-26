@@ -5,6 +5,7 @@ import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X, Lock } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
+import IDScanner from '../components/IDScanner';
 
 const parseAgentSource = (sourceStr) => {
   if (!sourceStr) return { isAgent: false, name: '', phone: '' };
@@ -129,6 +130,21 @@ export default function BookingForm() {
   const [error, setError] = useState(null);
   const [collapsedSections, setCollapsedSections] = useState({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
   const toggleSection = (id) => setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
+  const focusTarget = new URLSearchParams(location.search).get('focus');
+  useEffect(() => {
+    if (focusTarget === 'checkout' && !loading) {
+      setIsEditing(true);
+      setTimeout(() => {
+        const el = document.getElementById('check-out-date-input');
+        if (el) {
+          el.focus();
+          try {
+            el.showPicker();
+          } catch(e) {}
+        }
+      }, 300);
+    }
+  }, [focusTarget, loading]);
   
   const handleClearForm = () => {
     setBookingForm({
@@ -136,7 +152,7 @@ export default function BookingForm() {
       booking_type: 'Room', cottage_id: '', room_ids: [],
       night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
       total_amount: 0, advance_paid: 0, balance_amount: 0, booking_source: 'Direct', status: 'Pending', is_loading_edit: false,
-      reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_other_type: '', id_proof_number: '',
+      reference_number: '', vehicle_number: '', id_proof_type: 'Aadhar', id_proof_other_type: '', id_proof_number: '', id_front_image_url: '', id_back_image_url: '', guest_address: '',
       addon_selections: [], addon_others: '', addon_costs_itemized: {},
       room_type: 'Deluxe',
       room_types_map: {},
@@ -165,7 +181,7 @@ export default function BookingForm() {
     try {
       const { data, error } = await supabase
         .from('bookings')
-        .select('guest_name, guest_email, id_proof_type, id_proof_number, vehicle_number')
+        .select('guest_name, guest_email, id_proof_type, id_proof_number, vehicle_number, id_front_image_url, id_back_image_url, guest_door_no, guest_street, guest_city, guest_state, guest_pincode')
         .eq('tenant_id', profile?.tenant_id)
         .eq('phone_number', fullPhone)
         .order('created_at', { ascending: false })
@@ -183,10 +199,10 @@ export default function BookingForm() {
           ...prev,
           guest_name: guest.guest_name || prev.guest_name,
           guest_email: guest.guest_email || prev.guest_email,
-          vehicle_number: guest.vehicle_number || prev.vehicle_number,
+          vehicle_number: guest.vehicle_number || prev.vehicle_number, guest_door_no: guest.guest_door_no || prev.guest_door_no, guest_street: guest.guest_street || prev.guest_street, guest_city: guest.guest_city || prev.guest_city, guest_state: guest.guest_state || prev.guest_state, guest_pincode: guest.guest_pincode || prev.guest_pincode,
           id_proof_type: isStandard ? (guest.id_proof_type || 'Aadhar') : 'Other',
           id_proof_other_type: isStandard ? prev.id_proof_other_type : (guest.id_proof_type || ''),
-          id_proof_number: guest.id_proof_number || prev.id_proof_number
+          id_proof_number: guest.id_proof_number || prev.id_proof_number, id_front_image_url: guest.id_front_image_url || prev.id_front_image_url, id_back_image_url: guest.id_back_image_url || prev.id_back_image_url
         }));
         toast.success('Guest details found and populated!');
       } else {
@@ -261,7 +277,52 @@ export default function BookingForm() {
   const [rooms, setRooms] = useState([]);
   const [activeBookings, setActiveBookings] = useState([]);
 
-  const [bookingForm, setBookingForm] = useState({
+  const handleIDScanComplete = ({ side, url, aiData }) => {
+    setBookingForm(prev => {
+      const next = { ...prev };
+      if (side === 'front') next.id_front_image_url = url;
+      if (side === 'back') next.id_back_image_url = url;
+      
+      if (aiData) {
+        // Extract everything found on the image, regardless of side
+        if (aiData.name) {
+          next.guest_name = aiData.name;
+          next.highlight_guest_name = true;
+        }
+        if (aiData.idType) {
+          next.id_proof_type = aiData.idType;
+          next.highlight_id_proof_type = true;
+        }
+        if (aiData.idNumber) {
+          next.id_proof_number = aiData.idNumber;
+          next.highlight_id_proof_number = true;
+        }
+        if (aiData.door_no) {
+          next.guest_door_no = aiData.door_no;
+          next.highlight_guest_door_no = true;
+        }
+        if (aiData.street) {
+          next.guest_street = aiData.street;
+          next.highlight_guest_street = true;
+        }
+        if (aiData.city) {
+          next.guest_city = aiData.city;
+          next.highlight_guest_city = true;
+        }
+        if (aiData.state) {
+          next.guest_state = aiData.state;
+          next.highlight_guest_state = true;
+        }
+        if (aiData.pincode) {
+          next.guest_pincode = aiData.pincode;
+          next.highlight_guest_pincode = true;
+        }
+      }
+      return next;
+    });
+  };
+
+    const [bookingForm, setBookingForm] = useState({
     guest_name: '', guest_email: '', guest_company_name: '', guest_gstin: '', gst_amount: 0, gst_rate: 0, phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
     booking_type: 'Room', cottage_id: '', room_ids: [],
     night_count: 0, price_type: 'Calculated', base_amount: 0, extra_guest_charges: 0, addons_cost: 0,
@@ -494,7 +555,7 @@ export default function BookingForm() {
             vehicle_number: b.vehicle_number || '',
             id_proof_type: ['Aadhar', 'Pan Card', 'Driving License', 'Voter ID', 'Passport'].includes(b.id_proof_type || 'Aadhar') ? (b.id_proof_type || 'Aadhar') : 'Other',
             id_proof_other_type: ['Aadhar', 'Pan Card', 'Driving License', 'Voter ID', 'Passport'].includes(b.id_proof_type || 'Aadhar') ? '' : (b.id_proof_type || ''),
-            id_proof_number: b.id_proof_number || '',
+            id_proof_number: b.id_proof_number || '', guest_address: b.guest_address || '', id_front_image_url: b.id_front_image_url || '', id_back_image_url: b.id_back_image_url || '',
             price_type: b.price_type || 'Calculated',
             addon_selections: selections,
             addon_costs_itemized: b.addon_costs_itemized || {},
@@ -541,94 +602,109 @@ export default function BookingForm() {
 
   const calculateBasePrice = () => {
     const { check_in_date, check_out_date, booking_type, cottage_id, room_ids } = bookingForm;
-    if (!check_in_date || !check_out_date) return;
+    if (!check_in_date || !check_out_date) {  return; }
 
     const start = new Date(check_in_date);
     const end = new Date(check_out_date);
-    if (end <= start) {
-      setBookingForm(prev => ({ ...prev, night_count: 0 }));
-      return;
-    }
+    if (end <= start) { setBookingForm(prev => ({ ...prev, night_count: 0 })); return; }
 
     const days = eachDayOfInterval({ start, end: new Date(end.getTime() - 24*60*60*1000) });
     const nightCount = days.length;
 
-    if (bookingForm.is_loading_edit) {
-      setBookingForm(prev => ({ ...prev, night_count: nightCount, is_loading_edit: false }));
-      return;
-    }
+    if (bookingForm.is_loading_edit) { setBookingForm(prev => ({ ...prev, night_count: nightCount, is_loading_edit: false })); return; }
 
-    if (!cottage_id) {
-      setBookingForm(prev => ({ ...prev, night_count: nightCount }));
-      return;
-    }
+    if (!cottage_id) { setBookingForm(prev => ({ ...prev, night_count: nightCount, base_amount: 0 })); return; }
 
     let itemPricingArray = [];
     if (booking_type === 'Entire Property') {
-      const c = cottages.find(c => c.id === cottage_id);
+      const c = cottages.find(c => String(c.id) === String(cottage_id));
       if (c) itemPricingArray.push(c);
     } else {
-      if (!room_ids || room_ids.length === 0) {
-        setBookingForm(prev => ({ ...prev, night_count: nightCount }));
-        return;
-      }
-      itemPricingArray = room_ids.map(id => rooms.find(r => r.id === id)).filter(Boolean);
+      if (!room_ids || room_ids.length === 0) { setBookingForm(prev => ({ ...prev, night_count: nightCount, base_amount: 0 })); return; }
+      itemPricingArray = room_ids.map(id => rooms.find(r => String(r.id) === String(id))).filter(Boolean);
     }
 
-    if (itemPricingArray.length === 0) {
-      setBookingForm(prev => ({ ...prev, night_count: nightCount }));
-      return;
-    }
+    if (itemPricingArray.length === 0) { setBookingForm(prev => ({ ...prev, night_count: nightCount })); return; }
 
     let base = 0;
     const ratePlans = window.__bookingRatePlans || [];
     const catRates = window.__bookingCategoryRates || [];
     const propRates = window.__bookingPropertyRates || [];
-    
-    // Find Weekday and Weekend Rate Plans (fallback to null if not found)
-    const weekdayPlan = ratePlans.find(rp => rp.name.toLowerCase() === 'weekday');
-    const weekendPlan = ratePlans.find(rp => rp.name.toLowerCase() === 'weekend');
+
+    let appliedPlansSet = new Set();
 
     days.forEach(d => {
       let daily = 0;
-      const isWknd = isWeekend(d);
+      const isWknd = (d.getDay() === 5 || d.getDay() === 6);
+      const dayOfWeek = d.getDay();
+      
+      const dateStr = [
+        d.getFullYear(),
+        String(d.getMonth() + 1).padStart(2, '0'),
+        String(d.getDate()).padStart(2, '0')
+      ].join('-');
+
+      const activePlans = ratePlans.filter(rp => {
+        if (rp.start_date && dateStr < rp.start_date) return false;
+        if (rp.end_date && dateStr > rp.end_date) return false;
+        if (rp.days_of_week && rp.days_of_week.length > 0 && !rp.days_of_week.includes(dayOfWeek)) return false;
+        return true;
+      }).sort((a, b) => (b.priority || 0) - (a.priority || 0));
+
+      if (activePlans.length === 0) {
+        const legacyName = isWknd ? 'weekend' : 'weekday';
+        const legacyPlan = ratePlans.find(rp => rp.name && rp.name.toLowerCase() === legacyName);
+        if (legacyPlan) activePlans.push(legacyPlan);
+      }
       
       itemPricingArray.forEach(item => {
-        const planToUse = isWknd ? weekendPlan : weekdayPlan;
+        let foundPrice = false;
 
-        // If it's an Entire Property booking
-        if (booking_type === 'Entire Property' && (weekdayPlan || weekendPlan)) {
-          if (planToUse) {
-            const propRateRecord = propRates.find(r => r.cottage_id === item.id && r.rate_plan_id === planToUse.id);
+        if (booking_type === 'Entire Property') {
+          for (const plan of activePlans) {
+            const propRateRecord = propRates.find(r => r.cottage_id === item.id && r.rate_plan_id === plan.id);
             if (propRateRecord) {
               daily += Number(propRateRecord.price || 0);
-              return;
+              appliedPlansSet.add(plan.name || 'Unnamed Plan');
+              foundPrice = true;
+              break;
             }
           }
-        }
-
-        // If it's a room with a category_id, use Rate Plans
-        if (booking_type === 'Room' && item.category_id && (weekdayPlan || weekendPlan)) {
-          if (planToUse) {
-            const rateRecord = catRates.find(r => r.category_id === item.category_id && r.rate_plan_id === planToUse.id);
-            if (rateRecord) {
-              daily += Number(rateRecord.price || 0);
-              return;
+        } else {
+          for (const plan of activePlans) {
+            if (item.category_id) {
+              const rateRecord = catRates.find(r => r.category_id === item.category_id && r.rate_plan_id === plan.id);
+              if (rateRecord) {
+                daily += Number(rateRecord.price || 0);
+                appliedPlansSet.add(plan.name);
+                foundPrice = true;
+                break;
+              }
             }
           }
         }
         
-        // Fallback to legacy pricing (or Cottage pricing which hasn't been migrated yet)
-        if (isWknd) daily += Number(item.weekend_price || 0);
-        else daily += Number(item.weekday_price || 0);
+        if (!foundPrice) {
+          if (isWknd) {
+             daily += Number(item.weekend_price || 0);
+             appliedPlansSet.add('Base Weekend');
+          } else {
+             daily += Number(item.weekday_price || 0);
+             appliedPlansSet.add('Base Weekday');
+          }
+        }
       });
       base += daily;
     });
 
+    const appliedPlans = Array.from(appliedPlansSet).join(', ');
+
+    
     setBookingForm(prev => ({
       ...prev,
       night_count: nightCount,
-      base_amount: base
+      base_amount: base,
+      applied_rate_plans: appliedPlans
     }));
   };
 
@@ -838,7 +914,13 @@ export default function BookingForm() {
         room_type: bookingForm.room_type,
         breakfast: bookingForm.breakfast,
         additional_guests: formattedAdditionalGuests,
-        guest_address: bookingForm.guest_address,
+        guest_door_no: bookingForm.guest_door_no,
+          guest_street: bookingForm.guest_street,
+          guest_city: bookingForm.guest_city,
+          guest_state: bookingForm.guest_state,
+          guest_pincode: bookingForm.guest_pincode,
+          id_front_image_url: bookingForm.id_front_image_url,
+          id_back_image_url: bookingForm.id_back_image_url,
         guest_company_name: bookingForm.guest_company_name,
         guest_gstin: bookingForm.guest_gstin,
         gst_amount: bookingForm.gst_amount,
@@ -861,7 +943,7 @@ export default function BookingForm() {
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
           alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_address, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
           result = await supabase.from('bookings').update(cleanData).eq('id', id);
         }
       } else {
@@ -869,7 +951,7 @@ export default function BookingForm() {
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
           alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_address, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
           result = await supabase.from('bookings').insert([cleanData]).select();
         }
       }
@@ -1142,14 +1224,15 @@ export default function BookingForm() {
             
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
-                <label className="premium-label">Primary Guest Full Name</label>
+                <label className="premium-label">Primary Guest Full Name {bookingForm.highlight_guest_name && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}</label>
                 <input disabled={!isEditing} 
                   type="text" 
                   required 
-                  className="premium-input" 
-                  placeholder="Enter guest's first & last name"
+                  className={`premium-input ${bookingForm.highlight_guest_name ? 'ai-highlight' : ''}`}
+                    placeholder="Enter guest's first & last name"
+                  style={{ backgroundColor: bookingForm.highlight_guest_name ? '#ecfdf5' : '' }}
                   value={bookingForm.guest_name} 
-                  onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value})} 
+                  onChange={e => setBookingForm({...bookingForm, guest_name: e.target.value, highlight_guest_name: false})} 
                 />
               </div>
               <div className="form-group">
@@ -1188,11 +1271,7 @@ export default function BookingForm() {
                     onChange={e => setBookingForm(prev => ({ ...prev, phone_code: e.target.value, phone_number: e.target.value + prev.phone_raw }))}
                   />
                   <input disabled={!isEditing} 
-                    type="text" 
-                    required 
-                    className="premium-input" 
-                    placeholder="9876543210" 
-                    value={bookingForm.phone_raw || ''} 
+                    type="tel" inputMode="tel" required className="premium-input" placeholder="9876543210" value={bookingForm.phone_raw || ''} 
                     onChange={e => setBookingForm(prev => ({ ...prev, phone_raw: e.target.value, phone_number: prev.phone_code + e.target.value }))} 
                   />
                 </div>
@@ -1221,17 +1300,81 @@ export default function BookingForm() {
               </div>
             </div>
 
-            <div className="form-group" style={{ marginTop: '1.25rem' }}>
-              <label className="premium-label">Guest Address (Optional)</label>
-              <textarea disabled={!isEditing} 
-                className="premium-input" 
-                placeholder="Enter guest's full address"
-                rows="2"
-                value={bookingForm.guest_address || ''} 
-                onChange={e => setBookingForm({...bookingForm, guest_address: e.target.value})} 
-                style={{ resize: 'vertical' }}
-              />
-            </div>
+            {/* Guest Address - Structured */}
+              <div style={{ marginTop: '1.5rem', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+                Address Details
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="premium-label">
+                    Door / Building No. 
+                    {bookingForm.highlight_guest_door_no && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}
+                  </label>
+                  <input 
+                    type="text" 
+                    disabled={!isEditing} 
+                    className={`premium-input ${bookingForm.highlight_guest_door_no ? 'ai-highlight' : ''}`}
+                    value={bookingForm.guest_door_no || ''} 
+                    onChange={e => setBookingForm({...bookingForm, guest_door_no: e.target.value, highlight_guest_door_no: false})} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="premium-label">
+                    Street Name / Locality
+                    {bookingForm.highlight_guest_street && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}
+                  </label>
+                  <input 
+                    type="text" 
+                    disabled={!isEditing} 
+                    className={`premium-input ${bookingForm.highlight_guest_street ? 'ai-highlight' : ''}`}
+                    value={bookingForm.guest_street || ''} 
+                    onChange={e => setBookingForm({...bookingForm, guest_street: e.target.value, highlight_guest_street: false})} 
+                  />
+                </div>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="premium-label">
+                    City / Town
+                    {bookingForm.highlight_guest_city && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}
+                  </label>
+                  <input 
+                    type="text" 
+                    disabled={!isEditing} 
+                    className={`premium-input ${bookingForm.highlight_guest_city ? 'ai-highlight' : ''}`}
+                    value={bookingForm.guest_city || ''} 
+                    onChange={e => setBookingForm({...bookingForm, guest_city: e.target.value, highlight_guest_city: false})} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="premium-label">
+                    State
+                    {bookingForm.highlight_guest_state && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}
+                  </label>
+                  <input 
+                    type="text" 
+                    disabled={!isEditing} 
+                    className={`premium-input ${bookingForm.highlight_guest_state ? 'ai-highlight' : ''}`}
+                    value={bookingForm.guest_state || ''} 
+                    onChange={e => setBookingForm({...bookingForm, guest_state: e.target.value, highlight_guest_state: false})} 
+                  />
+                </div>
+              </div>
+              <div className="form-grid">
+                <div className="form-group">
+                  <label className="premium-label">
+                    Pincode
+                    {bookingForm.highlight_guest_pincode && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}
+                  </label>
+                  <input 
+                    type="text" 
+                    disabled={!isEditing} 
+                    className={`premium-input ${bookingForm.highlight_guest_pincode ? 'ai-highlight' : ''}`}
+                    value={bookingForm.guest_pincode || ''} 
+                    onChange={e => setBookingForm({...bookingForm, guest_pincode: e.target.value, highlight_guest_pincode: false})} 
+                  />
+                </div>
+              </div>
           
             {/* ADDITIONAL OCCUPANTS MERGED */}
             <div style={{ marginTop: '2rem', paddingTop: '1.5rem', borderTop: '1px dashed var(--border)' }}>
@@ -1270,7 +1413,7 @@ export default function BookingForm() {
                         placeholder="Code"
                         onChange={e => handleUpdateAdditionalGuest(index, 'phone_code', e.target.value)}
                       />
-                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
+                      <input disabled={!isEditing} type="tel" inputMode="tel" className="premium-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
                     </div>
                   </div>
                 </div>
@@ -1326,18 +1469,14 @@ export default function BookingForm() {
                     const outDate = new Date(inDate);
                     outDate.setDate(outDate.getDate() + 1);
                     const newOutDate = outDate.toLocaleDateString('en-CA');
-                    setBookingForm({...bookingForm, check_in_date: newInDate, check_out_date: newOutDate});
+                    setBookingForm(prev => ({...prev, check_in_date: newInDate, check_out_date: newOutDate, is_loading_edit: false}));
                   }} 
                 />
               </div>
               <div className="form-group">
                 <label className="premium-label">Check-out Date</label>
-                <input disabled={!isEditing} 
-                  type="date" 
-                  required 
-                  className="premium-input" 
-                  value={bookingForm.check_out_date} 
-                  onChange={e => setBookingForm({...bookingForm, check_out_date: e.target.value})} 
+                <input disabled={!isEditing} id="check-out-date-input" type="date" required className="premium-input" value={bookingForm.check_out_date} 
+                  onChange={e => { const val = e.target.value; setBookingForm(prev => ({...prev, check_out_date: val, is_loading_edit: false})); }} 
                 />
               </div>
             </div>
@@ -1352,7 +1491,7 @@ export default function BookingForm() {
               </div>
               <div className="form-group">
                 <label className="premium-label">Select Property / Cottage</label>
-                <select disabled={!isEditing} className="premium-select" value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value})}>
+                <select disabled={!isEditing} className="premium-select" value={bookingForm.cottage_id} onChange={e => setBookingForm({...bookingForm, cottage_id: e.target.value, room_ids: [], room_types_map: {}, room_type: 'Deluxe' })}>
                   <option value="">Choose property...</option>
                   {cottages.filter(c => c.status === 'Available' || c.status === 'Active' || c.id === bookingForm.cottage_id).map(c => <option key={c.id} value={c.id} disabled={c.isPlanLocked}>{c.name} {c.isPlanLocked ? '(Locked by Plan)' : ''}</option>)}
                 </select>
@@ -1448,7 +1587,7 @@ export default function BookingForm() {
                   style={{ 
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', 
                     border: bookingForm.breakfast === 'Included' ? '2px solid var(--primary)' : '1px solid var(--border)', 
-                    borderRadius: '8px', background: bookingForm.breakfast === 'Included' ? 'rgba(16, 185, 129, 0.05)' : '#fff',
+                    borderRadius: '8px', background: bookingForm.breakfast === 'Included' ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-secondary)',
                     cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.2s'
                   }}
                   onClick={() => {
@@ -1538,12 +1677,12 @@ export default function BookingForm() {
                 </div>
               )}
               <div className="form-group">
-                <label className="premium-label">ID Document Number</label>
-                <input disabled={!isEditing} 
-                  type="text" 
-                  className="premium-input" 
-                  placeholder="Enter identification card number" 
-                  value={bookingForm.id_proof_number || ''} 
+                <label className="premium-label">ID Document Number {bookingForm.highlight_id_proof_number && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}</label>                  <input disabled={!isEditing} 
+                    type={bookingForm.id_proof_type === 'Aadhar' ? 'tel' : 'text'}
+                    inputMode={bookingForm.id_proof_type === 'Aadhar' ? 'numeric' : 'text'}
+                    className={`premium-input ${bookingForm.highlight_id_proof_number ? 'ai-highlight' : ''}`}
+                      placeholder="Enter identification card number" 
+                    value={bookingForm.id_proof_number || ''} 
                   onChange={e => {
                     let val = e.target.value;
                     if (bookingForm.id_proof_type === 'Aadhar') {
@@ -1556,11 +1695,35 @@ export default function BookingForm() {
                     setBookingForm({...bookingForm, id_proof_number: val});
                   }} 
                 />
+                              </div>
               </div>
-            </div>
-          </div>
 
-          {/* SECTION 5: SERVICES & RESERVATION CHANNEL */}
+              {/* ID SCANNERS */}
+              <div className="form-group" style={{ marginTop: '1rem' }}>
+                <label className="premium-label">ID Document Images & Smart Capture</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                  <IDScanner 
+                    side="front" 
+                    tenantId={profile?.tenant_id} 
+                    existingUrl={bookingForm.id_front_image_url}
+                    onScanComplete={handleIDScanComplete} 
+                  />
+                  <IDScanner 
+                    side="back" 
+                    tenantId={profile?.tenant_id} 
+                    existingUrl={bookingForm.id_back_image_url}
+                    onScanComplete={handleIDScanComplete} 
+                  />
+                </div>
+                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  * ID images are securely compressed on this device, analyzed to auto-fill guest details, and automatically purged from the cloud in accordance with your data retention policy (Default: 30 days).
+                </p>
+              </div>
+
+
+            </div>
+
+            {/* SECTION 5: SERVICES & RESERVATION CHANNEL */}
           <div className={`form-section-card ${collapsedSections[5] ? 'collapsed' : ''}`}>
             <h3 className="form-section-title" onClick={() => toggleSection(5)}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Globe size={18} style={{ color: 'var(--primary)' }} /> Services & Distribution Channels</span>
@@ -1580,7 +1743,7 @@ export default function BookingForm() {
                         style={{ 
                           display: 'flex', flexDirection: 'column', padding: '1rem', 
                           border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)', 
-                          borderRadius: '8px', background: isSelected ? 'rgba(16, 185, 129, 0.05)' : '#fff',
+                          borderRadius: '8px', background: isSelected ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-secondary)',
                           cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.2s', gap: '0.75rem'
                         }}
                         onClick={() => {
@@ -1744,10 +1907,7 @@ export default function BookingForm() {
                     )}
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                       <input disabled={!isEditing} 
-                        type="text" 
-                        className="premium-input" 
-                        placeholder="Agent's contact number" 
-                        value={bookingForm.agent_phone || ''} 
+                        type="tel" inputMode="tel" className="premium-input" placeholder="Agent's contact number" value={bookingForm.agent_phone || ''} 
                         onChange={e => setBookingForm({...bookingForm, agent_phone: e.target.value})} 
                         style={{ flex: 1 }}
                       />
@@ -1789,6 +1949,9 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
                 <label className="premium-label">Base Accommodation Charge (₹)</label>
+                  <div style={{fontSize: '0.75rem', color: 'var(--primary)', marginBottom: '4px'}}>
+                    Applied: {bookingForm.applied_rate_plans || 'None'}
+                  </div>
                 <input disabled={!isEditing} type="number" className="premium-input" value={bookingForm.base_amount} onChange={e => setBookingForm({...bookingForm, base_amount: e.target.value === '' ? '' : Number(e.target.value)})} />
               </div>
               <div className="form-group">
@@ -1945,7 +2108,7 @@ export default function BookingForm() {
             <div className="receipt-total-box">
               <div className="receipt-row bold" style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>
                 <span>{bookingForm.is_ota_collected ? "Guest Payable Total:" : "Gross Total:"}</span>
-                <span style={{ color: '#0F2C59', fontSize: '1.2rem', fontWeight: 800 }}>
+                <span style={{ color: 'var(--primary)', fontSize: '1.2rem', fontWeight: 800 }}>
                   ₹{(bookingForm.is_ota_collected ? guestTotalReceipt : (bookingForm.total_amount || 0)).toLocaleString()}
                 </span>
               </div>
