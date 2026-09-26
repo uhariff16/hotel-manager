@@ -5,6 +5,7 @@ import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Ca
 import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import BookingReceipt from '../components/BookingReceipt';
 import { WhatsAppErrorBoundary } from '../components/WhatsAppErrorBoundary';
 import html2canvas from 'html2canvas';
