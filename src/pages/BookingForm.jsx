@@ -1550,7 +1550,7 @@ export default function BookingForm() {
                     </div>
                   </div>
                 </div>
-              ))})}
+              ))}
             
             
             <div style={{ textAlign: 'center' }}>
