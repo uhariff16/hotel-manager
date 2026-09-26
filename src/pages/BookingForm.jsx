@@ -1222,6 +1222,29 @@ export default function BookingForm() {
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={18} style={{ color: 'var(--primary)' }} /> Primary Guest & Occupancy Details</span>
               {collapsedSections[1] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
+              <div style={{ background: 'rgba(34, 197, 94, 0.05)', border: '1px dashed #22c55e', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', marginTop: '1.5rem' }}>
+                  <label className="premium-label" style={{ color: 'var(--primary)', fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Camera size={18} /> AI Smart Capture (Auto-Fill)
+                  </label>
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                    Take a photo of the guest's ID to instantly auto-fill the form. <strong>Start with the Front page.</strong>
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                    <IDScanner 
+                      ref={frontScannerRef}
+                      side="front" 
+                      tenantId={profile?.tenant_id} 
+                      existingUrl={bookingForm.id_front_image_url}
+                      onScanComplete={handleIDScanComplete} 
+                    />
+                    <IDScanner 
+                      side="back" 
+                      tenantId={profile?.tenant_id} 
+                      existingUrl={bookingForm.id_back_image_url}
+                      onScanComplete={handleIDScanComplete} 
+                    />
+                  </div>
+              </div>
             
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
@@ -1512,29 +1535,6 @@ export default function BookingForm() {
                   }} 
                 />
                               </div>
-              </div>
-
-              {/* ID SCANNERS */}
-              <div className="form-group" style={{ marginTop: '1rem' }}>
-                <label className="premium-label">ID Document Images & Smart Capture</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
-                  <IDScanner 
-                    ref={frontScannerRef}
-                    side="front" 
-                    tenantId={profile?.tenant_id} 
-                    existingUrl={bookingForm.id_front_image_url}
-                    onScanComplete={handleIDScanComplete} 
-                  />
-                  <IDScanner 
-                    side="back" 
-                    tenantId={profile?.tenant_id} 
-                    existingUrl={bookingForm.id_back_image_url}
-                    onScanComplete={handleIDScanComplete} 
-                  />
-                </div>
-                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  * ID images are securely compressed on this device, analyzed to auto-fill guest details, and automatically purged from the cloud in accordance with your data retention policy (Default: 30 days).
-                </p>
               </div>
 
 
