@@ -505,12 +505,21 @@ export default function BookingForm() {
               const parsedGuests = typeof b.additional_guests === 'string' ? JSON.parse(b.additional_guests) : b.additional_guests;
               if (Array.isArray(parsedGuests)) {
                 rawAdditionalGuests = parsedGuests.map(g => {
-                  const pgPhone = parsePhone(g.phone || g.phone_number);
+                  const pgPhone = parsePhone(g.phone || g.phone_number || (g.phone_code ? g.phone_code+g.phone_raw : ''));
                   return {
                     name: g.name || '',
                     email: g.email || '',
-                    phone_code: pgPhone.code,
-                    phone_raw: pgPhone.raw
+                    phone_code: g.phone_code || pgPhone.code,
+                    phone_raw: g.phone_raw || pgPhone.raw,
+                    id_proof_type: g.id_proof_type || 'Aadhar',
+                    id_proof_number: g.id_proof_number || '',
+                    guest_door_no: g.guest_door_no || '',
+                    guest_street: g.guest_street || '',
+                    guest_city: g.guest_city || '',
+                    guest_state: g.guest_state || '',
+                    guest_pincode: g.guest_pincode || '',
+                    id_front_image_url: g.id_front_image_url || '',
+                    id_back_image_url: g.id_back_image_url || ''
                   };
                 });
               }
