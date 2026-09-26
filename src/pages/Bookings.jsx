@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, MessageCircle, Mail, CheckSquare, Square, Printer, Share2, CalendarCheck } from 'lucide-react';
+import { Plus, Trash2, CheckCircle2, AlertTriangle, X, Search, Filter, Phone, Calendar, Home, CreditCard, Edit2, MoreVertical, Send, RotateCcw, Copy, Check, MessageSquare, MessageCircle, Mail, CheckSquare, Square, Printer, Share2, CalendarCheck, FileText } from 'lucide-react';
 import { startOfMonth, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import { useNavigate } from 'react-router-dom';

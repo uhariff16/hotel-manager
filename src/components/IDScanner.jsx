@@ -211,8 +211,6 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
       )}
     </div>
   );
-};
-
 });
 
 export default IDScanner;
