@@ -691,19 +691,29 @@ export default function Settings() {
     }
   };
 
-  const wipeData = async () => {
-    const pw = window.prompt("WARNING: This will permanently delete ALL Bookings, Incomes, and Expenses.\n\nEnter master password to confirm:");
+    const wipeData = async () => {
+    const pw = window.prompt("WARNING: This will permanently delete ALL Bookings, Incomes, Expenses, AND guest ID images.\n\nEnter master password to confirm:");
     if (pw !== "admin123") {
       if (pw !== null) alert("Incorrect password.");
       return;
     }
     
     try {
+      // 1. Delete textual data
       await supabase.from('incomes').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('expenses').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       await supabase.from('bookings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       
-      alert("All transactional data has been completely wiped!");
+      // 2. Delete all ID images for this tenant
+      if (profile?.tenant_id) {
+        const { data: files } = await supabase.storage.from('guest_ids').list(profile.tenant_id, { limit: 1000 });
+        if (files && files.length > 0) {
+          const filePaths = files.map(f => `${profile.tenant_id}/${f.name}`);
+          await supabase.storage.from('guest_ids').remove(filePaths);
+        }
+      }
+
+      alert("All transactional data and ID images have been completely wiped!");
       window.location.reload();
     } catch(err) {
       alert("Error wiping data: " + err.message);
