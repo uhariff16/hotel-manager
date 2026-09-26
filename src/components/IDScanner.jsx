@@ -152,14 +152,12 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
     <div style={{ border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', position: 'relative', overflow: 'hidden' }}>
       {preview ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-          <div style={{ position: 'relative', width: '100%', height: '120px', borderRadius: '4px', overflow: 'hidden' }}>
-            <a href={preview} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100%', height: '100%', cursor: 'zoom-in' }}>
-                <img src={preview} alt={`${side} ID`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </a>
-            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-              <CheckCircle2 color="#4ade80" size={32} />
-            </div>
-          </div>
+          <a href={preview} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative', width: '100%', height: '120px', borderRadius: '4px', overflow: 'hidden', cursor: 'zoom-in' }}>
+              <img src={preview} alt={`${side} ID`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
+                <CheckCircle2 color="#4ade80" size={32} />
+              </div>
+            </a>
           <button 
             type="button" 
             className="btn-danger" 
