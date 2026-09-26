@@ -153,7 +153,9 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
       {preview ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
           <div style={{ position: 'relative', width: '100%', height: '120px', borderRadius: '4px', overflow: 'hidden' }}>
-            <img src={preview} alt={`${side} ID`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <a href={preview} target="_blank" rel="noopener noreferrer" style={{ display: 'block', width: '100%', height: '100%', cursor: 'zoom-in' }}>
+                <img src={preview} alt={`${side} ID`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </a>
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
               <CheckCircle2 color="#4ade80" size={32} />
             </div>

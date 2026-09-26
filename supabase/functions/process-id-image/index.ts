@@ -35,6 +35,7 @@ serve(async (req) => {
       Rules:
       - For Aadhaar, the number format is XXXX-XXXX-XXXX (insert dashes if missing).
       - Ensure the name contains ONLY English letters.
+      - IMPORTANT: For Passports, strictly extract ONLY the 'Given Name(s)' field as the 'name'. Do NOT include the Surname.
     `
 
     const apiKey = Deno.env.get('GEMINI_API_KEY')
