@@ -887,10 +887,21 @@ export default function BookingForm() {
 
     try {
       const formattedAdditionalGuests = (bookingForm.additional_guests || []).map(g => ({
-        name: g.name,
-        email: g.email || '',
-        phone: g.phone_code + g.phone_raw
-      }));
+          name: g.name,
+          email: g.email || '',
+          phone: g.phone_code + g.phone_raw,
+          phone_code: g.phone_code,
+          phone_raw: g.phone_raw,
+          id_proof_type: g.id_proof_type === 'Other' ? g.id_proof_other_type : (g.id_proof_type || 'Aadhar'),
+          id_proof_number: g.id_proof_number || '',
+          guest_door_no: g.guest_door_no || '',
+          guest_street: g.guest_street || '',
+          guest_city: g.guest_city || '',
+          guest_state: g.guest_state || '',
+          guest_pincode: g.guest_pincode || '',
+          id_front_image_url: g.id_front_image_url || '',
+          id_back_image_url: g.id_back_image_url || ''
+        }));
 
       // Auto-upsert Agent if applicable
       if (bookingForm.booking_source === 'Agent' && profile?.tenant_id) {
