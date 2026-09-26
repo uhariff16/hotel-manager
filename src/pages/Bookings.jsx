@@ -603,7 +603,7 @@ export default function Bookings() {
       const { error } = await supabase.from('bookings').update({ status: 'Confirmed' }).eq('id', b.id);
       if (error) throw error;
       toast.success('Booking confirmed!');
-      fetchBookings();
+      fetchData();
     } catch (err) {
       toast.error('Failed to confirm booking: ' + err.message);
     }
