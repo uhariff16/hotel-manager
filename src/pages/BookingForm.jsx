@@ -128,6 +128,7 @@ export default function BookingForm() {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const frontScannerRef = useRef();
   const [collapsedSections, setCollapsedSections] = useState({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
   const toggleSection = (id) => setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
   const focusTarget = new URLSearchParams(location.search).get('focus');
