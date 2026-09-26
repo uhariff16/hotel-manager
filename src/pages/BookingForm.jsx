@@ -1216,10 +1216,10 @@ export default function BookingForm() {
           </div>
 
           
-          {/* SECTION 1: PRIMARY GUEST DETAILS */}
+          {/* SECTION 1: PRIMARY GUEST & OCCUPANCY DETAILS */}
           <div className={`form-section-card ${collapsedSections[1] ? 'collapsed' : ''}`}>
             <h3 className="form-section-title" onClick={() => toggleSection(1)}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={18} style={{ color: 'var(--primary)' }} /> Primary Guest Details</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><User size={18} style={{ color: 'var(--primary)' }} /> Primary Guest & Occupancy Details</span>
               {collapsedSections[1] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
             
@@ -1444,7 +1444,102 @@ export default function BookingForm() {
           
             </div>
 
-          </div>
+          
+              <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '1.5rem', marginTop: '1.5rem', marginBottom: '1rem' }}>
+                <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Occupancy & Document Details
+                </h4>
+<div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+              <div className="form-group">
+                <label className="premium-label">Number of Guests (Adults & Children)</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                  <input disabled={!isEditing} type="number" min="1" placeholder="Adults" className="premium-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: e.target.value === '' ? '' : Number(e.target.value)})} />
+                  <input disabled={!isEditing} type="number" min="0" placeholder="Kids" className="premium-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: e.target.value === '' ? '' : Number(e.target.value)})} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="premium-label">Guest Vehicle Number (Optional)</label>
+                <input disabled={!isEditing} type="text" className="premium-input" placeholder="E.g. KA-01-MX-1234" value={bookingForm.vehicle_number || ''} onChange={e => setBookingForm({...bookingForm, vehicle_number: e.target.value})} />
+              </div>
+            </div>
+
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: bookingForm.id_proof_type === 'Other' ? '1fr 1fr 2fr' : '1fr 2fr', gap: '1.25rem' }}>
+              <div className="form-group">
+                <label className="premium-label">Identification Document (ID Type)</label>
+                <select disabled={!isEditing} className="premium-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => {
+                  const type = e.target.value;
+                  let val = bookingForm.id_proof_number || '';
+                  if (type === 'Aadhar') {
+                    val = val.replace(/\D/g, '').substring(0, 12);
+                    val = val.match(/.{1,4}/g)?.join('-') || val;
+                  } else if (type === 'Driving License') {
+                    val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                    if (val.length > 4) val = val.substring(0, 4) + '-' + val.substring(4);
+                  }
+                  setBookingForm({...bookingForm, id_proof_type: type, id_proof_number: val});
+                }}>
+                  <option value="Aadhar">Aadhar Card</option>
+                  <option value="Pan Card">Pan Card</option>
+                  <option value="Driving License">Driving License</option>
+                  <option value="Voter ID">Voter ID</option>
+                  <option value="Passport">Passport</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              {bookingForm.id_proof_type === 'Other' && (
+                <div className="form-group">
+                  <label className="premium-label">Specify Document Type</label>
+                  <input disabled={!isEditing} type="text" className="premium-input" placeholder="E.g. Company ID" value={bookingForm.id_proof_other_type || ''} onChange={e => setBookingForm({...bookingForm, id_proof_other_type: e.target.value})} />
+                </div>
+              )}
+              <div className="form-group">
+                <label className="premium-label">ID Document Number {bookingForm.highlight_id_proof_number && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}</label>                  <input disabled={!isEditing} 
+                    type={bookingForm.id_proof_type === 'Aadhar' ? 'tel' : 'text'}
+                    inputMode={bookingForm.id_proof_type === 'Aadhar' ? 'numeric' : 'text'}
+                    className={`premium-input ${bookingForm.highlight_id_proof_number ? 'ai-highlight' : ''}`}
+                      placeholder="Enter identification card number" 
+                    value={bookingForm.id_proof_number || ''} 
+                  onChange={e => {
+                    let val = e.target.value;
+                    if (bookingForm.id_proof_type === 'Aadhar') {
+                      val = val.replace(/\D/g, '').substring(0, 12);
+                      val = val.match(/.{1,4}/g)?.join('-') || val;
+                    } else if (bookingForm.id_proof_type === 'Driving License') {
+                      val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                      if (val.length > 4) val = val.substring(0, 4) + '-' + val.substring(4);
+                    }
+                    setBookingForm({...bookingForm, id_proof_number: val});
+                  }} 
+                />
+                              </div>
+              </div>
+
+              {/* ID SCANNERS */}
+              <div className="form-group" style={{ marginTop: '1rem' }}>
+                <label className="premium-label">ID Document Images & Smart Capture</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
+                  <IDScanner 
+                    ref={frontScannerRef}
+                    side="front" 
+                    tenantId={profile?.tenant_id} 
+                    existingUrl={bookingForm.id_front_image_url}
+                    onScanComplete={handleIDScanComplete} 
+                  />
+                  <IDScanner 
+                    side="back" 
+                    tenantId={profile?.tenant_id} 
+                    existingUrl={bookingForm.id_back_image_url}
+                    onScanComplete={handleIDScanComplete} 
+                  />
+                </div>
+                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  * ID images are securely compressed on this device, analyzed to auto-fill guest details, and automatically purged from the cloud in accordance with your data retention policy (Default: 30 days).
+                </p>
+              </div>
+
+
+            
+              </div></div>
 
           
 
@@ -1636,105 +1731,7 @@ export default function BookingForm() {
             </div>
           </div>
 
-          {/* SECTION 4: OCCUPANCY DETAILS */}
-          <div className={`form-section-card ${collapsedSections[4] ? 'collapsed' : ''}`}>
-            <h3 className="form-section-title" onClick={() => toggleSection(4)}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Info size={18} style={{ color: 'var(--primary)' }} /> Occupancy & Document Details</span>
-              {collapsedSections[4] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
-            </h3>
-
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
-              <div className="form-group">
-                <label className="premium-label">Number of Guests (Adults & Children)</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <input disabled={!isEditing} type="number" min="1" placeholder="Adults" className="premium-input" value={bookingForm.adults_count} onChange={e => setBookingForm({...bookingForm, adults_count: e.target.value === '' ? '' : Number(e.target.value)})} />
-                  <input disabled={!isEditing} type="number" min="0" placeholder="Kids" className="premium-input" value={bookingForm.kids_count} onChange={e => setBookingForm({...bookingForm, kids_count: e.target.value === '' ? '' : Number(e.target.value)})} />
-                </div>
-              </div>
-              <div className="form-group">
-                <label className="premium-label">Guest Vehicle Number (Optional)</label>
-                <input disabled={!isEditing} type="text" className="premium-input" placeholder="E.g. KA-01-MX-1234" value={bookingForm.vehicle_number || ''} onChange={e => setBookingForm({...bookingForm, vehicle_number: e.target.value})} />
-              </div>
-            </div>
-
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: bookingForm.id_proof_type === 'Other' ? '1fr 1fr 2fr' : '1fr 2fr', gap: '1.25rem' }}>
-              <div className="form-group">
-                <label className="premium-label">Identification Document (ID Type)</label>
-                <select disabled={!isEditing} className="premium-select" value={bookingForm.id_proof_type || 'Aadhar'} onChange={e => {
-                  const type = e.target.value;
-                  let val = bookingForm.id_proof_number || '';
-                  if (type === 'Aadhar') {
-                    val = val.replace(/\D/g, '').substring(0, 12);
-                    val = val.match(/.{1,4}/g)?.join('-') || val;
-                  } else if (type === 'Driving License') {
-                    val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-                    if (val.length > 4) val = val.substring(0, 4) + '-' + val.substring(4);
-                  }
-                  setBookingForm({...bookingForm, id_proof_type: type, id_proof_number: val});
-                }}>
-                  <option value="Aadhar">Aadhar Card</option>
-                  <option value="Pan Card">Pan Card</option>
-                  <option value="Driving License">Driving License</option>
-                  <option value="Voter ID">Voter ID</option>
-                  <option value="Passport">Passport</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-              {bookingForm.id_proof_type === 'Other' && (
-                <div className="form-group">
-                  <label className="premium-label">Specify Document Type</label>
-                  <input disabled={!isEditing} type="text" className="premium-input" placeholder="E.g. Company ID" value={bookingForm.id_proof_other_type || ''} onChange={e => setBookingForm({...bookingForm, id_proof_other_type: e.target.value})} />
-                </div>
-              )}
-              <div className="form-group">
-                <label className="premium-label">ID Document Number {bookingForm.highlight_id_proof_number && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}</label>                  <input disabled={!isEditing} 
-                    type={bookingForm.id_proof_type === 'Aadhar' ? 'tel' : 'text'}
-                    inputMode={bookingForm.id_proof_type === 'Aadhar' ? 'numeric' : 'text'}
-                    className={`premium-input ${bookingForm.highlight_id_proof_number ? 'ai-highlight' : ''}`}
-                      placeholder="Enter identification card number" 
-                    value={bookingForm.id_proof_number || ''} 
-                  onChange={e => {
-                    let val = e.target.value;
-                    if (bookingForm.id_proof_type === 'Aadhar') {
-                      val = val.replace(/\D/g, '').substring(0, 12);
-                      val = val.match(/.{1,4}/g)?.join('-') || val;
-                    } else if (bookingForm.id_proof_type === 'Driving License') {
-                      val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
-                      if (val.length > 4) val = val.substring(0, 4) + '-' + val.substring(4);
-                    }
-                    setBookingForm({...bookingForm, id_proof_number: val});
-                  }} 
-                />
-                              </div>
-              </div>
-
-              {/* ID SCANNERS */}
-              <div className="form-group" style={{ marginTop: '1rem' }}>
-                <label className="premium-label">ID Document Images & Smart Capture</label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
-                  <IDScanner 
-                    ref={frontScannerRef}
-                    side="front" 
-                    tenantId={profile?.tenant_id} 
-                    existingUrl={bookingForm.id_front_image_url}
-                    onScanComplete={handleIDScanComplete} 
-                  />
-                  <IDScanner 
-                    side="back" 
-                    tenantId={profile?.tenant_id} 
-                    existingUrl={bookingForm.id_back_image_url}
-                    onScanComplete={handleIDScanComplete} 
-                  />
-                </div>
-                <p style={{ margin: '0.5rem 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                  * ID images are securely compressed on this device, analyzed to auto-fill guest details, and automatically purged from the cloud in accordance with your data retention policy (Default: 30 days).
-                </p>
-              </div>
-
-
-            </div>
-
-            {/* SECTION 5: SERVICES & RESERVATION CHANNEL */}
+          {/* SECTION 5: SERVICES & RESERVATION CHANNEL */}
           <div className={`form-section-card ${collapsedSections[5] ? 'collapsed' : ''}`}>
             <h3 className="form-section-title" onClick={() => toggleSection(5)}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Globe size={18} style={{ color: 'var(--primary)' }} /> Services & Distribution Channels</span>
