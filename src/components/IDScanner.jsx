@@ -53,8 +53,8 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
 
       if (error) throw error;
 
-      const { data: urlData } = supabase.storage.from('guest_ids').getPublicUrl(fileName);
-      const publicUrl = urlData.publicUrl;
+      const { data: urlData, error: signError } = await supabase.storage.from('guest_ids').createSignedUrl(fileName, 315360000);
+        const publicUrl = signError ? '' : urlData.signedUrl;
       
       toast.success('Image Uploaded!', { id: `upload-${side}` });
       

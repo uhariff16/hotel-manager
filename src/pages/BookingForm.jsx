@@ -1250,13 +1250,6 @@ export default function BookingForm() {
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
                     <label className="premium-label" style={{ marginBottom: 0 }}>Primary Guest Full Name {bookingForm.highlight_guest_name && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}</label>
-                    <button 
-                      type="button" 
-                      onClick={() => frontScannerRef.current?.triggerScan()}
-                      style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--primary)', color: 'white', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
-                    >
-                      <Camera size={12} /> Auto-Fill via ID
-                    </button>
                   </div>
                 <input disabled={!isEditing} 
                   type="text" 
