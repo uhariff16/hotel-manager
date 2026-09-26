@@ -5,7 +5,16 @@ import { supabase } from '../lib/supabase';
 import toast from 'react-hot-toast';
 import { Camera as CameraIcon, Upload, Loader2, FileText, CheckCircle2 } from 'lucide-react';
 
-const IDScanner = ({ side, onScanComplete, existingUrl, tenantId }) => {
+const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantId }, ref) => {
+  React.useImperativeHandle(ref, () => ({
+    triggerScan: () => {
+      if (Capacitor.isNativePlatform()) {
+        handleMobileCapture();
+      } else {
+        document.getElementById(`file-upload-${side}`)?.click();
+      }
+    }
+  }));
   const [isScanning, setIsScanning] = useState(false);
   const [preview, setPreview] = useState(existingUrl);
 
@@ -190,6 +199,7 @@ const IDScanner = ({ side, onScanComplete, existingUrl, tenantId }) => {
                 Upload File
               </button>
               <input 
+                id={`file-upload-${side}`}
                 type="file" 
                 accept="image/*" 
                 onChange={handleWebUpload}
@@ -202,5 +212,7 @@ const IDScanner = ({ side, onScanComplete, existingUrl, tenantId }) => {
     </div>
   );
 };
+
+});
 
 export default IDScanner;

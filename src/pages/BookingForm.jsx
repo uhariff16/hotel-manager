@@ -1,8 +1,8 @@
 import toast from 'react-hot-toast';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X, Lock } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X, Lock, Camera } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import IDScanner from '../components/IDScanner';
@@ -1224,7 +1224,16 @@ export default function BookingForm() {
             
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
               <div className="form-group">
-                <label className="premium-label">Primary Guest Full Name {bookingForm.highlight_guest_name && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                    <label className="premium-label" style={{ marginBottom: 0 }}>Primary Guest Full Name {bookingForm.highlight_guest_name && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">✨</span>}</label>
+                    <button 
+                      type="button" 
+                      onClick={() => frontScannerRef.current?.triggerScan()}
+                      style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', background: 'var(--primary)', color: 'white', border: 'none', padding: '0.25rem 0.5rem', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold' }}
+                    >
+                      <Camera size={12} /> Auto-Fill via ID
+                    </button>
+                  </div>
                 <input disabled={!isEditing} 
                   type="text" 
                   required 
@@ -1703,6 +1712,7 @@ export default function BookingForm() {
                 <label className="premium-label">ID Document Images & Smart Capture</label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginTop: '0.5rem' }}>
                   <IDScanner 
+                    ref={frontScannerRef}
                     side="front" 
                     tenantId={profile?.tenant_id} 
                     existingUrl={bookingForm.id_front_image_url}
