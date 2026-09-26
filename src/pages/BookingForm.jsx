@@ -1,4 +1,4 @@
-import toast from 'react-hot-toast';
+additional_guests: [...(prev.additional_guests || []), { name: '', email: '', phone_code: '+91', phone_raw: '', id_proof_type: 'Aadhar', id_proof_number: '', guest_door_no: '', guest_street: '', guest_city: '', guest_state: '', guest_pincode: '', id_front_image_url: '', id_back_image_url: '' }]import toast from 'react-hot-toast';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
@@ -322,6 +322,30 @@ export default function BookingForm() {
       return next;
     });
   };
+  const handleAdditionalGuestIDScanComplete = (index, { side, url, aiData }) => {
+    setBookingForm(prev => {
+      const guests = [...(prev.additional_guests || [])];
+      const g = { ...guests[index] };
+      
+      if (side === 'front') g.id_front_image_url = url;
+      if (side === 'back') g.id_back_image_url = url;
+      
+      if (aiData) {
+        if (aiData.name) { g.name = aiData.name; g.highlight_name = true; }
+        if (aiData.idType) { g.id_proof_type = aiData.idType; g.highlight_id_type = true; }
+        if (aiData.idNumber) { g.id_proof_number = aiData.idNumber; g.highlight_id_number = true; }
+        if (aiData.door_no) { g.guest_door_no = aiData.door_no; }
+        if (aiData.street) { g.guest_street = aiData.street; }
+        if (aiData.city) { g.guest_city = aiData.city; }
+        if (aiData.state) { g.guest_state = aiData.state; }
+        if (aiData.pincode) { g.guest_pincode = aiData.pincode; }
+      }
+      
+      guests[index] = g;
+      return { ...prev, additional_guests: guests };
+    });
+  };
+
 
     const [bookingForm, setBookingForm] = useState({
     guest_name: '', guest_email: '', guest_company_name: '', guest_gstin: '', gst_amount: 0, gst_rate: 0, phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
@@ -1413,43 +1437,120 @@ export default function BookingForm() {
                 <Users size={16} /> Additional Occupants / Contacts
               </h4>
               {bookingForm.additional_guests && bookingForm.additional_guests.map((guest, index) => (
-              <div key={index} style={{ border: '1px solid var(--border)', padding: '1.25rem', borderRadius: '12px', background: 'var(--bg-primary)', position: 'relative', marginBottom: '1rem' }}>
-                <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }}>
-                  <button 
-                    type="button" 
-                    onClick={() => handleRemoveAdditionalGuest(index)} 
-                    style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                  >
-                    Remove
-                  </button>
-                </div>
-                <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Occupant #{index + 2}</h4>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="premium-label" style={{ fontSize: '0.7rem' }}>Guest Name</label>
-                    <input disabled={!isEditing} type="text" required className="premium-input" placeholder="Name" value={guest.name} onChange={e => handleUpdateAdditionalGuest(index, 'name', e.target.value)} />
+                <div key={index} style={{ border: '1px solid var(--border)', padding: '1.25rem', borderRadius: '12px', background: 'var(--bg-primary)', position: 'relative', marginBottom: '1.5rem' }}>
+                  <div style={{ position: 'absolute', top: '0.75rem', right: '0.75rem' }}>
+                    <button 
+                      type="button" 
+                      onClick={() => handleRemoveAdditionalGuest(index)} 
+                      style={{ color: 'var(--danger)', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                    >
+                      Remove
+                    </button>
                   </div>
-                  <div className="form-group">
-                    <label className="premium-label" style={{ fontSize: '0.7rem' }}>Email Address</label>
-                    <input disabled={!isEditing} type="email" className="premium-input" placeholder="Email" value={guest.email} onChange={e => handleUpdateAdditionalGuest(index, 'email', e.target.value)} />
-                  </div>
-                  <div className="form-group">
-                    <label className="premium-label" style={{ fontSize: '0.7rem' }}>Mobile Number</label>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.4rem' }}>
-                      <input disabled={!isEditing} 
-                        list="country-codes"
-                        className="premium-input" 
-                        value={guest.phone_code || '+91'} 
-                        placeholder="Code"
-                        onChange={e => handleUpdateAdditionalGuest(index, 'phone_code', e.target.value)}
+                  <h4 style={{ margin: '0 0 1rem 0', fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Occupant #{index + 2}</h4>
+                  
+                  <div style={{ background: 'rgba(34, 197, 94, 0.05)', border: '1px dashed #22c55e', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem', marginTop: '1rem' }}>
+                    <label className="premium-label" style={{ color: 'var(--primary)', fontSize: '0.9rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <Camera size={16} /> AI Smart Capture for Occupant #{index + 2}
+                    </label>
+                    <p style={{ margin: '0 0 1rem 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                      Take a photo of the guest's ID to auto-fill their details.
+                    </p>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                      <IDScanner 
+                        side="front" 
+                        tenantId={profile?.tenant_id} 
+                        existingUrl={guest.id_front_image_url}
+                        onScanComplete={(res) => handleAdditionalGuestIDScanComplete(index, res)} 
                       />
-                      <input disabled={!isEditing} type="tel" inputMode="tel" className="premium-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
+                      <IDScanner 
+                        side="back" 
+                        tenantId={profile?.tenant_id} 
+                        existingUrl={guest.id_back_image_url}
+                        onScanComplete={(res) => handleAdditionalGuestIDScanComplete(index, res)} 
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="form-group">
+                      <label className="premium-label" style={{ fontSize: '0.7rem' }}>Guest Name {guest.highlight_name && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">o"</span>}</label>
+                      <input disabled={!isEditing} type="text" required className={`premium-input ${guest.highlight_name ? 'ai-highlight' : ''}`} style={{ backgroundColor: guest.highlight_name ? '#ecfdf5' : '' }} placeholder="Name" value={guest.name} onChange={e => { handleUpdateAdditionalGuest(index, 'name', e.target.value); handleUpdateAdditionalGuest(index, 'highlight_name', false); }} />
+                    </div>
+                    <div className="form-group">
+                      <label className="premium-label" style={{ fontSize: '0.7rem' }}>Email Address</label>
+                      <input disabled={!isEditing} type="email" className="premium-input" placeholder="Email" value={guest.email} onChange={e => handleUpdateAdditionalGuest(index, 'email', e.target.value)} />
+                    </div>
+                    <div className="form-group">
+                      <label className="premium-label" style={{ fontSize: '0.7rem' }}>Mobile Number</label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '80px 1fr', gap: '0.4rem' }}>
+                        <input disabled={!isEditing} list="country-codes" className="premium-input" value={guest.phone_code || '+91'} placeholder="Code" onChange={e => handleUpdateAdditionalGuest(index, 'phone_code', e.target.value)} />
+                        <input disabled={!isEditing} type="tel" inputMode="tel" className="premium-input" placeholder="Phone" value={guest.phone_raw} onChange={e => handleUpdateAdditionalGuest(index, 'phone_raw', e.target.value)} />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: guest.id_proof_type === 'Other' ? '1fr 1fr 2fr' : '1fr 2fr', gap: '1rem', marginBottom: '1rem' }}>
+                    <div className="form-group">
+                      <label className="premium-label" style={{ fontSize: '0.7rem' }}>ID Type</label>
+                      <select disabled={!isEditing} className="premium-select" value={guest.id_proof_type || 'Aadhar'} onChange={e => {
+                          const type = e.target.value;
+                          let val = guest.id_proof_number || '';
+                          if (type === 'Aadhar') {
+                            val = val.replace(/\D/g, '').substring(0, 12);
+                            val = val.match(/.{1,4}/g)?.join('-') || val;
+                          } else if (type === 'Driving License') {
+                            val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                            if (val.length > 4) val = val.substring(0, 4) + '-' + val.substring(4);
+                          }
+                          handleUpdateAdditionalGuest(index, 'id_proof_type', type);
+                          handleUpdateAdditionalGuest(index, 'id_proof_number', val);
+                        }}>
+                        <option value="Aadhar">Aadhar Card</option>
+                        <option value="Pan Card">Pan Card</option>
+                        <option value="Driving License">Driving License</option>
+                        <option value="Voter ID">Voter ID</option>
+                        <option value="Passport">Passport</option>
+                        <option value="Other">Other</option>
+                      </select>
+                    </div>
+                    {guest.id_proof_type === 'Other' && (
+                      <div className="form-group">
+                        <label className="premium-label" style={{ fontSize: '0.7rem' }}>Specify Document</label>
+                        <input disabled={!isEditing} type="text" className="premium-input" placeholder="E.g. Company ID" value={guest.id_proof_other_type || ''} onChange={e => handleUpdateAdditionalGuest(index, 'id_proof_other_type', e.target.value)} />
+                      </div>
+                    )}
+                    <div className="form-group">
+                      <label className="premium-label" style={{ fontSize: '0.7rem' }}>ID Number {guest.highlight_id_number && <span style={{marginLeft:'5px'}} title="Auto-filled by AI">o"</span>}</label>
+                      <input disabled={!isEditing} type={guest.id_proof_type === 'Aadhar' ? 'tel' : 'text'} inputMode={guest.id_proof_type === 'Aadhar' ? 'numeric' : 'text'} className={`premium-input ${guest.highlight_id_number ? 'ai-highlight' : ''}`} placeholder="ID Number" value={guest.id_proof_number || ''} onChange={e => {
+                        let val = e.target.value;
+                        if (guest.id_proof_type === 'Aadhar') {
+                          val = val.replace(/\D/g, '').substring(0, 12);
+                          val = val.match(/.{1,4}/g)?.join('-') || val;
+                        } else if (guest.id_proof_type === 'Driving License') {
+                          val = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+                          if (val.length > 4) val = val.substring(0, 4) + '-' + val.substring(4);
+                        }
+                        handleUpdateAdditionalGuest(index, 'id_proof_number', val);
+                        handleUpdateAdditionalGuest(index, 'highlight_id_number', false);
+                      }} />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label className="premium-label" style={{ fontSize: '0.7rem' }}>Address Details</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="Door No / Apt" value={guest.guest_door_no || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_door_no', e.target.value)} />
+                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="Street Name / Area" value={guest.guest_street || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_street', e.target.value)} />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: '0.5rem' }}>
+                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="City" value={guest.guest_city || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_city', e.target.value)} />
+                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="State" value={guest.guest_state || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_state', e.target.value)} />
+                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="Pincode" value={guest.guest_pincode || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_pincode', e.target.value)} />
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))})}
             
             
             <div style={{ textAlign: 'center' }}>
