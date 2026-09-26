@@ -1,4 +1,4 @@
-additional_guests: [...(prev.additional_guests || []), { name: '', email: '', phone_code: '+91', phone_raw: '', id_proof_type: 'Aadhar', id_proof_number: '', guest_door_no: '', guest_street: '', guest_city: '', guest_state: '', guest_pincode: '', id_front_image_url: '', id_back_image_url: '' }]import toast from 'react-hot-toast';
+import toast from 'react-hot-toast';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
