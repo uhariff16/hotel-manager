@@ -676,6 +676,21 @@ export default function Settings() {
     }
   };
 
+  const saveRetentionPolicy = async () => {
+    try {
+      const currentGlobalSettings = profile?.global_settings || {};
+      const updatedGlobal = {
+        ...currentGlobalSettings,
+        id_retention_days: idRetentionDays
+      };
+      const { error } = await supabase.from('profiles').update({ global_settings: updatedGlobal }).eq('id', profile.id);
+      if (error) throw error;
+      alert('Retention policy saved successfully!');
+    } catch (err) {
+      alert('Failed to save policy: ' + err.message);
+    }
+  };
+
   const wipeData = async () => {
     const pw = window.prompt("WARNING: This will permanently delete ALL Bookings, Incomes, and Expenses.\n\nEnter master password to confirm:");
     if (pw !== "admin123") {
@@ -1512,7 +1527,7 @@ export default function Settings() {
                           style={{ flex: 1 }}
                         />
                         <span style={{ fontWeight: 'bold', minWidth: '60px' }}>{idRetentionDays} days</span>
-                        <button className="btn-primary" onClick={handleSaveProfile} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>Save Policy</button>
+                        <button className="btn-primary" onClick={saveRetentionPolicy} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>Save Policy</button>
                       </div>
                     </div>
                   
