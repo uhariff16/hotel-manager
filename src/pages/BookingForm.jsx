@@ -334,11 +334,11 @@ export default function BookingForm() {
         if (aiData.name) { g.name = aiData.name; g.highlight_name = true; }
         if (aiData.idType) { g.id_proof_type = aiData.idType; g.highlight_id_type = true; }
         if (aiData.idNumber) { g.id_proof_number = aiData.idNumber; g.highlight_id_number = true; }
-        if (aiData.door_no) { g.guest_door_no = aiData.door_no; }
-        if (aiData.street) { g.guest_street = aiData.street; }
-        if (aiData.city) { g.guest_city = aiData.city; }
-        if (aiData.state) { g.guest_state = aiData.state; }
-        if (aiData.pincode) { g.guest_pincode = aiData.pincode; }
+        if (aiData.door_no) { g.guest_door_no = aiData.door_no; g.highlight_guest_door_no = true; }
+          if (aiData.street) { g.guest_street = aiData.street; g.highlight_guest_street = true; }
+          if (aiData.city) { g.guest_city = aiData.city; g.highlight_guest_city = true; }
+          if (aiData.state) { g.guest_state = aiData.state; g.highlight_guest_state = true; }
+          if (aiData.pincode) { g.guest_pincode = aiData.pincode; g.highlight_guest_pincode = true; }
       }
       
       guests[index] = g;
@@ -1551,13 +1551,13 @@ export default function BookingForm() {
                   <div className="form-group">
                     <label className="premium-label" style={{ fontSize: '0.7rem' }}>Address Details</label>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="Door No / Apt" value={guest.guest_door_no || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_door_no', e.target.value)} />
-                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="Street Name / Area" value={guest.guest_street || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_street', e.target.value)} />
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: '0.5rem' }}>
-                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="City" value={guest.guest_city || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_city', e.target.value)} />
-                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="State" value={guest.guest_state || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_state', e.target.value)} />
-                      <input disabled={!isEditing} type="text" className="premium-input" placeholder="Pincode" value={guest.guest_pincode || ''} onChange={e => handleUpdateAdditionalGuest(index, 'guest_pincode', e.target.value)} />
+                      <input disabled={!isEditing} type="text" className={`premium-input ${guest.highlight_guest_door_no ? 'ai-highlight' : ''}`} style={{ backgroundColor: guest.highlight_guest_door_no ? '#ecfdf5' : '' }} placeholder="Door No / Apt" value={guest.guest_door_no || ''} onChange={e => { handleUpdateAdditionalGuest(index, 'guest_door_no', e.target.value); handleUpdateAdditionalGuest(index, 'highlight_guest_door_no', false); }} />
+                        <input disabled={!isEditing} type="text" className={`premium-input ${guest.highlight_guest_street ? 'ai-highlight' : ''}`} style={{ backgroundColor: guest.highlight_guest_street ? '#ecfdf5' : '' }} placeholder="Street Name / Area" value={guest.guest_street || ''} onChange={e => { handleUpdateAdditionalGuest(index, 'guest_street', e.target.value); handleUpdateAdditionalGuest(index, 'highlight_guest_street', false); }} />
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: '0.5rem' }}>
+                        <input disabled={!isEditing} type="text" className={`premium-input ${guest.highlight_guest_city ? 'ai-highlight' : ''}`} style={{ backgroundColor: guest.highlight_guest_city ? '#ecfdf5' : '' }} placeholder="City" value={guest.guest_city || ''} onChange={e => { handleUpdateAdditionalGuest(index, 'guest_city', e.target.value); handleUpdateAdditionalGuest(index, 'highlight_guest_city', false); }} />
+                        <input disabled={!isEditing} type="text" className={`premium-input ${guest.highlight_guest_state ? 'ai-highlight' : ''}`} style={{ backgroundColor: guest.highlight_guest_state ? '#ecfdf5' : '' }} placeholder="State" value={guest.guest_state || ''} onChange={e => { handleUpdateAdditionalGuest(index, 'guest_state', e.target.value); handleUpdateAdditionalGuest(index, 'highlight_guest_state', false); }} />
+                        <input disabled={!isEditing} type="text" className={`premium-input ${guest.highlight_guest_pincode ? 'ai-highlight' : ''}`} style={{ backgroundColor: guest.highlight_guest_pincode ? '#ecfdf5' : '' }} placeholder="Pincode" value={guest.guest_pincode || ''} onChange={e => { handleUpdateAdditionalGuest(index, 'guest_pincode', e.target.value); handleUpdateAdditionalGuest(index, 'highlight_guest_pincode', false); }} />
                     </div>
                   </div>
                 </div>
