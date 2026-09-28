@@ -134,7 +134,7 @@ export default function Features() {
               { 
                 icon: <CalendarDays size={28} strokeWidth={2} />, 
                 title: 'Visual Calendar', 
-                desc: 'Prevent double-bookings with an intuitive timeline view. Instantly check room availability and track live daily rate plans at a glance.', 
+                desc: 'Instantly check room availability and track live daily rate plans at a glance.', 
                 color: '#0ea5e9',
                 symbolicArt: (
                   <svg width="150" height="150" viewBox="0 0 150 150" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
@@ -182,7 +182,7 @@ export default function Features() {
               { 
                 icon: <TrendingUp size={28} strokeWidth={2} />, 
                 title: 'ROI Analysis', 
-                desc: 'Gain deep insights into your property\'s investment health. Generate detailed P&L reports and track long-term profitability.', 
+                desc: 'Gain deep insights into your property\\'s investment health.', 
                 color: '#3b82f6', 
                 symbolicArt: (
                   <svg width="150" height="150" viewBox="0 0 150 150" style={{ position: 'absolute', right: '0', bottom: '0', opacity: 0.8 }}>
@@ -195,7 +195,7 @@ export default function Features() {
               { 
                 icon: <Users size={28} strokeWidth={2} />, 
                 title: 'Staff Access', 
-                desc: 'Assign role-based access limits for your managers and receptionists. Track shifts, task completion, and staff performance metrics.', 
+                desc: 'Assign role-based access limits for your managers and receptionists.', 
                 color: '#f43f5e',
                 symbolicArt: (
                   <svg width="150" height="120" viewBox="0 0 150 120" style={{ position: 'absolute', right: '-10%', bottom: '5%', opacity: 0.8 }}>
@@ -208,7 +208,7 @@ export default function Features() {
               { 
                 icon: <Shield size={28} strokeWidth={2} />, 
                 title: 'Secure Data Management', 
-                desc: 'Stay fully compliant with stringent privacy laws. Securely store documents and instantly wipe guest records and images with a single click.', 
+                desc: 'Securely store documents and instantly wipe guest records and images with a single click.', 
                 color: '#ec4899',
                 symbolicArt: (
                   <svg width="140" height="140" viewBox="0 0 140 140" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
