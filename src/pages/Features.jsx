@@ -113,7 +113,7 @@ export default function Features() {
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div className="bento-grid">
-            [
+            {[
               { 
                 icon: <BookOpenCheck size={28} strokeWidth={2} />, 
                 title: 'Smart Reservations', 
@@ -139,7 +139,7 @@ export default function Features() {
                 symbolicArt: (
                   <svg width="150" height="150" viewBox="0 0 150 150" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
                     {[0,1,2].map(row => 
-                      [0,1,2].map(col => (
+                      {[0,1,2].map(col => (
                         <rect key={`${row}-${col}`} x={20 + col * 45} y={20 + row * 45} width="35" height="35" rx="8" 
                           fill={row === 1 && col === 1 ? "rgba(14, 165, 233, 0.15)" : "rgba(14, 165, 233, 0.03)"} 
                           stroke={row === 1 && col === 1 ? "rgba(14, 165, 233, 0.4)" : "rgba(14, 165, 233, 0.1)"} strokeWidth="2" />
