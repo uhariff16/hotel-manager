@@ -13,7 +13,7 @@ export default function Features() {
         .bento-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          grid-auto-rows: 250px;
+          grid-auto-rows: 280px;
           gap: 1.5rem;
         }
         .bento-item {
@@ -234,7 +234,7 @@ export default function Features() {
                 {/* Custom Elegant Symbolic Vector Art */}
                 {feat.symbolicArt}
 
-                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: '1rem' }}>
+                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: '1.5rem', paddingRight: '3.5rem' }}>
                   <div style={{ 
                     width: '48px', height: '48px', borderRadius: '14px', 
                     background: '#ffffff',
@@ -247,7 +247,7 @@ export default function Features() {
                     {feat.icon}
                   </div>
                   <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em', position: 'relative', zIndex: 10 }}>{feat.title}</h3>
-                  <p style={{ color: '#475569', lineHeight: 1.6, margin: 0, fontSize: '1.05rem', fontWeight: 400, maxWidth: feat.large ? '65%' : '85%', position: 'relative', zIndex: 10 }}>{feat.desc}</p>
+                  <p style={{ color: '#475569', lineHeight: 1.6, margin: 0, fontSize: '1.05rem', fontWeight: 400, textWrap: 'balance' }}>{feat.desc}</p>
                 </div>
               </div>
             ))}
