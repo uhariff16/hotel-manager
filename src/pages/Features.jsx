@@ -182,7 +182,7 @@ export default function Features() {
               { 
                 icon: <TrendingUp size={28} strokeWidth={2} />, 
                 title: 'ROI Analysis', 
-                desc: 'Gain deep insights into your property\\'s investment health.', 
+                desc: "Gain deep insights into your property's investment health.",
                 color: '#3b82f6', 
                 symbolicArt: (
                   <svg width="150" height="150" viewBox="0 0 150 150" style={{ position: 'absolute', right: '0', bottom: '0', opacity: 0.8 }}>
