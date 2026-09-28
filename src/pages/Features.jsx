@@ -113,11 +113,11 @@ export default function Features() {
       }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
           <div className="bento-grid">
-            {[
+            [
               { 
                 icon: <BookOpenCheck size={28} strokeWidth={2} />, 
                 title: 'Smart Reservations', 
-                desc: 'Centralized booking management with live status tracking.', 
+                desc: 'Centralized booking management with live status tracking. Seamlessly handle check-ins, check-outs, and guest modifications in one unified dashboard.', 
                 color: '#10b981', 
                 large: true,
                 symbolicArt: (
@@ -134,7 +134,7 @@ export default function Features() {
               { 
                 icon: <CalendarDays size={28} strokeWidth={2} />, 
                 title: 'Visual Calendar', 
-                desc: 'Prevent double-bookings with our intuitive timeline view.', 
+                desc: 'Prevent double-bookings with an intuitive timeline view. Instantly check room availability and track live daily rate plans at a glance.', 
                 color: '#0ea5e9',
                 symbolicArt: (
                   <svg width="150" height="150" viewBox="0 0 150 150" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
@@ -150,9 +150,26 @@ export default function Features() {
                 )
               },
               { 
+                icon: <Zap size={28} strokeWidth={2} />, 
+                title: 'AI ID Scanning', 
+                desc: 'Take a photo of any guest ID using our Android app. Our AI instantly extracts the details, compresses the image under 200KB to save space, and auto-fills the entire form.', 
+                color: '#8b5cf6',
+                large: true,
+                symbolicArt: (
+                  <svg width="200" height="150" viewBox="0 0 200 150" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
+                    <rect x="40" y="40" width="120" height="70" rx="6" fill="rgba(139, 92, 246, 0.05)" stroke="rgba(139, 92, 246, 0.2)" strokeWidth="2" />
+                    <rect x="50" y="50" width="35" height="45" rx="4" fill="rgba(139, 92, 246, 0.1)" />
+                    <rect x="95" y="55" width="55" height="6" fill="rgba(139, 92, 246, 0.15)" />
+                    <rect x="95" y="68" width="40" height="6" fill="rgba(139, 92, 246, 0.15)" />
+                    <rect x="95" y="81" width="30" height="6" fill="rgba(139, 92, 246, 0.15)" />
+                    <path d="M30 30 L50 30 M30 30 L30 50 M170 30 L150 30 M170 30 L170 50 M30 120 L50 120 M30 120 L30 100 M170 120 L150 120 M170 120 L170 100" fill="none" stroke="rgba(139, 92, 246, 0.4)" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                )
+              },
+              { 
                 icon: <Wallet size={28} strokeWidth={2} />, 
                 title: 'Financial Tracking', 
-                desc: 'Log expenses and track revenue automatically.', 
+                desc: 'Automatically log daily expenses, track diverse revenue streams, and manage OTA (Agoda/Booking.com) settlements effortlessly.', 
                 color: '#f59e0b',
                 symbolicArt: (
                   <svg width="160" height="120" viewBox="0 0 160 120" style={{ position: 'absolute', right: '0', bottom: '0', opacity: 0.8 }}>
@@ -165,21 +182,20 @@ export default function Features() {
               { 
                 icon: <TrendingUp size={28} strokeWidth={2} />, 
                 title: 'ROI Analysis', 
-                desc: 'Deep insights into your property investment health.', 
-                color: '#8b5cf6', 
-                large: true,
+                desc: 'Gain deep insights into your property\'s investment health. Generate detailed P&L reports and track long-term profitability.', 
+                color: '#3b82f6', 
                 symbolicArt: (
-                  <svg width="300" height="150" viewBox="0 0 300 150" style={{ position: 'absolute', right: '0', bottom: '0', opacity: 0.8 }}>
-                    <path d="M-20 120 C 40 120, 80 80, 140 90 C 200 100, 240 40, 320 20 L 320 160 L -20 160 Z" fill="rgba(139, 92, 246, 0.08)" />
-                    <path d="M-20 120 C 40 120, 80 80, 140 90 C 200 100, 240 40, 320 20" fill="none" stroke="#8b5cf6" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
-                    <circle cx="240" cy="40" r="6" fill="#ffffff" stroke="#8b5cf6" strokeWidth="3" />
+                  <svg width="150" height="150" viewBox="0 0 150 150" style={{ position: 'absolute', right: '0', bottom: '0', opacity: 0.8 }}>
+                    <path d="M0 120 C 40 120, 60 80, 100 90 C 130 100, 140 40, 160 20 L 160 160 L 0 160 Z" fill="rgba(59, 130, 246, 0.08)" />
+                    <path d="M0 120 C 40 120, 60 80, 100 90 C 130 100, 140 40, 160 20" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
+                    <circle cx="115" cy="65" r="5" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
                   </svg>
                 )
               },
               { 
                 icon: <Users size={28} strokeWidth={2} />, 
                 title: 'Staff Access', 
-                desc: 'Role-based access for your managers and receptionists.', 
+                desc: 'Assign role-based access limits for your managers and receptionists. Track shifts, task completion, and staff performance metrics.', 
                 color: '#f43f5e',
                 symbolicArt: (
                   <svg width="150" height="120" viewBox="0 0 150 120" style={{ position: 'absolute', right: '-10%', bottom: '5%', opacity: 0.8 }}>
@@ -190,31 +206,17 @@ export default function Features() {
                 )
               },
               { 
-                icon: <Zap size={28} strokeWidth={2} />, 
-                title: 'AI ID Scanning', 
-                desc: 'Take a photo of any guest ID. Our AI instantly extracts details and auto-fills the booking form.', 
-                color: '#10b981',
-                symbolicArt: (
-                  <svg width="140" height="140" viewBox="0 0 140 140" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
-                    <rect x="20" y="30" width="100" height="60" rx="4" fill="rgba(16, 185, 129, 0.1)" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="2" />
-                    <circle cx="45" cy="60" r="15" fill="rgba(16, 185, 129, 0.2)" />
-                    <rect x="70" y="50" width="40" height="6" fill="rgba(16, 185, 129, 0.2)" />
-                    <rect x="70" y="65" width="30" height="6" fill="rgba(16, 185, 129, 0.2)" />
-                  </svg>
-                )
-              },
-              { 
                 icon: <Shield size={28} strokeWidth={2} />, 
                 title: 'Secure Data Management', 
-                desc: 'Stay fully compliant with privacy laws. Instantly wipe guest records with a single click.', 
-                color: '#ef4444',
+                desc: 'Stay fully compliant with stringent privacy laws. Securely store documents and instantly wipe guest records and images with a single click.', 
+                color: '#ec4899',
                 symbolicArt: (
                   <svg width="140" height="140" viewBox="0 0 140 140" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
-                    <path d="M70 20 L120 40 L120 80 C120 110, 70 130, 70 130 C70 130, 20 110, 20 80 L20 40 Z" fill="rgba(239, 68, 68, 0.1)" stroke="rgba(239, 68, 68, 0.3)" strokeWidth="2" />
-                    <path d="M55 70 L65 80 L85 60" fill="none" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M70 20 L120 40 L120 80 C120 110, 70 130, 70 130 C70 130, 20 110, 20 80 L20 40 Z" fill="rgba(236, 72, 153, 0.05)" stroke="rgba(236, 72, 153, 0.2)" strokeWidth="2" />
+                    <path d="M55 70 L65 80 L85 60" fill="none" stroke="rgba(236, 72, 153, 0.4)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )
-              },
+              }
             ].map((feat, i) => (
               <div key={i} className={`bento-item ${feat.large ? 'large' : ''}`} style={{ 
                 background: 'rgba(255, 255, 255, 0.85)', 
