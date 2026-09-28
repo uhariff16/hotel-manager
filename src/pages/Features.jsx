@@ -169,7 +169,7 @@ export default function Features() {
               { 
                 icon: <Wallet size={28} strokeWidth={2} />, 
                 title: 'Financial Tracking', 
-                desc: 'Automatically log daily expenses, track diverse revenue streams, and manage OTA (Agoda/Booking.com) settlements effortlessly.', 
+                desc: 'Automatically update booking revenue and manually log other income and expenses.', 
                 color: '#f59e0b',
                 symbolicArt: (
                   <svg width="160" height="120" viewBox="0 0 160 120" style={{ position: 'absolute', right: '0', bottom: '0', opacity: 0.8 }}>
@@ -246,8 +246,8 @@ export default function Features() {
                   }}>
                     {feat.icon}
                   </div>
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em' }}>{feat.title}</h3>
-                  <p style={{ color: '#475569', lineHeight: 1.6, margin: 0, fontSize: '1.05rem', fontWeight: 400 }}>{feat.desc}</p>
+                  <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em', position: 'relative', zIndex: 10 }}>{feat.title}</h3>
+                  <p style={{ color: '#475569', lineHeight: 1.6, margin: 0, fontSize: '1.05rem', fontWeight: 400, maxWidth: feat.large ? '65%' : '85%', position: 'relative', zIndex: 10 }}>{feat.desc}</p>
                 </div>
               </div>
             ))}
