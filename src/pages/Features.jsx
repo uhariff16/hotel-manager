@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpenCheck, CalendarDays, Wallet, TrendingUp, Users, Zap } from 'lucide-react';
+import { BookOpenCheck, CalendarDays, Wallet, TrendingUp, Users, Zap, Shield } from 'lucide-react';
 
 export default function Features() {
   useEffect(() => {
@@ -191,15 +191,27 @@ export default function Features() {
               },
               { 
                 icon: <Zap size={28} strokeWidth={2} />, 
-                title: 'Instant Sync', 
-                desc: 'Changes reflect instantly across web and mobile apps.', 
-                color: '#3b82f6',
+                title: 'AI ID Scanning', 
+                desc: 'Take a photo of any guest ID. Our AI instantly extracts details and auto-fills the booking form.', 
+                color: '#10b981',
                 symbolicArt: (
                   <svg width="140" height="140" viewBox="0 0 140 140" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
-                    <path d="M30 70 A40 40 0 1 1 110 70" fill="none" stroke="rgba(59, 130, 246, 0.2)" strokeWidth="4" strokeLinecap="round" strokeDasharray="10 15" />
-                    <path d="M110 70 A40 40 0 1 1 30 70" fill="none" stroke="rgba(59, 130, 246, 0.4)" strokeWidth="4" strokeLinecap="round" strokeDasharray="10 15" />
-                    <path d="M100 60 L110 70 L120 60" fill="none" stroke="rgba(59, 130, 246, 0.4)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M40 80 L30 70 L20 80" fill="none" stroke="rgba(59, 130, 246, 0.2)" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                    <rect x="20" y="30" width="100" height="60" rx="4" fill="rgba(16, 185, 129, 0.1)" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="2" />
+                    <circle cx="45" cy="60" r="15" fill="rgba(16, 185, 129, 0.2)" />
+                    <rect x="70" y="50" width="40" height="6" fill="rgba(16, 185, 129, 0.2)" />
+                    <rect x="70" y="65" width="30" height="6" fill="rgba(16, 185, 129, 0.2)" />
+                  </svg>
+                )
+              },
+              { 
+                icon: <Shield size={28} strokeWidth={2} />, 
+                title: 'Secure Data Management', 
+                desc: 'Stay fully compliant with privacy laws. Instantly wipe guest records with a single click.', 
+                color: '#ef4444',
+                symbolicArt: (
+                  <svg width="140" height="140" viewBox="0 0 140 140" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
+                    <path d="M70 20 L120 40 L120 80 C120 110, 70 130, 70 130 C70 130, 20 110, 20 80 L20 40 Z" fill="rgba(239, 68, 68, 0.1)" stroke="rgba(239, 68, 68, 0.3)" strokeWidth="2" />
+                    <path d="M55 70 L65 80 L85 60" fill="none" stroke="rgba(239, 68, 68, 0.4)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                 )
               },
