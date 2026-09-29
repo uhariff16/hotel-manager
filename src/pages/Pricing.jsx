@@ -24,19 +24,17 @@ export default function Pricing() {
     window.scrollTo(0, 0);
   }, []);
 
-  const getPlansToDisplay = () => {
-    if (!websitePricing) return [];
-    
-    // Choose source data based on preview state
-    const sourceData = isPreview ? (websitePricing.draft || {}) : (websitePricing.published || {});
-    
-    // Filter and sort plans
-    const activePlans = Object.entries(sourceData)
-      .map(([key, plan]) => {
-        if (isPreview && globalPlans) {
-          const internal = globalPlans[key] || {};
+      const getPlansToDisplay = () => {
+      if (!websitePricing) return [];
+      
+      const sourceData = isPreview ? (websitePricing.draft || {}) : (websitePricing.published || {});
+      
+      const activePlans = Object.entries(sourceData)
+        .map(([key, plan]) => {
+          const internal = globalPlans?.[key] || {};
           return {
             key,
+            id: plan.id || internal.id || key,
             ...plan,
             monthlyPrice: internal.price || 0,
             originalPrice: internal.offerPrice ? internal.price : '',
@@ -45,18 +43,23 @@ export default function Pricing() {
             offerStartDate: internal.offerStartDate || '',
             offerEndDate: internal.offerEndDate || '',
             offerActive: internal.offerActive || false,
+            trialEnabled: internal.trialEnabled || false,
+            trialDurationDays: internal.trialDurationDays || 30,
+            maxResorts: internal.maxResorts,
+            maxRooms: internal.maxRooms,
+            maxStaff: internal.maxStaff,
+            features: internal.features || [],
+            reports: internal.reports || {},
             publicFeatures: internal.features 
               ? internal.features.filter(f => f.enabled !== false).map(f => f.name)
-              : plan.publicFeatures,
+              : plan.publicFeatures || []
           };
-        }
-        return { key, ...plan };
-      })
-      .filter(plan => plan.showOnWebsite !== false)
-      .sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
-
-    return activePlans;
-  };
+        })
+        .filter(plan => plan.showOnWebsite !== false && globalPlans?.[plan.key]?.enabled !== false && plan.key !== 'free')
+        .sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
+  
+      return activePlans;
+    };
 
   const isPromoActive = (plan) => {
     console.log("Checking promo for", plan.key, plan);
@@ -396,7 +399,7 @@ export default function Pricing() {
                           Processing...
                         </>
                       ) : (
-                        plan.ctaButtonText || 'Choose Plan'
+                        plan.trialEnabled ? `Start ${plan.trialDurationDays}-Day Free Trial` : (plan.ctaButtonText || 'Choose Plan')
                       )}
                     </button>
                   </div>
@@ -405,6 +408,90 @@ export default function Pricing() {
             })}
           </div>
         )}
+      
+        {/* Dynamic Comparison Table */}
+        <section style={{ padding: '6rem 2rem', background: 'white', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
+            <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0F2C59', fontFamily: "'Outfit', sans-serif" }}>Compare Plans</h2>
+              <p style={{ fontSize: '1.1rem', color: '#64748b', marginTop: '1rem' }}>Find the perfect setup for your property portfolio.</p>
+            </div>
+            
+            <div style={{ overflowX: 'auto', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
+              <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr>
+                    <th style={{ padding: '1.5rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, zIndex: 10, width: '25%' }}>Features</th>
+                    {plans.map(plan => (
+                      <th key={plan.key} style={{ padding: '1.5rem', textAlign: 'center', borderBottom: '2px solid #e2e8f0', color: '#0F2C59', fontWeight: 800, fontSize: '1.2rem', width: `${75 / plans.length}%` }}>
+                        {plan.displayPlanName || plan.name}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Property Limit</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b' }}>
+                        {plan.maxResorts >= 999999 ? 'Unlimited' : plan.maxResorts}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Room Limit</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b' }}>
+                        {plan.maxRooms >= 999999 ? 'Unlimited' : plan.maxRooms}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Staff Limit</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b' }}>
+                        {plan.maxStaff >= 999999 ? 'Unlimited' : plan.maxStaff}
+                      </td>
+                    ))}
+                  </tr>
+                  {/* Features Extracted dynamically */}
+                  {(() => {
+                    const allFeatureNames = new Set();
+                    plans.forEach(plan => {
+                      (plan.features || []).forEach(f => {
+                        if (f.enabled) allFeatureNames.add(f.name);
+                      });
+                    });
+                    
+                    return Array.from(allFeatureNames).map(featureName => (
+                      <tr key={featureName}>
+                        <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>{featureName}</td>
+                        {plans.map(plan => {
+                          const hasFeature = (plan.features || []).some(f => f.name === featureName && f.enabled);
+                          return (
+                            <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                              {hasFeature ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ));
+                  })()}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        {/* Enterprise Section */}
+        <section style={{ padding: '6rem 2rem', background: 'linear-gradient(135deg, #0F2C59 0%, #173b75 100%)', color: 'white', textAlign: 'center' }}>
+          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>Managing more properties or rooms?</h2>
+            <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.8)', marginBottom: '3rem', lineHeight: 1.6 }}>Need Stay Pilot for a larger portfolio? Let's find the right setup for your business.</p>
+            <a href="mailto:sales@staypilot.com" className="btn btn-primary" style={{ background: 'white', color: '#0F2C59', padding: '1.25rem 3rem', fontSize: '1.2rem', textDecoration: 'none', borderRadius: '8px', fontWeight: 800 }}>Contact Sales</a>
+          </div>
+        </section>
+
       </main>
 
       {/* FOOTER */}

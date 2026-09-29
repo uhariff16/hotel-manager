@@ -336,7 +336,15 @@ export default function AppLayout() {
       </aside>
 
       {/* Main Content */}
-      <main className="main-content">
+      
+            {profile?.subscription_status !== 'active' && profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date() && profile?.role !== 'super_admin' && (
+              <div style={{ background: 'var(--primary)', color: 'white', padding: '0.5rem 1rem', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
+                <span>Free Trial: {Math.ceil((new Date(profile.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24))} days remaining</span>
+                <button onClick={() => navigate('/subscription')} style={{ background: 'white', color: 'var(--primary)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Subscribe Now</button>
+              </div>
+            )}
+        <main className="main-content">
+
         <header className="top-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <button className="menu-toggle" onClick={() => setIsSidebarOpen(true)}>
@@ -376,7 +384,27 @@ export default function AppLayout() {
         </header>
 
         <div className="page-content">
-          <Outlet />
+          
+          {(() => {
+            const isTrialExpired = profile?.trial_ends_at && new Date(profile.trial_ends_at) < new Date() && profile?.subscription_status !== 'active';
+            const isAllowedPath = location.pathname.includes('/subscription') || location.pathname.includes('/settings');
+            if (isTrialExpired && !isAllowedPath && profile?.role !== 'super_admin') {
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
+                  <div style={{ background: '#fff', padding: '3rem', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', maxWidth: '500px' }}>
+                    <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: '#ef4444' }}>
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                    </div>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginBottom: '1rem' }}>Your free trial has ended.</h2>
+                    <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '2rem' }}>Subscribe to continue using Stay Pilot and access all your properties, bookings, and financial data.</p>
+                    <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }} onClick={() => navigate('/subscription')}>Subscribe Now</button>
+                  </div>
+                </div>
+              );
+            }
+            return <Outlet />;
+          })()}
+
         </div>
 
         {/* Mobile Bottom Navigation */}
