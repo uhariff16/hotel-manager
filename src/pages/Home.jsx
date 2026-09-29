@@ -308,10 +308,10 @@ export default function Home() {
             💰 Auto Financials
           </div>
           <div className="glass-badge float-anim" style={{ position: 'absolute', top: '45%', right: '18%', zIndex: 20, animationDelay: '0.8s' }}>
-            ⚡ Instant Sync
+            ⚡ AI ID Scanning
           </div>
           <div className="glass-badge float-anim-delayed" style={{ position: 'absolute', top: '-5%', right: '8%', zIndex: 20, animationDelay: '2.5s' }}>
-            📝 Lead Management
+            🛡️ Secure Data Management
           </div>
           <div className="glass-badge float-anim" style={{ position: 'absolute', bottom: '5%', right: '-12%', zIndex: 30, animationDelay: '1.2s' }}>
             📲 Quick Enquiry
