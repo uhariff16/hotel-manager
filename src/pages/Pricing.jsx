@@ -16,7 +16,7 @@ export default function Pricing() {
   const handlePlanClick = (plan) => {
     setProcessingPlanId(plan.id);
     setTimeout(() => {
-      navigate(plan.highlightPlan ? "/auth?mode=signup" : "/auth");
+      navigate(`/auth?mode=signup&plan=${plan.id}`);
     }, 1200);
   };
 

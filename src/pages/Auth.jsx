@@ -104,7 +104,8 @@ export default function Auth() {
           options: {
             data: {
               full_name: formData.fullName,
-              role: 'tenant_admin'
+              role: 'tenant_admin',
+                plan_type: new URLSearchParams(location.search).get('plan') || 'free'
             }
           }
         });
