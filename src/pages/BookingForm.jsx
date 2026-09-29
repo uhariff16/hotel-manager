@@ -165,7 +165,8 @@ export default function BookingForm() {
       is_ota_collected: false,
       ota_payment_status: 'Not Applicable',
       ota_channel: 'Airbnb',
-      custom_ota_channel: ''
+      custom_ota_channel: '',
+      billing_address_different: false, billing_door_no: '', billing_street: '', billing_city: '', billing_state: '', billing_pincode: ''
     });
     toast.success('Form cleared successfully');
   };
@@ -595,6 +596,7 @@ export default function BookingForm() {
               guest_city: b.guest_city || '',
               guest_state: b.guest_state || '',
               guest_pincode: b.guest_pincode || '',
+              billing_address_different: b.billing_address_different || false, billing_door_no: b.billing_door_no || '', billing_street: b.billing_street || '', billing_city: b.billing_city || '', billing_state: b.billing_state || '', billing_pincode: b.billing_pincode || '',
             price_type: b.price_type || 'Calculated',
             addon_selections: selections,
             addon_costs_itemized: b.addon_costs_itemized || {},
@@ -969,6 +971,7 @@ export default function BookingForm() {
           guest_city: bookingForm.guest_city,
           guest_state: bookingForm.guest_state,
           guest_pincode: bookingForm.guest_pincode,
+          billing_address_different: bookingForm.billing_address_different, billing_door_no: bookingForm.billing_door_no, billing_street: bookingForm.billing_street, billing_city: bookingForm.billing_city, billing_state: bookingForm.billing_state, billing_pincode: bookingForm.billing_pincode,
           id_front_image_url: bookingForm.id_front_image_url,
           id_back_image_url: bookingForm.id_back_image_url,
         guest_company_name: bookingForm.guest_company_name,
@@ -993,7 +996,7 @@ export default function BookingForm() {
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
           alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, billing_address_different, billing_door_no, billing_street, billing_city, billing_state, billing_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
           result = await supabase.from('bookings').update(cleanData).eq('id', id);
         }
       } else {
@@ -1001,7 +1004,7 @@ export default function BookingForm() {
         if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
           alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
           console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
+          const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, billing_address_different, billing_door_no, billing_street, billing_city, billing_state, billing_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
           result = await supabase.from('bookings').insert([cleanData]).select();
         }
       }
@@ -1449,6 +1452,45 @@ export default function BookingForm() {
                     onChange={e => setBookingForm({...bookingForm, guest_pincode: e.target.value, highlight_guest_pincode: false})} 
                   />
                 </div>
+
+
+              <div style={{ marginTop: '1rem', padding: '1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem', color: 'var(--primary)', fontWeight: '600' }}>
+                  <input type="checkbox" disabled={!isEditing} checked={bookingForm.billing_address_different} onChange={e => setBookingForm({...bookingForm, billing_address_different: e.target.checked})} style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }} />
+                  Billing address is different from ID address
+                </label>
+                
+                {bookingForm.billing_address_different && (
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid #e2e8f0' }}>
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label className="premium-label">Door / Building No.</label>
+                        <input type="text" disabled={!isEditing} className="premium-input" value={bookingForm.billing_door_no || ''} onChange={e => setBookingForm({...bookingForm, billing_door_no: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label className="premium-label">Street Name / Locality</label>
+                        <input type="text" disabled={!isEditing} className="premium-input" value={bookingForm.billing_street || ''} onChange={e => setBookingForm({...bookingForm, billing_street: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label className="premium-label">City / Town</label>
+                        <input type="text" disabled={!isEditing} className="premium-input" value={bookingForm.billing_city || ''} onChange={e => setBookingForm({...bookingForm, billing_city: e.target.value})} />
+                      </div>
+                      <div className="form-group">
+                        <label className="premium-label">State</label>
+                        <input type="text" disabled={!isEditing} className="premium-input" value={bookingForm.billing_state || ''} onChange={e => setBookingForm({...bookingForm, billing_state: e.target.value})} />
+                      </div>
+                    </div>
+                    <div className="form-grid">
+                      <div className="form-group">
+                        <label className="premium-label">Pincode</label>
+                        <input type="text" disabled={!isEditing} className="premium-input" value={bookingForm.billing_pincode || ''} onChange={e => setBookingForm({...bookingForm, billing_pincode: e.target.value})} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
               </div>
           
             <div style={{ borderTop: '1px dashed var(--border)', paddingTop: '1.5rem', marginTop: '1.5rem', marginBottom: '1rem' }}>
