@@ -45,7 +45,7 @@ BEGIN
   
   RETURN NEW;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS trigger_set_trial_defaults ON profiles;
 CREATE TRIGGER trigger_set_trial_defaults
