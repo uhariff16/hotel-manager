@@ -609,6 +609,7 @@ export default function SuperAdmin() {
         draft: newDraftData
       };
       settings.website_pricing = updatedWebsitePricing;
+      settings.pricing = pricingConfig;
       
       const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
