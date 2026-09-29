@@ -6,11 +6,14 @@ DECLARE
   v_trial_days INT;
   v_global_pricing JSONB;
   v_plan_config JSONB;
+  v_plan_enabled BOOLEAN;
 BEGIN
   IF NEW.role = 'tenant_admin' THEN
     v_plan_type := NEW.plan_type;
-    IF v_plan_type IS NULL THEN
-      v_plan_type := 'free';
+    
+    -- Reject missing plan or free plan for new signups
+    IF v_plan_type IS NULL OR v_plan_type = 'free' THEN
+      RAISE EXCEPTION 'Invalid or deprecated plan selected for new signup.';
     END IF;
 
     -- Fetch global settings from super_admin
@@ -22,13 +25,21 @@ BEGIN
     -- Extract plan config
     v_plan_config := v_global_pricing->v_plan_type;
     
-    -- Default to true and 30 if not found, just in case
+    IF v_plan_config IS NULL THEN
+      RAISE EXCEPTION 'Selected plan does not exist.';
+    END IF;
+
+    v_plan_enabled := COALESCE((v_plan_config->>'enabled')::BOOLEAN, false);
+    IF NOT v_plan_enabled THEN
+      RAISE EXCEPTION 'Selected plan is not enabled for new signups.';
+    END IF;
+    
     v_trial_enabled := COALESCE((v_plan_config->>'trialEnabled')::BOOLEAN, false);
     v_trial_days := COALESCE((v_plan_config->>'trialDurationDays')::INT, 30);
 
     IF v_trial_enabled THEN
-      NEW.trial_started_at := NOW();
-      NEW.trial_ends_at := NOW() + (v_trial_days || ' days')::INTERVAL;
+      NEW.trial_started_at := CURRENT_TIMESTAMP;
+      NEW.trial_ends_at := CURRENT_TIMESTAMP + (v_trial_days || ' days')::INTERVAL;
     END IF;
   END IF;
   

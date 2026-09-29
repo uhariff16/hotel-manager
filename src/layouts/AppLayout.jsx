@@ -386,7 +386,7 @@ export default function AppLayout() {
         <div className="page-content">
           
           {(() => {
-            const isTrialExpired = profile?.trial_ends_at && new Date(profile.trial_ends_at) < new Date() && profile?.subscription_status !== 'active';
+            const isTrialExpired = profile?.is_trial_expired_server === true;
             const isAllowedPath = location.pathname.includes('/subscription') || location.pathname.includes('/settings');
             if (isTrialExpired && !isAllowedPath && profile?.role !== 'super_admin') {
               return (

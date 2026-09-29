@@ -629,7 +629,7 @@ export default function SuperAdmin() {
       const newVersionNum = (websitePricingConfig.currentVersion || 0) + 1;
       
       const mergedDraft = {};
-      Object.keys(websitePricingConfig.draft || {}).forEach(key => {
+      Object.keys(websitePricingConfig.draft || {}).forEach(key => { if (key === 'enterpriseSection') { mergedDraft[key] = websitePricingConfig.draft[key]; return; }
         const internal = pricingConfig[key] || {};
         mergedDraft[key] = {
           ...websitePricingConfig.draft[key],

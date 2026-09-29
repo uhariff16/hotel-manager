@@ -29,8 +29,7 @@ export default function Pricing() {
       
       const sourceData = isPreview ? (websitePricing.draft || {}) : (websitePricing.published || {});
       
-      const activePlans = Object.entries(sourceData)
-        .map(([key, plan]) => {
+      const activePlans = Object.entries(sourceData).filter(([k]) => k !== 'enterpriseSection').map(([key, plan]) => {
           const internal = globalPlans?.[key] || {};
           return {
             key,
@@ -477,20 +476,66 @@ export default function Pricing() {
                       </tr>
                     ));
                   })()}
+                
+                  <tr>
+                    <td colSpan={plans.length + 1} style={{ padding: '2rem 1.5rem 1rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.2rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>Reports & Exports</td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Excel Export</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {plan.reports?.exportExcel ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>PDF Export</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {plan.reports?.exportPdf ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  {(() => {
+                    const allReportNames = new Set();
+                    plans.forEach(plan => {
+                      (plan.reports?.available || []).forEach(r => allReportNames.add(r));
+                    });
+                    
+                    return Array.from(allReportNames).map(reportName => (
+                      <tr key={'report-'+reportName}>
+                        <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569', textTransform: 'capitalize' }}>{reportName.replace(/_/g, ' ')} Report</td>
+                        {plans.map(plan => {
+                          const hasReport = (plan.reports?.available || []).includes(reportName);
+                          return (
+                            <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                              {hasReport ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ));
+                  })()}
                 </tbody>
+
               </table>
             </div>
           </div>
         </section>
 
-        {/* Enterprise Section */}
-        <section style={{ padding: '6rem 2rem', background: 'linear-gradient(135deg, #0F2C59 0%, #173b75 100%)', color: 'white', textAlign: 'center' }}>
-          <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-            <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>Managing more properties or rooms?</h2>
-            <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.8)', marginBottom: '3rem', lineHeight: 1.6 }}>Need Stay Pilot for a larger portfolio? Let's find the right setup for your business.</p>
-            <a href="mailto:sales@staypilot.com" className="btn btn-primary" style={{ background: 'white', color: '#0F2C59', padding: '1.25rem 3rem', fontSize: '1.2rem', textDecoration: 'none', borderRadius: '8px', fontWeight: 800 }}>Contact Sales</a>
-          </div>
-        </section>
+        
+        {websitePricing?.published?.enterpriseSection?.enabled && (
+          <section style={{ padding: '6rem 2rem', background: 'linear-gradient(135deg, #0F2C59 0%, #173b75 100%)', color: 'white', textAlign: 'center' }}>
+            <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>{websitePricing.published.enterpriseSection.heading || 'Managing more properties or rooms?'}</h2>
+              <p style={{ fontSize: '1.25rem', color: 'rgba(255,255,255,0.8)', marginBottom: '3rem', lineHeight: 1.6 }}>{websitePricing.published.enterpriseSection.description || "Need Stay Pilot for a larger portfolio? Let's find the right setup for your business."}</p>
+              {websitePricing.published.enterpriseSection.contactDestination && (
+                <a href={`mailto:${websitePricing.published.enterpriseSection.contactDestination}`} className="btn btn-primary" style={{ background: 'white', color: '#0F2C59', padding: '1.25rem 3rem', fontSize: '1.2rem', textDecoration: 'none', borderRadius: '8px', fontWeight: 800 }}>{websitePricing.published.enterpriseSection.ctaText || 'Contact Sales'}</a>
+              )}
+            </div>
+          </section>
+        )}
+
 
       </main>
 

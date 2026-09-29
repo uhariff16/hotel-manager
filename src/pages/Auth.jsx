@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff } from 'lucide-react';
@@ -105,7 +105,7 @@ export default function Auth() {
             data: {
               full_name: formData.fullName,
               role: 'tenant_admin',
-                plan_type: new URLSearchParams(location.search).get('plan') || 'free'
+                plan_type: new URLSearchParams(location.search).get('plan')
             }
           }
         });

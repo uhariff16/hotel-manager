@@ -158,8 +158,12 @@ function App() {
       // Fetch profile first to get the correct role and tenant_id
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       
-      if (profile) {
-        setProfile(profile);
+      
+        if (profile) {
+          const { data: isExpired } = await supabase.rpc('check_trial_status', { p_id: profile.id });
+          profile.is_trial_expired_server = isExpired;
+          setProfile(profile);
+
         // Only fetch resorts if the user actually belongs to a tenant (Owners and Staff)
         if (profile.tenant_id) {
           const { data: resorts } = await supabase
