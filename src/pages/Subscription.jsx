@@ -24,6 +24,45 @@ const formatOfferDate = (dateString) => {
   return `${day}${getOrdinal(day)} ${month} ${year}`;
 };
 
+const normalizeFeatureName = (str) => {
+  let s = (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (s.includes('aipoweredbookingmanagement')) {
+    return 'bookingmanagement';
+  }
+  return s;
+};
+
+const getSanitizedFeatures = (plan) => {
+  let rawList = [];
+  if (plan.features && Array.isArray(plan.features)) {
+    rawList = plan.features.filter(f => f.enabled !== false).map(f => f.name);
+  } else if (plan.publicFeatures && Array.isArray(plan.publicFeatures)) {
+    rawList = plan.publicFeatures;
+  }
+
+  const reports = plan.reports || {};
+
+  return rawList.filter(featureName => {
+    const norm = normalizeFeatureName(featureName);
+
+    if (norm.includes('advancereports') || norm.includes('advancedreports')) return false;
+    if (norm.includes('tenantadmincontrol')) return false;
+    if (norm.includes('resortlimit') || norm.includes('roomlimit')) return false;
+    if (norm.match(/upto\d+property/) || norm.match(/upto\d+resort/) || norm.match(/upto\d+room/)) return false;
+
+    if (norm.includes('investmentanalysis') && reports.investment !== true) return false;
+    if (norm.includes('excelexport') && reports.exportExcel !== true) return false;
+    if (norm.includes('pdfexport') && reports.exportPdf !== true) return false;
+
+    return true;
+  }).map(featureName => {
+    if (normalizeFeatureName(featureName) === 'bookingmanagement') {
+      return 'Booking Management';
+    }
+    return featureName;
+  });
+};
+
 export default function Subscription() {
   const { profile, setProfile, globalPlans, websitePricing, globalTaxSettings } = useSettingsStore();
   const [loading, setLoading] = useState(null);
@@ -113,9 +152,7 @@ export default function Subscription() {
           color: config.color || 'var(--primary)',
           popular: config.popular || false,
           icon: id === 'free' ? <Zap size={24} /> : (id === 'premium' ? <Shield size={24} /> : <Crown size={24} />),
-          features: Array.isArray(config.features) 
-            ? config.features.filter(f => f.enabled !== false).map(f => f.name)
-            : []
+          features: getSanitizedFeatures(config)
         };
       })
       .sort((a, b) => {

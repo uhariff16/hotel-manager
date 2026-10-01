@@ -33,57 +33,80 @@ export default function SuperAdmin() {
       maxRooms: 4,
       maxStaff: 1,
       color: '#a0aec0',
-      reports: { summary: false, bookings: true, guests: false, finance: true, exportExcel: false, exportPdf: false },
+      reports: { summary: false, bookings: true, guests: false, finance: false, investment: false, exportExcel: false, exportPdf: false },
       features: [
-        { name: '1 Resort Limit', enabled: true },
-        { name: 'Up to 5 Rooms', enabled: true },
-        { name: 'Basic Reports', enabled: true },
-        { name: 'Community Support', enabled: true }
+        { name: 'Dashboard', enabled: true },
+        { name: 'Booking Management', enabled: true },
+        { name: 'Financial Management', enabled: true },
+        { name: 'WhatsApp Notifications', enabled: true },
+        { name: 'Staff Access', enabled: true },
+        { name: 'Basic Support', enabled: true }
+      ]
+    },
+    custom_1786983013013: {
+      name: 'Solo',
+      description: 'Run one property',
+      enabled: true,
+      price: 999,
+      maxResorts: 1,
+      maxRooms: 10,
+      maxStaff: 1,
+      color: 'var(--primary)',
+      reports: { summary: false, bookings: true, guests: false, finance: false, investment: false, exportExcel: false, exportPdf: true },
+      features: [
+        { name: 'Dashboard', enabled: true },
+        { name: 'Booking Management', enabled: true },
+        { name: 'Financial Management', enabled: true },
+        { name: 'WhatsApp Notifications', enabled: true },
+        { name: 'Staff Access', enabled: true },
+        { name: 'Basic Support', enabled: true }
       ]
     },
     pro: {
-      name: 'Pro Manager',
-      description: 'For growing businesses',
+      name: 'Growth',
+      description: 'Run and understand a growing hospitality business',
       enabled: true,
       price: 1999,
       offerPrice: 1499,
       offerActive: false,
       offerStartDate: '',
       offerEndDate: '',
-      maxResorts: 5,
-      maxRooms: 999999,
-      maxStaff: 5,
+      maxResorts: 3,
+      maxRooms: 30,
+      maxStaff: 3,
       color: 'var(--primary)',
       popular: true,
-      reports: { summary: true, bookings: true, guests: true, finance: false, exportExcel: true, exportPdf: true },
+      reports: { summary: true, bookings: true, guests: true, finance: true, investment: true, exportExcel: true, exportPdf: true },
       features: [
-        { name: 'Up to 5 Resorts', enabled: true },
-        { name: 'Unlimited Rooms', enabled: true },
-        { name: 'Advanced Analytics', enabled: true },
-        { name: 'Email Automation', enabled: true },
+        { name: 'Dashboard', enabled: true },
+        { name: 'Booking Management', enabled: true },
+        { name: 'Financial Management', enabled: true },
+        { name: 'WhatsApp Notifications', enabled: true },
+        { name: 'Staff Access', enabled: true },
         { name: 'Priority Support', enabled: true }
       ]
     },
     premium: {
-      name: 'Luxury Premium',
-      description: 'Total control for hotel chains',
+      name: 'Stay Master',
+      description: 'Manage multiple properties at scale',
       enabled: true,
       price: 5999,
       offerPrice: 4999,
       offerActive: false,
       offerStartDate: '',
       offerEndDate: '',
-      maxResorts: 999999,
-      maxRooms: 999999,
-      maxStaff: 999999,
+      maxResorts: 7,
+      maxRooms: 70,
+      maxStaff: 7,
       color: '#d4af37',
-      reports: { summary: true, bookings: true, guests: true, finance: true, exportExcel: true, exportPdf: true },
+      reports: { summary: true, bookings: true, guests: true, finance: true, investment: true, exportExcel: true, exportPdf: true },
       features: [
-        { name: 'Unlimited Resorts', enabled: true },
-        { name: 'Custom Branding', enabled: true },
-        { name: 'Super Admin Panel', enabled: true },
+        { name: 'Dashboard', enabled: true },
+        { name: 'Booking Management', enabled: true },
+        { name: 'Financial Management', enabled: true },
         { name: 'WhatsApp Notifications', enabled: true },
-        { name: '24/7 Dedicated Support', enabled: true }
+        { name: 'Staff Access', enabled: true },
+        { name: 'Priority Support', enabled: true }
       ]
     }
   };
@@ -318,7 +341,51 @@ export default function SuperAdmin() {
     setSupportUnreadCount(count || 0);
   };
 
-  const fetchGlobalData = async () => {
+    const normalizePlanFeatures = (planKey, existingFeatures) => {
+    if (!existingFeatures || !Array.isArray(existingFeatures)) return existingFeatures;
+
+    const isStandardKey = ['free', 'custom_1786983013013', 'pro', 'premium'].includes(planKey);
+
+    if (isStandardKey) {
+      let cleaned = existingFeatures.filter(f => {
+        const norm = (f.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        if (norm.includes('advancereports') || norm.includes('advancedreports')) return false;
+        if (norm.includes('tenantadmincontrol')) return false;
+        if (norm.includes('investmentanalysis')) return false;
+        if (norm.includes('resortlimit') || norm.includes('roomlimit')) return false;
+        if (norm.match(/upto\d+property/) || norm.match(/upto\d+resort/) || norm.match(/upto\d+room/)) return false;
+        return true;
+      }).map(f => {
+        if ((f.name || '').toLowerCase().includes('ai powered booking management')) {
+          return { ...f, name: 'Booking Management' };
+        }
+        return f;
+      });
+
+      if (planKey === 'custom_1786983013013' || planKey === 'free') {
+        cleaned = cleaned.filter(f => (f.name || '').toLowerCase() !== 'priority support');
+        if (!cleaned.some(f => (f.name || '').toLowerCase() === 'basic support')) {
+          cleaned.push({ name: 'Basic Support', enabled: true });
+        }
+      } else if (planKey === 'pro' || planKey === 'premium') {
+        cleaned = cleaned.filter(f => (f.name || '').toLowerCase() !== 'basic support');
+        if (!cleaned.some(f => (f.name || '').toLowerCase() === 'priority support')) {
+          cleaned.push({ name: 'Priority Support', enabled: true });
+        }
+      }
+
+      return cleaned;
+    }
+
+    return existingFeatures.map(f => {
+      if ((f.name || '').toLowerCase().includes('ai powered booking management')) {
+        return { ...f, name: 'Booking Management' };
+      }
+      return f;
+    });
+  };
+
+const fetchGlobalData = async () => {
     setLoading(true);
     try {
       const [{ data: u }, { data: r }, { data: b }, { data: inc }] = await Promise.all([
@@ -359,7 +426,7 @@ export default function SuperAdmin() {
            mergedPricing[key] = {
              ...(DEFAULT_PLANS[key] || {}),
              ...plan,
-             features: plan.features || (DEFAULT_PLANS[key]?.features || []),
+             features: normalizePlanFeatures(key, plan.features || (DEFAULT_PLANS[key]?.features || [])),
              reports: plan.reports || (DEFAULT_PLANS[key]?.reports || { summary: true, bookings: true, guests: true, finance: true, exportExcel: true, exportPdf: true })
            };
         }

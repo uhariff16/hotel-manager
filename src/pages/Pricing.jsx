@@ -93,7 +93,46 @@ export default function Pricing() {
     return true;
   };
 
-  const normalizeFeatureName = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const normalizeFeatureName = (str) => {
+    let s = (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (s.includes('aipoweredbookingmanagement')) {
+      return 'bookingmanagement';
+    }
+    return s;
+  };
+
+  const getSanitizedFeatures = (plan) => {
+    let rawList = [];
+    if (plan.features && Array.isArray(plan.features)) {
+      rawList = plan.features.filter(f => f.enabled !== false).map(f => f.name);
+    } else if (plan.publicFeatures && Array.isArray(plan.publicFeatures)) {
+      rawList = plan.publicFeatures;
+    }
+
+    const reports = plan.reports || {};
+
+    return rawList.filter(featureName => {
+      const norm = normalizeFeatureName(featureName);
+
+      // Remove obsolete / redundant marketing entries
+      if (norm.includes('advancereports') || norm.includes('advancedreports')) return false;
+      if (norm.includes('tenantadmincontrol')) return false;
+      if (norm.includes('resortlimit') || norm.includes('roomlimit')) return false;
+      if (norm.match(/upto\d+property/) || norm.match(/upto\d+resort/) || norm.match(/upto\d+room/)) return false;
+
+      // Sanitize against authoritative reports.* entitlements
+      if (norm.includes('investmentanalysis') && reports.investment !== true) return false;
+      if (norm.includes('excelexport') && reports.exportExcel !== true) return false;
+      if (norm.includes('pdfexport') && reports.exportPdf !== true) return false;
+
+      return true;
+    }).map(featureName => {
+      if (normalizeFeatureName(featureName) === 'bookingmanagement') {
+        return 'Booking Management';
+      }
+      return featureName;
+    });
+  };
 
   const hasCoreFeature = (plan, targetName) => {
     const normTarget = normalizeFeatureName(targetName);
@@ -412,7 +451,7 @@ export default function Pricing() {
 
                   <div style={{ flex: 1, marginBottom: '2.5rem' }}>
                     <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem', textAlign: 'left' }}>
-                      {plan.publicFeatures?.map((feat, idx) => (
+                      {getSanitizedFeatures(plan).map((feat, idx) => (
                         <li key={idx} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', color: plan.highlightPlan ? '#f1f5f9' : '#334155', fontSize: '0.95rem', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 500 }}>
                           <Check size={18} color={plan.highlightPlan ? '#10b981' : '#059669'} style={{ flexShrink: 0, marginTop: '2px' }} />
                           <span>{feat}</span>
