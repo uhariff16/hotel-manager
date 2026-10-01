@@ -35,11 +35,21 @@ BEGIN
     END IF;
     
     v_trial_enabled := COALESCE((v_plan_config->>'trialEnabled')::BOOLEAN, false);
-    v_trial_days := COALESCE((v_plan_config->>'trialDurationDays')::INT, 30);
+    v_trial_days    := COALESCE((v_plan_config->>'trialDurationDays')::INT, 0);
 
     IF v_trial_enabled THEN
+      -- SAFETY: Fail closed if trial duration is invalid.
+      -- A trialEnabled plan with no valid duration must never produce
+      -- trial_ends_at IS NULL, which would misclassify the account as a
+      -- legacy customer and grant indefinite access under Rule 6.
+      IF v_trial_days < 1 THEN
+        RAISE EXCEPTION
+          'Plan "%" has trialEnabled=true but trialDurationDays is missing or invalid (%). '
+          'Set a valid trial duration (minimum 1 day) in Super Admin before new signups can proceed.',
+          v_plan_type, v_trial_days;
+      END IF;
       NEW.trial_started_at := CURRENT_TIMESTAMP;
-      NEW.trial_ends_at := CURRENT_TIMESTAMP + (v_trial_days || ' days')::INTERVAL;
+      NEW.trial_ends_at    := CURRENT_TIMESTAMP + (v_trial_days || ' days')::INTERVAL;
     END IF;
   END IF;
   

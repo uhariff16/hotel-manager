@@ -1300,7 +1300,9 @@ export default function SuperAdmin() {
                       maxResorts: 1,
                       maxRooms: 10,
                       color: 'var(--primary)',
-                      features: [{ name: 'New Feature', enabled: true }]
+                      features: [{ name: 'New Feature', enabled: true }],
+                      trialEnabled: true,
+                      trialDurationDays: 30
                     }
                   });
                 }}>
@@ -1331,6 +1333,47 @@ export default function SuperAdmin() {
                           />
                           <label htmlFor={`enable-${planKey}`} style={{ fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer' }}>Enabled</label>
                         </div>
+
+                        {/* ── Free Trial Settings ── */}
+                        <div style={{ marginTop: '1.25rem', padding: '1rem', background: 'rgba(15,44,89,0.04)', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          <h6 style={{ margin: '0 0 0.75rem 0', fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', color: '#0F2C59', letterSpacing: '0.05em' }}>Free Trial Settings</h6>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                            <input
+                              type="checkbox"
+                              id={`trial-enabled-${planKey}`}
+                              checked={plan.trialEnabled === true}
+                              onChange={e => setPricingConfig({...pricingConfig, [planKey]: {...plan, trialEnabled: e.target.checked}})}
+                              disabled={!plan.enabled}
+                              style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
+                            />
+                            <label htmlFor={`trial-enabled-${planKey}`} style={{ fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer', color: plan.enabled ? 'inherit' : '#94a3b8' }}>
+                              Enable free trial for new signups
+                            </label>
+                          </div>
+                          {plan.trialEnabled === true && (
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <label className="form-label" style={{ fontSize: '0.8rem' }}>Trial Duration (days)</label>
+                              <input
+                                type="number"
+                                className="form-input"
+                                min={1}
+                                max={365}
+                                value={plan.trialDurationDays || ''}
+                                onChange={e => {
+                                  const val = parseInt(e.target.value);
+                                  setPricingConfig({...pricingConfig, [planKey]: {...plan, trialDurationDays: isNaN(val) ? '' : Math.max(1, val)}});
+                                }}
+                                disabled={!plan.enabled}
+                                placeholder="e.g. 30"
+                                style={{ maxWidth: '160px' }}
+                              />
+                              <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.35rem', marginBottom: 0 }}>
+                                Applied to new signups only. Existing active trials are unaffected.
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
                         {!['free', 'pro', 'luxury'].includes(planKey) && (
                           <button 
                             type="button"
