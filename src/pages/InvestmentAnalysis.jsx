@@ -1,8 +1,7 @@
 // Updated: 2026-05-16 - Added suggested rate details
 import React, { useState, useEffect, useMemo } from 'react';
-import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { useSettingsStore } from '../lib/store';
-import { 
+import {
+  Loader2,
   TrendingUp, 
   DollarSign, 
   PieChart, 
@@ -653,7 +652,7 @@ const ROIPerformance = ({ investmentData, financials, range }) => {
 
 // --- MAIN PAGE COMPONENT ---
 export default function InvestmentHub() {
-  const { activeResortId, profile } = useSettingsStore();
+  const { activeResortId, profile, globalPlans, isDataLoaded } = useSettingsStore();
   const [view, setView] = useState('roi'); // 'planner' or 'roi'
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -679,12 +678,21 @@ export default function InvestmentHub() {
     end: '2027-03-31'
   });
 
+  // Evaluate entitlement parameters safely
+  const isSuper = profile?.role === 'super_admin';
+  const planData = globalPlans?.[profile?.plan_type] || {};
+  const isEntitlementLoading = !isDataLoaded && profile === null;
+  const hasInvestmentAccess = isSuper
+    || planData.reports?.investment === true
+    || profile?.feature_investment_enabled === true;
+
+  // STRICT SEQUENCE: Data queries fire ONLY if entitlements are loaded AND access is granted
   useEffect(() => {
-    if (activeResortId) {
+    if (activeResortId && !isEntitlementLoading && hasInvestmentAccess) {
       fetchData();
       fetchPropertyStats();
     }
-  }, [activeResortId]);
+  }, [activeResortId, isEntitlementLoading, hasInvestmentAccess]);
 
   const fetchData = async () => {
     try {
@@ -747,6 +755,33 @@ export default function InvestmentHub() {
       setSaving(false);
     }
   };
+
+  // 1. Loading entitlement state -> render spinner / loading text (NO protected data rendered)
+  if (isEntitlementLoading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+        <Loader2 className="animate-spin" size={32} color="#059669" />
+        <p style={{ marginTop: '1rem', color: '#64748b', fontWeight: 600 }}>Loading permissions...</p>
+      </div>
+    );
+  }
+
+  // 2. Entitlements loaded but access denied -> render upgrade screen
+  if (!hasInvestmentAccess) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '3rem', textAlign: 'center' }}>
+        <TrendingUp size={56} color="#cbd5e1" style={{ marginBottom: '1.5rem' }} />
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: '#0F2C59', marginBottom: '0.75rem' }}>Investment Analysis</h2>
+        <p style={{ color: '#64748b', maxWidth: '380px', lineHeight: 1.6, marginBottom: '1.5rem' }}>
+          Investment Analysis is available on the Growth and Stay Master plans.
+          Upgrade to unlock property ROI tracking and investment performance tools.
+        </p>
+        <Link to="/subscription" style={{ display: 'inline-block', padding: '0.85rem 2rem', background: '#059669', color: 'white', borderRadius: '10px', fontWeight: 700, textDecoration: 'none', fontSize: '1rem' }}>
+          View Upgrade Options
+        </Link>
+      </div>
+    );
+  }
 
   if (loading) return <div style={{ padding: '2rem' }}>Loading Analysis Hub...</div>;
 

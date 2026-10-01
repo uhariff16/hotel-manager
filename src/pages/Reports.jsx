@@ -12,15 +12,18 @@ export default function Reports() {
   
   const currentPlanId = profile?.plan_type || 'free';
   const planConfig = globalPlans?.[currentPlanId] || {};
-  const allowedReports = planConfig.reports || { summary: true, bookings: false, guests: false, finance: false };
+  // Fail-closed: missing/undefined entitlement does NOT grant access.
+  // Explicit true in plan config is required. The fallback denies everything
+  // so plans without a reports object cannot accidentally gain access.
+  const allowedReports = planConfig.reports || {};
 
   const [data, setData] = useState({ incomes: [], expenses: [], bookings: [], cottages: [], rooms: [] });
   const [loading, setLoading] = useState(true);
   const [reportType, setReportType] = useState(null);
   
   const activeReportType = useMemo(() => {
-    if (reportType && allowedReports[reportType] !== false) return reportType;
-    return ['summary', 'bookings', 'guests', 'finance'].find(id => allowedReports[id] !== false) || 'summary';
+    if (reportType && allowedReports[reportType] === true) return reportType;
+    return ['summary', 'bookings', 'guests', 'finance'].find(id => allowedReports[id] === true) || null;
   }, [reportType, allowedReports]);
 
   const [selectedCottageId, setSelectedCottageId] = useState('all');
@@ -611,8 +614,8 @@ export default function Reports() {
               value={exportFormat}
               onChange={(e) => setExportFormat(e.target.value)}
             >
-              {allowedReports?.exportPdf !== false && <option value="pdf">PDF Format</option>}
-              {allowedReports?.exportExcel !== false && <option value="excel">Excel Format</option>}
+              {allowedReports?.exportPdf === true && <option value="pdf">PDF Format</option>}
+              {allowedReports?.exportExcel === true && <option value="excel">Excel Format</option>}
             </select>
             
             <button 
@@ -739,7 +742,7 @@ export default function Reports() {
                 { id: 'bookings', label: 'Booking Details' },
                 { id: 'guests', label: 'Guest Contacts' },
                 { id: 'finance', label: 'Income & Expenses' }
-              ].filter(opt => allowedReports[opt.id] !== false).map(opt => (
+              ].filter(opt => allowedReports[opt.id] === true).map(opt => (
                 <button
                   key={opt.id}
                   onClick={() => {

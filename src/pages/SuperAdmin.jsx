@@ -1443,8 +1443,7 @@ export default function SuperAdmin() {
                           { id: 'summary', label: 'Performance Summary' },
                           { id: 'bookings', label: 'Booking Details' },
                           { id: 'guests', label: 'Guest Contacts' },
-                          { id: 'finance', label: 'Income & Expenses' },
-                          { id: 'investment', label: 'Investment Analysis' }
+                          { id: 'finance', label: 'Income & Expenses' }
                         ].map(report => (
                           <div key={report.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <input 
@@ -1460,6 +1459,25 @@ export default function SuperAdmin() {
                             <label htmlFor={`report-${planKey}-${report.id}`} style={{ fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>{report.label}</label>
                           </div>
                         ))}
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #cbd5e1' }}>
+                      <h5 style={{ marginBottom: '1rem', color: '#0F2C59', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 800 }}>Business Tools</h5>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <input 
+                            type="checkbox" 
+                            id={`report-${planKey}-investment`}
+                            checked={plan.reports?.investment ?? false}
+                            onChange={(e) => {
+                              const newReports = { ...(plan.reports || {}), investment: e.target.checked };
+                              setPricingConfig({...pricingConfig, [planKey]: {...plan, reports: newReports}});
+                            }}
+                            disabled={!plan.enabled}
+                          />
+                          <label htmlFor={`report-${planKey}-investment`} style={{ fontSize: '0.85rem', cursor: 'pointer', fontWeight: 600, color: '#475569' }}>Investment Analysis</label>
+                        </div>
                       </div>
                     </div>
 

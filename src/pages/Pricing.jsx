@@ -93,6 +93,40 @@ export default function Pricing() {
     return true;
   };
 
+  const normalizeFeatureName = (str) => (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const hasCoreFeature = (plan, targetName) => {
+    const normTarget = normalizeFeatureName(targetName);
+    if (plan.features && Array.isArray(plan.features)) {
+      const found = plan.features.find(f => normalizeFeatureName(f.name) === normTarget);
+      if (found) {
+        return found.enabled === true;
+      }
+    }
+    if (plan.publicFeatures && Array.isArray(plan.publicFeatures)) {
+      const found = plan.publicFeatures.find(name => normalizeFeatureName(name) === normTarget);
+      if (found) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const getSupportLevel = (plan) => {
+    if (plan.features && Array.isArray(plan.features)) {
+      const priority = plan.features.find(f => normalizeFeatureName(f.name) === normalizeFeatureName('Priority Support'));
+      if (priority && priority.enabled === true) return 'Priority Support';
+
+      const basic = plan.features.find(f => normalizeFeatureName(f.name) === normalizeFeatureName('Basic Support'));
+      if (basic && basic.enabled === true) return 'Basic Support';
+    }
+    if (plan.publicFeatures && Array.isArray(plan.publicFeatures)) {
+      if (plan.publicFeatures.some(name => normalizeFeatureName(name) === normalizeFeatureName('Priority Support'))) return 'Priority Support';
+      if (plan.publicFeatures.some(name => normalizeFeatureName(name) === normalizeFeatureName('Basic Support'))) return 'Basic Support';
+    }
+    return '—';
+  };
+
   const plans = getPlansToDisplay();
 
   return (
@@ -429,62 +463,134 @@ export default function Pricing() {
                   </tr>
                 </thead>
                 <tbody>
+                  {/* PROPERTY MANAGEMENT */}
                   <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Property Limit</td>
+                    <td colSpan={plans.length + 1} style={{ padding: '1.25rem 1.5rem 0.5rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.05rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>
+                      PROPERTY MANAGEMENT
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Properties</td>
                     {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b' }}>
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 700 }}>
                         {plan.maxResorts >= 999999 ? 'Unlimited' : plan.maxResorts}
                       </td>
                     ))}
                   </tr>
                   <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Room Limit</td>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Rooms</td>
                     {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b' }}>
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 700 }}>
                         {plan.maxRooms >= 999999 ? 'Unlimited' : plan.maxRooms}
                       </td>
                     ))}
                   </tr>
                   <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Staff Limit</td>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Staff Access</td>
                     {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b' }}>
-                        {plan.maxStaff >= 999999 ? 'Unlimited' : plan.maxStaff}
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 700 }}>
+                        {plan.maxStaff >= 999999 ? 'Unlimited' : (plan.maxStaff || 1)}
                       </td>
                     ))}
                   </tr>
-                  {/* Features Extracted dynamically */}
-                  {(() => {
-                    const allFeatureNames = new Set();
-                    plans.forEach(plan => {
-                      (plan.features || []).forEach(f => {
-                        if (f.enabled) allFeatureNames.add(f.name);
-                      });
-                    });
-                    
-                    return Array.from(allFeatureNames).map(featureName => (
-                      <tr key={featureName}>
-                        <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>{featureName}</td>
-                        {plans.map(plan => {
-                          const hasFeature = (plan.features || []).some(f => f.name === featureName && f.enabled);
-                          return (
-                            <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                              {hasFeature ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ));
-                  })()}
-                
                   <tr>
-                    <td colSpan={plans.length + 1} style={{ padding: '2rem 1.5rem 1rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.2rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>Reports & Exports</td>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Dashboard</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {hasCoreFeature(plan, 'Dashboard') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Booking Management</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {hasCoreFeature(plan, 'Booking Management') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Financial Management</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {hasCoreFeature(plan, 'Financial Management') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>WhatsApp Notifications</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {hasCoreFeature(plan, 'WhatsApp Notifications') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* REPORTS */}
+                  <tr>
+                    <td colSpan={plans.length + 1} style={{ padding: '1.25rem 1.5rem 0.5rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.05rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>
+                      REPORTS
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Booking Reports</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {plan.reports?.bookings === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Performance Summary</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {plan.reports?.summary === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Income & Expense Reports</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {plan.reports?.finance === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Guest Contacts</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {plan.reports?.guests === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* BUSINESS TOOLS */}
+                  <tr>
+                    <td colSpan={plans.length + 1} style={{ padding: '1.25rem 1.5rem 0.5rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.05rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>
+                      BUSINESS TOOLS
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Investment Analysis</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
+                        {plan.reports?.investment === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                      </td>
+                    ))}
+                  </tr>
+
+                  {/* EXPORTS & SUPPORT */}
+                  <tr>
+                    <td colSpan={plans.length + 1} style={{ padding: '1.25rem 1.5rem 0.5rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.05rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>
+                      EXPORTS & SUPPORT
+                    </td>
                   </tr>
                   <tr>
                     <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Excel Export</td>
                     {plans.map(plan => (
                       <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.exportExcel ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                        {plan.reports?.exportExcel === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
                       </td>
                     ))}
                   </tr>
@@ -492,30 +598,18 @@ export default function Pricing() {
                     <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>PDF Export</td>
                     {plans.map(plan => (
                       <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.exportPdf ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
+                        {plan.reports?.exportPdf === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
                       </td>
                     ))}
                   </tr>
-                  {(() => {
-                    const allReportNames = new Set();
-                    plans.forEach(plan => {
-                      (plan.reports?.available || []).forEach(r => allReportNames.add(r));
-                    });
-                    
-                    return Array.from(allReportNames).map(reportName => (
-                      <tr key={'report-'+reportName}>
-                        <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569', textTransform: 'capitalize' }}>{reportName.replace(/_/g, ' ')} Report</td>
-                        {plans.map(plan => {
-                          const hasReport = (plan.reports?.available || []).includes(reportName);
-                          return (
-                            <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                              {hasReport ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ));
-                  })()}
+                  <tr>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Support Level</td>
+                    {plans.map(plan => (
+                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 600 }}>
+                        {getSupportLevel(plan)}
+                      </td>
+                    ))}
+                  </tr>
                 </tbody>
 
               </table>
