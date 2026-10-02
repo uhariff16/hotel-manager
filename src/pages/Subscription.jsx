@@ -26,8 +26,11 @@ const formatOfferDate = (dateString) => {
 
 const normalizeFeatureName = (str) => {
   let s = (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (s.includes('aipoweredbookingmanagement')) {
+  if (s.includes('bookingmanagement') || s.includes('aipoweredbookingmanagement')) {
     return 'bookingmanagement';
+  }
+  if (s.includes('staffaccess') || s.includes('tenantadmincontrol')) {
+    return 'staffaccess';
   }
   return s;
 };
@@ -46,7 +49,6 @@ const getSanitizedFeatures = (plan) => {
     const norm = normalizeFeatureName(featureName);
 
     if (norm.includes('advancereports') || norm.includes('advancedreports')) return false;
-    if (norm.includes('tenantadmincontrol')) return false;
     if (norm.includes('resortlimit') || norm.includes('roomlimit')) return false;
     if (norm.match(/upto\d+property/) || norm.match(/upto\d+resort/) || norm.match(/upto\d+room/)) return false;
 
@@ -55,11 +57,6 @@ const getSanitizedFeatures = (plan) => {
     if (norm.includes('pdfexport') && reports.exportPdf !== true) return false;
 
     return true;
-  }).map(featureName => {
-    if (normalizeFeatureName(featureName) === 'bookingmanagement') {
-      return 'Booking Management';
-    }
-    return featureName;
   });
 };
 

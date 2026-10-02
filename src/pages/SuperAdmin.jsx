@@ -426,8 +426,8 @@ const fetchGlobalData = async () => {
            mergedPricing[key] = {
              ...(DEFAULT_PLANS[key] || {}),
              ...plan,
-             features: normalizePlanFeatures(key, plan.features || (DEFAULT_PLANS[key]?.features || [])),
-             reports: plan.reports || (DEFAULT_PLANS[key]?.reports || { summary: true, bookings: true, guests: true, finance: true, exportExcel: true, exportPdf: true })
+             features: normalizePlanFeatures(key, plan),
+             reports: normalizePlanReports(key, plan)
            };
         }
         

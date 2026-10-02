@@ -48,7 +48,7 @@ export default function Pricing() {
             maxRooms: internal.maxRooms,
             maxStaff: internal.maxStaff,
             features: internal.features || [],
-            reports: internal.reports || {},
+            reports: normalizePlanReports(key, internal),
             publicFeatures: internal.features 
               ? internal.features.filter(f => f.enabled !== false).map(f => f.name)
               : plan.publicFeatures || []
@@ -93,10 +93,51 @@ export default function Pricing() {
     return true;
   };
 
+  const normalizePlanReports = (planKey, planObj) => {
+    const existingReports = planObj?.reports || (typeof planObj === 'object' && !planObj.reports ? planObj : {});
+    const name = (planObj?.name || planKey || '').toLowerCase();
+
+    const isSolo = planKey === 'custom_1786983013013' || planKey === 'solo' || name.includes('solo') || planKey === 'free';
+    const isGrowth = planKey === 'pro' || planKey === 'growth' || name.includes('growth');
+    const isStayMaster = planKey === 'premium' || planKey === 'staymaster' || name.includes('master') || name.includes('luxury');
+
+    if (isSolo) {
+      return {
+        summary: false,
+        bookings: true,
+        guests: false,
+        finance: false,
+        investment: false,
+        exportExcel: false,
+        exportPdf: true,
+        ...existingReports,
+        finance: false
+      };
+    }
+
+    if (isGrowth || isStayMaster) {
+      return {
+        summary: true,
+        bookings: true,
+        guests: true,
+        finance: true,
+        investment: true,
+        exportExcel: true,
+        exportPdf: true,
+        ...existingReports
+      };
+    }
+
+    return existingReports;
+  };
+
   const normalizeFeatureName = (str) => {
     let s = (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-    if (s.includes('aipoweredbookingmanagement')) {
+    if (s.includes('bookingmanagement') || s.includes('aipoweredbookingmanagement')) {
       return 'bookingmanagement';
+    }
+    if (s.includes('staffaccess') || s.includes('tenantadmincontrol')) {
+      return 'staffaccess';
     }
     return s;
   };
@@ -114,23 +155,15 @@ export default function Pricing() {
     return rawList.filter(featureName => {
       const norm = normalizeFeatureName(featureName);
 
-      // Remove obsolete / redundant marketing entries
       if (norm.includes('advancereports') || norm.includes('advancedreports')) return false;
-      if (norm.includes('tenantadmincontrol')) return false;
       if (norm.includes('resortlimit') || norm.includes('roomlimit')) return false;
       if (norm.match(/upto\d+property/) || norm.match(/upto\d+resort/) || norm.match(/upto\d+room/)) return false;
 
-      // Sanitize against authoritative reports.* entitlements
       if (norm.includes('investmentanalysis') && reports.investment !== true) return false;
       if (norm.includes('excelexport') && reports.exportExcel !== true) return false;
       if (norm.includes('pdfexport') && reports.exportPdf !== true) return false;
 
       return true;
-    }).map(featureName => {
-      if (normalizeFeatureName(featureName) === 'bookingmanagement') {
-        return 'Booking Management';
-      }
-      return featureName;
     });
   };
 
@@ -541,7 +574,7 @@ export default function Pricing() {
                     ))}
                   </tr>
                   <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Booking Management</td>
+                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>AI Powered Booking Management</td>
                     {plans.map(plan => (
                       <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
                         {hasCoreFeature(plan, 'Booking Management') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
