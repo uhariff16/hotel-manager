@@ -412,18 +412,22 @@ export default function Dashboard() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: isMobile ? '1.25rem' : '2rem' }}>
       
       {/* --- DASHBOARD FILTER BAR --- */}
+      {/* --- DASHBOARD UNIFIED TOOLBAR FILTER BAR --- */}
       <div className="card" style={{ 
-        padding: isMobile ? '0.4rem 0.6rem' : '0.65rem 1.25rem', 
-        display: 'flex',
+        padding: isMobile ? '0 0.5rem' : '0 0.75rem', 
+        display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: 'nowrap',
-        gap: isMobile ? '0.35rem' : '1rem',
-        background: 'var(--bg-secondary)',
+        gap: '0.25rem',
+        background: 'var(--card-bg, #ffffff)',
         border: '1px solid var(--border)',
-        borderRadius: isMobile ? '10px' : '14px',
-        boxShadow: isMobile ? 'none' : '0 2px 8px rgba(0,0,0,0.02)',
-        minHeight: isMobile ? '50px' : 'auto',
+        borderRadius: '12px',
+        boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+        height: isMobile ? '46px' : '44px',
+        width: isMobile ? '100%' : 'fit-content',
+        alignSelf: isMobile ? 'stretch' : 'flex-end',
+        boxSizing: 'border-box',
         overflow: 'hidden'
       }}>
         {/* Left: Property Selector (Shown for Multi-property Accounts Only) */}
@@ -431,25 +435,24 @@ export default function Dashboard() {
           <div style={{ 
             display: 'flex', 
             alignItems: 'center', 
-            gap: isMobile ? '0.35rem' : '0.5rem',
-            flex: isMobile ? '1 1 55%' : '0 1 auto',
-            minWidth: 0
+            gap: '0.35rem',
+            flex: isMobile ? '1 1 55%' : '0 0 auto',
+            minWidth: 0,
+            padding: '0 0.2rem'
           }}>
-            <Building2 size={isMobile ? 15 : 16} color="var(--primary)" style={{ flexShrink: 0 }} />
-            {!isMobile && (
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Property:</span>
-            )}
+            <Building2 size={15} color="var(--primary)" style={{ flexShrink: 0, opacity: 0.85 }} />
             <select
               aria-label="Select property"
-              className="form-select"
               style={{ 
-                padding: isMobile ? '0.35rem 0.5rem' : '0.4rem 0.8rem', 
+                border: 'none',
+                background: 'transparent',
+                outline: 'none',
                 fontSize: isMobile ? '0.8rem' : '0.85rem', 
-                fontWeight: 700, 
-                borderRadius: '8px', 
+                fontWeight: 600, 
+                color: 'var(--text-main)',
                 cursor: 'pointer', 
-                background: 'var(--bg-color)',
-                width: '100%',
+                padding: '0.35rem 0.2rem',
+                width: isMobile ? '100%' : 'auto',
                 minWidth: 0,
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
@@ -466,130 +469,100 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Divider for Mobile */}
-        {isMobile && hasMultipleProperties && (
-          <div style={{ width: '1px', height: '22px', background: 'var(--border)', flexShrink: 0, margin: '0 2px' }} />
+        {/* Divider */}
+        {hasMultipleProperties && (
+          <div style={{ width: '1px', height: '20px', background: 'var(--border)', flexShrink: 0, margin: '0 0.35rem', opacity: 0.7 }} />
         )}
 
         {/* Right: Month Selector Controls */}
         <div style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          gap: isMobile ? '0.25rem' : '0.5rem', 
-          marginLeft: (hasMultipleProperties && !isMobile) ? 'auto' : '0',
-          flex: isMobile ? (hasMultipleProperties ? '0 0 auto' : '1 1 100%') : '0 1 auto',
+          gap: '0.1rem', 
+          flex: isMobile ? (hasMultipleProperties ? '0 0 auto' : '1 1 100%') : '0 0 auto',
           justifyContent: (isMobile && !hasMultipleProperties) ? 'center' : 'flex-end'
         }}>
-          {!isMobile && (
-            <>
-              <CalendarIcon size={16} color="var(--primary)" />
-              <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Month:</span>
-            </>
-          )}
-
-          {/* Integrated Month Navigator */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'var(--bg-color)',
-            border: '1px solid var(--border)',
-            borderRadius: '8px',
-            padding: '2px',
-            height: isMobile ? '36px' : 'auto',
-            position: 'relative'
-          }}>
-            <button
-              type="button"
-              className="btn btn-outline"
-              aria-label="Previous month"
-              style={{ 
-                padding: isMobile ? '0 0.4rem' : '0.35rem 0.65rem', 
-                height: isMobile ? '30px' : 'auto',
-                minWidth: isMobile ? '32px' : 'auto',
-                border: 'none', 
-                borderRadius: '6px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'transparent'
-              }}
-              onClick={handlePrevMonth}
-              title="Previous Month"
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            {/* Direct Month Picker Trigger Container */}
-            <div style={{ 
-              position: 'relative', 
+          <button
+            type="button"
+            aria-label="Previous month"
+            title="Previous Month"
+            style={{ 
+              border: 'none', 
+              background: 'transparent', 
+              borderRadius: '6px', 
+              width: '32px',
+              height: '32px',
               display: 'flex', 
               alignItems: 'center', 
               justifyContent: 'center',
-              padding: isMobile ? '0 0.4rem' : '0',
-              cursor: 'pointer'
-            }}>
-              {isMobile ? (
-                <>
-                  <span style={{ 
-                    fontSize: '0.8rem', 
-                    fontWeight: 700, 
-                    color: 'var(--text-main)', 
-                    whiteSpace: 'nowrap',
-                    userSelect: 'none',
-                    padding: '0 0.2rem'
-                  }}>
-                    {window.innerWidth <= 340 ? formattedMonthExtraShort : formattedMonthShort}
-                  </span>
-                  <input
-                    type="month"
-                    aria-label="Select month"
-                    style={{ 
-                      position: 'absolute', 
-                      inset: 0, 
-                      opacity: 0, 
-                      width: '100%', 
-                      height: '100%', 
-                      cursor: 'pointer' 
-                    }}
-                    value={selectedMonth}
-                    onChange={e => e.target.value && handleMonthChange(e.target.value)}
-                  />
-                </>
-              ) : (
-                <input
-                  type="month"
-                  aria-label="Select month"
-                  className="form-input"
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', fontWeight: 700, borderRadius: '6px', cursor: 'pointer', width: 'auto', background: 'transparent', border: 'none' }}
-                  value={selectedMonth}
-                  onChange={e => e.target.value && handleMonthChange(e.target.value)}
-                />
-              )}
-            </div>
+              cursor: 'pointer',
+              color: 'var(--text-main)',
+              padding: 0
+            }}
+            onClick={handlePrevMonth}
+          >
+            <ChevronLeft size={16} />
+          </button>
 
-            <button
-              type="button"
-              className="btn btn-outline"
-              aria-label="Next month"
+          {/* Direct Month Picker Trigger Container */}
+          <div style={{ 
+            position: 'relative', 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            padding: '0 0.4rem',
+            height: '32px',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}>
+            <span style={{ 
+              fontSize: isMobile ? '0.8rem' : '0.85rem', 
+              fontWeight: 600, 
+              color: 'var(--text-main)', 
+              whiteSpace: 'nowrap',
+              userSelect: 'none'
+            }}>
+              {isMobile 
+                ? (window.innerWidth <= 340 ? formattedMonthExtraShort : formattedMonthShort)
+                : formattedMonthHeading}
+            </span>
+            <input
+              type="month"
+              aria-label="Select month"
               style={{ 
-                padding: isMobile ? '0 0.4rem' : '0.35rem 0.65rem', 
-                height: isMobile ? '30px' : 'auto',
-                minWidth: isMobile ? '32px' : 'auto',
-                border: 'none', 
-                borderRadius: '6px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'transparent'
+                position: 'absolute', 
+                inset: 0, 
+                opacity: 0, 
+                width: '100%', 
+                height: '100%', 
+                cursor: 'pointer' 
               }}
-              onClick={handleNextMonth}
-              title="Next Month"
-            >
-              <ChevronRight size={16} />
-            </button>
+              value={selectedMonth}
+              onChange={e => e.target.value && handleMonthChange(e.target.value)}
+            />
           </div>
+
+          <button
+            type="button"
+            aria-label="Next month"
+            title="Next Month"
+            style={{ 
+              border: 'none', 
+              background: 'transparent', 
+              borderRadius: '6px', 
+              width: '32px',
+              height: '32px',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              cursor: 'pointer',
+              color: 'var(--text-main)',
+              padding: 0
+            }}
+            onClick={handleNextMonth}
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
       </div>
 
