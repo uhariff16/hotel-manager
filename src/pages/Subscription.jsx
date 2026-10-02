@@ -51,11 +51,13 @@ export default function Subscription() {
   const fetchSubscriptionData = async () => {
      try {
        const { data: subData } = await supabase.from('saas_subscriptions')
-         .select('*').eq('tenant_id', profile.id)
+         .select('*')
+         .eq('tenant_id', profile.id)
+         .eq('status', 'active')
          .order('created_at', { ascending: false })
          .limit(1)
          .maybeSingle();
-       if (subData) setActiveSubscription(subData);
+       setActiveSubscription(subData || null);
 
        const { data: payData } = await supabase.from('saas_payments')
          .select('*').eq('tenant_id', profile.id).order('created_at', { ascending: false });
@@ -374,14 +376,14 @@ export default function Subscription() {
         </div>
       )}
 
-      {((activeSubscription?.status === 'active') || paymentHistory.length > 0) && (
+      {profile?.id && (
         <div className="card" style={{ marginBottom: '3rem', padding: '0', overflow: 'hidden', border: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'rgba(15, 44, 89, 0.02)' }}>
             <button 
               onClick={() => setDetailsTab('subscription')}
               style={{ flex: 1, padding: '1rem', background: detailsTab === 'subscription' ? 'white' : 'transparent', border: 'none', borderBottom: detailsTab === 'subscription' ? '2px solid var(--primary)' : '2px solid transparent', color: detailsTab === 'subscription' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
             >
-              <Check size={18} /> Active Subscription
+              <Check size={18} /> Plan Details
             </button>
             <button 
               onClick={() => setDetailsTab('history')}
@@ -396,21 +398,87 @@ export default function Subscription() {
               activeSubscription?.status === 'active' ? (
                 <div>
                   <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
-                    Subscription Details
+                    Plan Details
                   </h2>
                   <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
                     You are currently subscribed to the <strong>{getPlanName(activeSubscription.staypilot_plan_type)}</strong> plan.
                   </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '400px' }}>
-                    <div style={{ color: 'var(--text-muted)' }}>Status:</div>
-                    <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>{activeSubscription.status.toUpperCase()}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '450px' }}>
+                    <div style={{ color: 'var(--text-muted)' }}>Current Plan:</div>
+                    <div style={{ fontWeight: 'bold' }}>{getPlanName(activeSubscription.staypilot_plan_type)}</div>
+                    
+                    <div style={{ color: 'var(--text-muted)' }}>Subscription Status:</div>
+                    <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>ACTIVE</div>
+                    
                     <div style={{ color: 'var(--text-muted)' }}>Next Billing Date:</div>
-                    <div style={{ fontWeight: 'bold' }}>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) : 'Processing (Awaiting Sync)'}</div>
+                    <div style={{ fontWeight: 'bold' }}>
+                      {activeSubscription.current_period_end 
+                        ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) 
+                        : 'Processing (Awaiting Sync)'}
+                    </div>
+                  </div>
+                </div>
+              ) : trialState.isActiveTrial ? (
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
+                    Plan Details
+                  </h2>
+                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
+                    You are currently trialing the <strong>{getPlanName(profile?.plan_type)}</strong> plan.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '450px' }}>
+                    <div style={{ color: 'var(--text-muted)' }}>Current Plan:</div>
+                    <div style={{ fontWeight: 'bold' }}>{getPlanName(profile?.plan_type)}</div>
+                    
+                    <div style={{ color: 'var(--text-muted)' }}>Account Status:</div>
+                    <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>FREE TRIAL</div>
+                    
+                    <div style={{ color: 'var(--text-muted)' }}>Trial Ends:</div>
+                    <div style={{ fontWeight: 'bold' }}>{trialState.formattedEndDate || 'N/A'}</div>
+                    
+                    <div style={{ color: 'var(--text-muted)' }}>Remaining:</div>
+                    <div style={{ fontWeight: 'bold' }}>{trialState.daysRemaining} {trialState.daysRemaining === 1 ? 'Day' : 'Days'}</div>
+                  </div>
+                </div>
+              ) : (profile?.is_legacy_account || trialState.isLegacy) ? (
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
+                    Plan Details
+                  </h2>
+                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
+                    You are currently on the <strong>{getPlanName(profile?.plan_type)}</strong> account.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '450px' }}>
+                    <div style={{ color: 'var(--text-muted)' }}>Current Plan:</div>
+                    <div style={{ fontWeight: 'bold' }}>{getPlanName(profile?.plan_type)}</div>
+                    
+                    <div style={{ color: 'var(--text-muted)' }}>Account Status:</div>
+                    <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>ACTIVE</div>
+                    
+                    <div style={{ color: 'var(--text-muted)' }}>Account Type:</div>
+                    <div style={{ fontWeight: 'bold' }}>Legacy Account</div>
                   </div>
                 </div>
               ) : (
-                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
-                  No active paid subscription found.
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
+                    Plan Details
+                  </h2>
+                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
+                    You are currently on the <strong>{getPlanName(profile?.plan_type)}</strong> plan.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '450px' }}>
+                    <div style={{ color: 'var(--text-muted)' }}>Current Plan:</div>
+                    <div style={{ fontWeight: 'bold' }}>{getPlanName(profile?.plan_type)}</div>
+                    
+                    <div style={{ color: 'var(--text-muted)' }}>Account Status:</div>
+                    <div style={{ fontWeight: 'bold', color: trialState.isExpired ? 'var(--danger)' : 'var(--success)' }}>
+                      {trialState.isExpired ? 'TRIAL EXPIRED' : 'ACTIVE'}
+                    </div>
+                    
+                    <div style={{ color: 'var(--text-muted)' }}>Account Type:</div>
+                    <div style={{ fontWeight: 'bold' }}>Standard Account</div>
+                  </div>
                 </div>
               )
             )}
