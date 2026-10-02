@@ -525,9 +525,9 @@ export default function Subscription() {
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', alignItems: 'stretch' }}>
         {plansList.map((plan) => {
           const isCurrentPlan = profile?.plan_type === plan.id;
-          const isTrialingThisPlan = isCurrentPlan && (trialState.isActiveTrial || trialState.isExpired) && !trialState.isPaid;
+          const isTrialingThisPlan = isCurrentPlan && trialState.isActiveTrial && !trialState.isPaid && !trialState.isLegacy;
           const isPaidCurrentPlan = isCurrentPlan && trialState.isPaid;
-          const canSwitchTrial = trialState.isActiveTrial && !isCurrentPlan && plan.id !== 'free';
+          const canSwitchTrial = trialState.isActiveTrial && !trialState.isLegacy && !isCurrentPlan && plan.id !== 'free';
 
           return (
             <div key={plan.id} className="card" style={{ 
@@ -543,23 +543,34 @@ export default function Subscription() {
               boxShadow: isCurrentPlan ? '0 20px 25px -5px rgba(5, 150, 105, 0.2)' : (plan.popular ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '')
             }}>
               {isCurrentPlan ? (
-                trialState.isPaid ? (
+                (trialState.isActiveTrial && !trialState.isLegacy) ? (
                   <div style={{ 
                     position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white',
+                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: 'white',
                     padding: '0.35rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
-                    boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
+                    boxShadow: '0 4px 10px rgba(5, 150, 105, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
                   }}>
-                    <Check size={14} /> YOUR CURRENT PLAN
+                    <Zap size={14} /> FREE TRIAL
+                  </div>
+                ) : (trialState.isExpired && !trialState.isLegacy && !trialState.isPaid) ? (
+                  <div style={{ 
+                    position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white',
+                    padding: '0.35rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
+                    boxShadow: '0 4px 10px rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
+                  }}>
+                    <Zap size={14} /> TRIAL EXPIRED
                   </div>
                 ) : (
                   <div style={{ 
                     position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
-                    background: trialState.isExpired ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                    background: trialState.isPaid 
+                      ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' 
+                      : 'linear-gradient(135deg, #059669 0%, #047857 100%)', 
                     color: 'white', padding: '0.35rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
                     boxShadow: '0 4px 10px rgba(5, 150, 105, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
                   }}>
-                    <Zap size={14} /> {trialState.isExpired ? 'TRIAL EXPIRED' : 'FREE TRIAL'}
+                    <Check size={14} /> YOUR CURRENT PLAN
                   </div>
                 )
               ) : plan.popular && (
@@ -587,7 +598,7 @@ export default function Subscription() {
                 <div>
                   <h3 style={{ margin: 0 }}>{plan.name}</h3>
                   <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    {isCurrentPlan && trialState.isActiveTrial ? 'Current Trial Plan' : plan.description}
+                    {isCurrentPlan && trialState.isActiveTrial && !trialState.isLegacy ? 'Current Trial Plan' : plan.description}
                   </p>
                 </div>
               </div>
@@ -659,18 +670,22 @@ export default function Subscription() {
                     height: '50px', 
                     fontSize: '1rem',
                     fontWeight: 700,
-                    border: isPaidCurrentPlan ? '2px solid var(--success)' : (plan.popular || isTrialingThisPlan ? 'none' : '2px solid var(--primary)'),
-                    background: isPaidCurrentPlan ? 'rgba(16, 185, 129, 0.1)' : (plan.popular || isTrialingThisPlan ? 'var(--primary)' : 'transparent'),
-                    color: isPaidCurrentPlan ? 'var(--success)' : (plan.popular || isTrialingThisPlan ? 'white' : 'var(--primary)'),
+                    border: isCurrentPlan ? '2px solid var(--success)' : (plan.popular || isTrialingThisPlan ? 'none' : '2px solid var(--primary)'),
+                    background: isCurrentPlan ? 'rgba(16, 185, 129, 0.1)' : (plan.popular || isTrialingThisPlan ? 'var(--primary)' : 'transparent'),
+                    color: isCurrentPlan ? 'var(--success)' : (plan.popular || isTrialingThisPlan ? 'white' : 'var(--primary)'),
                     opacity: loading === plan.id ? 0.7 : 1,
-                    cursor: (loading === plan.id || isPaidCurrentPlan) ? 'not-allowed' : 'pointer'
+                    cursor: (loading === plan.id || isCurrentPlan) ? 'not-allowed' : 'pointer'
                   }}
                   onClick={() => {
-                    if (!isPaidCurrentPlan) handleSubscribe(plan.id);
+                    if (!isCurrentPlan) handleSubscribe(plan.id);
                   }}
-                  disabled={loading === plan.id || isPaidCurrentPlan}
+                  disabled={loading === plan.id || isCurrentPlan}
                 >
-                  {isPaidCurrentPlan ? 'Active Plan' : (loading === plan.id ? 'Connecting...' : (isTrialingThisPlan ? 'Subscribe Now' : (plan.id === 'free' ? 'Downgrade' : `Subscribe to ${plan.name}`)))}
+                  {isCurrentPlan 
+                    ? 'Current Plan' 
+                    : (loading === plan.id 
+                        ? 'Connecting...' 
+                        : (plan.id === 'free' ? 'Downgrade' : `Subscribe to ${plan.name}`))}
                 </button>
 
                 {canSwitchTrial && (
