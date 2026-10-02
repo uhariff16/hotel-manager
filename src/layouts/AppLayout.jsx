@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { ClipboardList, LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import { getTrialPresentationState } from '../lib/trial';
 import { Capacitor } from '@capacitor/core';
 
 import { supabase } from '../lib/supabase';
@@ -22,6 +23,47 @@ export default function AppLayout() {
   const isManagementActive = ['/resorts', '/setup', '/staff'].includes(location.pathname);
   const [isManagementOpen, setIsManagementOpen] = React.useState(isManagementActive);
   const [supportUnreadCount, setSupportUnreadCount] = useState(0);
+
+  const [activeSubscription, setActiveSubscription] = useState(null);
+  const [tenantAdminData, setTenantAdminData] = useState(null);
+
+  useEffect(() => {
+    if (!profile) return;
+    const loadSubscriptionAndTenant = async () => {
+      try {
+        const tenantId = profile.role === 'staff' ? profile.tenant_id : profile.id;
+        if (profile.role === 'staff' && profile.tenant_id) {
+          const { data: adminData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', profile.tenant_id)
+            .maybeSingle();
+          if (adminData) setTenantAdminData(adminData);
+        }
+        if (tenantId) {
+          const { data: subData } = await supabase
+            .from('saas_subscriptions')
+            .select('*')
+            .eq('tenant_id', tenantId)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          if (subData) setActiveSubscription(subData);
+        }
+      } catch (e) {
+        console.error('Failed to load trial context in layout:', e);
+      }
+    };
+    loadSubscriptionAndTenant();
+  }, [profile]);
+
+  const trialState = getTrialPresentationState({
+    profile,
+    activeSubscription,
+    globalPlans,
+    tenantAdminData
+  });
 
   useEffect(() => {
     if (profile && profile.role !== 'super_admin') {
@@ -336,14 +378,55 @@ export default function AppLayout() {
       </aside>
 
       {/* Main Content */}
-      
-            {profile?.subscription_status !== 'active' && profile?.trial_ends_at && new Date(profile.trial_ends_at) > new Date() && profile?.role !== 'super_admin' && (
-              <div style={{ background: 'var(--primary)', color: 'white', padding: '0.5rem 1rem', textAlign: 'center', fontSize: '0.85rem', fontWeight: 600, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                <span>Free Trial: {Math.ceil((new Date(profile.trial_ends_at) - new Date()) / (1000 * 60 * 60 * 24))} days remaining</span>
-                <button onClick={() => navigate('/subscription')} style={{ background: 'white', color: 'var(--primary)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '4px', fontSize: '0.75rem', fontWeight: 700, cursor: 'pointer' }}>Subscribe Now</button>
-              </div>
+      <main className="main-content">
+        {/* Persistent Trial Banner */}
+        {trialState.isActiveTrial && (
+          <div style={{
+            background: 
+              trialState.urgencyLevel === 'lastDay' ? 'linear-gradient(90deg, #991b1b 0%, #dc2626 100%)' :
+              trialState.urgencyLevel === 'urgent' ? 'linear-gradient(90deg, #ea580c 0%, #f97316 100%)' :
+              trialState.urgencyLevel === 'endingSoon' ? 'linear-gradient(90deg, #d97706 0%, #f59e0b 100%)' :
+              'linear-gradient(90deg, #1e40af 0%, #3b82f6 100%)',
+            color: 'white',
+            padding: '0.6rem 1rem',
+            textAlign: 'center',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            gap: '1rem',
+            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+            flexWrap: 'wrap'
+          }}>
+            <span>
+              {trialState.isStaff ? (
+                <>Free Trial: <strong>{trialState.daysRemaining} {trialState.daysRemaining === 1 ? 'day' : 'days'} remaining</strong> on your hotel's <strong>{trialState.planName}</strong> plan (ends {trialState.formattedEndDate})</>
+              ) : (
+                <>Free Trial: <strong>{trialState.daysRemaining} {trialState.daysRemaining === 1 ? 'day' : 'days'} remaining</strong> on your <strong>{trialState.planName}</strong> plan (ends {trialState.formattedEndDate})</>
+              )}
+            </span>
+            {!trialState.isStaff && (
+              <button 
+                onClick={() => navigate('/subscription')} 
+                style={{ 
+                  background: 'white', 
+                  color: trialState.urgencyLevel === 'lastDay' ? '#dc2626' : (trialState.urgencyLevel === 'urgent' ? '#ea580c' : (trialState.urgencyLevel === 'endingSoon' ? '#d97706' : '#1e40af')), 
+                  border: 'none', 
+                  padding: '0.3rem 0.85rem', 
+                  borderRadius: '6px', 
+                  fontSize: '0.8rem', 
+                  fontWeight: 700, 
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.15)',
+                  transition: 'transform 0.1s'
+                }}
+              >
+                Subscribe Now
+              </button>
             )}
-        <main className="main-content">
+          </div>
+        )}
 
         <header className="top-header">
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -384,27 +467,35 @@ export default function AppLayout() {
         </header>
 
         <div className="page-content">
-          
           {(() => {
-            const isTrialExpired = profile?.is_trial_expired_server === true;
             const isAllowedPath = location.pathname.includes('/subscription') || location.pathname.includes('/settings');
-            if (isTrialExpired && !isAllowedPath && profile?.role !== 'super_admin') {
+            if (trialState.isExpired && !isAllowedPath && !trialState.isSuper && !trialState.isPaid && !trialState.isLegacy) {
               return (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '2rem', textAlign: 'center' }}>
-                  <div style={{ background: '#fff', padding: '3rem', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', maxWidth: '500px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', padding: '2rem', textAlign: 'center' }}>
+                  <div style={{ background: 'var(--card-bg, #fff)', padding: '3rem 2rem', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.1)', maxWidth: '520px', width: '100%', border: '1px solid var(--border, #e2e8f0)' }}>
                     <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'rgba(239, 68, 68, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: '#ef4444' }}>
                       <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                     </div>
-                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#1e293b', marginBottom: '1rem' }}>Your free trial has ended.</h2>
-                    <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '2rem' }}>Subscribe to continue using Stay Pilot and access all your properties, bookings, and financial data.</p>
-                    <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }} onClick={() => navigate('/subscription')}>Subscribe Now</button>
+                    <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'var(--text-main, #1e293b)', marginBottom: '1rem' }}>
+                      {trialState.isStaff ? "Your hotel's free trial has ended." : "Your free trial has ended."}
+                    </h2>
+                    <p style={{ color: 'var(--text-muted, #64748b)', fontSize: '1.05rem', marginBottom: '2rem', lineHeight: 1.6 }}>
+                      {trialState.isStaff 
+                        ? `The ${trialState.planName} free trial for this property has expired. Please contact your Hotel Administrator to subscribe and continue accessing Stay Pilot.`
+                        : `Subscribe to the ${trialState.planName} plan (${trialState.effectivePriceText}/mo) to continue using Stay Pilot and access all your properties, bookings, and financial data.`
+                      }
+                    </p>
+                    {!trialState.isStaff && (
+                      <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', fontWeight: 700 }} onClick={() => navigate('/subscription')}>
+                        Subscribe Now
+                      </button>
+                    )}
                   </div>
                 </div>
               );
             }
             return <Outlet />;
           })()}
-
         </div>
 
         {/* Mobile Bottom Navigation */}

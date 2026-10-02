@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Check, Loader2 } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import PlanComparison from '../components/PlanComparison';
 
 export default function Pricing() {
   const { websitePricing, profile, globalPlans, globalTaxSettings } = useSettingsStore();
@@ -514,180 +515,12 @@ export default function Pricing() {
           </div>
         )}
       
-        {/* Dynamic Comparison Table */}
-        <section style={{ padding: '6rem 2rem', background: 'white', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-          <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-            <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
-              <h2 style={{ fontSize: '2.5rem', fontWeight: 800, color: '#0F2C59', fontFamily: "'Outfit', sans-serif" }}>Compare Plans</h2>
-              <p style={{ fontSize: '1.1rem', color: '#64748b', marginTop: '1rem' }}>Find the perfect setup for your property portfolio.</p>
-            </div>
-            
-            <div style={{ overflowX: 'auto', background: '#f8fafc', borderRadius: '24px', border: '1px solid #e2e8f0' }}>
-              <table style={{ width: '100%', minWidth: '800px', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr>
-                    <th style={{ padding: '1.5rem', textAlign: 'left', borderBottom: '2px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, zIndex: 10, width: '25%' }}>Features</th>
-                    {plans.map(plan => (
-                      <th key={plan.key} style={{ padding: '1.5rem', textAlign: 'center', borderBottom: '2px solid #e2e8f0', color: '#0F2C59', fontWeight: 800, fontSize: '1.2rem', width: `${75 / plans.length}%` }}>
-                        {plan.displayPlanName || plan.name}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* PROPERTY MANAGEMENT */}
-                  <tr>
-                    <td colSpan={plans.length + 1} style={{ padding: '1.25rem 1.5rem 0.5rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.05rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>
-                      PROPERTY MANAGEMENT
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Properties</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 700 }}>
-                        {plan.maxResorts >= 999999 ? 'Unlimited' : plan.maxResorts}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Rooms</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 700 }}>
-                        {plan.maxRooms >= 999999 ? 'Unlimited' : plan.maxRooms}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Staff Access</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 700 }}>
-                        {plan.maxStaff >= 999999 ? 'Unlimited' : (plan.maxStaff || 1)}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Dashboard</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {hasCoreFeature(plan, 'Dashboard') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>AI Powered Booking Management</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {hasCoreFeature(plan, 'Booking Management') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Financial Management</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {hasCoreFeature(plan, 'Financial Management') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>WhatsApp Notifications</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {hasCoreFeature(plan, 'WhatsApp Notifications') ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* REPORTS */}
-                  <tr>
-                    <td colSpan={plans.length + 1} style={{ padding: '1.25rem 1.5rem 0.5rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.05rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>
-                      REPORTS
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Booking Reports</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.bookings === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Performance Summary</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.summary === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Income & Expense Reports</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.finance === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Guest Contacts</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.guests === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* BUSINESS TOOLS */}
-                  <tr>
-                    <td colSpan={plans.length + 1} style={{ padding: '1.25rem 1.5rem 0.5rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.05rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>
-                      BUSINESS TOOLS
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Investment Analysis</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.investment === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-
-                  {/* EXPORTS & SUPPORT */}
-                  <tr>
-                    <td colSpan={plans.length + 1} style={{ padding: '1.25rem 1.5rem 0.5rem', background: '#f8fafc', fontWeight: 800, color: '#0F2C59', fontSize: '1.05rem', borderBottom: '2px solid #e2e8f0', position: 'sticky', left: 0 }}>
-                      EXPORTS & SUPPORT
-                    </td>
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Excel Export</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.exportExcel === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>PDF Export</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0' }}>
-                        {plan.reports?.exportPdf === true ? <svg style={{ display: 'inline' }} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> : <span style={{ color: '#cbd5e1' }}>—</span>}
-                      </td>
-                    ))}
-                  </tr>
-                  <tr>
-                    <td style={{ padding: '1rem 1.5rem', borderBottom: '1px solid #e2e8f0', background: 'white', position: 'sticky', left: 0, fontWeight: 600, color: '#475569' }}>Support Level</td>
-                    {plans.map(plan => (
-                      <td key={plan.key} style={{ padding: '1rem', textAlign: 'center', borderBottom: '1px solid #e2e8f0', color: '#1e293b', fontWeight: 600 }}>
-                        {getSupportLevel(plan)}
-                      </td>
-                    ))}
-                  </tr>
-                </tbody>
-
-              </table>
-            </div>
-          </div>
-        </section>
+        {/* Shared Plan Comparison Component */}
+        <PlanComparison 
+          title="Compare Plans" 
+          subtitle="Find the perfect setup for your property portfolio." 
+          containerStyle={{ background: 'white', borderTop: '1px solid rgba(0,0,0,0.05)', borderRadius: '24px', padding: '5rem 2rem' }}
+        />
 
         
         {websitePricing?.published?.enterpriseSection?.enabled && (

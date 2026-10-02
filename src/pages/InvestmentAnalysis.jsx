@@ -1,5 +1,8 @@
 // Updated: 2026-05-16 - Added suggested rate details
 import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useSettingsStore } from '../lib/store';
+import { supabase } from '../lib/supabase';
 import {
   Loader2,
   TrendingUp, 
@@ -680,8 +683,9 @@ export default function InvestmentHub() {
 
   // Evaluate entitlement parameters safely
   const isSuper = profile?.role === 'super_admin';
-  const planData = globalPlans?.[profile?.plan_type] || {};
-  const isEntitlementLoading = !isDataLoaded && profile === null;
+  const userPlan = profile?.plan_type || 'free';
+  const planData = globalPlans?.[userPlan] || {};
+  const isEntitlementLoading = !isDataLoaded;
   const hasInvestmentAccess = isSuper
     || planData.reports?.investment === true
     || profile?.feature_investment_enabled === true;

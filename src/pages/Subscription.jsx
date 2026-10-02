@@ -3,8 +3,8 @@ import { useSettingsStore } from '../lib/store';
 import { Check, Zap, Crown, CreditCard, Shield, X, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { createPortal } from 'react-dom';
-
-// Dynamic plans are now loaded from the global state
+import { getTrialPresentationState } from '../lib/trial';
+import PlanComparison, { normalizePlanReports, normalizeFeatureName, getSanitizedFeatures } from '../components/PlanComparison';
 
 const formatOfferDate = (dateString) => {
   if (!dateString) return '';
@@ -24,52 +24,23 @@ const formatOfferDate = (dateString) => {
   return `${day}${getOrdinal(day)} ${month} ${year}`;
 };
 
-const normalizeFeatureName = (str) => {
-  let s = (str || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-  if (s.includes('bookingmanagement') || s.includes('aipoweredbookingmanagement')) {
-    return 'bookingmanagement';
-  }
-  if (s.includes('staffaccess') || s.includes('tenantadmincontrol')) {
-    return 'staffaccess';
-  }
-  return s;
-};
-
-const getSanitizedFeatures = (plan) => {
-  let rawList = [];
-  if (plan.features && Array.isArray(plan.features)) {
-    rawList = plan.features.filter(f => f.enabled !== false).map(f => f.name);
-  } else if (plan.publicFeatures && Array.isArray(plan.publicFeatures)) {
-    rawList = plan.publicFeatures;
-  }
-
-  const reports = plan.reports || {};
-
-  return rawList.filter(featureName => {
-    const norm = normalizeFeatureName(featureName);
-
-    if (norm.includes('advancereports') || norm.includes('advancedreports')) return false;
-    if (norm.includes('resortlimit') || norm.includes('roomlimit')) return false;
-    if (norm.match(/upto\d+property/) || norm.match(/upto\d+resort/) || norm.match(/upto\d+room/)) return false;
-
-    if (norm.includes('investmentanalysis') && reports.investment !== true) return false;
-    if (norm.includes('excelexport') && reports.exportExcel !== true) return false;
-    if (norm.includes('pdfexport') && reports.exportPdf !== true) return false;
-
-    return true;
-  });
-};
-
 export default function Subscription() {
   const { profile, setProfile, globalPlans, websitePricing, globalTaxSettings } = useSettingsStore();
   const [loading, setLoading] = useState(null);
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
-  const [paymentForm, setPaymentForm] = useState({ cardNumber: '', expiry: '', cvc: '', name: '' });
-  
+  const [switchTrialModal, setSwitchTrialModal] = useState({ isOpen: false, targetPlanKey: null });
+  const [switchSuccessMessage, setSwitchSuccessMessage] = useState(null);
+
   const [activeSubscription, setActiveSubscription] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [detailsTab, setDetailsTab] = useState('subscription');
+
+  const trialState = getTrialPresentationState({
+    profile,
+    activeSubscription,
+    globalPlans
+  });
 
   useEffect(() => {
     if (profile?.id) {
@@ -94,6 +65,52 @@ export default function Subscription() {
      }
   };
 
+  const getPlanName = (planKey) => {
+    const config = globalPlans?.[planKey] || {};
+    return config.name || (planKey === 'custom_1786983013013' ? 'Solo' : (planKey === 'pro' ? 'Growth' : (planKey === 'premium' ? 'Stay Master' : planKey.toUpperCase())));
+  };
+
+  const handleSwitchTrialPlanClick = (targetPlanKey) => {
+    // Security / Authorization checks
+    if (!trialState.isActiveTrial || trialState.isPaid || trialState.isExpired || trialState.isStaff || trialState.isSuper || trialState.isLegacy || trialState.isSuspended) {
+      alert("Trial switching is only available for active, unpaid free trials.");
+      return;
+    }
+    if (targetPlanKey === profile?.plan_type || targetPlanKey === 'free') return;
+    if (globalPlans?.[targetPlanKey]?.enabled === false) {
+      alert("Selected plan is not available.");
+      return;
+    }
+
+    setSwitchTrialModal({ isOpen: true, targetPlanKey });
+  };
+
+  const confirmSwitchTrialPlan = async (targetPlanKey) => {
+    const planName = getPlanName(targetPlanKey);
+    setLoading(targetPlanKey);
+    try {
+      const { data, error } = await supabase.rpc('switch_trial_plan', {
+        p_destination_plan: targetPlanKey
+      });
+
+      if (error) throw error;
+      if (!data?.success) {
+        throw new Error(data?.error || "Failed to switch trial plan");
+      }
+
+      if (data.changed) {
+        setProfile({ ...profile, plan_type: data.plan_type });
+        setSwitchSuccessMessage(`Your free trial has been switched to ${planName}. Your trial still ends on ${trialState.formattedEndDate}.`);
+      }
+
+      setSwitchTrialModal({ isOpen: false, targetPlanKey: null });
+    } catch (err) {
+      alert("Failed to switch trial plan: " + err.message);
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const handleCancelSubscription = async () => {
      if (!window.confirm("Are you sure you want to cancel your subscription? You will be reverted to the Free Starter plan.")) return;
      
@@ -106,8 +123,6 @@ export default function Subscription() {
         }
 
         alert("Subscription cancelled successfully.");
-        
-        // Optimistic update
         setProfile({...profile, plan_type: 'free'});
         window.location.reload();
       } catch (err) {
@@ -138,7 +153,7 @@ export default function Subscription() {
 
         return {
           id,
-          name: config.name || id.toUpperCase(),
+          name: config.name || (id === 'custom_1786983013013' ? 'Solo' : (id === 'pro' ? 'Growth' : (id === 'premium' ? 'Stay Master' : id.toUpperCase()))),
           description: config.description || '',
           price: rawActive === 0 ? '₹0' : `₹${rawActive}`,
           rawPrice: rawActive,
@@ -173,7 +188,7 @@ export default function Subscription() {
   };
 
   const handleSubscribe = async (planId) => {
-    if (planId === profile?.plan_type) return;
+    if (planId === profile?.plan_type && trialState.isPaid) return;
 
     if (planId === 'free') {
        if (window.confirm("Are you sure you want to downgrade to Free Starter? This will remove access to paid features.")) {
@@ -192,7 +207,6 @@ export default function Subscription() {
        return;
     }
 
-    // Always open checkout modal for paid plans to show breakdown
     setCheckoutModal({ isOpen: true, planId });
   };
 
@@ -278,17 +292,89 @@ export default function Subscription() {
 
   return (
     <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 0' }}>
-      <div style={{ textAlign: 'center', marginBottom: '4rem' }}>
+      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
         <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Choose Your Plan</h1>
         <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>
           Flexible pricing designed to scale with your hotel business.
         </p>
         <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-          <span className={`badge ${profile?.plan_type === 'free' ? 'badge-success' : ''}`} style={{ padding: '0.5rem 1rem' }}>Current: {plansList.find(p => p.id === profile?.plan_type)?.name || profile?.plan_type.toUpperCase()} Account</span>
+          <span className={`badge ${profile?.plan_type === 'free' ? 'badge-success' : ''}`} style={{ padding: '0.5rem 1rem' }}>
+            Current: {getPlanName(profile?.plan_type)} {trialState.isActiveTrial ? 'FREE TRIAL' : 'Account'}
+          </span>
         </div>
       </div>
 
-      {(activeSubscription || paymentHistory.length > 0) && (
+      {/* Switch Success Banner */}
+      {switchSuccessMessage && (
+        <div className="card" style={{ 
+          marginBottom: '2rem', padding: '1rem 1.5rem', borderRadius: '12px',
+          background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--success)',
+          color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+        }}>
+          <div style={{ fontWeight: 600 }}>✓ {switchSuccessMessage}</div>
+          <button onClick={() => setSwitchSuccessMessage(null)} style={{ background: 'none', border: 'none', color: 'var(--success)', cursor: 'pointer', fontWeight: 700 }}>✕</button>
+        </div>
+      )}
+
+      {/* Trial Summary Hero Card */}
+      {trialState.isActiveTrial && (
+        <div className="card" style={{ 
+          marginBottom: '3rem', 
+          padding: '2rem', 
+          borderRadius: '16px',
+          background: 'linear-gradient(135deg, rgba(15, 44, 89, 0.04) 0%, rgba(5, 150, 105, 0.06) 100%)', 
+          border: '2px solid var(--primary)',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.05)'
+        }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                <span className="badge badge-success" style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', fontWeight: 700, letterSpacing: '0.05em' }}>
+                  ACTIVE FREE TRIAL
+                </span>
+                <span style={{ 
+                  fontSize: '0.85rem', 
+                  fontWeight: 700, 
+                  color: trialState.urgencyLevel === 'lastDay' ? '#dc2626' : (trialState.urgencyLevel === 'urgent' ? '#ea580c' : '#059669'),
+                  background: trialState.urgencyLevel === 'lastDay' ? 'rgba(220, 38, 38, 0.1)' : (trialState.urgencyLevel === 'urgent' ? 'rgba(234, 88, 12, 0.1)' : 'rgba(5, 150, 105, 0.1)'),
+                  padding: '0.3rem 0.75rem',
+                  borderRadius: '20px'
+                }}>
+                  ⏳ {trialState.daysRemaining} {trialState.daysRemaining === 1 ? 'Day' : 'Days'} Remaining
+                </span>
+              </div>
+              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0.25rem 0 0.5rem 0', color: 'var(--text-main)' }}>
+                Trialing {trialState.planName} Plan
+              </h2>
+              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+                Active from <strong>{trialState.formattedStartDate}</strong> to <strong>{trialState.formattedEndDate}</strong>. You currently have full access to all {trialState.planName} features.
+              </p>
+              {trialState.isPromoActive ? (
+                <div style={{ marginTop: '0.75rem', fontSize: '0.95rem' }}>
+                  Special promotional price: <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>{trialState.priceText}/mo</span>{' '}
+                  <strong style={{ color: '#059669', fontSize: '1.1rem' }}>{trialState.offerPriceText}/mo</strong> when you subscribe before trial ends!
+                </div>
+              ) : (
+                <div style={{ marginTop: '0.75rem', fontSize: '0.95rem' }}>
+                  Regular plan price: <strong style={{ color: 'var(--text-main)', fontSize: '1.1rem' }}>{trialState.effectivePriceText}/mo</strong>
+                </div>
+              )}
+            </div>
+            <div>
+              <button 
+                className="btn btn-primary" 
+                style={{ padding: '0.85rem 2rem', fontSize: '1.05rem', fontWeight: 700, boxShadow: '0 4px 14px rgba(5, 150, 105, 0.3)' }}
+                onClick={() => handleSubscribe(trialState.planKey)}
+                disabled={loading === trialState.planKey}
+              >
+                {loading === trialState.planKey ? 'Connecting...' : `Subscribe to ${trialState.planName} Now`}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {((activeSubscription?.status === 'active') || paymentHistory.length > 0) && (
         <div className="card" style={{ marginBottom: '3rem', padding: '0', overflow: 'hidden', border: '1px solid var(--border)' }}>
           <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'rgba(15, 44, 89, 0.02)' }}>
             <button 
@@ -307,13 +393,13 @@ export default function Subscription() {
 
           <div style={{ padding: '2rem' }}>
             {detailsTab === 'subscription' && (
-              activeSubscription ? (
+              activeSubscription?.status === 'active' ? (
                 <div>
                   <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
                     Subscription Details
                   </h2>
                   <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
-                    You are currently subscribed to the <strong>{plansList.find(p => p.id === activeSubscription.staypilot_plan_type)?.name || activeSubscription.staypilot_plan_type.toUpperCase()}</strong> plan.
+                    You are currently subscribed to the <strong>{getPlanName(activeSubscription.staypilot_plan_type)}</strong> plan.
                   </p>
                   <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '400px' }}>
                     <div style={{ color: 'var(--text-muted)' }}>Status:</div>
@@ -324,7 +410,7 @@ export default function Subscription() {
                 </div>
               ) : (
                 <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
-                  No active subscription found.
+                  No active paid subscription found.
                 </div>
               )
             )}
@@ -367,159 +453,195 @@ export default function Subscription() {
         </div>
       )}
 
+      {/* Plan Cards Grid */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', alignItems: 'stretch' }}>
-        {plansList.map((plan) => (
-          <div key={plan.id} className="card" style={{ 
-            display: 'flex', 
-            flexDirection: 'column',
-            flex: '1 1 250px',
-            maxWidth: '380px',
-            padding: '2.5rem',
-            position: 'relative',
-            border: profile?.plan_type === plan.id ? '2px solid #3b82f6' : (plan.popular ? '2px solid var(--primary)' : '1px solid var(--border)'),
-            zIndex: profile?.plan_type === plan.id || plan.popular ? 2 : 1,
-            transition: 'all 0.3s ease',
-            boxShadow: profile?.plan_type === plan.id ? '0 20px 25px -5px rgba(59, 130, 246, 0.25)' : (plan.popular ? '0 20px 25px -5px rgba(0, 0, 0, 0.4)' : '')
-          }}>
-            {profile?.plan_type === plan.id ? (
-              <div style={{ 
-                position: 'absolute', 
-                top: '-15px', 
-                left: '50%', 
-                transform: 'translateX(-50%)',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)',
-                color: 'white',
-                padding: '0.35rem 1.5rem',
-                borderRadius: '20px',
-                fontSize: '0.8rem',
-                fontWeight: 'bold',
-                boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                whiteSpace: 'nowrap'
-              }}>
-                <Check size={14} /> YOUR CURRENT PLAN
-              </div>
-            ) : plan.popular && (
-              <div style={{ 
-                position: 'absolute', 
-                top: '-15px', 
-                left: '50%', 
-                transform: 'translateX(-50%)',
-                background: 'var(--primary)',
-                color: 'white',
-                padding: '0.25rem 1rem',
-                borderRadius: '20px',
-                fontSize: '0.8rem',
-                fontWeight: 'bold'
-              }}>
-                MOST POPULAR
-              </div>
-            )}
+        {plansList.map((plan) => {
+          const isCurrentPlan = profile?.plan_type === plan.id;
+          const isTrialingThisPlan = isCurrentPlan && (trialState.isActiveTrial || trialState.isExpired) && !trialState.isPaid;
+          const isPaidCurrentPlan = isCurrentPlan && trialState.isPaid;
+          const canSwitchTrial = trialState.isActiveTrial && !isCurrentPlan && plan.id !== 'free';
 
-            <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ 
-                width: '48px', 
-                height: '48px', 
-                background: 'rgba(255,255,255,0.05)', 
-                borderRadius: '12px', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center',
-                color: plan.color
-              }}>
-                {plan.icon}
-              </div>
-              <div>
-                <h3 style={{ margin: 0 }}>{plan.name}</h3>
-                <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>{plan.description}</p>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '2.5rem' }}>
-              {plan.basePrice && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                  <span style={{ textDecoration: 'line-through', color: 'var(--danger)', fontSize: '1.25rem', fontWeight: '600', opacity: 0.8 }}>{plan.basePrice}/mo</span>
-                  {plan.discountPercent && (
-                    <span style={{ background: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)', padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      <Zap size={12} fill="currentColor" /> SAVE {plan.discountPercent}%
-                    </span>
-                  )}
-                </div>
-              )}
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
-                <span style={{ fontSize: '3rem', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.05em' }}>{plan.price}</span>
-                {plan.period && <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500' }}>{plan.period}</span>}
-              </div>
-              
-              {globalTaxSettings?.enabled && plan.id !== 'free' && (
-                <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600', marginTop: '0.25rem' }}>
-                  + {globalTaxSettings.rate}% GST
-                </div>
-              )}
-              
-              {plan.basePrice && (
-                <div style={{ marginTop: '0.75rem' }}>
+          return (
+            <div key={plan.id} className="card" style={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              flex: '1 1 250px',
+              maxWidth: '380px',
+              padding: '2.5rem',
+              position: 'relative',
+              border: isCurrentPlan ? '2px solid #059669' : (plan.popular ? '2px solid var(--primary)' : '1px solid var(--border)'),
+              zIndex: isCurrentPlan || plan.popular ? 2 : 1,
+              transition: 'all 0.3s ease',
+              boxShadow: isCurrentPlan ? '0 20px 25px -5px rgba(5, 150, 105, 0.2)' : (plan.popular ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '')
+            }}>
+              {isCurrentPlan ? (
+                trialState.isPaid ? (
                   <div style={{ 
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '0.4rem',
-                    background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))',
-                    border: '1px solid rgba(245, 158, 11, 0.2)',
-                    color: '#d97706',
-                    padding: '0.4rem 0.8rem',
-                    borderRadius: '6px',
-                    fontSize: '0.75rem',
-                    fontWeight: 'bold',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em'
+                    position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
+                    background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', color: 'white',
+                    padding: '0.35rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
+                    boxShadow: '0 4px 10px rgba(59, 130, 246, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
                   }}>
-                    <Zap size={14} fill="currentColor" />
-                    LIMITED TIME OFFER {plan.offerEndDate && `• ENDS ${formatOfferDate(plan.offerEndDate).toUpperCase()}`}
+                    <Check size={14} /> YOUR CURRENT PLAN
                   </div>
+                ) : (
+                  <div style={{ 
+                    position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
+                    background: trialState.isExpired ? 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)' : 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                    color: 'white', padding: '0.35rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
+                    boxShadow: '0 4px 10px rgba(5, 150, 105, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
+                  }}>
+                    <Zap size={14} /> {trialState.isExpired ? 'TRIAL EXPIRED' : 'FREE TRIAL'}
+                  </div>
+                )
+              ) : plan.popular && (
+                <div style={{ 
+                  position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
+                  background: 'var(--primary)', color: 'white', padding: '0.25rem 1rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold'
+                }}>
+                  MOST POPULAR
                 </div>
               )}
-            </div>
 
-            <div style={{ flex: 1, marginBottom: '2.5rem' }}>
-              <h4 style={{ fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-                What's included
-              </h4>
-              <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {plan.features.map((feature, i) => (
-                  <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.95rem' }}>
-                    <Check size={18} color="var(--success)" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-            </div>
+              <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <div style={{ 
+                  width: '48px', 
+                  height: '48px', 
+                  background: 'rgba(255,255,255,0.05)', 
+                  borderRadius: '12px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  color: plan.color
+                }}>
+                  {plan.icon}
+                </div>
+                <div>
+                  <h3 style={{ margin: 0 }}>{plan.name}</h3>
+                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
+                    {isCurrentPlan && trialState.isActiveTrial ? 'Current Trial Plan' : plan.description}
+                  </p>
+                </div>
+              </div>
 
-            <div style={{ marginTop: 'auto' }}>
-              <button 
-                className={`btn`}
-                style={{ 
-                  width: '100%', 
-                  height: '50px', 
-                  fontSize: '1rem',
-                  fontWeight: 700,
-                  border: profile?.plan_type === plan.id ? '2px solid var(--success)' : (plan.popular ? 'none' : '2px solid var(--primary)'),
-                  background: profile?.plan_type === plan.id ? 'rgba(16, 185, 129, 0.1)' : (plan.popular ? 'var(--primary)' : 'transparent'),
-                  color: profile?.plan_type === plan.id ? 'var(--success)' : (plan.popular ? 'white' : 'var(--primary)'),
-                  opacity: loading === plan.id ? 0.7 : 1,
-                  cursor: (loading === plan.id || profile?.plan_type === plan.id) ? 'not-allowed' : 'pointer'
-                }}
-                onClick={() => {
-                  if (profile?.plan_type !== plan.id) handleSubscribe(plan.id);
-                }}
-                disabled={loading === plan.id || profile?.plan_type === plan.id}
-              >
-                {profile?.plan_type === plan.id ? 'Active Plan' : (loading === plan.id ? 'Connecting...' : 'Upgrade Now')}
-              </button>
+              <div style={{ marginBottom: '2.5rem' }}>
+                {plan.basePrice && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
+                    <span style={{ textDecoration: 'line-through', color: 'var(--danger)', fontSize: '1.25rem', fontWeight: '600', opacity: 0.8 }}>{plan.basePrice}/mo</span>
+                    {plan.discountPercent && (
+                      <span style={{ background: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)', padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                        <Zap size={12} fill="currentColor" /> SAVE {plan.discountPercent}%
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
+                  <span style={{ fontSize: '3rem', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.05em' }}>{plan.price}</span>
+                  {plan.period && <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500' }}>{plan.period}</span>}
+                </div>
+                
+                {globalTaxSettings?.enabled && plan.id !== 'free' && (
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600', marginTop: '0.25rem' }}>
+                    + {globalTaxSettings.rate}% GST
+                  </div>
+                )}
+                
+                {plan.basePrice && (
+                  <div style={{ marginTop: '0.75rem' }}>
+                    <div style={{ 
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))',
+                      border: '1px solid rgba(245, 158, 11, 0.2)',
+                      color: '#d97706',
+                      padding: '0.4rem 0.8rem',
+                      borderRadius: '6px',
+                      fontSize: '0.75rem',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em'
+                    }}>
+                      <Zap size={14} fill="currentColor" />
+                      LIMITED TIME OFFER {plan.offerEndDate && `• ENDS ${formatOfferDate(plan.offerEndDate).toUpperCase()}`}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ flex: 1, marginBottom: '2.5rem' }}>
+                <h4 style={{ fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
+                  What's included
+                </h4>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {plan.features.map((feature, i) => (
+                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.95rem' }}>
+                      <Check size={18} color="var(--success)" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <button 
+                  className={`btn`}
+                  style={{ 
+                    width: '100%', 
+                    height: '50px', 
+                    fontSize: '1rem',
+                    fontWeight: 700,
+                    border: isPaidCurrentPlan ? '2px solid var(--success)' : (plan.popular || isTrialingThisPlan ? 'none' : '2px solid var(--primary)'),
+                    background: isPaidCurrentPlan ? 'rgba(16, 185, 129, 0.1)' : (plan.popular || isTrialingThisPlan ? 'var(--primary)' : 'transparent'),
+                    color: isPaidCurrentPlan ? 'var(--success)' : (plan.popular || isTrialingThisPlan ? 'white' : 'var(--primary)'),
+                    opacity: loading === plan.id ? 0.7 : 1,
+                    cursor: (loading === plan.id || isPaidCurrentPlan) ? 'not-allowed' : 'pointer'
+                  }}
+                  onClick={() => {
+                    if (!isPaidCurrentPlan) handleSubscribe(plan.id);
+                  }}
+                  disabled={loading === plan.id || isPaidCurrentPlan}
+                >
+                  {isPaidCurrentPlan ? 'Active Plan' : (loading === plan.id ? 'Connecting...' : (isTrialingThisPlan ? 'Subscribe Now' : (plan.id === 'free' ? 'Downgrade' : `Subscribe to ${plan.name}`)))}
+                </button>
+
+                {canSwitchTrial && (
+                  <button
+                    type="button"
+                    style={{
+                      width: '100%',
+                      padding: '0.4rem 0',
+                      marginTop: '0.25rem',
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary)',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      textDecoration: 'underline',
+                      textUnderlineOffset: '3px',
+                      cursor: 'pointer',
+                      textAlign: 'center',
+                      transition: 'opacity 0.2s',
+                      opacity: loading === plan.id ? 0.6 : 1
+                    }}
+                    onClick={() => handleSwitchTrialPlanClick(plan.id)}
+                    disabled={loading === plan.id}
+                  >
+                    Switch Trial to {plan.name}
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
+      </div>
+
+      {/* Shared Plan Comparison Section */}
+      <div style={{ marginTop: '4rem' }}>
+        <PlanComparison 
+          title="Compare Plans"
+          subtitle="Detailed breakdown of features, limits, and support levels across all plans."
+        />
       </div>
 
       {activeSubscription && (
@@ -541,7 +663,7 @@ export default function Subscription() {
         </div>
       )}
 
-      <div className="card" style={{ marginTop: '4rem', padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'rgba(0,0,0,0.1)' }}>
+      <div className="card" style={{ marginTop: '3rem', padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'rgba(0,0,0,0.1)' }}>
         <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '50%', color: 'var(--primary)' }}>
           <Shield size={32} />
         </div>
@@ -553,6 +675,44 @@ export default function Subscription() {
           <CreditCard size={32} />
         </div>
       </div>
+
+      {/* Trial Switch Confirmation Modal */}
+      {switchTrialModal.isOpen && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-content" style={{ maxWidth: '480px', padding: '2rem', textAlign: 'center' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(5, 150, 105, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1rem', color: '#059669' }}>
+              <Zap size={28} />
+            </div>
+            <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.75rem 0' }}>
+              Switch your free trial to {getPlanName(switchTrialModal.targetPlanKey)}?
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', lineHeight: 1.6, margin: '0 0 1.5rem 0' }}>
+              You'll get <strong>{getPlanName(switchTrialModal.targetPlanKey)}</strong> features for the remainder of your existing free trial.<br /><br />
+              Your trial still ends on <strong>{trialState.formattedEndDate}</strong>.<br />
+              <span style={{ color: '#059669', fontWeight: 700 }}>No payment will be taken.</span>
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                style={{ flex: 1, padding: '0.75rem', fontWeight: 600 }}
+                onClick={() => setSwitchTrialModal({ isOpen: false, targetPlanKey: null })}
+              >
+                Cancel
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                style={{ flex: 1, padding: '0.75rem', fontWeight: 700 }}
+                onClick={() => confirmSwitchTrialPlan(switchTrialModal.targetPlanKey)}
+                disabled={loading === switchTrialModal.targetPlanKey}
+              >
+                {loading === switchTrialModal.targetPlanKey ? 'Switching...' : `Switch to ${getPlanName(switchTrialModal.targetPlanKey)}`}
+              </button>
+            </div>
+          </div>
+        </div>
+      , document.body)}
 
       {/* Checkout Modal */}
       {checkoutModal.isOpen && createPortal(
@@ -659,4 +819,3 @@ export default function Subscription() {
     </div>
   );
 }
-
