@@ -1,52 +1,169 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { BookOpenCheck, CalendarDays, Wallet, TrendingUp, Users, Zap, Shield } from 'lucide-react';
+import { 
+  BookOpenCheck, CalendarDays, Wallet, TrendingUp, Users, Zap, Shield, 
+  MessageSquare, Send, ArrowRight, Sparkles 
+} from 'lucide-react';
 
 export default function Features() {
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
 
+  const featuresList = [
+    { 
+      icon: <BookOpenCheck size={26} strokeWidth={2} />, 
+      title: 'Smart Reservations', 
+      desc: 'Centralized booking management with real-time status tracking for check-ins, check-outs, and guest details.', 
+      category: 'Operations',
+      color: '#059669', 
+      bg: 'rgba(5, 150, 105, 0.08)'
+    },
+    { 
+      icon: <CalendarDays size={26} strokeWidth={2} />, 
+      title: 'Visual Calendar', 
+      desc: "See room availability and rate plans at a glance, so you always know your property's schedule.", 
+      category: 'Operations',
+      color: '#0ea5e9',
+      bg: 'rgba(14, 165, 233, 0.08)'
+    },
+    { 
+      icon: <Zap size={26} strokeWidth={2} />, 
+      title: 'AI ID Scanning', 
+      desc: 'Scan guest IDs using the mobile app to automatically extract details and auto-fill check-in records in seconds.', 
+      category: 'Automation',
+      color: '#8b5cf6',
+      bg: 'rgba(139, 92, 246, 0.08)'
+    },
+    { 
+      icon: <Wallet size={26} strokeWidth={2} />, 
+      title: 'Financial Tracking', 
+      desc: 'Track daily booking revenue alongside manual income and expense logs to keep accurate financial records.', 
+      category: 'Finances',
+      color: '#d97706',
+      bg: 'rgba(217, 119, 6, 0.08)'
+    },
+    { 
+      icon: <TrendingUp size={26} strokeWidth={2} />, 
+      title: 'ROI & Performance Reports', 
+      desc: 'Monitor property performance, occupancy trends, and profit margins with clear financial analytics.', 
+      category: 'Analytics',
+      color: '#2563eb', 
+      bg: 'rgba(37, 99, 235, 0.08)'
+    },
+    { 
+      icon: <Users size={26} strokeWidth={2} />, 
+      title: 'Staff Access Controls', 
+      desc: 'Grant team members secure, role-based access to reception and management tools without compromising sensitive data.', 
+      category: 'Team',
+      color: '#e11d48',
+      bg: 'rgba(225, 29, 72, 0.08)'
+    },
+    { 
+      icon: <MessageSquare size={26} strokeWidth={2} />, 
+      title: 'Quick Enquiries', 
+      desc: 'Capture and organize incoming guest inquiries so your team can respond quickly and secure bookings.', 
+      category: 'Leads',
+      color: '#0d9488',
+      bg: 'rgba(13, 148, 136, 0.08)'
+    },
+    { 
+      icon: <Send size={26} strokeWidth={2} />, 
+      title: 'WhatsApp Messaging', 
+      desc: 'Send instant booking confirmations and updates directly to guest WhatsApp accounts with one tap.', 
+      category: 'Communication',
+      color: '#16a34a',
+      bg: 'rgba(22, 163, 74, 0.08)'
+    },
+    { 
+      icon: <Shield size={26} strokeWidth={2} />, 
+      title: 'Secure Data Management', 
+      desc: 'Safely manage guest identification documents and property records with secure storage and simple data management.', 
+      category: 'Security',
+      color: '#db2777',
+      bg: 'rgba(219, 39, 119, 0.08)'
+    }
+  ];
+
   return (
-    <div style={{ fontFamily: 'var(--font-sans, system-ui, sans-serif)', overflowX: 'hidden' }}>
+    <div style={{ fontFamily: 'var(--font-sans, system-ui, sans-serif)', overflowX: 'hidden', background: '#f8fafc', color: '#0f172a' }}>
       <style>{`
-        .bento-grid {
+        .gradient-text {
+          background: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
+        }
+        .hero-bg {
+          background: radial-gradient(circle at top center, #064e3b 0%, #020617 100%);
+          color: white;
+        }
+        .features-grid {
           display: grid;
           grid-template-columns: repeat(3, 1fr);
-          grid-auto-rows: 280px;
-          gap: 1.5rem;
+          gap: 1.75rem;
         }
-        .bento-item {
+        .feature-card {
           background: #ffffff;
           border: 1px solid #e2e8f0;
-          border-radius: 24px;
+          border-radius: 16px;
           padding: 2rem;
           display: flex;
           flex-direction: column;
-          overflow: hidden;
+          min-height: 240px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
           position: relative;
-          box-shadow: 0 10px 30px -10px rgba(0,0,0,0.05);
-          transition: transform 0.3s ease;
         }
-        .bento-item:hover {
-          transform: translateY(-5px);
-          box-shadow: 0 20px 40px -10px rgba(0,0,0,0.1);
-        }
-        .bento-item.large {
-          grid-column: span 2;
-        }
-        @media (max-width: 768px) {
-          .bento-grid {
-            grid-template-columns: 1fr;
-            grid-auto-rows: auto;
+        @media (hover: hover) and (pointer: fine) {
+          .feature-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 32px -8px rgba(5, 150, 105, 0.12);
+            border-color: #cbd5e1;
           }
-          .bento-item.large {
-            grid-column: span 1;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .feature-card {
+            transition: none !important;
+          }
+          .feature-card:hover {
+            transform: none !important;
+          }
+        }
+        .icon-wrapper {
+          width: 52px;
+          height: 52px;
+          border-radius: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin-bottom: 1.25rem;
+          flex-shrink: 0;
+        }
+        @media (max-width: 991px) {
+          .features-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+          }
+        }
+        @media (max-width: 640px) {
+          .desktop-nav { display: none !important; }
+          .desktop-btn { display: none !important; }
+          .features-grid {
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+          }
+          .feature-card {
+            padding: 1.5rem;
+            min-height: auto;
+          }
+          .hero-title {
+            font-size: 2.25rem !important;
+            line-height: 1.15 !important;
           }
         }
       `}</style>
 
-      {/* Header */}
       {/* Header */}
       <header style={{ 
         display: 'flex', 
@@ -55,6 +172,7 @@ export default function Features() {
         padding: '1.25rem 2rem', 
         background: 'rgba(255, 255, 255, 0.75)',
         backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
         position: 'sticky',
         top: 0,
@@ -78,18 +196,23 @@ export default function Features() {
         </div>
       </header>
 
-      {/* HERO SECTION FOR FEATURES (DARK) */}
-      <section style={{ padding: '5rem 2rem 8rem', textAlign: 'center', background: 'radial-gradient(circle at top center, #064e3b 0%, #020617 100%)', color: 'white', position: 'relative' }}>
+      {/* HERO SECTION */}
+      <section className="hero-bg" style={{ padding: '4.5rem 1.5rem 7rem', textAlign: 'center', position: 'relative' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 3.8rem)', fontWeight: 800, color: 'white', lineHeight: 1.15, marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #34d399 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            Everything you need to scale.
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', padding: '6px 16px', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '1.25rem', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
+            <Sparkles size={15} /> STAY PILOT FEATURES
+          </div>
+          
+          <h1 className="hero-title gradient-text" style={{ fontSize: '3.8rem', fontWeight: 800, margin: '0 0 1.25rem 0', letterSpacing: '-0.03em', lineHeight: 1.15 }}>
+            Everything You Need<br/>to Run Your Property
           </h1>
-          <p style={{ fontSize: '1.25rem', color: '#94a3b8', lineHeight: 1.6, maxWidth: '600px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Stop managing your property in pieces. Bring your bookings, finances, and team into one powerful platform.
+          
+          <p style={{ fontSize: '1.25rem', color: '#94a3b8', lineHeight: 1.6, maxWidth: '620px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Manage bookings, availability, finances and day-to-day operations from one simple, unified platform.
           </p>
         </div>
         
-        {/* Curved SVG Divider to blend into light section */}
+        {/* Curved SVG Divider */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', overflow: 'hidden', lineHeight: 0, transform: 'translateY(1px)' }}>
           <svg viewBox="0 0 1200 120" preserveAspectRatio="none" style={{ position: 'relative', display: 'block', width: 'calc(100% + 1.3px)', height: '60px' }}>
             <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V0C52.42,28.17,133.72,67.6,214.34,71.2,251.69,72.84,288.08,62.6,321.39,56.44Z" fill="#f8fafc"></path>
@@ -97,160 +220,71 @@ export default function Features() {
         </div>
       </section>
 
-      {/* FEATURES GRID */}
-      <section style={{ 
-        padding: '6rem 1.5rem', 
-        backgroundColor: '#f8fafc',
-        backgroundImage: `
-          radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.12) 0px, transparent 50%),
-          radial-gradient(at 100% 0%, rgba(14, 165, 233, 0.12) 0px, transparent 50%),
-          radial-gradient(at 100% 100%, rgba(16, 185, 129, 0.12) 0px, transparent 50%),
-          radial-gradient(at 0% 100%, rgba(244, 63, 94, 0.12) 0px, transparent 50%)
-        `,
-        minHeight: '100vh', 
-        position: 'relative', 
-        overflow: 'hidden' 
-      }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div className="bento-grid">
-            {[
-              { 
-                icon: <BookOpenCheck size={28} strokeWidth={2} />, 
-                title: 'Smart Reservations', 
-                desc: 'Centralized booking management with live status tracking. Seamlessly handle check-ins, check-outs, and guest modifications in one unified dashboard.', 
-                color: '#10b981', 
-                large: true,
-                symbolicArt: (
-                  <svg width="200" height="150" viewBox="0 0 200 150" style={{ position: 'absolute', right: '-10%', bottom: '-10%', opacity: 0.8 }}>
-                    <rect x="50" y="20" width="120" height="40" rx="8" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.2)" strokeWidth="2" />
-                    <rect x="70" y="40" width="60" height="8" rx="4" fill="rgba(16, 185, 129, 0.2)" />
-                    <rect x="30" y="70" width="140" height="40" rx="8" fill="rgba(16, 185, 129, 0.1)" stroke="rgba(16, 185, 129, 0.3)" strokeWidth="2" />
-                    <circle cx="150" cy="90" r="12" fill="#10b981" opacity="0.2" />
-                    <path d="M145 90 L148 93 L155 86" stroke="#10b981" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                    <rect x="60" y="120" width="110" height="40" rx="8" fill="rgba(16, 185, 129, 0.05)" stroke="rgba(16, 185, 129, 0.2)" strokeWidth="2" />
-                  </svg>
-                )
-              },
-              { 
-                icon: <CalendarDays size={28} strokeWidth={2} />, 
-                title: 'Visual Calendar', 
-                desc: 'Instantly check room availability and track live daily rate plans at a glance.', 
-                color: '#0ea5e9',
-                symbolicArt: (
-                  <svg width="150" height="150" viewBox="0 0 150 150" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
-                    {[0,1,2].map(row => 
-                      [0,1,2].map(col => (
-                        <rect key={`${row}-${col}`} x={20 + col * 45} y={20 + row * 45} width="35" height="35" rx="8" 
-                          fill={row === 1 && col === 1 ? "rgba(14, 165, 233, 0.15)" : "rgba(14, 165, 233, 0.03)"} 
-                          stroke={row === 1 && col === 1 ? "rgba(14, 165, 233, 0.4)" : "rgba(14, 165, 233, 0.1)"} strokeWidth="2" />
-                      ))
-                    )}
-                    <circle cx="82.5" cy="82.5" r="4" fill="#0ea5e9" />
-                  </svg>
-                )
-              },
-              { 
-                icon: <Zap size={28} strokeWidth={2} />, 
-                title: 'AI ID Scanning', 
-                desc: 'Take a photo of any guest ID using our Android app. Our AI instantly extracts the details, compresses the image under 200KB to save space, and auto-fills the entire form.', 
-                color: '#8b5cf6',
-                large: true,
-                symbolicArt: (
-                  <svg width="200" height="150" viewBox="0 0 200 150" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
-                    <rect x="40" y="40" width="120" height="70" rx="6" fill="rgba(139, 92, 246, 0.05)" stroke="rgba(139, 92, 246, 0.2)" strokeWidth="2" />
-                    <rect x="50" y="50" width="35" height="45" rx="4" fill="rgba(139, 92, 246, 0.1)" />
-                    <rect x="95" y="55" width="55" height="6" fill="rgba(139, 92, 246, 0.15)" />
-                    <rect x="95" y="68" width="40" height="6" fill="rgba(139, 92, 246, 0.15)" />
-                    <rect x="95" y="81" width="30" height="6" fill="rgba(139, 92, 246, 0.15)" />
-                    <path d="M30 30 L50 30 M30 30 L30 50 M170 30 L150 30 M170 30 L170 50 M30 120 L50 120 M30 120 L30 100 M170 120 L150 120 M170 120 L170 100" fill="none" stroke="rgba(139, 92, 246, 0.4)" strokeWidth="3" strokeLinecap="round" />
-                  </svg>
-                )
-              },
-              { 
-                icon: <Wallet size={28} strokeWidth={2} />, 
-                title: 'Financial Tracking', 
-                desc: 'Automatically update booking revenue and manually log other income and expenses.', 
-                color: '#f59e0b',
-                symbolicArt: (
-                  <svg width="160" height="120" viewBox="0 0 160 120" style={{ position: 'absolute', right: '0', bottom: '0', opacity: 0.8 }}>
-                    <rect x="20" y="80" width="25" height="40" rx="4" fill="rgba(245, 158, 11, 0.1)" stroke="rgba(245, 158, 11, 0.2)" strokeWidth="2" />
-                    <rect x="60" y="50" width="25" height="70" rx="4" fill="rgba(245, 158, 11, 0.15)" stroke="rgba(245, 158, 11, 0.3)" strokeWidth="2" />
-                    <rect x="100" y="20" width="25" height="100" rx="4" fill="rgba(245, 158, 11, 0.25)" stroke="rgba(245, 158, 11, 0.5)" strokeWidth="2" />
-                  </svg>
-                )
-              },
-              { 
-                icon: <TrendingUp size={28} strokeWidth={2} />, 
-                title: 'ROI Analysis', 
-                desc: "Gain deep insights into your property's investment health.",
-                color: '#3b82f6', 
-                symbolicArt: (
-                  <svg width="150" height="150" viewBox="0 0 150 150" style={{ position: 'absolute', right: '0', bottom: '0', opacity: 0.8 }}>
-                    <path d="M0 120 C 40 120, 60 80, 100 90 C 130 100, 140 40, 160 20 L 160 160 L 0 160 Z" fill="rgba(59, 130, 246, 0.08)" />
-                    <path d="M0 120 C 40 120, 60 80, 100 90 C 130 100, 140 40, 160 20" fill="none" stroke="#3b82f6" strokeWidth="3" strokeLinecap="round" opacity="0.6" />
-                    <circle cx="115" cy="65" r="5" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
-                  </svg>
-                )
-              },
-              { 
-                icon: <Users size={28} strokeWidth={2} />, 
-                title: 'Staff Access', 
-                desc: 'Assign role-based access limits for your managers and receptionists.', 
-                color: '#f43f5e',
-                symbolicArt: (
-                  <svg width="150" height="120" viewBox="0 0 150 120" style={{ position: 'absolute', right: '-10%', bottom: '5%', opacity: 0.8 }}>
-                    <circle cx="50" cy="60" r="30" fill="rgba(244, 63, 94, 0.05)" stroke="rgba(244, 63, 94, 0.2)" strokeWidth="2" />
-                    <circle cx="80" cy="60" r="30" fill="rgba(244, 63, 94, 0.1)" stroke="rgba(244, 63, 94, 0.3)" strokeWidth="2" />
-                    <circle cx="110" cy="60" r="30" fill="rgba(244, 63, 94, 0.15)" stroke="rgba(244, 63, 94, 0.4)" strokeWidth="2" />
-                  </svg>
-                )
-              },
-              { 
-                icon: <Shield size={28} strokeWidth={2} />, 
-                title: 'Secure Data Management', 
-                desc: 'Securely store documents and instantly wipe guest records and images with a single click.', 
-                color: '#ec4899',
-                symbolicArt: (
-                  <svg width="140" height="140" viewBox="0 0 140 140" style={{ position: 'absolute', right: '-5%', bottom: '-5%', opacity: 0.8 }}>
-                    <path d="M70 20 L120 40 L120 80 C120 110, 70 130, 70 130 C70 130, 20 110, 20 80 L20 40 Z" fill="rgba(236, 72, 153, 0.05)" stroke="rgba(236, 72, 153, 0.2)" strokeWidth="2" />
-                    <path d="M55 70 L65 80 L85 60" fill="none" stroke="rgba(236, 72, 153, 0.4)" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                )
-              }
-            ].map((feat, i) => (
-              <div key={i} className={`bento-item ${feat.large ? 'large' : ''}`} style={{ 
-                background: 'rgba(255, 255, 255, 0.85)', 
-                border: '1px solid rgba(255, 255, 255, 1)',
-                boxShadow: '0 20px 40px -20px rgba(0,0,0,0.1), inset 0 0 0 1px rgba(255,255,255,0.5)',
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                position: 'relative',
-                overflow: 'hidden',
-                borderRadius: '24px'
-              }}>
-                {/* Symbolic Ambient Inner Glow */}
-                <div style={{ position: 'absolute', top: '-20%', right: '-20%', width: '150px', height: '150px', background: `radial-gradient(circle, ${feat.color}15 0%, transparent 70%)`, filter: 'blur(20px)', pointerEvents: 'none' }}></div>
-                
-                {/* Custom Elegant Symbolic Vector Art */}
-                {feat.symbolicArt}
+      {/* FEATURES GRID SECTION */}
+      <section style={{ padding: '3.5rem 1.5rem 6rem', position: 'relative' }}>
+        <div style={{ maxWidth: '1150px', margin: '0 auto' }}>
+          
+          {/* Section Subheading */}
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: '0.5rem' }}>
+              Built for Modern Hospitality
+            </h2>
+            <p style={{ fontSize: '1.05rem', color: '#64748b', maxWidth: '550px', margin: '0 auto' }}>
+              Purpose-built tools designed to streamline daily tasks, boost occupancy, and keep your property running smoothly.
+            </p>
+          </div>
 
-                <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%', padding: '1.5rem', paddingRight: '3.5rem' }}>
-                  <div style={{ 
-                    width: '48px', height: '48px', borderRadius: '14px', 
-                    background: '#ffffff',
-                    border: `1px solid ${feat.color}20`,
-                    boxShadow: `0 8px 16px -8px ${feat.color}50`,
-                    color: feat.color, 
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', 
-                    marginBottom: '1.5rem'
-                  }}>
+          {/* 3x3 Grid */}
+          <div className="features-grid">
+            {featuresList.map((feat, i) => (
+              <div key={i} className="feature-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div className="icon-wrapper" style={{ background: feat.bg, color: feat.color }}>
                     {feat.icon}
                   </div>
-                  <h3 style={{ fontSize: '1.4rem', fontWeight: 700, marginBottom: '0.5rem', color: '#0f172a', letterSpacing: '-0.02em', position: 'relative', zIndex: 10 }}>{feat.title}</h3>
-                  <p style={{ color: '#475569', lineHeight: 1.6, margin: 0, fontSize: '1.05rem', fontWeight: 400, textWrap: 'balance' }}>{feat.desc}</p>
+                  <span style={{ 
+                    fontSize: '0.75rem', 
+                    fontWeight: 700, 
+                    color: feat.color, 
+                    background: feat.bg, 
+                    padding: '4px 10px', 
+                    borderRadius: '20px', 
+                    letterSpacing: '0.03em',
+                    textTransform: 'uppercase'
+                  }}>
+                    {feat.category}
+                  </span>
                 </div>
+                
+                <h3 style={{ fontSize: '1.3rem', fontWeight: 700, color: '#0f172a', marginBottom: '0.6rem', letterSpacing: '-0.01em' }}>
+                  {feat.title}
+                </h3>
+                
+                <p style={{ fontSize: '0.975rem', color: '#475569', lineHeight: 1.55, margin: 0, flexGrow: 1 }}>
+                  {feat.desc}
+                </p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FINAL CONVERSION CTA */}
+      <section style={{ padding: '5rem 1.5rem', background: '#ffffff', textAlign: 'center', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.75rem)', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em', fontFamily: "'Outfit', sans-serif" }}>
+            Ready to simplify your property management?
+          </h2>
+          <p style={{ fontSize: '1.2rem', color: '#64748b', marginBottom: '2.5rem', lineHeight: 1.6, maxWidth: '600px', marginInline: 'auto' }}>
+            Manage bookings, finances, and property performance from one simple, unified platform.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <Link to="/pricing" className="btn btn-primary" style={{ padding: '16px 36px', fontSize: '1.1rem', fontWeight: 700, borderRadius: '8px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', border: 'none', color: '#fff', boxShadow: '0 10px 25px -5px rgba(5, 150, 105, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '8px', textDecoration: 'none' }}>
+              Start 30-Day Free Trial <ArrowRight size={20} />
+            </Link>
+            <span style={{ fontSize: '0.875rem', color: '#94a3b8', fontWeight: 500 }}>
+              No credit card required • Setup in minutes
+            </span>
           </div>
         </div>
       </section>
