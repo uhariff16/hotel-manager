@@ -265,7 +265,7 @@ export default function Auth() {
       <div className="card" style={{ 
         width: '100%', 
         maxWidth: isMobile ? '100%' : (isLogin || isForgotPassword || isRecovering ? '460px' : '560px'), 
-        background: '#ffffff',
+        background: 'var(--card-bg)',
         padding: isMobile ? '1.5rem 1.25rem' : '2.5rem 2.25rem', 
         border: isMobile ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255, 255, 255, 0.1)',
         boxShadow: isMobile ? '0 4px 20px rgba(0,0,0,0.04)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 1px 1px rgba(255, 255, 255, 0.1)',
@@ -278,7 +278,7 @@ export default function Auth() {
           <div style={{ margin: isMobile ? '0 auto 1.5rem' : '0 auto 2rem', display: 'flex', justifyContent: 'center' }}>
             <Link to="/" style={{ 
               display: 'inline-block', 
-              background: '#ffffff', 
+              background: 'var(--bg-secondary)', 
               padding: '0.65rem 1.15rem', 
               borderRadius: '16px', 
               boxShadow: '0 4px 12px rgba(0,0,0,0.04)',

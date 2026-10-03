@@ -146,7 +146,15 @@ export default function Bookings() {
   const [settlingBooking, setSettlingBooking] = useState(null);
   const [settlementData, setSettlementData] = useState({ discount: 0, allSettled: false });
   
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (isMobile && showFilters) {
@@ -959,13 +967,218 @@ export default function Bookings() {
 
   return (
     <div className="container" style={{ padding: isMobile ? '1rem' : '2rem' }}>
-      {/* <div style={{ background: 'red', color: 'white', padding: '20px', fontSize: '14px', marginBottom: '20px' }}>
-        <h3>DEBUG: BK-260708-9140</h3>
-        <pre style={{ whiteSpace: 'pre-wrap' }}>{JSON.stringify(bookings.find(x => x.reference_number === 'BK-260708-9140'), null, 2)}</pre>
-      </div> */}
+      <style>{`
+        .bk-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-family: inherit;
+          font-weight: 600;
+          border-radius: 8px;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+          outline: none;
+          border: 1px solid transparent;
+        }
+        .bk-btn:hover {
+          transform: translateY(-1px);
+        }
+        .bk-btn:active {
+          transform: translateY(0);
+        }
+        .bk-btn:focus-visible {
+          box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.35);
+        }
+        .bk-action-btn {
+          height: 38px;
+          line-height: 1;
+          padding: 0 13px;
+          font-size: 0.8rem;
+          font-weight: 600;
+          white-space: nowrap;
+          box-sizing: border-box;
+        }
+        .bk-btn-confirm {
+          background-color: #3b82f6;
+          color: #ffffff;
+          border-color: #3b82f6;
+          min-width: 88px;
+        }
+        .bk-btn-confirm:hover {
+          background-color: #2563eb;
+          border-color: #2563eb;
+          box-shadow: 0 2px 6px rgba(37, 99, 235, 0.25);
+        }
+        .bk-btn-confirm:active {
+          background-color: #1d4ed8;
+        }
+        .bk-btn-checkin {
+          background-color: #059669;
+          color: #ffffff;
+          border-color: #059669;
+          min-width: 92px;
+        }
+        .bk-btn-checkin:hover {
+          background-color: #047857;
+          border-color: #047857;
+          box-shadow: 0 2px 6px rgba(4, 120, 87, 0.25);
+        }
+        .bk-btn-checkin:active {
+          background-color: #065f46;
+        }
+        .bk-btn-checkout {
+          background-color: #8b5cf6;
+          color: #ffffff;
+          border-color: #8b5cf6;
+          min-width: 94px;
+        }
+        .bk-btn-checkout:hover {
+          background-color: #7c3aed;
+          border-color: #7c3aed;
+          box-shadow: 0 2px 6px rgba(124, 58, 237, 0.25);
+        }
+        .bk-btn-checkout:active {
+          background-color: #6d28d9;
+        }
+        .bk-btn-receive-pay {
+          background-color: #d97706;
+          color: #ffffff;
+          border-color: #d97706;
+          min-width: 104px;
+        }
+        .bk-btn-receive-pay:hover {
+          background-color: #b45309;
+          border-color: #b45309;
+          box-shadow: 0 2px 6px rgba(180, 83, 9, 0.25);
+        }
+        .bk-btn-receive-pay:active {
+          background-color: #92400e;
+        }
+        .bk-icon-btn {
+          width: 38px;
+          height: 38px;
+          min-width: 38px;
+          padding: 0;
+          border-radius: 8px;
+          border: 1px solid var(--border);
+          background: var(--bg-color);
+          color: var(--text-muted);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+          outline: none;
+        }
+        .bk-icon-btn:hover {
+          transform: translateY(-1px);
+        }
+        .bk-icon-btn:active {
+          transform: translateY(0);
+        }
+        .bk-icon-btn:focus-visible {
+          box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.35);
+        }
+        .bk-icon-edit:hover {
+          background-color: rgba(5, 150, 105, 0.08);
+          border-color: rgba(5, 150, 105, 0.3);
+          color: #059669;
+        }
+        .bk-icon-revert {
+          color: #6366f1;
+          background-color: rgba(99, 102, 241, 0.06);
+          border-color: rgba(99, 102, 241, 0.2);
+        }
+        .bk-icon-revert:hover {
+          background-color: rgba(99, 102, 241, 0.15);
+          border-color: rgba(99, 102, 241, 0.4);
+          color: #4f46e5;
+        }
+        .bk-icon-delete:hover {
+          background-color: rgba(239, 68, 68, 0.08);
+          border-color: rgba(239, 68, 68, 0.3);
+          color: #dc2626;
+        }
+        .bk-whatsapp-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: #15803d;
+          padding: 3px 9px;
+          background: rgba(34, 197, 94, 0.10);
+          border: 1px solid rgba(34, 197, 94, 0.25);
+          border-radius: 12px;
+          cursor: pointer;
+          gap: 4px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+          outline: none;
+        }
+        .bk-whatsapp-btn:hover {
+          background: rgba(34, 197, 94, 0.20);
+          border-color: rgba(34, 197, 94, 0.45);
+          transform: translateY(-1px);
+        }
+        .bk-whatsapp-btn:active {
+          transform: translateY(0);
+        }
+        .bk-whatsapp-btn:focus-visible {
+          box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.35);
+        }
+        .bk-new-booking-btn {
+          height: 42px;
+          padding: 0 1.25rem;
+          border-radius: 8px;
+          font-weight: 700;
+          background-color: #059669;
+          color: #ffffff;
+          border: none;
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: background-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+          outline: none;
+        }
+        .bk-new-booking-btn:hover {
+          background-color: #047857;
+          transform: translateY(-1px);
+          box-shadow: 0 3px 10px rgba(5, 150, 105, 0.3);
+        }
+        .bk-new-booking-btn:active {
+          transform: translateY(0);
+        }
+        .bk-new-booking-btn:focus-visible {
+          box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.4);
+        }
+        .bk-filter-btn {
+          height: 42px;
+          padding: 0 1rem;
+          border-radius: 8px;
+          font-weight: 600;
+          border: 1px solid var(--border);
+          display: inline-flex;
+          align-items: center;
+          gap: 0.5rem;
+          cursor: pointer;
+          transition: background-color 160ms ease, border-color 160ms ease, transform 160ms ease;
+          outline: none;
+        }
+        .bk-filter-btn:hover {
+          transform: translateY(-1px);
+        }
+        .bk-filter-btn:active {
+          transform: translateY(0);
+        }
+        .bk-filter-btn:focus-visible {
+          box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.35);
+        }
+      `}</style>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isMobile ? '1.5rem' : '2rem' }}>
         <h1 style={{ margin: 0, fontSize: isMobile ? '1.5rem' : '2.25rem', fontWeight: 800 }}>Bookings</h1>
-        <button className="btn btn-primary" onClick={() => navigate('/bookings/new')} style={{ padding: isMobile ? '0.6rem 1rem' : '0.8rem 1.6rem', borderRadius: 'var(--radius-md)', fontWeight: 700 }}>
+        <button className="bk-new-booking-btn" onClick={() => navigate('/bookings/new')}>
           <Plus size={20} /> <span className={window.Capacitor?.isNativePlatform() ? "" : "desktop-only"}>New Booking</span>
         </button>
       </div>
@@ -984,13 +1197,13 @@ export default function Bookings() {
                 placeholder="Search guest, ref #, phone..." 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)}
-                style={{ padding: '0.7rem 1rem 0.7rem 2.75rem', fontSize: '0.95rem', background: 'var(--bg-color)', border: '1px solid var(--border)', width: '100%' }}
+                style={{ padding: '0.7rem 1rem 0.7rem 2.75rem', fontSize: '0.95rem', background: 'var(--bg-color)', border: '1px solid var(--border)', width: '100%', height: '42px' }}
               />
             </div>
             <button 
-              className="btn btn-outline" 
+              className="bk-filter-btn" 
               onClick={() => setShowFilters(!showFilters)} 
-              style={{ padding: '0.7rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: showFilters ? 'var(--primary)' : 'var(--bg-color)', color: showFilters ? 'white' : 'var(--text-main)', borderColor: showFilters ? 'var(--primary)' : 'var(--border)' }}
+              style={{ background: showFilters ? 'var(--primary)' : 'var(--bg-color)', color: showFilters ? 'white' : 'var(--text-main)', borderColor: showFilters ? 'var(--primary)' : 'var(--border)' }}
             >
               <Filter size={18} /> <span className="desktop-only">Filter</span>
             </button>
@@ -1178,7 +1391,7 @@ export default function Bookings() {
                             <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '110px' }}>{b.phone_number}</span>
                             <div className="whatsapp-dropdown-container" style={{ position: 'relative' }}>
                                <button 
-                                 style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', padding: '3px 8px', background: '#25D366', marginLeft: '4px', border: 'none', borderRadius: '12px', cursor: 'pointer', gap: '4px', fontSize: '0.7rem', fontWeight: 600, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)' }}
+                                 style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#15803d', padding: '3px 8px', background: 'rgba(34, 197, 94, 0.12)', border: '1px solid rgba(34, 197, 94, 0.25)', marginLeft: '4px', borderRadius: '12px', cursor: 'pointer', gap: '4px', fontSize: '0.7rem', fontWeight: 600, transition: 'all 0.2s' }}
                                  onClick={(e) => { e.stopPropagation(); setWhatsappDropdownId(whatsappDropdownId === b.id ? null : b.id); }}
                                  title="Send WhatsApp"
                                >
@@ -1219,7 +1432,7 @@ export default function Bookings() {
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', padding: '0.75rem 0', borderTop: '1px solid var(--border)', borderBottom: '1px solid var(--border)', marginBottom: '0.75rem' }}>
                     <div style={{ gridColumn: 'span 2' }}>
-                      <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Stay Dates ({b.night_count} Nights)</small>
+                      <small style={{ color: 'var(--text-muted)', textTransform: 'uppercase', fontSize: '0.65rem', fontWeight: 700 }}>Stay Dates ({b.night_count} {b.night_count === 1 ? 'Night' : 'Nights'})</small>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.9rem', fontWeight: 600 }}>
                         <Calendar size={14} className="text-primary" /> 
                         {formatDateShort(b.check_in_date)} <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>→</span> {formatDateShort(b.check_out_date)}
@@ -1233,7 +1446,7 @@ export default function Bookings() {
                     </div>
                   </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '12px', marginTop: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-color)', padding: '0.75rem', borderRadius: '12px', marginTop: '0.5rem', marginBottom: '0.75rem' }}>
                       <div style={{ textAlign: 'center' }}>
                         <small style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Paid</small>
                         <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--success)' }}>₹{b.total_amount - b.balance_amount}</div>
@@ -1248,22 +1461,22 @@ export default function Bookings() {
                       </div>
                     </div>
                     
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon" style={{ background: 'var(--bg-color)', border: '1px solid var(--border)' }}><Edit2 size={18} /></button>
+                    <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon" style={{ background: 'var(--bg-color)', border: '1px solid var(--border)', minHeight: '44px', minWidth: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Edit2 size={18} /></button>
                       {b.status === 'Pending' && (
-                        <button onClick={(e) => { e.stopPropagation(); handleConfirm(b); }} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#3b82f6', borderColor: '#3b82f6' }}>Confirm</button>
+                        <button onClick={(e) => { e.stopPropagation(); handleConfirm(b); }} className="btn btn-primary" style={{ padding: '0.6rem 1rem', minHeight: '44px', fontSize: '0.85rem', background: '#3b82f6', borderColor: '#3b82f6', flex: 1, justifyContent: 'center' }}>Confirm</button>
                       )}
                       {b.status === 'Confirmed' && (
-                        <button onClick={(e) => { e.stopPropagation(); handleCheckIn(b); }} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }}>Check-in</button>
+                        <button onClick={(e) => { e.stopPropagation(); handleCheckIn(b); }} className="btn btn-primary" style={{ padding: '0.6rem 1rem', minHeight: '44px', fontSize: '0.85rem', flex: 1, justifyContent: 'center' }}>Check-in</button>
                       )}
                       {b.status === 'Checked-in' && (
-                        <button onClick={() => handleCheckOut(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#8b5cf6', borderColor: '#8b5cf6' }}>Check-out</button>
+                        <button onClick={() => handleCheckOut(b)} className="btn btn-primary" style={{ padding: '0.6rem 1rem', minHeight: '44px', fontSize: '0.85rem', background: '#8b5cf6', borderColor: '#8b5cf6', flex: 1, justifyContent: 'center' }}>Check-out</button>
                       )}
                       {b.status !== 'Cancelled' && b.status !== 'Pending' && b.balance_amount > 0 && (
-                        <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#f59e0b', borderColor: '#f59e0b' }}>Receive Pay</button>
+                        <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.6rem 1rem', minHeight: '44px', fontSize: '0.85rem', background: '#f59e0b', borderColor: '#f59e0b', flex: 1, justifyContent: 'center' }}>Receive Pay</button>
                       )}
                       {(b.status === 'Completed' || b.status === 'Checked-out') && (
-                        <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1' }}><RotateCcw size={18} /></button>
+                        <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ background: 'rgba(99, 102, 241, 0.1)', color: '#6366f1', minHeight: '44px', minWidth: '44px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><RotateCcw size={18} /></button>
                       )}
                     </div>
                   </div>
@@ -1293,7 +1506,7 @@ export default function Bookings() {
                   <th onClick={() => requestSort('advance_paid')} style={{ cursor: 'pointer', textAlign: 'right' }}>Paid</th>
                   <th onClick={() => requestSort('balance_amount')} style={{ cursor: 'pointer', textAlign: 'right' }}>Balance</th>
                   <th onClick={() => requestSort('total_amount')} style={{ cursor: 'pointer', textAlign: 'right' }}>Total</th>
-                  <th style={{ textAlign: 'center' }}>Actions</th>
+                  <th style={{ textAlign: 'right', minWidth: '300px', paddingRight: '1rem' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -1335,7 +1548,7 @@ export default function Bookings() {
                           <Phone size={12} /> {b.phone_number}
                           <div className="whatsapp-dropdown-container" style={{ position: 'relative', display: 'inline-block' }}>
                              <button 
-                               style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: '#fff', padding: '3px 10px', background: '#25D366', marginLeft: '8px', border: 'none', borderRadius: '12px', cursor: 'pointer', gap: '4px', fontSize: '0.75rem', fontWeight: 600, transition: 'all 0.2s', boxShadow: '0 2px 4px rgba(37, 211, 102, 0.3)' }}
+                               className="bk-whatsapp-btn"
                                onClick={(e) => { e.stopPropagation(); setWhatsappDropdownId(whatsappDropdownId === b.id ? null : b.id); }}
                                title="Send WhatsApp"
                              >
@@ -1360,7 +1573,7 @@ export default function Bookings() {
                            <span style={{ color: 'var(--text-muted)', margin: '0 4px' }}>→</span> 
                            {formatDateShort(b.check_out_date)}
                         </div>
-                        <small style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{b.night_count} nights stay</small>
+                        <small style={{ color: 'var(--text-muted)', fontWeight: 600 }}>{b.night_count} {b.night_count === 1 ? 'night' : 'nights'} stay</small>
                       </td>
                       <td>
                         <div style={{ fontWeight: 600 }}><Home size={14} /> {cname}</div>
@@ -1403,25 +1616,25 @@ export default function Bookings() {
                         <div style={{ fontSize: '1rem', fontWeight: 700 }}>₹{b.total_amount.toLocaleString()}</div>
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'nowrap' }}>
                           {b.status === 'Pending' && (
-                              <button onClick={(e) => { e.stopPropagation(); handleConfirm(b); }} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#3b82f6', borderColor: '#3b82f6' }}>Confirm</button>
-                            )}
-                            {b.status === 'Confirmed' && (
-                              <button onClick={(e) => { e.stopPropagation(); handleCheckIn(b); }} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem' }}>Check-in</button>
-                            )}
+                            <button onClick={(e) => { e.stopPropagation(); handleConfirm(b); }} className="bk-btn bk-action-btn bk-btn-confirm">Confirm</button>
+                          )}
+                          {b.status === 'Confirmed' && (
+                            <button onClick={(e) => { e.stopPropagation(); handleCheckIn(b); }} className="bk-btn bk-action-btn bk-btn-checkin">Check-in</button>
+                          )}
                           {b.status === 'Checked-in' && (
-                            <button onClick={() => handleCheckOut(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#8b5cf6', borderColor: '#8b5cf6' }}>Check-out</button>
+                            <button onClick={() => handleCheckOut(b)} className="bk-btn bk-action-btn bk-btn-checkout">Check-out</button>
                           )}
                           {b.status !== 'Cancelled' && b.status !== 'Pending' && b.balance_amount > 0 && (
-                            <button onClick={() => settleBooking(b)} className="btn btn-primary" style={{ padding: '0.4rem 0.75rem', fontSize: '0.75rem', background: '#f59e0b', borderColor: '#f59e0b' }}>Receive Pay</button>
+                            <button onClick={() => settleBooking(b)} className="bk-btn bk-action-btn bk-btn-receive-pay">Receive Pay</button>
                           )}
                           {(b.status === 'Completed' || b.status === 'Checked-out') && (
-                            <button onClick={() => handleRevertToCheckIn(b)} className="btn-icon" title="Revert to Check-in" style={{ color: '#6366f1' }}><RotateCcw size={16} /></button>
+                            <button onClick={() => handleRevertToCheckIn(b)} className="bk-icon-btn bk-icon-revert" title="Revert to Check-in"><RotateCcw size={16} /></button>
                           )}
-                          <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="btn-icon"><Edit2 size={16} /></button>
+                          <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="bk-icon-btn bk-icon-edit" title="Edit Booking"><Edit2 size={16} /></button>
                           {(b.status === 'Pending' || b.status === 'Confirmed') && (
-                            <button onClick={() => deleteBooking(b.id)} className="btn-icon" style={{ color: 'var(--danger)' }}><Trash2 size={16} /></button>
+                            <button onClick={() => deleteBooking(b.id)} className="bk-icon-btn bk-icon-delete" title="Delete Booking"><Trash2 size={16} /></button>
                           )}
                         </div>
                       </td>

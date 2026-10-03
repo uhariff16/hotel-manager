@@ -420,7 +420,7 @@ export default function Dashboard() {
         justifyContent: 'space-between',
         flexWrap: 'nowrap',
         gap: '0.25rem',
-        background: 'var(--card-bg, #ffffff)',
+        background: 'var(--bg-secondary)',
         border: '1px solid var(--border)',
         borderRadius: '12px',
         boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
@@ -461,9 +461,9 @@ export default function Dashboard() {
               value={selectedPropertyId}
               onChange={e => handlePropertyChange(e.target.value)}
             >
-              <option value="all">All Properties ({cottagesList.length})</option>
+              <option value="all" style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)' }}>All Properties ({cottagesList.length})</option>
               {cottagesList.map(c => (
-                <option key={c.id} value={c.id}>{c.name}</option>
+                <option key={c.id} value={c.id} style={{ background: 'var(--bg-secondary)', color: 'var(--text-main)' }}>{c.name}</option>
               ))}
             </select>
           </div>
