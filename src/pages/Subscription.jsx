@@ -4,6 +4,8 @@ import { Check, Zap, Crown, CreditCard, Shield, X, Lock } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { createPortal } from 'react-dom';
 import { getTrialPresentationState } from '../lib/trial';
+import { resolveEffectivePlan } from '../utils/planEntitlements';
+import { useLocation, useNavigate } from 'react-router-dom';
 import PlanComparison, { normalizePlanReports, normalizeFeatureName, getSanitizedFeatures } from '../components/PlanComparison';
 
 const formatOfferDate = (dateString) => {
@@ -27,6 +29,7 @@ const formatOfferDate = (dateString) => {
 export default function Subscription() {
   const { profile, setProfile, globalPlans, websitePricing, globalTaxSettings } = useSettingsStore();
   const [loading, setLoading] = useState(null);
+  const [subDataLoading, setSubDataLoading] = useState(true);
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
   const [switchTrialModal, setSwitchTrialModal] = useState({ isOpen: false, targetPlanKey: null });
@@ -45,10 +48,80 @@ export default function Subscription() {
   useEffect(() => {
     if (profile?.id) {
        fetchSubscriptionData();
+    } else {
+       setSubDataLoading(false);
     }
   }, [profile?.id]);
 
+  const location = useLocation();
+  const navigate = useNavigate();
+  const searchParams = new URLSearchParams(location.search);
+  const checkoutPlan = searchParams.get('checkout');
+  const hasAutoCheckoutRun = React.useRef(false);
+
+  const clearCheckoutIntent = () => {
+    sessionStorage.removeItem('staypilot_checkout_intent');
+    if (window.location.search.includes('checkout=') || window.location.search.includes('intent=')) {
+      window.history.replaceState({}, '', '/subscription');
+    }
+  };
+
+  const getPlanName = (planKey) => {
+    const config = globalPlans?.[planKey] || {};
+    return config.name || (planKey === 'custom_1786983013013' ? 'Solo' : (planKey === 'pro' ? 'Growth' : (planKey === 'premium' ? 'Stay Master' : planKey.toUpperCase())));
+  };
+
+  useEffect(() => {
+    const initAutoCheckout = async () => {
+      if (!checkoutPlan || hasAutoCheckoutRun.current || !profile?.id || !globalPlans || subDataLoading) return;
+
+      const userRole = profile?.role;
+      if (userRole !== 'tenant_admin') {
+        clearCheckoutIntent();
+        if (userRole === 'staff') {
+          alert("Only property owners (Tenant Admins) can manage or purchase subscriptions.");
+        } else if (userRole === 'super_admin') {
+          alert("Super Admins manage global settings and cannot subscribe to plans.");
+        } else {
+          alert("Subscription purchase is restricted to property owners (Tenant Admins).");
+        }
+        navigate('/subscription', { replace: true });
+        return;
+      }
+
+      if (profile.subscription_status === 'suspended') {
+        clearCheckoutIntent();
+        alert("Your account is suspended. Please contact support.");
+        navigate('/subscription', { replace: true });
+        return;
+      }
+
+      const resolved = resolveEffectivePlan(checkoutPlan, globalPlans);
+      if (resolved.isUnknownPlan || !resolved.planConfig || resolved.planConfig.enabled === false || resolved.planKey === 'free') {
+        clearCheckoutIntent();
+        alert("Selected plan is invalid or unavailable for purchase.");
+        navigate('/subscription', { replace: true });
+        return;
+      }
+
+      if (activeSubscription?.status === 'active') {
+        clearCheckoutIntent();
+        const activePlanName = getPlanName(activeSubscription.staypilot_plan_type);
+        alert(`You already have an active subscription for ${activePlanName}. Subscriptions can be managed below.`);
+        navigate('/subscription', { replace: true });
+        return;
+      }
+
+      hasAutoCheckoutRun.current = true;
+      clearCheckoutIntent();
+      processPayment(resolved.planKey);
+    };
+
+    initAutoCheckout();
+  }, [checkoutPlan, profile?.id, profile?.role, profile?.subscription_status, globalPlans, activeSubscription, subDataLoading]);
+
   const fetchSubscriptionData = async () => {
+     setSubDataLoading(true);
      try {
        const { data: subData } = await supabase.from('saas_subscriptions')
          .select('*')
@@ -64,12 +137,9 @@ export default function Subscription() {
        if (payData) setPaymentHistory(payData);
      } catch (e) {
        console.error("Failed to load subscription data", e);
+     } finally {
+       setSubDataLoading(false);
      }
-  };
-
-  const getPlanName = (planKey) => {
-    const config = globalPlans?.[planKey] || {};
-    return config.name || (planKey === 'custom_1786983013013' ? 'Solo' : (planKey === 'pro' ? 'Growth' : (planKey === 'premium' ? 'Stay Master' : planKey.toUpperCase())));
   };
 
   const handleSwitchTrialPlanClick = (targetPlanKey) => {

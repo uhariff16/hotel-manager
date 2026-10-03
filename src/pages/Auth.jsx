@@ -51,6 +51,8 @@ export default function Auth() {
   };
 
   const planParam = new URLSearchParams(location.search).get('plan');
+  const intentParam = new URLSearchParams(location.search).get('intent');
+  const isSubscribeIntent = intentParam === 'subscribe' || Boolean(sessionStorage.getItem('staypilot_checkout_intent'));
 
   const planInfo = useMemo(() => {
     if (!planParam || !isDataLoaded || !globalPlans) return null;
@@ -149,6 +151,16 @@ export default function Auth() {
         });
         if (error) throw error;
         
+        const storedIntentPlan = sessionStorage.getItem('staypilot_checkout_intent') || planParam;
+        if (isSubscribeIntent && storedIntentPlan) {
+          if (rememberMe) {
+            await Preferences.set({ key: 'rememberMeEmail', value: formData.email.trim() });
+            await Preferences.set({ key: 'rememberMePassword', value: formData.password });
+          }
+          navigate(`/subscription?checkout=${storedIntentPlan}&intent=subscribe`, { replace: true });
+          return;
+        }
+
         if (rememberMe) {
           await Preferences.set({ key: 'rememberMeEmail', value: formData.email.trim() });
           await Preferences.set({ key: 'rememberMePassword', value: formData.password });
@@ -185,6 +197,9 @@ export default function Auth() {
           throw new Error("An account with this email already exists. Please sign in instead.");
         }
 
+        if (isSubscribeIntent && planFromUrl) {
+          sessionStorage.setItem('staypilot_checkout_intent', planFromUrl);
+        }
         setMessage("Signup successful! Please check your email for a verification link before signing in.");
         setIsLogin(true);
         setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));
@@ -278,7 +293,7 @@ export default function Auth() {
               ? 'Enter your new secure password below'
               : (isForgotPassword 
                 ? 'Enter your email to receive a reset link' 
-                : (isLogin ? 'Sign in to manage your property.' : `Start your ${planInfo?.trialDays || 30}-day free trial`))}
+                : (isLogin ? 'Sign in to manage your property.' : (isSubscribeIntent ? 'Create your account to complete subscription setup' : `Start your ${planInfo?.trialDays || 30}-day free trial`)))}
           </p>
         </div>
 
@@ -371,10 +386,10 @@ export default function Auth() {
               borderTop: '1px dashed var(--border-color, rgba(255,255,255,0.1))'
             }}>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#48bb78', fontWeight: '500' }}>
-                <CheckCircle2 size={14} /> {planInfo.trialDays}-day free trial
+                <CheckCircle2 size={14} /> {isSubscribeIntent ? 'Direct Paid Subscription Setup' : `${planInfo.trialDays}-day free trial`}
               </span>
               <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
-                <CheckCircle2 size={14} /> No card required today
+                <CheckCircle2 size={14} /> {isSubscribeIntent ? 'Secure Razorpay Checkout Next' : 'No card required today'}
               </span>
             </div>
 

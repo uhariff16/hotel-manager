@@ -14,11 +14,25 @@ export default function Pricing() {
   const isPreviewParam = searchParams.get('preview') === 'true';
   const isPreview = isPreviewParam && profile?.role === 'super_admin';
 
-  const handlePlanClick = (plan) => {
+  const handlePlanClick = (plan, intent = 'trial') => {
     setProcessingPlanId(plan.id);
     setTimeout(() => {
-      navigate(`/auth?mode=signup&plan=${plan.id}`);
-    }, 1200);
+      if (intent === 'subscribe') {
+        sessionStorage.setItem('staypilot_checkout_intent', plan.id);
+        if (profile?.id && profile?.role !== 'staff') {
+          navigate(`/subscription?checkout=${plan.id}&intent=subscribe`);
+        } else {
+          navigate(`/auth?mode=signup&plan=${plan.id}&intent=subscribe`);
+        }
+      } else {
+        sessionStorage.removeItem('staypilot_checkout_intent');
+        if (profile?.id && profile?.role !== 'staff') {
+          navigate(`/subscription`);
+        } else {
+          navigate(`/auth?mode=signup&plan=${plan.id}`);
+        }
+      }
+    }, 300);
   };
 
   useEffect(() => {
@@ -494,9 +508,9 @@ export default function Pricing() {
                     </ul>
                   </div>
 
-                  <div style={{ marginTop: 'auto' }}>
+                  <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.65rem', alignItems: 'center' }}>
                     <button 
-                      onClick={() => handlePlanClick(plan)}
+                      onClick={() => handlePlanClick(plan, 'trial')}
                       className={`btn-elegant ${plan.highlightPlan ? 'primary' : 'secondary'} ${processingPlanId === plan.id ? 'processing' : ''}`}
                     >
                       {processingPlanId === plan.id ? (
@@ -505,8 +519,35 @@ export default function Pricing() {
                           Processing...
                         </>
                       ) : (
-                        plan.trialEnabled ? `Start ${plan.trialDurationDays}-Day Free Trial` : (plan.ctaButtonText || 'Choose Plan')
+                        `Start ${plan.trialDurationDays || 30}-Day Free Trial`
                       )}
+                    </button>
+
+                    <div style={{ fontSize: '0.8rem', color: plan.highlightPlan ? '#cbd5e1' : '#94a3b8', fontWeight: 500 }}>
+                      {plan.trialDurationDays || 30} days • No credit card required
+                    </div>
+
+                    <button
+                      onClick={() => handlePlanClick(plan, 'subscribe')}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: plan.highlightPlan ? '#34d399' : '#059669',
+                        fontSize: '0.875rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: '0.2rem 0.5rem',
+                        textDecoration: 'none',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '4px',
+                        transition: 'opacity 0.2s ease',
+                        fontFamily: "'Plus Jakarta Sans', sans-serif"
+                      }}
+                      onMouseOver={e => e.target.style.opacity = '0.8'}
+                      onMouseOut={e => e.target.style.opacity = '1'}
+                    >
+                      Subscribe Now &rarr;
                     </button>
                   </div>
                 </div>
