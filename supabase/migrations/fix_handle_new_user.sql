@@ -24,11 +24,19 @@ BEGIN
     VALUES (NEW.id, v_full_name, v_role, v_tenant_id);
   END IF;
 
-  -- 2. Sync role and tenant_id to auth metadata so it's available in JWT (for RLS performance)
-  UPDATE auth.users 
-  SET raw_app_meta_data = raw_app_meta_data || 
-    jsonb_build_object('role', v_role, 'tenant_id', v_tenant_id)
-  WHERE id = NEW.id;
+  -- 2. Sync role and tenant_id to auth metadata & auto-confirm staff emails
+  IF v_role = 'staff' OR NEW.email LIKE '%@staff.local' THEN
+    UPDATE auth.users 
+    SET email_confirmed_at = COALESCE(email_confirmed_at, NOW()),
+        raw_app_meta_data = raw_app_meta_data || 
+          jsonb_build_object('role', v_role, 'tenant_id', v_tenant_id)
+    WHERE id = NEW.id;
+  ELSE
+    UPDATE auth.users 
+    SET raw_app_meta_data = raw_app_meta_data || 
+      jsonb_build_object('role', v_role, 'tenant_id', v_tenant_id)
+    WHERE id = NEW.id;
+  END IF;
 
   -- 3. If it's a new tenant (role = tenant_admin), create their first resort
   IF v_role = 'tenant_admin' THEN

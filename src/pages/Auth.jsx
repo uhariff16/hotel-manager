@@ -40,7 +40,11 @@ export default function Auth() {
       const savedEmail = await Preferences.get({ key: 'rememberMeEmail' });
       const savedPassword = await Preferences.get({ key: 'rememberMePassword' });
       if (savedEmail.value && savedPassword.value) {
-        setFormData(prev => ({ ...prev, email: savedEmail.value, password: savedPassword.value }));
+        let displayValue = savedEmail.value;
+        if (displayValue.endsWith('@staff.local')) {
+          displayValue = displayValue.replace('@staff.local', '');
+        }
+        setFormData(prev => ({ ...prev, email: displayValue, password: savedPassword.value }));
         setRememberMe(true);
       }
     };
@@ -88,7 +92,7 @@ export default function Auth() {
         if (error) throw error;
         
         if (rememberMe) {
-          await Preferences.set({ key: 'rememberMeEmail', value: loginEmail });
+          await Preferences.set({ key: 'rememberMeEmail', value: formData.email.trim() });
           await Preferences.set({ key: 'rememberMePassword', value: formData.password });
         } else {
           await Preferences.remove({ key: 'rememberMeEmail' });

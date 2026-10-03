@@ -311,7 +311,7 @@ function App() {
             <Route path="subscription" element={<Subscription />} />
             <Route path="admin" element={<SuperAdmin />} />
             <Route path="investment-analysis" element={<InvestmentAnalysis />} />
-            <Route path="settings" element={<Settings />} />
+            <Route path="settings" element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Settings />} />
           </Route>
 
           <Route path="/wizard" element={session ? <OnboardingWizard /> : <Navigate to="/auth" replace />} />

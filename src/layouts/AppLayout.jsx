@@ -236,8 +236,10 @@ export default function AppLayout() {
     navLinks.push({ to: '/support', label: `Help & Support ${supportUnreadCount > 0 ? `(${supportUnreadCount})` : ''}`, icon: <LifeBuoy size={20} /> });
   }
 
-  // Settings is shared but will be simplified in its own page logic
-  navLinks.push({ to: '/settings', label: 'Settings', icon: <SettingsIcon size={20} />, tourClass: 'tour-settings' });
+  // Settings is for Tenant Admins and Super Admins only
+  if (!isStaff) {
+    navLinks.push({ to: '/settings', label: 'Settings', icon: <SettingsIcon size={20} />, tourClass: 'tour-settings' });
+  }
 
   if (hasInvestmentAccess || isSuper) {
     navLinks.push({ to: '/investment-analysis', label: 'Investment Analysis', icon: <TrendingUp size={20} /> });
