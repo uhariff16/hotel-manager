@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
 import { Building, Home, Plus, Check, ChevronRight, ChevronLeft, LogOut, Loader2, DollarSign, MapPin, Phone, User, Wifi, Trash2 } from 'lucide-react';
+import { getTenantEntitlements } from '../utils/planEntitlements';
 
 export default function OnboardingWizard() {
   const { session, profile, resorts, setResorts, setActiveResortId, globalPlans } = useSettingsStore();
@@ -14,11 +15,30 @@ export default function OnboardingWizard() {
   const searchParams = new URLSearchParams(window.location.search);
   const isNewProperty = searchParams.get('newProperty') === 'true';
 
-  // Plan Limits
-  const currentPlanId = profile?.plan_type || 'free';
-  const planConfig = globalPlans?.[currentPlanId] || { maxRooms: 4, name: 'Free Starter' };
-  const roomLimit = planConfig.maxRooms || 4;
-  const planName = planConfig.name || currentPlanId.toUpperCase();
+  // Plan Limits & Entitlements
+  const [allTenantCottages, setAllTenantCottages] = useState([]);
+  const [allTenantRooms, setAllTenantRooms] = useState([]);
+
+  useEffect(() => {
+    const tenantId = profile?.role === 'staff' ? profile?.tenant_id : (profile?.id || session?.user?.id);
+    if (tenantId) {
+      supabase.from('cottages').select('*').eq('tenant_id', tenantId).then(({ data }) => setAllTenantCottages(data || []));
+      supabase.from('rooms').select('*').eq('tenant_id', tenantId).then(({ data }) => setAllTenantRooms(data || []));
+    }
+  }, [profile, session]);
+
+  const entitlements = useMemo(() => {
+    return getTenantEntitlements({
+      profile,
+      globalPlans,
+      cottages: allTenantCottages,
+      rooms: allTenantRooms
+    });
+  }, [profile, globalPlans, allTenantCottages, allTenantRooms]);
+
+  const roomLimit = entitlements.limits.maxRooms;
+  const planName = entitlements.planName;
+  const currentPlanId = entitlements.planKey;
 
   const [selectedRatePlans, setSelectedRatePlans] = useState(['Weekday', 'Weekend']);
 
@@ -203,6 +223,22 @@ export default function OnboardingWizard() {
         return setError("Price cannot be negative.");
       }
 
+      const isCreatingNewCottage = isNewProperty || !existingCottages.length;
+      if (isCreatingNewCottage && (allTenantCottages.length + 1) > entitlements.limits.maxResorts) {
+        return setError(`Plan Limit Exceeded: Your current ${entitlements.planName} plan allows a maximum of ${entitlements.limits.maxResorts} property(ies). You currently have ${allTenantCottages.length}. Please upgrade your plan to add more properties.`);
+      }
+
+      let resultingRooms = allTenantRooms.length;
+      if (isCreatingNewCottage) {
+        resultingRooms += Number(propertyForm.number_of_rooms);
+      } else {
+        const existingCottageRoomCount = allTenantRooms.filter(r => r.cottage_id === existingCottages[0]?.id).length;
+        resultingRooms += Math.max(0, Number(propertyForm.number_of_rooms) - existingCottageRoomCount);
+      }
+      if (resultingRooms > entitlements.limits.maxRooms) {
+        return setError(`Plan Limit Exceeded: Your current ${entitlements.planName} plan allows a maximum of ${entitlements.limits.maxRooms} total room(s) across all properties. This setup would bring total rooms to ${resultingRooms}. Please reduce rooms or upgrade your plan.`);
+      }
+
       if (resorts && resorts.length > 0) {
         const { data: existingNames } = await supabase.from('cottages').select('id').eq('resort_id', resorts[0].id).ilike('name', propertyForm.name.trim());
         if (existingNames && existingNames.length > 0) {
@@ -228,6 +264,34 @@ export default function OnboardingWizard() {
     }
     setLoading(true);
     setError(null);
+
+    // Atomic Preflight Validation BEFORE any database write
+    if (entitlements.isUnknownPlan || entitlements.isSuspended) {
+      setError(entitlements.isSuspended ? "Account Suspended: Resource creation is blocked." : "Plan Configuration Error: Unable to verify plan limits. Please contact support.");
+      setLoading(false);
+      return;
+    }
+
+    const isCreatingNewCottage = isNewProperty || !existingCottages.length;
+    if (isCreatingNewCottage && (allTenantCottages.length + 1) > entitlements.limits.maxResorts) {
+      setError(`Plan Limit Exceeded: Your current ${entitlements.planName} plan allows a maximum of ${entitlements.limits.maxResorts} property(ies). You currently have ${allTenantCottages.length}. Creation blocked.`);
+      setLoading(false);
+      return;
+    }
+
+    const requestedRoomsCount = rooms.length;
+    let totalRoomsAfter = allTenantRooms.length;
+    if (isCreatingNewCottage) {
+      totalRoomsAfter += requestedRoomsCount;
+    } else {
+      const existingRoomsForCottage = allTenantRooms.filter(r => r.cottage_id === existingCottages[0]?.id).length;
+      totalRoomsAfter += Math.max(0, requestedRoomsCount - existingRoomsForCottage);
+    }
+    if (totalRoomsAfter > entitlements.limits.maxRooms) {
+      setError(`Plan Limit Exceeded: Your current ${entitlements.planName} plan allows a maximum of ${entitlements.limits.maxRooms} room(s) across all properties. This creation would result in ${totalRoomsAfter} total rooms. Creation blocked.`);
+      setLoading(false);
+      return;
+    }
 
     let createdResortId = null;
     let createdCottageId = null;

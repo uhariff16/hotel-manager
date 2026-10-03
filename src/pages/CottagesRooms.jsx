@@ -1,21 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, Edit2, Tag, CalendarDays, X, Check } from 'lucide-react';
+import { Plus, Trash2, Edit2, Tag, CalendarDays, X, Check, Building2, BedDouble, Layers, MoreVertical, ChevronDown, ChevronUp, ChevronRight, Wand2 } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import { getTenantEntitlements } from '../utils/planEntitlements';
 
 const PREDEFINED_CATEGORIES = [
   'Standard Room', 'Deluxe Room', 'Premium Room', 'Suite', 'Family Room', 'Dormitory', 'Tent', 'Cottage'
 ];
 
-const PREDEFINED_RATE_PLANS = [
-  'Weekday', 'Weekend', 'Holiday', 'Peak Season', 'Off Season', 'Early Bird'
-];
-
 export default function CottagesRooms() {
   const { session, activeResortId, profile, globalPlans } = useSettingsStore();
   const navigate = useNavigate();
+  
+  // Dynamic tenant entitlement resolution
+  const entitlements = useMemo(() => {
+    return getTenantEntitlements({
+      profile,
+      globalPlans,
+      cottages: cottages || [],
+      rooms: rooms || []
+    });
+  }, [profile, globalPlans, cottages, rooms]);
+  
+  // Tab State: 'properties' | 'categories' | 'rates'
+  const [activeTab, setActiveTab] = useState('properties');
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const [cottages, setCottages] = useState([]);
   const [rooms, setRooms] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -27,25 +45,13 @@ export default function CottagesRooms() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const toggleDayOfWeek = (dayIndex) => {
-    setRatePlanForm(prev => {
-      const exists = prev.days_of_week.includes(dayIndex);
-      if (exists) {
-        return { ...prev, days_of_week: prev.days_of_week.filter(d => d !== dayIndex) };
-      } else {
-        return { ...prev, days_of_week: [...prev.days_of_week, dayIndex] };
-      }
-    });
-  };
-
-
   const [ratePlanForm, setRatePlanForm] = useState({ id: null, name: '', start_date: '', end_date: '', priority: '', days_of_week: [] });
-
   const [editingCategory, setEditingCategory] = useState(null);
   const [editingCottage, setEditingCottage] = useState(null);
 
   const [newRoom, setNewRoom] = useState({ cottage_id: '', name: '', capacity: 1, status: 'Active', category_id: '' });
   const [expandedCottageId, setExpandedCottageId] = useState(null);
+  const [activeActionMenuId, setActiveActionMenuId] = useState(null);
 
   const [editingId, setEditingId] = useState(null);
   const [editingType, setEditingType] = useState(null);
@@ -63,6 +69,7 @@ export default function CottagesRooms() {
     }
     
     try {
+      setLoading(true);
       const [cottagesRes, roomsRes, categoriesRes, plansRes] = await Promise.all([
         supabase.from('cottages').select('*').eq('resort_id', activeResortId).order('created_at', { ascending: true }),
         supabase.from('rooms').select('*').eq('resort_id', activeResortId).order('created_at', { ascending: true }),
@@ -106,44 +113,49 @@ export default function CottagesRooms() {
 
     } catch (err) {
       console.error(err);
-      setError(err.message || 'Error fetching data. Did you run the SQL migration script?');
+      setError(err.message || 'Error fetching property management data.');
     } finally {
       setLoading(false);
     }
   };
 
   // --- RATE PLANS ---
+  const toggleDayOfWeek = (dayIndex) => {
+    setRatePlanForm(prev => {
+      const exists = prev.days_of_week.includes(dayIndex);
+      if (exists) {
+        return { ...prev, days_of_week: prev.days_of_week.filter(d => d !== dayIndex) };
+      } else {
+        return { ...prev, days_of_week: [...prev.days_of_week, dayIndex] };
+      }
+    });
+  };
+
   const handleAddRatePlan = async (e) => {
     e.preventDefault();
     if (!ratePlanForm.name.trim()) return;
     
     const payload = {
-      name: ratePlanForm.name,
+      name: ratePlanForm.name.trim(),
       start_date: ratePlanForm.start_date || null,
       end_date: ratePlanForm.end_date || null,
-      priority: ratePlanForm.priority ? parseInt(ratePlanForm.priority) : 0,
+      priority: Number(ratePlanForm.priority) || 0,
       days_of_week: ratePlanForm.days_of_week,
-      resort_id: activeResortId,
-      tenant_id: session.user.id
+      tenant_id: session.user.id,
+      resort_id: activeResortId
     };
 
     if (ratePlanForm.id) {
-       const { error } = await supabase.from('rate_plans').update(payload).eq('id', ratePlanForm.id);
-       if (error) {
-         alert('Error updating rate plan: ' + error.message);
-       } else {
-         setRatePlans(ratePlans.map(rp => rp.id === ratePlanForm.id ? { ...rp, ...payload } : rp));
-         setRatePlanForm({ id: null, name: '', start_date: '', end_date: '', priority: '', days_of_week: [] });
-       }
+      const { error } = await supabase.from('rate_plans').update(payload).eq('id', ratePlanForm.id);
+      if (error) return alert("Error updating rate plan: " + error.message);
+      setRatePlans(ratePlans.map(p => p.id === ratePlanForm.id ? { ...p, ...payload } : p));
     } else {
-       const { data, error } = await supabase.from('rate_plans').insert([payload]).select();
-       if (error) {
-         alert('Error adding rate plan: ' + error.message);
-       } else {
-         setRatePlans([...ratePlans, data[0]]);
-         setRatePlanForm({ id: null, name: '', start_date: '', end_date: '', priority: '', days_of_week: [] });
-       }
+      const { data, error } = await supabase.from('rate_plans').insert([payload]).select();
+      if (error) return alert("Error adding rate plan: " + error.message);
+      setRatePlans([...ratePlans, data[0]]);
     }
+
+    setRatePlanForm({ id: null, name: '', start_date: '', end_date: '', priority: '', days_of_week: [] });
   };
 
   const startEditRatePlan = (rp) => {
@@ -155,11 +167,10 @@ export default function CottagesRooms() {
       priority: rp.priority || '',
       days_of_week: rp.days_of_week || []
     });
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleDeleteRatePlan = async (id) => {
-    if (!window.confirm("Delete rate plan? This removes its pricing from all categories and properties.")) return;
+    if (!window.confirm("Delete rate plan? This removes its pricing definitions.")) return;
     await supabase.from('rate_plans').delete().eq('id', id);
     setRatePlans(ratePlans.filter(p => p.id !== id));
   };
@@ -233,7 +244,10 @@ export default function CottagesRooms() {
   const handleSaveCottage = async (e) => {
     e.preventDefault();
     
-    // Check duplicate name
+    if (!editingCottage.id && !entitlements.canCreate.cottage) {
+      return alert(`Property limit reached: Your ${entitlements.planName} plan limit is ${entitlements.limits.maxResorts}. Please upgrade your plan for more.`);
+    }
+
     const isDuplicate = cottages.some(c => c.name.toLowerCase().trim() === editingCottage.name.toLowerCase().trim() && c.id !== editingCottage.id);
     if (isDuplicate) {
        return alert("A property with this name already exists.");
@@ -246,6 +260,9 @@ export default function CottagesRooms() {
       status: dbStatus,
       phone: editingCottage.phone,
       wifi_password: editingCottage.wifi_password,
+      weekday_price: 0,
+      weekend_price: 0,
+      seasonal_price: 0,
       tenant_id: session.user.id, 
       resort_id: activeResortId 
     };
@@ -263,7 +280,6 @@ export default function CottagesRooms() {
       setCottages([...cottages, data[0]]);
     }
 
-    // Save property rates
     for (const rp of ratePlans) {
       const price = Number(editingCottage.rates[rp.id] || 0);
       const existing = propertyRates.find(r => r.cottage_id === cotId && r.rate_plan_id === rp.id);
@@ -290,6 +306,20 @@ export default function CottagesRooms() {
   };
 
   const startCottageEdit = (cot = null) => {
+    if (!cot) {
+      if (entitlements.isUnknownPlan) {
+        return alert(entitlements.reason);
+      }
+      if (entitlements.isSuspended) {
+        return alert("Your account is currently suspended. Please contact support.");
+      }
+      if (!entitlements.canCreate.cottage) {
+        const limitStr = entitlements.limits.maxResorts === 1 ? '1 property' : `${entitlements.limits.maxResorts} properties`;
+        const existStr = cottages.length === 1 ? '1 property remains' : `${cottages.length} properties remain`;
+        return alert(`Property Limit Reached\n\nYour ${entitlements.planName} plan supports up to ${limitStr}. Your ${existStr} active, but you cannot add another property on this plan.\n\nPlease upgrade your plan on our website for additional property capacity.`);
+      }
+    }
+
     if (cot) {
       const rates = {};
       ratePlans.forEach(rp => {
@@ -310,7 +340,7 @@ export default function CottagesRooms() {
     }
   };
 
-
+  // --- ROOMS ---
   const handleAddRoom = async (e) => {
     e.preventDefault();
     if (!newRoom.cottage_id) return alert('Select a Property first');
@@ -320,12 +350,16 @@ export default function CottagesRooms() {
        return alert("A room with this name already exists in this property.");
     }
     
-    // Check Room Limit if not editing
     if (!editingId || editingType !== 'room') {
-      const planConfig = globalPlans?.[profile?.plan_type || 'free'] || { maxRooms: 4 };
-      const roomLimit = planConfig.maxRooms || 4;
-      if (rooms.length >= roomLimit) {
-        return alert(`You have reached the maximum room limit (${roomLimit}) for your current plan. Please upgrade to add more rooms.`);
+      if (entitlements.isUnknownPlan) {
+        return alert(entitlements.reason);
+      }
+      if (entitlements.isSuspended) {
+        return alert("Your account is currently suspended. Please contact support.");
+      }
+      if (!entitlements.canCreate.room) {
+        const maxR = entitlements.limits.maxRooms >= 999999 ? 'Unlimited' : entitlements.limits.maxRooms;
+        return alert(`Room Limit Reached\n\nYour ${entitlements.planName} plan supports up to ${maxR} rooms across all properties. Current usage: ${rooms.length} / ${maxR} rooms.\n\nPlease upgrade your plan for additional room capacity.`);
       }
     }
     
@@ -352,6 +386,7 @@ export default function CottagesRooms() {
           setEditingId(null);
           setEditingType(null);
           setNewRoom({ cottage_id: '', name: '', capacity: 1, status: 'Active', category_id: '' });
+          setShowRoomModal(false);
         }
       } catch (e) {
         alert("Error saving room changes: " + e.message);
@@ -365,6 +400,7 @@ export default function CottagesRooms() {
       else {
         setRooms([...rooms, data[0]]);
         setNewRoom({ cottage_id: '', name: '', capacity: 1, status: 'Active', category_id: '' });
+        setShowRoomModal(false);
       }
     } catch (e) {
       alert("Error adding room.");
@@ -390,461 +426,693 @@ export default function CottagesRooms() {
     setRooms(rooms.filter(r => r.id !== id));
   };
 
-
-  if (loading) return <div>Loading setup...</div>;
+  if (loading) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '50vh', gap: '1rem' }}>
+        <div className="animate-spin" style={{ border: '3px solid var(--border)', borderTop: '3px solid var(--primary)', borderRadius: '50%', width: '36px', height: '36px' }}></div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Loading property management...</p>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2rem', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div style={{ flex: '1 1 300px' }}>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Property Management</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Configure your global Rate Plans, Room Categories, Properties and Rooms.</p>
-          {error && <div className="alert alert-danger" style={{marginTop: '1rem', color: 'red'}}>{error}</div>}
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '0.5rem 0' : '1rem 0' }}>
+      {/* Shared Page Header Shell */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between', 
+        alignItems: isMobile ? 'flex-start' : 'center', 
+        gap: '1rem',
+        marginBottom: '1.5rem' 
+      }}>
+        <div>
+          <h1 style={{ fontSize: isMobile ? '1.5rem' : '1.85rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+            Property Management
+          </h1>
+          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+            Manage your properties, rooms, room categories and rate plans.
+          </p>
+          {error && <div className="alert alert-danger" style={{ marginTop: '0.75rem', color: 'var(--danger)' }}>{error}</div>}
         </div>
-        <button 
-          className="btn btn-primary" 
-          onClick={() => navigate('/wizard?newProperty=true')}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', fontWeight: 600, padding: '0.6rem 1.2rem', whiteSpace: 'nowrap' }}
+
+        {/* Header Action Buttons */}
+        <div style={{ display: 'flex', gap: '0.75rem', width: isMobile ? '100%' : 'auto' }}>
+          <button 
+            className="btn btn-outline" 
+            onClick={() => navigate('/wizard?newProperty=true')}
+            style={{ flex: isMobile ? 1 : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 600, padding: '0.6rem 1rem' }}
+          >
+            <Wand2 size={16} /> Quick Setup
+          </button>
+          <button 
+            className="btn btn-primary" 
+            onClick={() => startCottageEdit()}
+            style={{ flex: isMobile ? 1 : 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', fontWeight: 700, padding: '0.6rem 1.25rem' }}
+          >
+            <Plus size={18} /> Add Property
+          </button>
+        </div>
+      </div>
+
+      {/* Dynamic Summary Strip */}
+      <div style={{ 
+        background: 'var(--card-bg, #ffffff)', 
+        border: '1px solid var(--border)', 
+        borderRadius: '10px', 
+        padding: '0.75rem 1.25rem', 
+        marginBottom: '1.5rem',
+        display: 'flex',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: isMobile ? '0.75rem' : '1.5rem',
+        fontSize: '0.85rem',
+        fontWeight: 600,
+        color: 'var(--text-main)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Building2 size={16} color="var(--primary)" />
+          <span><strong>{cottages.length}</strong> {cottages.length === 1 ? 'Property' : 'Properties'}</span>
+        </div>
+        <span style={{ color: 'var(--border)' }}>•</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <BedDouble size={16} color="var(--primary)" />
+          <span><strong>{rooms.length}</strong> {rooms.length === 1 ? 'Room' : 'Rooms'}</span>
+        </div>
+        <span style={{ color: 'var(--border)' }}>•</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <Tag size={16} color="var(--primary)" />
+          <span><strong>{categories.length}</strong> {categories.length === 1 ? 'Category' : 'Categories'}</span>
+        </div>
+        <span style={{ color: 'var(--border)' }}>•</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+          <CalendarDays size={16} color="var(--primary)" />
+          <span><strong>{ratePlans.length}</strong> {ratePlans.length === 1 ? 'Rate Plan' : 'Rate Plans'}</span>
+        </div>
+      </div>
+
+      {/* Primary Section Tabs */}
+      <div style={{ 
+        display: 'flex', 
+        borderBottom: '2px solid var(--border)', 
+        marginBottom: '1.75rem',
+        gap: '0.5rem',
+        overflowX: 'auto',
+        WebkitOverflowScrolling: 'touch'
+      }}>
+        <button
+          onClick={() => setActiveTab('properties')}
+          style={{ 
+            padding: isMobile ? '0.65rem 0.85rem' : '0.75rem 1.5rem', 
+            background: 'transparent', 
+            border: 'none', 
+            borderBottom: activeTab === 'properties' ? '3px solid var(--primary)' : '3px solid transparent', 
+            color: activeTab === 'properties' ? 'var(--primary)' : 'var(--text-muted)', 
+            fontWeight: 700, 
+            fontSize: isMobile ? '0.85rem' : '0.95rem',
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.4rem', 
+            whiteSpace: 'nowrap',
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}
         >
-          <Plus size={18} />
-          Quick Setup Wizard
+          <Building2 size={18} /> Properties & Rooms
+        </button>
+        <button
+          onClick={() => setActiveTab('categories')}
+          style={{ 
+            padding: isMobile ? '0.65rem 0.85rem' : '0.75rem 1.5rem', 
+            background: 'transparent', 
+            border: 'none', 
+            borderBottom: activeTab === 'categories' ? '3px solid var(--primary)' : '3px solid transparent', 
+            color: activeTab === 'categories' ? 'var(--primary)' : 'var(--text-muted)', 
+            fontWeight: 700, 
+            fontSize: isMobile ? '0.85rem' : '0.95rem',
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.4rem', 
+            whiteSpace: 'nowrap',
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}
+        >
+          <Tag size={18} /> Room Categories
+        </button>
+        <button
+          onClick={() => setActiveTab('rates')}
+          style={{ 
+            padding: isMobile ? '0.65rem 0.85rem' : '0.75rem 1.5rem', 
+            background: 'transparent', 
+            border: 'none', 
+            borderBottom: activeTab === 'rates' ? '3px solid var(--primary)' : '3px solid transparent', 
+            color: activeTab === 'rates' ? 'var(--primary)' : 'var(--text-muted)', 
+            fontWeight: 700, 
+            fontSize: isMobile ? '0.85rem' : '0.95rem',
+            cursor: 'pointer', 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.4rem', 
+            whiteSpace: 'nowrap',
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}
+        >
+          <CalendarDays size={18} /> Rate Plans
         </button>
       </div>
 
-      <div className="grid-2" style={{ gap: '2rem', marginBottom: '2rem' }}>
-        
-        {/* RATE PLANS LIST */}
-        <div className="card">
-          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
-            <CalendarDays size={22} /> Global Rate Plans
-          </h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-            Define the pricing concepts (e.g. Weekday, Weekend) that apply across your property. Prices are attached to specific categories or properties.
-            </p>
-            <div style={{ background: '#e0e7ff', color: '#3730a3', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem', fontSize: '0.85rem', border: '1px solid #c7d2fe' }}>
-              <strong>💡 Pro Tip: How Priority Works</strong><br/>
-              If multiple rate plans overlap on the same dates, the plan with the <strong>highest Priority number</strong> always wins! <br/><br/>
-              For example, you could have a "Standard Year-Round" rate (Priority: 0) from Jan 1 - Dec 31, and a "Diwali Weekend" rate (Priority: 10) for just a few days. The system will automatically use the Diwali rate during those days because 10 is higher than 0.
-            </div><p style={{display:'none'}}>
-          </p>
-          <form onSubmit={handleAddRatePlan} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Rate Plan Name</label>
-              <input type="text" className="form-input" placeholder="e.g. Peak Season, Diwali Weekend, Summer Special" value={ratePlanForm.name} onChange={e => setRatePlanForm({...ratePlanForm, name: e.target.value})} required />
-            </div>
-            
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Start Date</label>
-                <input type="date" className="form-input" value={ratePlanForm.start_date} onChange={e => setRatePlanForm({...ratePlanForm, start_date: e.target.value})} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>End Date</label>
-                <input type="date" className="form-input" value={ratePlanForm.end_date} onChange={e => setRatePlanForm({...ratePlanForm, end_date: e.target.value})} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Priority</label>
-                <input type="number" className="form-input" value={ratePlanForm.priority} onChange={e => setRatePlanForm({...ratePlanForm, priority: e.target.value})} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)' }}>Days of Week (Optional)</label>
-              <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
-                  <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem' }}>
-                    <input type="checkbox" checked={ratePlanForm.days_of_week.includes(i)} onChange={() => toggleDayOfWeek(i)} /> {d}
-                  </label>
-                ))}
-              </div>
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }} disabled={!ratePlanForm.name} style={{ alignSelf: 'flex-start', marginTop: '0.5rem' }}>{ratePlanForm.id ? 'Update Rate Plan' : 'Create Rate Plan'}</button>
-          </form>
-          
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {ratePlans.map(rp => (
-              <li key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem', background: 'var(--bg-color)', border: '1px solid var(--border)', borderRadius: '8px', marginBottom: '0.5rem' }}>
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  <span style={{ fontWeight: 600 }}>{rp.name}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                    {rp.start_date ? `${rp.start_date} to ${rp.end_date || 'Ongoing'}` : 'All Year'} | 
-                    Priority: {rp.priority || 0} | 
-                    Days: {rp.days_of_week && rp.days_of_week.length ? rp.days_of_week.map(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ') : 'All Days'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--primary)' }} onClick={() => startEditRatePlan(rp)}><Edit2 size={16}/></button>
-                  <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--danger)' }} onClick={() => handleDeleteRatePlan(rp.id)}><X size={16} /></button>
-                </div>
-              </li>
-            ))}
-            {ratePlans.length === 0 && <li style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>No rate plans defined.</li>}
-          </ul>
-        </div>
+      {/* --- TAB 1: PROPERTIES & ROOMS --- */}
+      {activeTab === 'properties' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {cottages.map(cot => {
+            const propertyRooms = rooms.filter(r => r.cottage_id === cot.id);
+            const isActive = cot.status === 'Available' || cot.status === 'Active';
+            const isExpanded = expandedCottageId === cot.id || !isMobile;
 
-        {/* ROOM CATEGORIES LIST */}
-        <div className="card">
-          <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Tag size={22} /> Room Categories
+            return (
+              <div key={cot.id} className="card" style={{ padding: isMobile ? '1.25rem' : '1.75rem', borderRadius: '14px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '1rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ width: 44, height: 44, borderRadius: '10px', background: 'rgba(15, 44, 89, 0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Building2 size={22} color="var(--primary)" />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>{cot.name}</h2>
+                        <span className={`badge badge-${isActive ? 'success' : 'danger'}`} style={{ fontSize: '0.7rem' }}>
+                          {isActive ? 'ACTIVE' : 'INACTIVE'}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                        Entire Property • Capacity: <strong>{cot.max_capacity}</strong> • <strong>{propertyRooms.length}</strong> {propertyRooms.length === 1 ? 'Room' : 'Rooms'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Desktop Action Buttons */}
+                  {!isMobile ? (
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <button className="btn btn-outline" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }} onClick={() => startCottageEdit(cot)}>
+                        <Edit2 size={15} /> Edit
+                      </button>
+                      <button 
+                        className="btn btn-primary" 
+                        style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }} 
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingType(null);
+                          setNewRoom({ cottage_id: cot.id, name: '', capacity: 1, status: 'Active', category_id: '' });
+                          setShowRoomModal(true);
+                        }}
+                      >
+                        <Plus size={15} /> Add Room
+                      </button>
+                      <button className="btn btn-outline" style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem', color: 'var(--danger)' }} onClick={() => deleteCottage(cot.id)}>
+                        <Trash2 size={15} />
+                      </button>
+                    </div>
+                  ) : (
+                    /* Mobile Contextual Menu & Expand Toggle */
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <button 
+                        className="btn btn-primary" 
+                        style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingType(null);
+                          setNewRoom({ cottage_id: cot.id, name: '', capacity: 1, status: 'Active', category_id: '' });
+                          setShowRoomModal(true);
+                        }}
+                      >
+                        <Plus size={14} /> Room
+                      </button>
+                      <button 
+                        className="btn btn-outline" 
+                        style={{ padding: '0.35rem 0.5rem' }} 
+                        onClick={() => setExpandedCottageId(expandedCottageId === cot.id ? null : cot.id)}
+                      >
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </button>
+                      <div style={{ position: 'relative' }}>
+                        <button 
+                          className="btn btn-outline" 
+                          style={{ padding: '0.35rem 0.5rem' }} 
+                          onClick={() => setActiveActionMenuId(activeActionMenuId === cot.id ? null : cot.id)}
+                        >
+                          <MoreVertical size={16} />
+                        </button>
+                        {activeActionMenuId === cot.id && (
+                          <div style={{ 
+                            position: 'absolute', right: 0, top: '100%', marginTop: '0.25rem',
+                            background: 'var(--card-bg, #ffffff)', border: '1px solid var(--border)',
+                            borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                            zIndex: 100, minWidth: '140px', overflow: 'hidden'
+                          }}>
+                            <button 
+                              style={{ width: '100%', padding: '0.6rem 1rem', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                              onClick={() => { setActiveActionMenuId(null); startCottageEdit(cot); }}
+                            >
+                              <Edit2 size={14} /> Edit Property
+                            </button>
+                            <button 
+                              style={{ width: '100%', padding: '0.6rem 1rem', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.85rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)' }}
+                              onClick={() => { setActiveActionMenuId(null); deleteCottage(cot.id); }}
+                            >
+                              <Trash2 size={14} /> Delete
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Rooms List/Table Section */}
+                {isExpanded && (
+                  <div>
+                    {propertyRooms.length > 0 ? (
+                      <div className="table-container">
+                        <table className="table" style={{ fontSize: '0.9rem' }}>
+                          <thead>
+                            <tr>
+                              <th>Room</th>
+                              <th>Category</th>
+                              <th>Capacity</th>
+                              <th>Status</th>
+                              <th style={{ textAlign: 'right' }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {propertyRooms.map(rm => {
+                              const cat = categories.find(c => c.id === rm.category_id);
+                              const rmActive = rm.status === 'Available' || rm.status === 'Active';
+
+                              return (
+                                <tr key={rm.id}>
+                                  <td>
+                                    <strong style={{ color: 'var(--text-main)' }}>{rm.name}</strong>
+                                  </td>
+                                  <td>
+                                    <span style={{ fontWeight: 600, color: 'var(--primary)' }}>
+                                      {cat ? cat.name : 'Standard'}
+                                    </span>
+                                  </td>
+                                  <td>{rm.capacity || 1} Guests</td>
+                                  <td>
+                                    <span className={`badge badge-${rmActive ? 'success' : 'danger'}`} style={{ fontSize: '0.75rem' }}>
+                                      {rmActive ? 'ACTIVE' : 'INACTIVE'}
+                                    </span>
+                                  </td>
+                                  <td style={{ textAlign: 'right' }}>
+                                    <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                                      <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }} onClick={() => startEditRoom(rm)}>
+                                        <Edit2 size={14} />
+                                      </button>
+                                      <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)' }} onClick={() => deleteRoom(rm.id)}>
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', background: 'var(--bg-secondary)', borderRadius: '8px', fontSize: '0.85rem' }}>
+                        No rooms configured for this property yet.{' '}
+                        <button style={{ color: 'var(--primary)', fontWeight: 700, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => {
+                          setEditingId(null);
+                          setEditingType(null);
+                          setNewRoom({ cottage_id: cot.id, name: '', capacity: 1, status: 'Active', category_id: '' });
+                          setShowRoomModal(true);
+                        }}>Add First Room</button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {cottages.length === 0 && (
+            <div className="card" style={{ textAlign: 'center', padding: '3rem 1rem' }}>
+              <Building2 size={48} style={{ opacity: 0.2, marginBottom: '1rem', color: 'var(--primary)' }} />
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 700, margin: '0 0 0.5rem 0' }}>No Properties Added Yet</h3>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0 0 1.25rem 0' }}>Create your first property to start managing rooms and rates.</p>
+              <button className="btn btn-primary" onClick={() => startCottageEdit()}>
+                <Plus size={18} /> Add First Property
+              </button>
             </div>
-            <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => startCategoryEdit()}>
+          )}
+        </div>
+      )}
+
+      {/* --- TAB 2: ROOM CATEGORIES --- */}
+      {activeTab === 'categories' && (
+        <div className="card" style={{ padding: isMobile ? '1.25rem' : '1.75rem', borderRadius: '14px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+            <div>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>Room Categories</h2>
+              <p style={{ margin: '0.2rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Define pricing and capacity classifications across your properties.</p>
+            </div>
+            <button className="btn btn-primary" style={{ fontSize: '0.85rem', padding: '0.4rem 0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600 }} onClick={() => startCategoryEdit()}>
               <Plus size={16} /> New Category
             </button>
-          </h2>
-          
-          
+          </div>
 
           <div className="table-container">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th>Capacity</th>
-                    <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categories.map(cat => {
-                    const cottageName = cat.cottage_id ? (cottages.find(c => c.id === cat.cottage_id)?.name || 'Unknown') : 'Global';
-                    return (
-                    <tr key={cat.id}>
-                      <td>
-                        <strong>{cat.name}</strong>
-                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cottageName}</div>
-                      </td>
-                      <td>{cat.capacity}</td>
-                      <td style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--primary)' }} onClick={() => startCategoryEdit(cat)}><Edit2 size={16}/></button>
-                        <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--danger)' }} onClick={() => handleDeleteCategory(cat.id)}><Trash2 size={16}/></button>
-                      </td>
-                    </tr>
-                    );
-                  })}
-                  {categories.length === 0 && <tr><td colSpan="3" style={{textAlign:'center'}}>No categories defined.</td></tr>}
-                </tbody>
-              </table>
-            </div>
-        </div>
-      </div>
-
-      <div className="grid-2" style={{ gap: '2rem' }}>
-      
-      {/* COTTAGES SECTION */}
-      <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
-          <span>Properties (Entire Property Booking)</span>
-          <button className="btn btn-primary" style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.4rem' }} onClick={() => startCottageEdit()}>
-            <Plus size={16} /> New Property
-          </button>
-        </h2>
-        
-        
-
-        <div className="table-container">
-            <table className="table">
+            <table className="table" style={{ fontSize: '0.9rem' }}>
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Capacity</th>
-                  <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
+                  <th>Category Name</th>
+                  <th>Assigned Property</th>
+                  <th>Max Capacity</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {cottages.map(c => (
-                  <React.Fragment key={c.id}>
-                    <tr onClick={() => setExpandedCottageId(expandedCottageId === c.id ? null : c.id)} style={{ cursor: 'pointer' }}>
+                {categories.map(cat => {
+                  const cottageName = cat.cottage_id ? (cottages.find(c => c.id === cat.cottage_id)?.name || 'Unknown Property') : 'Global (All Properties)';
+                  return (
+                    <tr key={cat.id}>
                       <td>
-                        <strong>{c.name}</strong>
-                        <div style={{ marginTop: '0.25rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          <span className={`badge badge-${(c.status === 'Active' || c.status === 'Available') ? 'success' : 'danger'}`}>
-                            {(c.status === 'Available' || c.status === 'Active') ? 'Active' : 'Inactive'}
-                          </span>
+                        <strong style={{ color: 'var(--text-main)' }}>{cat.name}</strong>
+                      </td>
+                      <td>
+                        <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>{cottageName}</span>
+                      </td>
+                      <td>{cat.capacity} Guests</td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '0.4rem' }}>
+                          <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem' }} onClick={() => startCategoryEdit(cat)}>
+                            <Edit2 size={14} />
+                          </button>
+                          <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)' }} onClick={() => handleDeleteCategory(cat.id)}>
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </td>
-                      <td>{c.max_capacity}</td>
-                      <td style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--primary)' }} onClick={(e) => { e.stopPropagation(); startCottageEdit(c); }}><Edit2 size={16}/></button>
-                        <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--danger)' }} onClick={(e) => { e.stopPropagation(); deleteCottage(c.id); }}><Trash2 size={16}/></button>
-                      </td>
                     </tr>
-                    {expandedCottageId === c.id && (
-                      <tr style={{ background: 'var(--bg-secondary)' }}>
-                        <td colSpan="3" style={{ padding: '1rem' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.9rem' }}>
-                            <div>
-                              <strong style={{ color: 'var(--text-muted)' }}>Phone:</strong>
-                              <div style={{ marginTop: '0.25rem' }}>{c.phone || 'Not provided'}</div>
-                            </div>
-                            <div>
-                              <strong style={{ color: 'var(--text-muted)' }}>Wi-Fi Password:</strong>
-                              <div style={{ marginTop: '0.25rem' }}>{c.wifi_password || 'Not provided'}</div>
-                            </div>
-                            <div style={{ gridColumn: 'span 2' }}>
-                              <strong style={{ color: 'var(--text-muted)' }}>Rate Plan Pricing:</strong>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginTop: '0.5rem' }}>
-                                {ratePlans.map(rp => {
-                                  const propertyRateRecord = propertyRates.find(pr => pr.cottage_id === c.id && pr.rate_plan_id === rp.id); const ratePrice = propertyRateRecord ? propertyRateRecord.price : 0;
-                                  return (
-                                    <div key={rp.id} style={{ background: 'var(--bg-color)', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                                      <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{rp.name}</div>
-                                      <div style={{ fontWeight: 600 }}>₹{ratePrice}</div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                            </div>
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-                {cottages.length === 0 && <tr><td colSpan="3" style={{textAlign:'center'}}>No properties defined.</td></tr>}
+                  );
+                })}
+                {categories.length === 0 && (
+                  <tr>
+                    <td colSpan="4" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem 0' }}>
+                      No room categories configured yet.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
-      </div>
-
-      {/* ROOMS SECTION */}
-      <div className="card">
-        <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', color: 'var(--text-main)', fontWeight: 800 }}>
-          <span>Rooms (Individual Booking)</span>
-          <button className="btn btn-primary" onClick={() => {
-            setEditingId(null);
-            setEditingType(null);
-            setNewRoom({ cottage_id: '', name: '', capacity: 1, status: 'Active', category_id: '' });
-            setShowRoomModal(true);
-          }}>+ Add Room</button>
-        </h2>
-        
-        
-
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Room</th>
-                <th>Category</th>
-                <th style={{ textAlign: 'center', width: '90px' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rooms.map(r => {
-                const cottage = cottages.find(c => c.id === r.cottage_id);
-                const category = categories.find(c => c.id === r.category_id);
-                return (
-                  <tr key={r.id}>
-                    <td>
-                      <strong>{r.name}</strong><br/>
-                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>in {cottage ? cottage.name : '-'}</span>
-                      <span className={`badge badge-${(r.status === 'Active' || r.status === 'Available') ? 'success' : 'danger'}`} style={{ display: 'block', width: 'fit-content', marginTop: '4px' }}>
-                        {(r.status === 'Available' || r.status === 'Active') ? 'Active' : 'Inactive'}
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 'bold' }}>
-                        {category ? category.name : 'No Category'}
-                      </span>
-                    </td>
-                    <td style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--primary)' }} onClick={() => startEditRoom(r)}><Edit2 size={16}/></button>
-                      <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', color: 'var(--danger)' }} onClick={() => deleteRoom(r.id)}><Trash2 size={16}/></button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
         </div>
-      </div>
-      </div>
-    
-      {/* MODALS WITH CREATEPORTAL */}
-      {editingCategory && createPortal(
-<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-              <div style={{ background: 'var(--bg-color)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-                <form onSubmit={handleSaveCategory}>
-                  <h4 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: 'var(--text-main)' }}>{editingCategory.id ? 'Edit Category' : 'Add Category'}</h4>
-                  <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
-                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">Property Assignment</label>
-                      <select className="form-select" value={editingCategory.cottage_id || ''} onChange={e => setEditingCategory({...editingCategory, cottage_id: e.target.value})}>
-                        <option value="">Global (All Properties)</option>
-                        {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                      </select>
+      )}
+
+      {/* --- TAB 3: RATE PLANS --- */}
+      {activeTab === 'rates' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {/* Priority Explanation Informational Callout */}
+          <div style={{ background: 'rgba(59, 130, 246, 0.08)', color: 'var(--text-main)', padding: '1rem 1.25rem', borderRadius: '10px', fontSize: '0.85rem', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+            <strong>💡 Pro Tip: Rate Plan Priority</strong> — When date ranges overlap, the rate plan with the <strong>highest Priority number</strong> automatically applies!
+          </div>
+
+          <div className="card" style={{ padding: isMobile ? '1.25rem' : '1.75rem', borderRadius: '14px' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 1.25rem 0', color: 'var(--text-main)' }}>
+              {ratePlanForm.id ? 'Edit Rate Plan' : 'Create New Rate Plan'}
+            </h2>
+            
+            <form onSubmit={handleAddRatePlan} style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr', gap: '1rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Rate Plan Name</label>
+                  <input type="text" className="form-input" placeholder="e.g. Peak Season, Weekend Special" value={ratePlanForm.name} onChange={e => setRatePlanForm({...ratePlanForm, name: e.target.value})} required />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Start Date</label>
+                  <input type="date" className="form-input" value={ratePlanForm.start_date} onChange={e => setRatePlanForm({...ratePlanForm, start_date: e.target.value})} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>End Date</label>
+                  <input type="date" className="form-input" value={ratePlanForm.end_date} onChange={e => setRatePlanForm({...ratePlanForm, end_date: e.target.value})} />
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                  <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Priority</label>
+                  <input type="number" className="form-input" value={ratePlanForm.priority} onChange={e => setRatePlanForm({...ratePlanForm, priority: e.target.value})} placeholder="0" />
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                <label style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Applicable Days (Optional)</label>
+                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d, i) => (
+                    <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                      <input type="checkbox" checked={ratePlanForm.days_of_week.includes(i)} onChange={() => toggleDayOfWeek(i)} /> {d}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.5rem', alignSelf: 'flex-start', marginTop: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.25rem', fontWeight: 700 }} disabled={!ratePlanForm.name}>
+                  {ratePlanForm.id ? 'Update Rate Plan' : 'Save Rate Plan'}
+                </button>
+                {ratePlanForm.id && (
+                  <button type="button" className="btn btn-outline" onClick={() => setRatePlanForm({ id: null, name: '', start_date: '', end_date: '', priority: '', days_of_week: [] })}>
+                    Cancel
+                  </button>
+                )}
+              </div>
+            </form>
+
+            <div style={{ marginTop: '1.5rem' }}>
+              <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)' }}>Configured Rate Plans</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(320px, 1fr))', gap: '1rem' }}>
+                {ratePlans.map(rp => (
+                  <div key={rp.id} className="card" style={{ padding: '1rem', borderRadius: '10px', border: '1px solid var(--border)', background: 'var(--bg-secondary)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                      <strong style={{ fontSize: '1rem', color: 'var(--text-main)' }}>{rp.name}</strong>
+                      <span className="badge badge-info" style={{ fontSize: '0.75rem' }}>Priority: {rp.priority || 0}</span>
                     </div>
-                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">Category Name</label>
-                      <select className="form-select" required value={editingCategory.name} onChange={e => setEditingCategory({...editingCategory, name: e.target.value})}>
-                        <option value="">-- Select Category --</option>
-                        {PREDEFINED_CATEGORIES.map(cat => (
-                          <option key={cat} value={cat}>{cat}</option>
-                        ))}
-                      </select>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', flexDirection: 'column', gap: '0.2rem', marginBottom: '0.75rem' }}>
+                      <div>📅 {rp.start_date ? `${rp.start_date} → ${rp.end_date || 'Ongoing'}` : 'Year-round'}</div>
+                      <div>🗓 Days: {rp.days_of_week && rp.days_of_week.length ? rp.days_of_week.map(d => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join(', ') : 'All Days'}</div>
                     </div>
-                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                      <label className="form-label">Capacity (Max Guests)</label>
-                      <input type="number" className="form-input" min="1" required value={editingCategory.capacity} onChange={e => setEditingCategory({...editingCategory, capacity: e.target.value})} />
-                    </div>
-                    
-                    <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                      <h5 style={{ marginBottom: '0.5rem', color: 'var(--primary)', fontWeight: 700 }}>Rates per Rate Plan</h5>
-                      {ratePlans.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>No Rate Plans defined yet.</p>}
-                      {ratePlans.map(rp => (
-                        <div key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                          <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{rp.name}</span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <span>₹</span>
-                            <input 
-                              type="number" 
-                              className="form-input" 
-                              style={{ width: '120px', padding: '0.3rem' }}
-                              value={editingCategory.rates[rp.id]} 
-                              onChange={e => setEditingCategory({
-                                ...editingCategory, 
-                                rates: { ...editingCategory.rates, [rp.id]: e.target.value }
-                              })}
-                            />
-                          </div>
-                        </div>
-                      ))}
+                    <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                      <button className="btn btn-outline" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem' }} onClick={() => startEditRatePlan(rp)}>
+                        <Edit2 size={14} /> Edit
+                      </button>
+                      <button className="btn btn-outline" style={{ padding: '0.25rem 0.5rem', fontSize: '0.8rem', color: 'var(--danger)' }} onClick={() => handleDeleteRatePlan(rp.id)}>
+                        <Trash2 size={14} />
+                      </button>
                     </div>
                   </div>
-                  <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                    <button type="button" className="btn btn-outline" onClick={() => setEditingCategory(null)}>Cancel</button>
-                    <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.5rem' }}>Save</button>
+                ))}
+                {ratePlans.length === 0 && (
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', gridColumn: 'span 2' }}>
+                    No rate plans defined yet.
                   </div>
-                </form>
+                )}
               </div>
             </div>
-          , document.body)}
+          </div>
+        </div>
+      )}
 
-      {editingCottage && createPortal(
-<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            <div style={{ background: 'var(--bg-color)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '600px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-              <form onSubmit={handleSaveCottage}>
-                <h4 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: 'var(--text-main)' }}>{editingCottage.id ? `Edit Property` : 'Add New Property'}</h4>
-                <div className="grid-2" style={{ gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Name</label>
-                    <input type="text" className="form-input" required value={editingCottage.name} onChange={e => setEditingCottage({...editingCottage, name: e.target.value})} />
-                  </div>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Capacity (Max Guests)</label>
-                    <input type="number" className="form-input" min="1" required value={editingCottage.max_capacity} onChange={e => setEditingCottage({...editingCottage, max_capacity: e.target.value})} />
-                  </div>
-                  
-                  <div style={{ gridColumn: 'span 2', padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                    <h5 style={{ marginBottom: '0.5rem', color: 'var(--primary)', fontWeight: 700 }}>Entire Property Prices per Rate Plan</h5>
-                    {ratePlans.length === 0 && <p style={{ fontSize: '0.8rem', color: 'var(--danger)' }}>No Rate Plans defined yet.</p>}
+      {/* MODALS */}
+      {editingCottage && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--card-bg, #ffffff)', padding: isMobile ? '1.25rem' : '2rem', borderRadius: '14px', width: '100%', maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <form onSubmit={handleSaveCottage}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>{editingCottage.id ? 'Edit Property' : 'Add Property'}</h3>
+                <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setEditingCottage(null)}><X size={16} /></button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Property Name</label>
+                  <input type="text" className="form-input" required value={editingCottage.name} onChange={e => setEditingCottage({...editingCottage, name: e.target.value})} placeholder="e.g. The Grand Villa" />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Max Capacity (Guests)</label>
+                  <input type="number" className="form-input" min="1" required value={editingCottage.max_capacity} onChange={e => setEditingCottage({...editingCottage, max_capacity: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select className="form-select" value={editingCottage.status} onChange={e => setEditingCottage({...editingCottage, status: e.target.value})}>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Property Phone (Optional)</label>
+                  <input type="text" className="form-input" value={editingCottage.phone || ''} onChange={e => setEditingCottage({...editingCottage, phone: e.target.value})} placeholder="+91..." />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Wi-Fi Password (Optional)</label>
+                  <input type="text" className="form-input" value={editingCottage.wifi_password || ''} onChange={e => setEditingCottage({...editingCottage, wifi_password: e.target.value})} placeholder="Password" />
+                </div>
+
+                {ratePlans.length > 0 && (
+                  <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)' }}>Property Rates per Rate Plan</h4>
                     {ratePlans.map(rp => (
                       <div key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                        <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>{rp.name}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{rp.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                           <span>₹</span>
                           <input 
                             type="number" 
                             className="form-input" 
-                            style={{ width: '120px', padding: '0.3rem' }}
-                            value={editingCottage.rates[rp.id]} 
-                            onChange={e => setEditingCottage({
-                              ...editingCottage, 
-                              rates: { ...editingCottage.rates, [rp.id]: e.target.value }
-                            })}
+                            style={{ width: '110px', padding: '0.3rem 0.5rem', fontSize: '0.85rem' }} 
+                            value={editingCottage.rates?.[rp.id] || 0} 
+                            onChange={e => setEditingCottage({...editingCottage, rates: {...editingCottage.rates, [rp.id]: e.target.value}})} 
                           />
                         </div>
                       </div>
                     ))}
                   </div>
+                )}
+              </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Contact Number</label>
-                    <input type="text" className="form-input" value={editingCottage.phone} onChange={e => setEditingCottage({...editingCottage, phone: e.target.value})} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Wi-Fi Password</label>
-                    <input type="text" className="form-input" value={editingCottage.wifi_password} onChange={e => setEditingCottage({...editingCottage, wifi_password: e.target.value})} />
-                  </div>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Status</label>
-                    <select className="form-select" value={editingCottage.status} onChange={e => setEditingCottage({...editingCottage, status: e.target.value})}>
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                  <button type="button" className="btn btn-outline" onClick={() => setEditingCottage(null)}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.5rem' }}>Save Property</button>
-                </div>
-              </form>
-            </div>
+              <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.6rem', fontWeight: 700 }}>
+                  {editingCottage.id ? 'Save Property' : 'Create Property'}
+                </button>
+                <button type="button" className="btn btn-outline" style={{ padding: '0.6rem 1rem' }} onClick={() => setEditingCottage(null)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
-        , document.body)}
+        </div>
+      )}
 
-      {showRoomModal && createPortal(
-<div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-            <div style={{ background: 'var(--bg-color)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-              <form onSubmit={handleAddRoom}>
-                <h4 style={{ margin: '0 0 1.5rem 0', fontSize: '1.25rem', color: 'var(--text-main)' }}>{editingId && editingType === 'room' ? `Edit Room` : 'Add New Room'}</h4>
-                <div className="grid-2" style={{ gap: '1rem' }}>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Link to Property</label>
-                    <select className="form-select" required value={newRoom.cottage_id} onChange={e => setNewRoom({...newRoom, cottage_id: e.target.value})}>
-                      <option value="">-- Select Property --</option>
-                      {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Room Name / Number</label>
-                    <input type="text" className="form-input" required value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} />
-                  </div>
-                  <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                    <label className="form-label">Pricing Category</label>
-                    <select 
-                      className="form-select" 
-                      required 
-                      value={newRoom.category_id} 
-                      onChange={e => {
-                        const cat = categories.find(c => c.id === e.target.value);
-                        setNewRoom({
-                          ...newRoom,
-                          category_id: e.target.value,
-                          capacity: cat ? cat.capacity : 1
-                        });
-                      }}
-                    >
-                      <option value="">-- Select Category --</option>
-                      {categories.filter(cat => !cat.cottage_id || cat.cottage_id === newRoom.cottage_id).map(cat => (
-                        <option key={cat.id} value={cat.id}>
-                          {cat.name} (Cap: {cat.capacity})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Capacity (Auto)</label>
-                    <input type="number" className="form-input" disabled value={newRoom.capacity} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Status</label>
-                    <select className="form-select" value={newRoom.status} onChange={e => setNewRoom({...newRoom, status: e.target.value})}>
-                      <option value="Active">Active</option>
-                      <option value="Inactive">Inactive</option>
-                    </select>
-                  </div>
+      {showRoomModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--card-bg, #ffffff)', padding: isMobile ? '1.25rem' : '2rem', borderRadius: '14px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <form onSubmit={handleAddRoom}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>{editingId ? 'Edit Room' : 'Add Room'}</h3>
+                <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setShowRoomModal(false)}><X size={16} /></button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Property Assignment</label>
+                  <select className="form-select" required value={newRoom.cottage_id} onChange={e => setNewRoom({...newRoom, cottage_id: e.target.value})}>
+                    <option value="">-- Select Property --</option>
+                    {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
                 </div>
-                <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
-                  <button type="button" className="btn btn-outline" onClick={() => { setShowRoomModal(false); setEditingId(null); setEditingType(null); }}>Cancel</button>
-                  <button type="submit" className="btn btn-primary" style={{ padding: '0.5rem 1.5rem' }}>
-                    {editingId && editingType === 'room' ? 'Update Room' : 'Add Room'}
-                  </button>
+                <div className="form-group">
+                  <label className="form-label">Room Number / Name</label>
+                  <input type="text" className="form-input" required value={newRoom.name} onChange={e => setNewRoom({...newRoom, name: e.target.value})} placeholder="e.g. Room 101, Villa Suite A" />
                 </div>
-              </form>
-            </div>
+                <div className="form-group">
+                  <label className="form-label">Room Category</label>
+                  <select className="form-select" value={newRoom.category_id} onChange={e => setNewRoom({...newRoom, category_id: e.target.value})}>
+                    <option value="">No Category (Default)</option>
+                    {categories.map(cat => <option key={cat.id} value={cat.id}>{cat.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Room Capacity (Guests)</label>
+                  <input type="number" className="form-input" min="1" required value={newRoom.capacity} onChange={e => setNewRoom({...newRoom, capacity: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Status</label>
+                  <select className="form-select" value={newRoom.status} onChange={e => setNewRoom({...newRoom, status: e.target.value})}>
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.6rem', fontWeight: 700 }}>
+                  {editingId ? 'Save Room' : 'Add Room'}
+                </button>
+                <button type="button" className="btn btn-outline" style={{ padding: '0.6rem 1rem' }} onClick={() => setShowRoomModal(false)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
-        , document.body)}
+        </div>
+      )}
 
+      {editingCategory && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div style={{ background: 'var(--card-bg, #ffffff)', padding: isMobile ? '1.25rem' : '2rem', borderRadius: '14px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <form onSubmit={handleSaveCategory}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>{editingCategory.id ? 'Edit Category' : 'Add Category'}</h3>
+                <button type="button" className="btn btn-outline" style={{ padding: '0.2rem 0.5rem' }} onClick={() => setEditingCategory(null)}><X size={16} /></button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group">
+                  <label className="form-label">Property Assignment</label>
+                  <select className="form-select" value={editingCategory.cottage_id || ''} onChange={e => setEditingCategory({...editingCategory, cottage_id: e.target.value})}>
+                    <option value="">Global (All Properties)</option>
+                    {cottages.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Category Name</label>
+                  <select className="form-select" required value={editingCategory.name} onChange={e => setEditingCategory({...editingCategory, name: e.target.value})}>
+                    <option value="">-- Select Category --</option>
+                    {PREDEFINED_CATEGORIES.map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Capacity (Max Guests)</label>
+                  <input type="number" className="form-input" min="1" required value={editingCategory.capacity} onChange={e => setEditingCategory({...editingCategory, capacity: e.target.value})} />
+                </div>
+
+                {ratePlans.length > 0 && (
+                  <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                    <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)' }}>Category Rates per Rate Plan</h4>
+                    {ratePlans.map(rp => (
+                      <div key={rp.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                        <span style={{ fontSize: '0.85rem', fontWeight: 500 }}>{rp.name}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <span>₹</span>
+                          <input 
+                            type="number" 
+                            className="form-input" 
+                            style={{ width: '110px', padding: '0.3rem 0.5rem', fontSize: '0.85rem' }} 
+                            value={editingCategory.rates?.[rp.id] || 0} 
+                            onChange={e => setEditingCategory({...editingCategory, rates: {...editingCategory.rates, [rp.id]: e.target.value}})} 
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ marginTop: '1.5rem', display: 'flex', gap: '0.5rem' }}>
+                <button type="submit" className="btn btn-primary" style={{ flex: 1, padding: '0.6rem', fontWeight: 700 }}>
+                  {editingCategory.id ? 'Save Category' : 'Create Category'}
+                </button>
+                <button type="button" className="btn btn-outline" style={{ padding: '0.6rem 1rem' }} onClick={() => setEditingCategory(null)}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

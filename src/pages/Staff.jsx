@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
-import { UserPlus, Trash2, Shield, Mail, Lock, User, Edit2 } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Lock, User, Edit2, Building2, UserCheck, X } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
+import { getTenantEntitlements } from '../utils/planEntitlements';
 
 // Secondary client for creating users without affecting the admin session
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -20,6 +21,22 @@ export default function Staff() {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ id: '', username: '', password: '', fullName: '', cottage_id: '' });
   const [error, setError] = useState(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+
+  const entitlements = useMemo(() => {
+    return getTenantEntitlements({
+      profile,
+      globalPlans,
+      staff
+    });
+  }, [profile, globalPlans, staff]);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (profile) {
@@ -101,13 +118,14 @@ export default function Staff() {
         alert("Staff updated successfully!");
       } else {
         // Plan Gate Check
-        const currentPlanId = profile?.plan_type || 'free';
-        const planConfig = globalPlans?.[currentPlanId] || { maxStaff: 1, name: 'Free Starter' };
-        const staffLimit = planConfig.maxStaff || 1;
-        const planName = planConfig.name || currentPlanId.toUpperCase();
-
-        if (staff.length >= staffLimit) {
-          alert(`Limit Reached: Your current ${planName} plan allows only ${staffLimit} staff accounts. Please upgrade on our website for more.`);
+        if (!entitlements.canCreate.staff) {
+          if (entitlements.isUnknownPlan) {
+            alert(entitlements.reason);
+          } else if (entitlements.isSuspended) {
+            alert("Your account is currently suspended. Please contact support.");
+          } else {
+            alert(`Staff Limit Reached: Your ${entitlements.planName} plan allows only ${entitlements.limits.maxStaff} staff accounts (excluding Owner). Please upgrade on our website for more.`);
+          }
           setLoading(false);
           return;
         }
@@ -151,8 +169,6 @@ export default function Staff() {
     }
   };
 
-  const [confirmingDelete, setConfirmingDelete] = useState(null);
-
   const removeStaff = async (staffId) => {
     if (confirmingDelete !== staffId) {
       setConfirmingDelete(staffId);
@@ -172,41 +188,69 @@ export default function Staff() {
     }
   };
 
-  if (loading && staff.length === 0) return <div>Loading Staff...</div>;
+  if (loading && staff.length === 0) {
+    return (
+      <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '2rem 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+        Loading Staff...
+      </div>
+    );
+  }
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+    <div style={{ maxWidth: '1100px', margin: '0 auto', padding: isMobile ? '0.5rem 0' : '1rem 0' }}>
+      {/* Shared Page Header Shell */}
+      <div style={{ 
+        display: 'flex', 
+        flexDirection: isMobile ? 'column' : 'row',
+        justifyContent: 'space-between', 
+        alignItems: isMobile ? 'flex-start' : 'center', 
+        gap: '1rem',
+        marginBottom: '2rem' 
+      }}>
         <div>
-          <h1 style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>Staff Management</h1>
-          <p style={{ color: 'var(--text-muted)' }}>Create and oversee the personnel working at your property</p>
+          <h1 style={{ fontSize: isMobile ? '1.5rem' : '1.85rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+            Staff Management
+          </h1>
+          <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+            Manage team members and their access to Stay Pilot.
+          </p>
         </div>
         {!showForm && (
           <button className="btn btn-primary" onClick={() => {
-            const currentPlan = profile?.plan || 'free';
-            const maxStaff = globalPlans?.[currentPlan]?.maxStaff ?? 999999;
-            if (staff.length >= maxStaff) {
-              alert(`You have reached the maximum staff limit (${maxStaff}) for your ${globalPlans?.[currentPlan]?.name || 'current'} plan. Please upgrade your plan to add more staff.`);
-              return;
+            if (entitlements.isUnknownPlan) {
+              return alert(entitlements.reason);
+            }
+            if (entitlements.isSuspended) {
+              return alert("Your account is currently suspended. Please contact support.");
+            }
+            if (!entitlements.canCreate.staff) {
+              const maxS = entitlements.limits.maxStaff >= 999999 ? 'Unlimited' : entitlements.limits.maxStaff;
+              const staffWord = entitlements.limits.maxStaff === 1 ? 'staff member' : 'staff members';
+              return alert(`Staff Limit Reached\n\nYour ${entitlements.planName} plan supports up to ${maxS} ${staffWord} (excluding Owner). Current usage: ${entitlements.usage.staff} / ${maxS}.\n\nPlease upgrade your plan on our website for additional staff seats.`);
             }
             setShowForm(true);
-          }}>
-            <UserPlus size={20} /> Add New Staff
+          }} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, width: isMobile ? '100%' : 'auto', justifyContent: 'center' }}>
+            <UserPlus size={18} /> Add Staff
           </button>
         )}
       </div>
 
+      {/* Register/Edit Staff Form */}
       {showForm && (
-        <div className="card" style={{ marginBottom: '2rem', animation: 'slideDown 0.3s ease-out' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ fontSize: '1.25rem' }}>{isEditing ? 'Edit Staff Details' : 'Register New Staff Member'}</h2>
+        <div className="card" style={{ marginBottom: '2rem', padding: isMobile ? '1.25rem' : '2rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '1rem' }}>
+            <h2 style={{ fontSize: '1.25rem', margin: 0, color: 'var(--text-main)' }}>{isEditing ? 'Edit Staff Details' : 'Register New Staff Member'}</h2>
             <button className="btn btn-outline" onClick={resetForm}>Cancel</button>
           </div>
           
-          {error && <div style={{ color: 'var(--danger)', marginBottom: '1rem', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>{error}</div>}
+          {error && (
+            <div style={{ color: 'var(--danger)', marginBottom: '1rem', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem 1rem', borderRadius: '8px', fontSize: '0.9rem' }}>
+              {error}
+            </div>
+          )}
 
-          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+          <form onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '1.25rem' }}>
+            <div className="form-group" style={{ gridColumn: isMobile ? 'span 1' : 'span 2' }}>
               <label className="form-label">Full Name</label>
               <div style={{ position: 'relative' }}>
                 <User size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
@@ -214,7 +258,7 @@ export default function Staff() {
               </div>
             </div>
 
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+            <div className="form-group" style={{ gridColumn: isMobile ? 'span 1' : 'span 2' }}>
               <label className="form-label">Assign Property</label>
               <select 
                 className="form-select" 
@@ -246,24 +290,138 @@ export default function Staff() {
                 </div>
               </>
             )}
- 
-            <div style={{ gridColumn: 'span 2' }}>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '50px' }} disabled={loading}>
+
+            <div style={{ gridColumn: isMobile ? 'span 1' : 'span 2', marginTop: '0.5rem' }}>
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', height: '48px', fontWeight: 700 }} disabled={loading}>
                 {loading ? 'Processing...' : (isEditing ? 'Save Changes' : 'Create Staff Account')}
               </button>
             </div>
           </form>
         </div>
       )}
- 
-      <div className="card">
-        <h3 style={{ marginBottom: '1.5rem' }}>Active Personnel</h3>
+
+      {/* Staff List View */}
+      <div className="card" style={{ padding: isMobile ? '1.25rem' : '1.75rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+          <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 700, color: 'var(--text-main)' }}>Active Personnel</h3>
+          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>
+            {staff.length} {staff.length === 1 ? 'member' : 'members'}
+          </span>
+        </div>
+
         {staff.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 0', opacity: 0.5 }}>
-            <User size={48} style={{ marginBottom: '1rem' }} />
-            <p>No staff identified. Use the button above to register your team.</p>
+          <div style={{ textAlign: 'center', padding: '3.5rem 1rem' }}>
+            <User size={48} style={{ marginBottom: '1rem', color: 'var(--primary)', opacity: 0.3 }} />
+            <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-main)' }}>No Staff Added Yet</h4>
+            <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.9rem' }}>Use the button above to register team members and manage their access.</p>
+          </div>
+        ) : isMobile ? (
+          /* Mobile / Android Staff Cards View */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {staff.map(member => {
+              const assignedCottageName = member.cottage_id 
+                ? (cottages.find(c => c.id === member.cottage_id)?.name || 'Loading...')
+                : 'All Properties';
+              const isDeletingThis = confirmingDelete === member.id;
+
+              return (
+                <div key={member.id} style={{ 
+                  background: 'rgba(15, 44, 89, 0.02)',
+                  border: '1px solid var(--border)',
+                  borderRadius: '12px',
+                  padding: '1rem',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '0.85rem'
+                }}>
+                  {/* Top Row: Avatar & Identity */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <div style={{ 
+                        width: 40, 
+                        height: 40, 
+                        background: 'var(--primary)', 
+                        color: 'white', 
+                        borderRadius: '50%', 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        fontWeight: 700,
+                        fontSize: '1rem'
+                      }}>
+                        {member.full_name?.charAt(0).toUpperCase() || 'S'}
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 700, fontSize: '0.95rem', color: 'var(--text-main)' }}>{member.full_name}</div>
+                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>@{member.username || member.id.split('-')[0]}</div>
+                      </div>
+                    </div>
+
+                    <span style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '0.3rem', 
+                      color: 'var(--primary)', 
+                      background: 'rgba(59, 130, 246, 0.1)', 
+                      padding: '0.2rem 0.55rem', 
+                      borderRadius: '20px', 
+                      fontSize: '0.75rem', 
+                      fontWeight: '700' 
+                    }}>
+                      <Shield size={12} /> OPERATIONAL STAFF
+                    </span>
+                  </div>
+
+                  {/* Property Info Row */}
+                  <div style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    padding: '0.5rem 0.75rem',
+                    background: 'var(--bg-main, #fff)',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border)',
+                    fontSize: '0.85rem'
+                  }}>
+                    <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Assigned Property</span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>{assignedCottageName}</span>
+                  </div>
+
+                  {/* Actions Row */}
+                  <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ flex: 1, padding: '0.45rem', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }} 
+                      onClick={() => handleEdit(member)}
+                    >
+                      <Edit2 size={15} /> Edit
+                    </button>
+                    <button 
+                      className="btn btn-outline" 
+                      style={{ 
+                        flex: isDeletingThis ? 1.5 : 1, 
+                        color: isDeletingThis ? 'white' : 'var(--danger)', 
+                        background: isDeletingThis ? 'var(--danger)' : 'transparent',
+                        borderColor: isDeletingThis ? 'var(--danger)' : 'var(--border)',
+                        padding: '0.45rem', 
+                        fontSize: '0.85rem',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.35rem'
+                      }} 
+                      onClick={() => removeStaff(member.id)}
+                    >
+                      <Trash2 size={15} /> {isDeletingThis ? 'Confirm Delete?' : 'Delete'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         ) : (
+          /* Desktop Table View */
           <div className="table-container">
             <table className="table">
               <thead>
@@ -271,7 +429,7 @@ export default function Staff() {
                   <th>Identity</th>
                   <th>Assigned Property</th>
                   <th>Permission Level</th>
-                  <th>Actions</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -279,11 +437,11 @@ export default function Staff() {
                   <tr key={member.id}>
                     <td>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <div style={{ width: 32, height: 32, background: 'var(--primary)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
-                          {member.full_name?.charAt(0)}
+                        <div style={{ width: 36, height: 36, background: 'var(--primary)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                          {member.full_name?.charAt(0).toUpperCase() || 'S'}
                         </div>
                         <div>
-                          <strong>{member.full_name}</strong>
+                          <strong style={{ color: 'var(--text-main)' }}>{member.full_name}</strong>
                           <br/><small style={{ color: 'var(--text-muted)' }}>Username: {member.username || member.id.split('-')[0]}</small>
                         </div>
                       </div>
@@ -299,20 +457,25 @@ export default function Staff() {
                       </span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button className="btn btn-outline" style={{ padding: '0.4rem' }} onClick={() => handleEdit(member)}>
-                          <Edit2 size={18} />
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button className="btn btn-outline" style={{ padding: '0.4rem 0.6rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }} onClick={() => handleEdit(member)}>
+                          <Edit2 size={16} /> Edit
                         </button>
                         <button 
                           className="btn btn-outline" 
                           style={{ 
                             color: confirmingDelete === member.id ? 'white' : 'var(--danger)', 
                             background: confirmingDelete === member.id ? 'var(--danger)' : 'transparent',
-                            padding: '0.4rem' 
+                            borderColor: confirmingDelete === member.id ? 'var(--danger)' : 'var(--border)',
+                            padding: '0.4rem 0.6rem',
+                            fontSize: '0.85rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem'
                           }} 
                           onClick={() => removeStaff(member.id)}
                         >
-                          <Trash2 size={18} />
+                          <Trash2 size={16} /> {confirmingDelete === member.id ? 'Confirm?' : ''}
                         </button>
                       </div>
                     </td>
