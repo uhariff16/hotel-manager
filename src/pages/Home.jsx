@@ -156,7 +156,55 @@ export default function Home() {
           font-size: 0.95rem;
           white-space: nowrap;
         }
+        .mockup-container {
+          position: relative;
+          width: 100%;
+          max-width: 1000px;
+          margin: 0 auto;
+          margin-top: 2rem;
+          z-index: 10;
+        }
+        .web-mockup {
+          width: 100%;
+          border-radius: 16px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(0, 0, 0, 0.05);
+          border: 1px solid #cbd5e1;
+          background: #f8fafc;
+          aspect-ratio: 16/9;
+          overflow: hidden;
+          position: relative;
+        }
+        .mobile-mockup {
+          position: absolute;
+          bottom: -10%;
+          right: -5%;
+          width: 25%;
+          min-width: 200px;
+          aspect-ratio: 9/19.5;
+          background: #0f172a;
+          border-radius: 32px;
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+          border: 8px solid #1e293b;
+          overflow: hidden;
+          z-index: 20;
+        }
+        .image-slider {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: contain;
+          object-position: center;
+          opacity: 0;
+          transition: opacity 0.8s ease-in-out;
+        }
+        .image-slider.active {
+          opacity: 1;
+        }
         @media (max-width: 768px) {
+          .desktop-nav { display: none !important; }
+          .desktop-btn { display: none !important; }
           .glass-badge {
             transform: scale(0.68) !important;
             padding: 5px 10px !important;
