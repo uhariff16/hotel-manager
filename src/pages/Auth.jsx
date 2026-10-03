@@ -257,17 +257,19 @@ export default function Auth() {
       justifyContent: 'center', 
       background: isMobile 
         ? 'var(--bg-color)' 
-        : 'linear-gradient(rgba(17,20,24,0.6), rgba(17,20,24,0.8)), url(/hotel_auth_bg.jpg) center/cover no-repeat',
-      padding: isMobile ? '0' : '1.5rem'
+        : 'linear-gradient(135deg, rgba(11, 26, 20, 0.88) 0%, rgba(15, 44, 89, 0.92) 100%), url(/hotel_auth_bg.jpg) center/cover no-repeat fixed',
+      padding: isMobile ? '1rem 0.75rem' : '2.5rem 1.5rem',
+      paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))',
+      paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))'
     }}>
       <div className="card" style={{ 
         width: '100%', 
-        maxWidth: isMobile ? '100%' : '450px', 
-        minHeight: isMobile ? '100vh' : 'auto',
-        padding: isMobile ? '2rem 1.5rem' : '2.5rem', 
-        border: isMobile ? 'none' : undefined,
-        boxShadow: isMobile ? 'none' : undefined,
-        borderRadius: isMobile ? '0' : undefined,
+        maxWidth: isMobile ? '100%' : (isLogin || isForgotPassword || isRecovering ? '460px' : '560px'), 
+        background: '#ffffff',
+        padding: isMobile ? '1.5rem 1.25rem' : '2.5rem 2.25rem', 
+        border: isMobile ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: isMobile ? '0 4px 20px rgba(0,0,0,0.04)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 1px 1px rgba(255, 255, 255, 0.1)',
+        borderRadius: isMobile ? '16px' : '20px',
         display: 'flex',
         flexDirection: 'column',
         justifyContent: 'center'
@@ -277,23 +279,23 @@ export default function Auth() {
             <Link to="/" style={{ 
               display: 'inline-block', 
               background: '#ffffff', 
-              padding: '1.25rem', 
-              borderRadius: '24px', 
-              boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)',
-              border: '1px solid rgba(0,0,0,0.05)'
+              padding: '0.65rem 1.15rem', 
+              borderRadius: '16px', 
+              boxShadow: '0 4px 12px rgba(0,0,0,0.04)',
+              border: '1px solid rgba(0,0,0,0.06)'
             }}>
-              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: '100%', maxWidth: isMobile ? '120px' : '180px', height: 'auto', objectFit: 'contain', display: 'block' }} />
+              <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: isMobile ? '110px' : '135px', height: 'auto', display: 'block' }} />
             </Link>
           </div>
           <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-            {isRecovering ? 'Reset Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Create Your Stay Pilot Account'))}
+            {isRecovering ? 'Set New Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Create Your Account'))}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.9rem' : '1rem' }}>
             {isRecovering 
               ? 'Enter your new secure password below'
               : (isForgotPassword 
                 ? 'Enter your email to receive a reset link' 
-                : (isLogin ? 'Sign in to manage your property.' : (isSubscribeIntent ? 'Create your account to complete subscription setup' : `Start your ${planInfo?.trialDays || 30}-day free trial`)))}
+                : (isLogin ? 'Sign in to manage your property.' : (isSubscribeIntent ? 'Create your account to continue to secure payment.' : 'Start your Stay Pilot trial and set up your property.')))}
           </p>
         </div>
 
@@ -566,7 +568,7 @@ export default function Auth() {
             style={{ width: '100%', height: '50px', fontSize: '1rem', marginTop: '1rem' }}
             disabled={loading}
           >
-            {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account & Start Free Trial</>)))}
+            {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : (isSubscribeIntent ? <><UserPlus size={20} /> Create Account & Continue to Payment</> : <><UserPlus size={20} /> Create Account & Start Free Trial</>))))}
           </button>
         </form>
 
