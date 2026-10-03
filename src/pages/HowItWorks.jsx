@@ -1,9 +1,12 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Home as HomeIcon, Calendar, IndianRupee, Receipt, BarChart3, TrendingUp, Smartphone, FileSpreadsheet, Calculator, ArrowRight, Sparkles } from 'lucide-react';
+import { 
+  Home as HomeIcon, Calendar, IndianRupee, Receipt, BarChart3, TrendingUp, 
+  Smartphone, FileSpreadsheet, Calculator, ArrowRight, Sparkles, CheckCircle2,
+  ChevronRight, ArrowDown
+} from 'lucide-react';
 
 export default function HowItWorks() {
-  
   useEffect(() => {
     window.scrollTo(0, 0);
   }, []);
@@ -11,256 +14,175 @@ export default function HowItWorks() {
   const workflowSteps = [
     {
       num: '01',
-      icon: <HomeIcon size={32} />,
+      icon: <HomeIcon size={26} strokeWidth={2} />,
       title: 'Set Up',
-      short: 'Your property',
-      desc: 'Start by setting up your property and the basic information you need to manage your stay business.',
-      points: ['Property details', 'Units / cottages / rooms', 'Pricing', 'Basic settings']
+      short: 'Property & Rooms',
+      desc: 'Create your property structure, rooms, rate plans, and basic business settings in minutes.',
+      points: ['Property details', 'Room categories & numbers', 'Base rates', 'Property settings']
     },
     {
       num: '02',
-      icon: <Calendar size={32} />,
+      icon: <Calendar size={26} strokeWidth={2} />,
       title: 'Book',
-      short: 'Add your stays',
-      desc: 'Add your bookings and keep your guest and stay information organized in one place.',
-      points: ['Guest details', 'Check-in & check-out', 'Booking amount', 'Booking status', 'Payment details']
+      short: 'Add & Manage Stays',
+      desc: 'Add reservations, view room availability on the calendar, and track check-ins effortlessly.',
+      points: ['Guest details', 'Check-in & check-out dates', 'Rate calculation', 'Booking status tracking']
     },
     {
       num: '03',
-      icon: <IndianRupee size={32} />,
+      icon: <IndianRupee size={26} strokeWidth={2} />,
       title: 'Collect',
-      short: 'Track your income',
-      desc: 'Record collections and payments so you always know how much your property is earning.',
-      points: ['Booking income', 'Advance payments', 'Balance payments', 'Total collections']
+      short: 'Track Booking Revenue',
+      desc: 'Record booking collections, advance deposits, and balance payments accurately.',
+      points: ['Advance deposits', 'Balance collections', 'Payment methods', 'Total revenue logging']
     },
     {
       num: '04',
-      icon: <Receipt size={32} />,
+      icon: <Receipt size={26} strokeWidth={2} />,
       title: 'Spend',
-      short: 'Record expenses',
-      desc: 'Keep track of the money you spend to operate and maintain your property.',
-      points: ['Utilities', 'Cleaning', 'Maintenance', 'Supplies', 'Repairs', 'Other expenses']
+      short: 'Record Operating Expenses',
+      desc: 'Log property operating expenses so you know exactly where your business funds go.',
+      points: ['Utilities & bills', 'Cleaning & maintenance', 'Staff & supplies', 'Property repairs']
     },
     {
       num: '05',
-      icon: <BarChart3 size={32} />,
+      icon: <BarChart3 size={26} strokeWidth={2} />,
       title: 'Analyze',
-      short: 'Understand performance',
-      desc: 'Bring your income and expenses together to understand your property\'s financial performance.',
-      points: ['Income', 'Expenses', 'Profit', 'Monthly performance', 'Yearly performance', 'Booking trends']
+      short: 'Understand Performance',
+      desc: 'Bring revenue and expenses together to see clear profit margins and occupancy trends.',
+      points: ['Income vs expenses', 'Net profit calculation', 'Monthly revenue trends', 'Occupancy statistics']
     },
     {
       num: '06',
-      icon: <TrendingUp size={32} />,
+      icon: <TrendingUp size={26} strokeWidth={2} />,
       title: 'Improve',
-      short: 'Make better decisions',
-      desc: 'Use your numbers and business insights to make smarter decisions for your property.',
-      points: ['Identify trends', 'Control expenses', 'Improve profitability', 'Understand investment', 'Plan with confidence']
+      short: 'Smarter Operations',
+      desc: 'Use accurate financial numbers to make confident decisions and grow your business.',
+      points: ['Identify peak periods', 'Control unwanted expenses', 'Maximize room profit', 'Scale operations']
     }
   ];
 
   return (
-    <div style={{ 
-      fontFamily: "'Outfit', 'Inter', system-ui, sans-serif", 
-      color: '#475569', 
-      background: 'linear-gradient(135deg, #f0fdf4 0%, #e0f2fe 35%, #eef2ff 70%, #faf5ff 100%)', 
-      minHeight: '100vh', 
-      overflowX: 'hidden' 
-    }}>
-      
-      {/* GLOBAL STYLES FOR TIMELINE AND HOVER EFFECTS */}
-      <style dangerouslySetInnerHTML={{__html: `
-        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        
-        .hiw-nav {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 1.25rem 2rem;
-          background: rgba(255, 255, 255, 0.75);
-          backdrop-filter: blur(16px);
-          border-bottom: 1px solid rgba(255, 255, 255, 0.4);
-          position: sticky;
-          top: 0;
-          z-index: 100;
-          box-shadow: 0 4px 30px rgba(0, 0, 0, 0.02);
+    <div style={{ fontFamily: 'var(--font-sans, system-ui, sans-serif)', overflowX: 'hidden', background: '#f8fafc', color: '#0f172a' }}>
+      <style>{`
+        .gradient-text {
+          background: linear-gradient(135deg, #34d399 0%, #38bdf8 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
-        
-        .desktop-links {
-          display: none;
+        .hero-bg {
+          background: radial-gradient(circle at top center, #064e3b 0%, #020617 100%);
+          color: white;
         }
-
-        .timeline-container {
+        .workflow-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1.75rem;
+        }
+        .workflow-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 2rem;
           display: flex;
           flex-direction: column;
-          gap: 2rem;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+          transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
           position: relative;
-          max-width: 1200px;
-          margin: 0 auto;
-          padding: 2rem 0;
         }
-
-        /* Mobile Vertical Timeline Line */
-        .timeline-container::before {
-          content: '';
-          position: absolute;
-          left: 48px;
-          top: 0;
-          bottom: 0;
-          width: 4px;
-          background: rgba(5, 150, 105, 0.1);
-          border-radius: 4px;
-          z-index: 0;
-        }
-
-        .step-card {
-          position: relative;
-          z-index: 1;
-          display: flex;
-          flex-direction: row;
-          align-items: flex-start;
-          gap: 1.5rem;
-          background: rgba(255, 255, 255, 0.75);
-          backdrop-filter: blur(10px);
-          padding: 1.5rem;
-          border-radius: 16px;
-          border: 1px solid rgba(255, 255, 255, 0.4);
-          box-shadow: 0 10px 30px rgba(15, 44, 89, 0.02);
-          transition: all 0.3s ease;
-          margin-left: 20px;
-          margin-right: 20px;
-        }
-
-        .step-icon-wrap {
-          width: 60px;
-          height: 60px;
-          border-radius: 12px;
-          background: rgba(5, 150, 105, 0.08);
-          color: #059669;
-          display: flex;
-          align-items: center;
-          justifyContent: center;
-          flex-shrink: 0;
-          transition: all 0.3s ease;
-          border: 2px solid white;
-          box-shadow: 0 0 0 2px #059669;
-        }
-
-        .step-content {
-          flex: 1;
-        }
-
-        .step-num {
-          font-size: 0.9rem;
-          font-weight: 700;
-          color: #059669;
-          margin-bottom: 0.25rem;
-        }
-
-        .step-points {
-          display: none;
-          margin: 0.5rem 0 0;
-          padding-left: 1.2rem;
-          color: #64748B;
-          font-size: 0.85rem;
-        }
-
-        .step-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 15px 35px rgba(15, 44, 89, 0.06);
-          border-color: rgba(5, 150, 105, 0.25);
-          background: rgba(255, 255, 255, 0.95);
-        }
-
-        .step-card:hover .step-icon-wrap {
-          background: #059669;
-          color: white;
-        }
-
-        .step-card:hover .step-points {
-          display: block;
-        }
-
-        @media (min-width: 992px) {
-          .desktop-links {
-            display: flex;
-          }
-          /* Switch to Horizontal Timeline on Desktop */
-          .timeline-container {
-            flex-direction: row;
-            flex-wrap: wrap;
-            gap: 2rem 0;
-            padding: 4rem 2rem;
-            justify-content: center;
-          }
-          
-          /* Remove mobile vertical line */
-          .timeline-container::before {
-            display: none;
-          }
-
-          .step-card {
-            flex-direction: column;
-            width: calc(33.333% - 2rem);
-            margin: 0 1rem;
-            padding: 2.5rem;
-            align-items: flex-start;
-          }
-
-          /* Connectors for horizontal layout */
-          .step-card:not(:nth-child(3n))::after {
-            content: '';
-            position: absolute;
-            top: 55px; /* Aligned with icon center */
-            right: -2rem;
-            width: calc(2rem + 40px); /* Span the gap */
-            height: 4px;
-            background: rgba(5, 150, 105, 0.08);
-            z-index: -1;
-            border-radius: 4px;
-          }
-
-          /* Interactive line highlighting */
-          .step-card:hover:not(:nth-child(3n))::after {
-            background: #059669;
-            transition: background 0.3s ease;
+        @media (hover: hover) and (pointer: fine) {
+          .workflow-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 32px -8px rgba(5, 150, 105, 0.12);
+            border-color: #cbd5e1;
           }
         }
-
-        .btn {
+        @media (prefers-reduced-motion: reduce) {
+          .workflow-card {
+            transition: none !important;
+          }
+          .workflow-card:hover {
+            transform: none !important;
+          }
+        }
+        .step-badge {
           display: inline-flex;
           align-items: center;
-          justify-content: center;
-          padding: 0.8rem 1.8rem;
-          border-radius: 8px;
-          font-weight: 600;
-          text-decoration: none;
-          transition: all 0.2s;
-          border: none;
-          cursor: pointer;
+          gap: 6px;
+          font-size: 0.75rem;
+          font-weight: 800;
+          color: #059669;
+          background: rgba(5, 150, 105, 0.1);
+          padding: 4px 12px;
+          border-radius: 20px;
+          letterSpacing: 0.05em;
+          text-transform: uppercase;
         }
-        .btn-primary {
-          background: linear-gradient(135deg, #059669 0%, #10b981 100%);
-          color: white;
-          box-shadow: 0 4px 15px rgba(5, 150, 105, 0.25);
+        .flow-container {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: 1.25rem;
         }
-        .btn-primary:hover {
-          transform: translateY(-2px);
-          box-shadow: 0 8px 25px rgba(5, 150, 105, 0.35);
+        .flow-card {
+          background: #ffffff;
+          border: 1px solid #e2e8f0;
+          border-radius: 16px;
+          padding: 1.75rem 1.25rem;
+          text-align: center;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+          transition: transform 0.2s ease;
         }
-        .btn-outline {
-          background: rgba(255,255,255,0.9);
-          backdrop-filter: blur(10px);
-          color: #0F2C59;
-          border: 1px solid #cbd5e1;
+        .flow-card:hover {
+          transform: translateY(-3px);
+          box-shadow: 0 12px 24px -6px rgba(0, 0, 0, 0.06);
         }
-        .btn-outline:hover {
-          border-color: #0F2C59;
+        @media (max-width: 991px) {
+          .workflow-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+          }
+          .flow-container {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+          }
         }
-      `}} />
+        @media (max-width: 640px) {
+          .desktop-nav { display: none !important; }
+          .desktop-btn { display: none !important; }
+          .workflow-grid {
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+          }
+          .flow-container {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+          .workflow-card {
+            padding: 1.5rem;
+          }
+          .hero-title {
+            font-size: 2.25rem !important;
+            line-height: 1.15 !important;
+          }
+        }
+      `}</style>
 
-      {/* HEADER */}
-      <header className="hiw-nav">
+      {/* Header */}
+      <header style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        padding: '1.25rem 2rem', 
+        background: 'rgba(255, 255, 255, 0.75)',
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.4)',
+        position: 'sticky',
+        top: 0,
+        zIndex: 50,
+        boxShadow: '0 4px 30px rgba(0, 0, 0, 0.02)'
+      }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
           <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '36px', width: 'auto', display: 'block' }} />
         </Link>
@@ -278,222 +200,242 @@ export default function HowItWorks() {
         </div>
       </header>
 
-      {/* Background ambient blobs */}
-      <div style={{ position: 'relative' }}>
-        <div style={{ position: 'absolute', top: '100px', left: '5%', width: '350px', height: '350px', background: 'rgba(5, 150, 105, 0.1)', filter: 'blur(90px)', borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }}></div>
-        <div style={{ position: 'absolute', top: '400px', right: '5%', width: '400px', height: '400px', background: 'rgba(56, 189, 248, 0.1)', filter: 'blur(90px)', borderRadius: '50%', zIndex: 0, pointerEvents: 'none' }}></div>
-      </div>
-
-      {/* HERO TITLE SECTION */}
-      <section style={{ padding: '3rem 2rem 5.5rem', textAlign: 'center', position: 'relative', zIndex: 1, background: 'radial-gradient(circle at top center, #064e3b 0%, #020617 100%)', color: 'white', marginTop: '-1px' }}>
+      {/* HERO SECTION */}
+      <section className="hero-bg" style={{ padding: '4.5rem 1.5rem 7rem', textAlign: 'center', position: 'relative' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto', position: 'relative', zIndex: 1 }}>
-          <div style={{ 
-            display: 'inline-flex', 
-            alignItems: 'center', 
-            gap: '0.5rem', 
-            padding: '0.4rem 0.8rem', 
-            background: 'rgba(52, 211, 153, 0.2)', 
-            border: '1px solid rgba(5, 150, 105, 0.15)', 
-            borderRadius: '20px', 
-            color: '#34d399', 
-            fontWeight: 700, 
-            fontSize: '0.75rem', 
-            textTransform: 'uppercase', 
-            letterSpacing: '0.05em', 
-            marginBottom: '1.5rem'
-          }}>
-            <Sparkles size={14} /> How Stay Pilot Works
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: 'rgba(52, 211, 153, 0.15)', color: '#34d399', padding: '6px 16px', borderRadius: '30px', fontSize: '0.85rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', marginBottom: '1.25rem', border: '1px solid rgba(52, 211, 153, 0.25)' }}>
+            <Sparkles size={15} /> HOW STAY PILOT WORKS
           </div>
-          <h1 style={{ fontSize: 'clamp(2.5rem, 5vw, 3.8rem)', fontWeight: 800, color: 'white', lineHeight: 1.15, marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif", letterSpacing: '-0.02em', background: 'linear-gradient(135deg, #34d399 0%, #38bdf8 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
-            From Booking to Better Business.
+          
+          <h1 className="hero-title gradient-text" style={{ fontSize: '3.8rem', fontWeight: 800, margin: '0 0 1.25rem 0', letterSpacing: '-0.03em', lineHeight: 1.15 }}>
+            From Booking to<br/>Better Business
           </h1>
-          <p style={{ fontSize: '1.25rem', color: '#94a3b8', lineHeight: 1.6, marginBottom: '2.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Stay Pilot connects your property, bookings, and finances in one simple workflow — helping you know what is booked, what you earn, what you spend, and what you make.
+          
+          <p style={{ fontSize: '1.25rem', color: '#94a3b8', lineHeight: 1.6, maxWidth: '640px', margin: '0 auto 2.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            Stay Pilot connects property setup, bookings, collections, expenses, and performance into one simple, unified workflow.
           </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/pricing" className="btn btn-primary" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+
+          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
+            <Link to="/pricing" style={{ padding: '14px 32px', fontSize: '1.1rem', fontWeight: 700, borderRadius: '8px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: 'white', textDecoration: 'none', boxShadow: '0 10px 25px -5px rgba(5, 150, 105, 0.4)' }}>
               Start 30-Day Free Trial
             </Link>
-            <Link to="/auth" className="btn btn-outline" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+            <Link to="/auth" className="desktop-btn" style={{ padding: '14px 28px', fontSize: '1.1rem', fontWeight: 600, borderRadius: '8px', background: 'rgba(255, 255, 255, 0.1)', color: 'white', border: '1px solid rgba(255, 255, 255, 0.2)', textDecoration: 'none' }}>
               Sign In
             </Link>
           </div>
         </div>
-
-        {/* Curved SVG Divider to blend into light section */}
+        
+        {/* Curved SVG Divider */}
         <div style={{ position: 'absolute', bottom: 0, left: 0, width: '100%', overflow: 'hidden', lineHeight: 0, transform: 'translateY(1px)' }}>
           <svg viewBox="0 0 1200 120" preserveAspectRatio="none" style={{ position: 'relative', display: 'block', width: 'calc(100% + 1.3px)', height: '60px' }}>
-            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V0C52.42,28.17,133.72,67.6,214.34,71.2,251.69,72.84,288.08,62.6,321.39,56.44Z" fill="#f0fdf4"></path>
+            <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V120H0V0C52.42,28.17,133.72,67.6,214.34,71.2,251.69,72.84,288.08,62.6,321.39,56.44Z" fill="#f8fafc"></path>
           </svg>
         </div>
       </section>
 
-      {/* MAIN WORKFLOW TIMELINE SECTION */}
-      <section style={{ padding: '2.5rem 0', background: 'transparent', position: 'relative', zIndex: 1 }}>
-        <div style={{ textAlign: 'center', marginBottom: '3rem', padding: '0 2rem' }}>
-          <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1rem', fontFamily: "'Outfit', sans-serif" }}>The Stay Pilot Workflow</h2>
-          <p style={{ fontSize: '1.15rem', color: '#475569', maxWidth: '600px', margin: '0 auto', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.6 }}>
-            Everything you need to manage your stay business, from setting up your property to making better decisions.
-          </p>
-        </div>
-
-        <div className="timeline-container">
-          {workflowSteps.map((step, idx) => (
-            <div key={idx} className="step-card">
-              <div className="step-icon-wrap">
-                {step.icon}
-              </div>
-              <div className="step-content" style={{ textAlign: 'left' }}>
-                <div className="step-num">STEP {step.num}</div>
-                <h3 style={{ fontSize: '1.45rem', fontWeight: 800, color: '#0F2C59', marginBottom: '0.25rem', fontFamily: "'Outfit', sans-serif" }}>{step.title}</h3>
-                <div style={{ color: '#059669', fontWeight: 600, fontSize: '0.95rem', marginBottom: '0.75rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{step.short}</div>
-                <p style={{ color: '#475569', lineHeight: 1.5, fontSize: '0.95rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>{step.desc}</p>
-                <ul className="step-points" style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 500 }}>
-                  {step.points.map((pt, i) => (
-                    <li key={i} style={{ marginBottom: '0.25rem' }}>{pt}</li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* THE BIGGER PICTURE */}
-      <section style={{ padding: '6rem 2rem', background: 'transparent', position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: '1000px', margin: '0 auto', textAlign: 'center' }}>
-          <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0F2C59', marginBottom: '2rem', fontFamily: "'Outfit', sans-serif" }}>One Workflow. One Clear Picture.</h2>
-          <p style={{ fontSize: '1.25rem', color: '#475569', lineHeight: 1.6, maxWidth: '600px', margin: '0 auto 1.5rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Your bookings tell you what is happening.<br/>
-            Your income tells you what you earn.<br/>
-            Your expenses tell you what you spend.<br/>
-            Your profit tells you how your business is performing.
-          </p>
-          <div style={{ fontSize: '1.45rem', fontWeight: 800, color: '#059669', marginBottom: '4rem', fontFamily: "'Outfit', sans-serif" }}>
-            Stay Pilot brings them together.
+      {/* WORKFLOW STEPS SECTION */}
+      <section style={{ padding: '3.5rem 1.5rem 5rem', position: 'relative' }}>
+        <div style={{ maxWidth: '1150px', margin: '0 auto' }}>
+          
+          {/* Section Header */}
+          <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
+            <h2 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em', marginBottom: '0.75rem' }}>
+              The Stay Pilot Workflow
+            </h2>
+            <p style={{ fontSize: '1.1rem', color: '#64748b', maxWidth: '620px', margin: '0 auto', lineHeight: 1.6 }}>
+              Everything you need to manage your stay business, from setting up your property to making better decisions.
+            </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem' }}>
-            <div style={{ background: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(10px)', padding: '2rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 10px 25px rgba(15, 44, 89, 0.02)' }}>
-              <h4 style={{ color: '#0F2C59', fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>BOOKINGS</h4>
-              <p style={{ color: '#475569', margin: 0, fontSize: '0.95rem', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 500 }}>Know what's happening.</p>
-            </div>
-            <div style={{ background: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(10px)', padding: '2rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 10px 25px rgba(15, 44, 89, 0.02)' }}>
-              <h4 style={{ color: '#0F2C59', fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>INCOME</h4>
-              <p style={{ color: '#475569', margin: 0, fontSize: '0.95rem', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 500 }}>Know what you earn.</p>
-            </div>
-            <div style={{ background: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(10px)', padding: '2rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 10px 25px rgba(15, 44, 89, 0.02)' }}>
-              <h4 style={{ color: '#0F2C59', fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>EXPENSES</h4>
-              <p style={{ color: '#475569', margin: 0, fontSize: '0.95rem', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 500 }}>Know what you spend.</p>
-            </div>
-            <div style={{ background: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(10px)', padding: '2rem', borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 10px 25px rgba(15, 44, 89, 0.02)' }}>
-              <h4 style={{ color: '#0F2C59', fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>PROFIT</h4>
-              <p style={{ color: '#475569', margin: 0, fontSize: '0.95rem', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 500 }}>Know what you make.</p>
-            </div>
+          {/* 3x2 Workflow Grid */}
+          <div className="workflow-grid">
+            {workflowSteps.map((step, idx) => (
+              <div key={idx} className="workflow-card">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+                  <div style={{ 
+                    width: '48px', height: '48px', borderRadius: '12px', 
+                    background: 'rgba(5, 150, 105, 0.08)', color: '#059669', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'center' 
+                  }}>
+                    {step.icon}
+                  </div>
+                  <span className="step-badge">
+                    STEP {step.num}
+                  </span>
+                </div>
+
+                <h3 style={{ fontSize: '1.4rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.25rem', letterSpacing: '-0.01em' }}>
+                  {step.title}
+                </h3>
+                
+                <div style={{ color: '#059669', fontWeight: 700, fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+                  {step.short}
+                </div>
+
+                <p style={{ fontSize: '0.975rem', color: '#475569', lineHeight: 1.55, marginBottom: '1.25rem', flexGrow: 1 }}>
+                  {step.desc}
+                </p>
+
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '1rem' }}>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {step.points.map((pt, i) => (
+                      <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
+                        <CheckCircle2 size={14} color="#059669" /> {pt}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* COMPARISON PROPOSITION SECTION */}
-      <section style={{ padding: '6rem 2rem', background: 'transparent', textAlign: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.3)', position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1rem', fontFamily: "'Outfit', sans-serif" }}>Stop Managing Your Property in Pieces.</h2>
-          <p style={{ fontSize: '1.15rem', color: '#475569', marginBottom: '4rem', fontFamily: "'Plus Jakarta Sans', sans-serif", lineHeight: 1.6 }}>
-            Move away from scattered notebooks, spreadsheets and payment records. Stay Pilot gives you one simple place to manage your bookings and understand your numbers.
+      {/* ONE WORKFLOW. ONE CLEAR PICTURE. */}
+      <section style={{ padding: '5rem 1.5rem', background: '#ffffff', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: '1150px', margin: '0 auto', textAlign: 'center' }}>
+          
+          <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#059669', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: '0.5rem', display: 'block' }}>
+            UNIFIED DASHBOARD
+          </span>
+          <h2 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            One Workflow. One Clear Picture.
+          </h2>
+          
+          <div style={{ maxWidth: '680px', margin: '0 auto 3rem', color: '#475569', fontSize: '1.1rem', lineHeight: 1.7 }}>
+            <p style={{ margin: '0 0 0.25rem 0' }}>Your <strong>bookings</strong> tell you what's happening.</p>
+            <p style={{ margin: '0 0 0.25rem 0' }}>Your <strong>income</strong> tells you what you earn.</p>
+            <p style={{ margin: '0 0 0.25rem 0' }}>Your <strong>expenses</strong> tell you what you spend.</p>
+            <p style={{ margin: 0 }}>Your <strong>profit</strong> tells you how your business is performing.</p>
+          </div>
+
+          {/* Bookings -> Income -> Expenses -> Profit Flow */}
+          <div className="flow-container">
+            <div className="flow-card">
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0ea5e9', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>STEP 1</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.4rem' }}>BOOKINGS</h3>
+              <p style={{ fontSize: '0.925rem', color: '#64748b', margin: 0 }}>Know what's happening.</p>
+            </div>
+
+            <div className="flow-card">
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>STEP 2</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.4rem' }}>INCOME</h3>
+              <p style={{ fontSize: '0.925rem', color: '#64748b', margin: 0 }}>Know what you earn.</p>
+            </div>
+
+            <div className="flow-card">
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>STEP 3</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '0.4rem' }}>EXPENSES</h3>
+              <p style={{ fontSize: '0.925rem', color: '#64748b', margin: 0 }}>Know what you spend.</p>
+            </div>
+
+            <div className="flow-card" style={{ border: '2px solid #059669', background: 'rgba(5, 150, 105, 0.03)' }}>
+              <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.5rem' }}>RESULT</div>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#059669', marginBottom: '0.4rem' }}>PROFIT</h3>
+              <p style={{ fontSize: '0.925rem', color: '#475569', margin: 0, fontWeight: 600 }}>Know what you make.</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* STOP MANAGING YOUR PROPERTY IN PIECES */}
+      <section style={{ padding: '5rem 1.5rem', background: '#f8fafc', textAlign: 'center' }}>
+        <div style={{ maxWidth: '850px', margin: '0 auto' }}>
+          
+          <h2 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            Stop Managing Your Property in Pieces.
+          </h2>
+          
+          <p style={{ fontSize: '1.15rem', color: '#475569', lineHeight: 1.6, maxWidth: '680px', margin: '0 auto 3rem' }}>
+            Move away from scattered notebooks, spreadsheets, and separate calculations. Stay Pilot gives you one simple place to manage your bookings and understand your numbers.
           </p>
 
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2rem' }}>
-            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
+          {/* Fragmented Tools -> Stay Pilot Unified Box */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1.5rem' }}>
+            
+            {/* Fragmented Tools Row */}
+            <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', background: '#ffffff', borderRadius: '12px', color: '#475569', fontWeight: 600, fontSize: '0.95rem', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                 <Smartphone size={18} color="#25D366" /> WhatsApp
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
-                <Receipt size={18} color="#f59e0b" /> Notebook
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', background: '#ffffff', borderRadius: '12px', color: '#475569', fontWeight: 600, fontSize: '0.95rem', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                <Receipt size={18} color="#d97706" /> Notebook
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
-                <FileSpreadsheet size={18} color="#10b981" /> Spreadsheet
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', background: '#ffffff', borderRadius: '12px', color: '#475569', fontWeight: 600, fontSize: '0.95rem', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
+                <FileSpreadsheet size={18} color="#059669" /> Spreadsheet
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', padding: '0.85rem 1.5rem', background: 'white', borderRadius: '12px', color: '#64748B', fontWeight: 600, boxShadow: '0 4px 15px rgba(0,0,0,0.02)', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', background: '#ffffff', borderRadius: '12px', color: '#475569', fontWeight: 600, fontSize: '0.95rem', border: '1px solid #e2e8f0', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
                 <Calculator size={18} color="#0ea5e9" /> Calculator
               </div>
             </div>
 
-            <ArrowRight size={32} color="#cbd5e1" style={{ transform: 'rotate(90deg)' }} />
+            {/* Down Arrow Indicator */}
+            <div style={{ color: '#059669', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748b' }}>Replaced By One System</span>
+              <ArrowDown size={24} color="#059669" />
+            </div>
 
+            {/* STAY PILOT Unified Box */}
             <div style={{ 
-              padding: '2.5rem 4rem', 
-              background: 'linear-gradient(135deg, #0F2C59 0%, #173b75 100%)', 
-              borderRadius: '24px', 
+              padding: '2rem 3rem', 
+              background: 'linear-gradient(135deg, #064e3b 0%, #020617 100%)', 
+              borderRadius: '20px', 
               color: 'white', 
-              boxShadow: '0 25px 50px rgba(15, 44, 89, 0.15)',
-              border: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '0 20px 40px -10px rgba(6, 78, 59, 0.4)',
               width: '100%',
-              maxWidth: '650px'
+              maxWidth: '620px'
             }}>
-              <div style={{ fontSize: '1.6rem', fontWeight: 800, letterSpacing: '0.05em', marginBottom: '0.5rem', fontFamily: "'Outfit', sans-serif" }}>STAY PILOT</div>
-              <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center', color: '#cbd5e1', fontSize: '1.05rem', fontWeight: 600 }}>
-                <span>Dashboard</span> &bull; <span>Calendar</span> &bull; <span>Financials</span> &bull; <span>Reports</span>
+              <div style={{ fontSize: '1.5rem', fontWeight: 800, letterSpacing: '0.03em', marginBottom: '0.5rem' }} className="gradient-text">
+                STAY PILOT UNIFIED PLATFORM
+              </div>
+              <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', justifyContent: 'center', color: '#cbd5e1', fontSize: '0.975rem', fontWeight: 600 }}>
+                <span>Bookings</span> &bull; <span>Income</span> &bull; <span>Expenses</span> &bull; <span>Performance</span>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* FINAL CTA SECTION */}
-      <section style={{ padding: '6rem 2rem', background: 'transparent', textAlign: 'center', position: 'relative', zIndex: 1 }}>
+      {/* FINAL CONVERSION CTA */}
+      <section style={{ padding: '5rem 1.5rem', background: '#ffffff', textAlign: 'center', borderTop: '1px solid #e2e8f0' }}>
         <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '2.4rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1.5rem', fontFamily: "'Outfit', sans-serif" }}>Ready to Know Your Bookings and Your Numbers?</h2>
-          <p style={{ fontSize: '1.25rem', color: '#059669', marginBottom: '3rem', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-            Set up your property, manage your stays, track your finances and make better decisions with Stay Pilot.
+          <h2 style={{ fontSize: 'clamp(2rem, 4vw, 2.75rem)', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', letterSpacing: '-0.02em' }}>
+            Ready to simplify your property management?
+          </h2>
+          <p style={{ fontSize: '1.2rem', color: '#64748b', marginBottom: '2.5rem', lineHeight: 1.6, maxWidth: '600px', marginInline: 'auto' }}>
+            Manage bookings, finances, and property performance from one simple, unified platform.
           </p>
-          <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-            <Link to="/pricing" className="btn btn-primary" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Start 30-Day Free Trial
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <Link to="/pricing" style={{ padding: '16px 36px', fontSize: '1.1rem', fontWeight: 700, borderRadius: '8px', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', color: '#fff', textDecoration: 'none', boxShadow: '0 10px 25px -5px rgba(5, 150, 105, 0.35)', display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+              Start 30-Day Free Trial <ArrowRight size={20} />
             </Link>
-            <Link to="/auth" className="btn btn-outline" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Sign In
-            </Link>
+            <span style={{ fontSize: '0.875rem', color: '#94a3b8', fontWeight: 500 }}>
+              No credit card required • Setup in minutes
+            </span>
           </div>
-          <p style={{ color: '#64748B', fontSize: '0.9rem', fontWeight: 600 }}>Simple tools for smarter stay management.</p>
         </div>
       </section>
 
-      {/* FOOTER */}
+      {/* Footer */}
       <footer style={{ 
-        padding: '4rem 2rem 3rem', 
-        borderTop: '1px solid rgba(255,255,255,0.4)',
-        background: 'rgba(255, 255, 255, 0.7)',
-        backdropFilter: 'blur(10px)',
+        padding: '3rem 2rem 2rem', 
+        borderTop: '1px solid rgba(0,0,0,0.05)',
+        background: '#f8fafc',
         color: '#64748b',
-        fontSize: '0.95rem',
-        fontFamily: "'Plus Jakarta Sans', sans-serif"
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '2rem'
       }}>
-        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', flexWrap: 'wrap', gap: '4rem', justifyContent: 'space-between', marginBottom: '3rem', alignItems: 'center' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-              <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '24px', width: 'auto', marginRight: '0.5rem' }} />
-              <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F2C59', letterSpacing: '0.05em' }}>STAY PILOT</span>
-            </div>
-            <p style={{ color: '#059669', fontWeight: 600, marginBottom: '0.25rem' }}>Know Your Bookings. Know Your Numbers.</p>
-            <p style={{ color: '#64748B', margin: 0 }}>Bookings. Income. Expenses. Simplified.</p>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '3rem' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontWeight: 600 }}>
-              <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
-              <Link to="/features" style={{ color: '#64748B', textDecoration: 'none' }}>Features</Link>
-              <Link to="/how-it-works" style={{ color: '#64748B', textDecoration: 'none' }}>How It Works</Link>
-              <Link to="/pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</Link>
-              <Link to="/auth" style={{ color: '#64748B', textDecoration: 'none' }}>Sign In</Link>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontWeight: 600 }}>
-              <Link to="/privacy" style={{ color: '#64748B', textDecoration: 'none' }}>Privacy Policy</Link>
-              <a href="#" style={{ color: '#64748B', textDecoration: 'none' }}>Terms of Service</a>
-            </div>
-          </div>
+        <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: 600 }}>
+          <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
+          <Link to="/features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</Link>
+          <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</Link>
+          <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
+          <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
         </div>
-        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem', paddingTop: '2rem', borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
-          &copy; {new Date().getFullYear()} Stay Pilot. All rights reserved.
+        <div style={{ fontSize: '0.9rem' }}>
+           © {new Date().getFullYear()} StayPilot. All rights reserved.
         </div>
       </footer>
     </div>
