@@ -266,7 +266,7 @@ export default function Home() {
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link to="/auth" className="desktop-btn" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#0F2C59', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sign In</Link>
-          <Link to="/auth?mode=signup" className="btn" style={{ padding: '0.65rem 1.6rem', fontWeight: 700, borderRadius: '8px', color: 'white', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', border: 'none', boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Get Started</Link>
+          <Link to="/pricing" className="btn" style={{ padding: '0.65rem 1.6rem', fontWeight: 700, borderRadius: '8px', color: 'white', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', border: 'none', boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Get Started</Link>
         </div>
       </header>
 
@@ -286,8 +286,8 @@ export default function Home() {
           </p>
 
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', alignItems: 'center' }}>
-            <Link to="/auth?mode=signup" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1.1rem', borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(5, 150, 105, 0.4)' }}>
-              Start for Free
+            <Link to="/pricing" className="btn btn-primary" style={{ padding: '14px 32px', fontSize: '1.1rem', borderRadius: '8px', boxShadow: '0 10px 25px -5px rgba(5, 150, 105, 0.4)' }}>
+              Start 30-Day Free Trial
             </Link>
             <a href={PLAY_STORE_LINK} target="_blank" rel="noopener noreferrer" className="play-store-btn">
               <img src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" alt="Get it on Google Play" style={{ height: '32px' }} />
@@ -438,8 +438,8 @@ export default function Home() {
             Join the smart properties using StayPilot to maximize revenue and minimize headaches.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/auth?mode=signup" className="btn btn-primary" style={{ padding: '16px 40px', fontSize: '1.2rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              Create Free Account <ArrowRight size={20} />
+            <Link to="/pricing" className="btn btn-primary" style={{ padding: '16px 40px', fontSize: '1.2rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              Start 30-Day Free Trial <ArrowRight size={20} />
             </Link>
           </div>
         </div>

@@ -1,13 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
-import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff } from 'lucide-react';
+import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
 import { Preferences } from '@capacitor/preferences';
+import { resolveEffectivePlan } from '../utils/planEntitlements';
 
 export default function Auth() {
   const location = useLocation();
-  const { isRecovering, setIsRecovering } = useSettingsStore();
+  const navigate = useNavigate();
+  const { isRecovering, setIsRecovering, isDataLoaded, globalPlans } = useSettingsStore();
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
   const [isLogin, setIsLogin] = useState(() => {
     return !(location.search.includes('mode=signup') || location.state?.isSignUp);
@@ -33,6 +35,62 @@ export default function Auth() {
   });
 
   const [rememberMe, setRememberMe] = useState(false);
+
+  const isPromoActive = (plan) => {
+    if (!plan || !plan.offerPrice || plan.offerActive === false) return false;
+    const now = new Date().setHours(0, 0, 0, 0);
+    if (plan.offerStartDate) {
+      const start = new Date(plan.offerStartDate).setHours(0, 0, 0, 0);
+      if (now < start) return false;
+    }
+    if (plan.offerEndDate) {
+      const end = new Date(plan.offerEndDate).setHours(23, 59, 59, 999);
+      if (now > end) return false;
+    }
+    return true;
+  };
+
+  const planParam = new URLSearchParams(location.search).get('plan');
+
+  const planInfo = useMemo(() => {
+    if (!planParam || !isDataLoaded || !globalPlans) return null;
+    const resolved = resolveEffectivePlan(planParam, globalPlans);
+    if (!resolved || resolved.isUnknownPlan || !resolved.planConfig) {
+      return null;
+    }
+    const config = resolved.planConfig;
+
+    if (config.enabled === false || config.status === 'disabled' || resolved.planKey === 'free' || config.key === 'free') {
+      return null;
+    }
+
+    const promoActive = isPromoActive(config);
+    const regularPrice = Number(config.price || 0);
+    const promoPrice = Number(config.offerPrice || 0);
+    const currentPrice = promoActive && promoPrice > 0 ? promoPrice : regularPrice;
+    const trialDays = config.trialDurationDays ? Number(config.trialDurationDays) : 30;
+
+    return {
+      key: resolved.planKey,
+      name: config.name || resolved.planKey,
+      regularPrice,
+      promoPrice,
+      hasPromo: promoActive && promoPrice > 0,
+      currentPrice,
+      trialDays,
+      maxProperties: config.maxResorts ?? config.maxProperties ?? 1,
+      maxRooms: config.maxRooms ?? 'Unlimited',
+      maxStaff: config.maxStaff ?? 'Unlimited',
+    };
+  }, [planParam, globalPlans, isDataLoaded]);
+
+  useEffect(() => {
+    if (!isLogin && !isForgotPassword && !isRecovering && isDataLoaded) {
+      if (!planInfo) {
+        navigate('/pricing', { replace: true });
+      }
+    }
+  }, [isLogin, isForgotPassword, isRecovering, isDataLoaded, planInfo, navigate]);
 
 
   useEffect(() => {
@@ -142,6 +200,40 @@ export default function Auth() {
     }
   };
 
+  if (!isLogin && !isForgotPassword && !isRecovering && !isDataLoaded) {
+    return (
+      <div style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        background: isMobile 
+          ? 'var(--bg-color)' 
+          : 'linear-gradient(rgba(17,20,24,0.6), rgba(17,20,24,0.8)), url(/hotel_auth_bg.jpg) center/cover no-repeat',
+        padding: isMobile ? '0' : '1.5rem'
+      }}>
+        <div className="card" style={{ 
+          width: '100%', 
+          maxWidth: isMobile ? '100%' : '450px', 
+          minHeight: isMobile ? '100vh' : 'auto',
+          padding: isMobile ? '2rem 1.5rem' : '2.5rem', 
+          border: isMobile ? 'none' : undefined,
+          boxShadow: isMobile ? 'none' : undefined,
+          borderRadius: isMobile ? '0' : undefined,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '1rem',
+          textAlign: 'center'
+        }}>
+          <Loader2 className="animate-spin" size={36} style={{ color: 'var(--primary)' }} />
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>Loading plan information...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ 
       minHeight: '100vh', 
@@ -179,14 +271,14 @@ export default function Auth() {
             </Link>
           </div>
           <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
-            {isRecovering ? 'Reset Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Create an Account'))}
+            {isRecovering ? 'Reset Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Create Your Stay Pilot Account'))}
           </h1>
           <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.9rem' : '1rem' }}>
             {isRecovering 
               ? 'Enter your new secure password below'
               : (isForgotPassword 
                 ? 'Enter your email to receive a reset link' 
-                : (isLogin ? 'Sign in to manage your property.' : 'Register your hotel owner account to get started'))}
+                : (isLogin ? 'Sign in to manage your property.' : `Start your ${planInfo?.trialDays || 30}-day free trial`))}
           </p>
         </div>
 
@@ -215,6 +307,95 @@ export default function Auth() {
             fontSize: '0.875rem'
           }}>
             {message}
+          </div>
+        )}
+
+        {!isLogin && !isForgotPassword && !isRecovering && planInfo && (
+          <div style={{
+            background: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
+            borderRadius: '12px',
+            padding: '1rem 1.25rem',
+            marginBottom: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '0.5rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontWeight: '700', fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                    {planInfo.name} Plan
+                  </span>
+                  {planInfo.hasPromo && (
+                    <span style={{
+                      background: 'rgba(234, 179, 8, 0.15)',
+                      color: '#eab308',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '999px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      <Sparkles size={12} /> Special Offer
+                    </span>
+                  )}
+                </div>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem', margin: 0 }}>
+                  {planInfo.maxProperties} {planInfo.maxProperties === 1 ? 'Property' : 'Properties'} • {planInfo.maxRooms} Rooms • {planInfo.maxStaff} Staff
+                </p>
+              </div>
+              <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--primary)', whiteSpace: 'nowrap' }}>
+                  ₹{planInfo.currentPrice.toLocaleString('en-IN')}
+                  <span style={{ fontSize: '0.75rem', fontWeight: 'normal', color: 'var(--text-muted)' }}>/mo</span>
+                </div>
+                {planInfo.hasPromo && planInfo.regularPrice > 0 && (
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textDecoration: 'line-through', whiteSpace: 'nowrap' }}>
+                    ₹{planInfo.regularPrice.toLocaleString('en-IN')}/mo
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.5rem 1rem',
+              fontSize: '0.8rem',
+              color: 'var(--text-muted)',
+              paddingTop: '0.5rem',
+              borderTop: '1px dashed var(--border-color, rgba(255,255,255,0.1))'
+            }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', color: '#48bb78', fontWeight: '500' }}>
+                <CheckCircle2 size={14} /> {planInfo.trialDays}-day free trial
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                <CheckCircle2 size={14} /> No card required today
+              </span>
+            </div>
+
+            <div style={{ textAlign: 'right', marginTop: '-0.25rem' }}>
+              <button
+                type="button"
+                onClick={() => navigate('/pricing')}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--primary)',
+                  fontSize: '0.8rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  padding: 0,
+                  textDecoration: 'underline'
+                }}
+              >
+                Change Plan
+              </button>
+            </div>
           </div>
         )}
 
@@ -370,7 +551,7 @@ export default function Auth() {
             style={{ width: '100%', height: '50px', fontSize: '1rem', marginTop: '1rem' }}
             disabled={loading}
           >
-            {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account</>)))}
+            {loading ? 'Processing...' : (isRecovering ? 'Update Password' : (isForgotPassword ? 'Send Reset Link' : (isLogin ? <><LogIn size={20} /> Sign In</> : <><UserPlus size={20} /> Create Account & Start Free Trial</>)))}
           </button>
         </form>
 
@@ -392,7 +573,13 @@ export default function Auth() {
                 {isLogin ? "Don't have an account? " : "Already have an account? "}
               </span>
               <button 
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={() => {
+                  if (isLogin) {
+                    navigate('/pricing');
+                  } else {
+                    setIsLogin(true);
+                  }
+                }}
                 style={{ 
                   background: 'none', 
                   border: 'none', 

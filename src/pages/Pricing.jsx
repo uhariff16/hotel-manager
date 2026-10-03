@@ -307,11 +307,11 @@ export default function Pricing() {
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link to="/auth" className="desktop-btn" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#0F2C59', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sign In</Link>
-          <Link to="/auth?mode=signup" className="btn" style={{ 
+          <Link to="/pricing" className="btn" style={{ 
             padding: '0.65rem 1.6rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
             color: 'white', borderRadius: '8px', fontWeight: 700, textDecoration: 'none',
             boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)', fontFamily: "'Plus Jakarta Sans', sans-serif"
-          }}>Get Started Free</Link>
+          }}>Get Started</Link>
         </div>
       </header>
 

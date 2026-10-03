@@ -274,7 +274,7 @@ export default function HowItWorks() {
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <Link to="/auth" className="desktop-btn" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#0F2C59', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sign In</Link>
-          <Link to="/auth?mode=signup" className="btn" style={{ padding: '0.65rem 1.6rem', fontWeight: 700, borderRadius: '8px', color: 'white', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', border: 'none', boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Get Started</Link>
+          <Link to="/pricing" className="btn" style={{ padding: '0.65rem 1.6rem', fontWeight: 700, borderRadius: '8px', color: 'white', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', border: 'none', boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Get Started</Link>
         </div>
       </header>
 
@@ -311,8 +311,8 @@ export default function HowItWorks() {
             Stay Pilot connects your property, bookings, and finances in one simple workflow — helping you know what is booked, what you earn, what you spend, and what you make.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-            <Link to="/auth?mode=signup" className="btn btn-primary" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Get Started Free
+            <Link to="/pricing" className="btn btn-primary" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Start 30-Day Free Trial
             </Link>
             <Link to="/auth" className="btn btn-outline" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               Sign In
@@ -447,8 +447,8 @@ export default function HowItWorks() {
             Set up your property, manage your stays, track your finances and make better decisions with Stay Pilot.
           </p>
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap', marginBottom: '1.5rem' }}>
-            <Link to="/auth?mode=signup" className="btn btn-primary" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-              Get Started Free
+            <Link to="/pricing" className="btn btn-primary" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              Start 30-Day Free Trial
             </Link>
             <Link to="/auth" className="btn btn-outline" style={{ padding: '1.1rem 2.8rem', fontSize: '1.1rem', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
               Sign In
