@@ -172,7 +172,6 @@ export default function OnboardingWizard() {
       capacity: 2,
       rates: initRates
     }]);
-    setRoomMode('manual');
   };
 
   const updateRoom = (id, field, value, rpName = null) => {

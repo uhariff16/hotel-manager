@@ -14,16 +14,6 @@ export default function CottagesRooms() {
   const { session, activeResortId, profile, globalPlans } = useSettingsStore();
   const navigate = useNavigate();
   
-  // Dynamic tenant entitlement resolution
-  const entitlements = useMemo(() => {
-    return getTenantEntitlements({
-      profile,
-      globalPlans,
-      cottages: cottages || [],
-      rooms: rooms || []
-    });
-  }, [profile, globalPlans, cottages, rooms]);
-  
   // Tab State: 'properties' | 'categories' | 'rates'
   const [activeTab, setActiveTab] = useState('properties');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
@@ -41,6 +31,16 @@ export default function CottagesRooms() {
   
   const [categoryRates, setCategoryRates] = useState([]);
   const [propertyRates, setPropertyRates] = useState([]);
+
+  // Dynamic tenant entitlement resolution
+  const entitlements = useMemo(() => {
+    return getTenantEntitlements({
+      profile,
+      globalPlans,
+      cottages: cottages || [],
+      rooms: rooms || []
+    });
+  }, [profile, globalPlans, cottages, rooms]);
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
