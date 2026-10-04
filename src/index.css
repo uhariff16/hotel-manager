@@ -1223,7 +1223,8 @@ input[type="date"], input[type="time"] {
 .auth-input {
   width: 100% !important;
   height: 48px !important;
-  padding: 0 1rem !important;
+  padding-left: 3.125rem !important;
+  padding-right: 1.25rem !important;
   border-radius: var(--radius-md) !important;
   border: 1px solid var(--auth-input-border) !important;
   background: var(--auth-input-bg) !important;
@@ -1234,14 +1235,35 @@ input[type="date"], input[type="time"] {
   box-shadow: none !important;
 }
 
-.auth-input::placeholder {
-  color: var(--auth-input-placeholder) !important;
+.auth-input-with-eye {
+  padding-right: 3.125rem !important;
 }
 
-.auth-input:focus {
-  outline: none !important;
-  border-color: var(--brand-emerald) !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+.auth-input-icon-left {
+  position: absolute !important;
+  left: 1rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  pointer-events: none !important;
+  color: var(--auth-input-placeholder) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.auth-input-eye-btn {
+  position: absolute !important;
+  right: 1rem !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--auth-input-placeholder) !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }
 
 .auth-icon {
@@ -1301,5 +1323,222 @@ input[type="date"], input[type="time"] {
   background-color: var(--auth-input-bg) !important;
   border: 1px solid var(--auth-card-border) !important;
   border-radius: 12px !important;
+}
+
+/* Auth Left Panel Feature Cards */
+.auth-value-panel {
+  flex: 1 1 50%;
+  max-width: 500px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  padding: 0.5rem 0.5rem 0.5rem 0;
+}
+
+.auth-hero-heading {
+  font-size: 2.35rem !important;
+  font-weight: 800 !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.03em !important;
+  color: #ffffff !important;
+  margin: 0 0 0.6rem 0 !important;
+}
+
+.auth-hero-heading-highlight {
+  color: var(--brand-emerald, #10b981) !important;
+  background: linear-gradient(135deg, #10b981 0%, #34d399 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.auth-hero-subtitle {
+  font-size: 1.05rem !important;
+  color: rgba(255, 255, 255, 0.75) !important;
+  margin: 0 !important;
+  line-height: 1.5 !important;
+}
+
+.auth-feature-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, 1fr) !important;
+  gap: 1rem !important;
+  margin-top: 0.25rem !important;
+}
+
+.auth-feature-card {
+  background: rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 14px !important;
+  padding: 1.1rem 1rem !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 0.5rem !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.auth-feature-card:hover {
+  transform: translateY(-2px) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  background: rgba(255, 255, 255, 0.08) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2), 0 0 12px rgba(16, 185, 129, 0.1) !important;
+}
+
+.auth-feature-icon-wrapper {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 10px !important;
+  background: rgba(16, 185, 129, 0.15) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: #10b981 !important;
+  margin-bottom: 0.25rem !important;
+}
+
+.auth-feature-title {
+  font-size: 0.975rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin: 0 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.auth-feature-description {
+  font-size: 0.825rem !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  margin: 0 !important;
+  line-height: 1.35 !important;
+}
+
+.auth-brand-divider {
+  border-top: 1px solid rgba(255, 255, 255, 0.12) !important;
+  padding-top: 1.25rem !important;
+  margin-top: 0.25rem !important;
+}
+
+.auth-brand-tagline {
+  font-size: 0.95rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.01em !important;
+}
+
+.auth-brand-subtagline {
+  font-size: 0.825rem !important;
+  color: rgba(255, 255, 255, 0.6) !important;
+  margin-top: 0.35rem !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 0.4rem !important;
+}
+
+/* Settings Workspace Restructure */
+.settings-container {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.settings-header-title {
+  font-size: 1.85rem !important;
+  font-weight: 800 !important;
+  color: var(--text-main) !important;
+  margin: 0 0 0.35rem 0 !important;
+  letter-spacing: -0.02em !important;
+}
+
+.settings-header-subtitle {
+  color: var(--text-muted) !important;
+  font-size: 0.95rem !important;
+  margin: 0 !important;
+}
+
+.settings-nav-bar {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: nowrap !important;
+  gap: 0.5rem !important;
+  border-bottom: 1px solid var(--border) !important;
+  padding-bottom: 0.75rem !important;
+  overflow-x: auto !important;
+  scrollbar-width: thin !important;
+  -webkit-overflow-scrolling: touch !important;
+}
+
+.settings-nav-button {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 0.6rem !important;
+  padding: 0.6rem 1.1rem !important;
+  border-radius: 10px !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  border: 1px solid transparent !important;
+  cursor: pointer !important;
+  white-space: nowrap !important;
+  flex-shrink: 0 !important;
+  transition: all 0.2s ease !important;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.settings-nav-button:hover:not(.active) {
+  background: var(--bg-secondary) !important;
+  color: var(--text-main) !important;
+}
+
+.settings-nav-button.active {
+  background: var(--primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25) !important;
+}
+
+.settings-card {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  padding: 1.75rem !important;
+  box-shadow: var(--shadow-sm) !important;
+}
+
+.settings-card-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 0.85rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.settings-card-icon {
+  width: 40px !important;
+  height: 40px !important;
+  border-radius: 10px !important;
+  background: rgba(16, 185, 129, 0.12) !important;
+  border: 1px solid rgba(16, 185, 129, 0.25) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--primary) !important;
+  flex-shrink: 0 !important;
+}
+
+.settings-card-title {
+  font-size: 1.2rem !important;
+  font-weight: 700 !important;
+  color: var(--text-main) !important;
+  margin: 0 0 0.25rem 0 !important;
+}
+
+.settings-card-desc {
+  font-size: 0.875rem !important;
+  color: var(--text-muted) !important;
+  margin: 0 !important;
+  line-height: 1.4 !important;
 }
 

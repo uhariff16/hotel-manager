@@ -2,20 +2,21 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { Plus, Trash2, Edit2, Tag, CalendarDays, X, Check, Building2, BedDouble, Layers, MoreVertical, ChevronDown, ChevronUp, ChevronRight, Wand2 } from 'lucide-react';
+import { Plus, Trash2, Edit2, Tag, CalendarDays, X, Check, Building2, BedDouble, Layers, MoreVertical, ChevronDown, ChevronUp, ChevronRight, Wand2, PackagePlus } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { getTenantEntitlements } from '../utils/planEntitlements';
+import { PricingSettings } from './Settings';
 
 const PREDEFINED_CATEGORIES = [
   'Standard Room', 'Deluxe Room', 'Premium Room', 'Suite', 'Family Room', 'Dormitory', 'Tent', 'Cottage'
 ];
 
 export default function CottagesRooms() {
-  const { session, activeResortId, profile, globalPlans } = useSettingsStore();
+  const { session, activeResortId, profile, globalPlans, resorts } = useSettingsStore();
   const navigate = useNavigate();
   
-  // Tab State: 'properties' | 'categories' | 'rates'
-  const [activeTab, setActiveTab] = useState('properties');
+  // Tab State: 'properties' | 'categories' | 'rates' | 'addons'
+  const [activeTab, setActiveTab] = useState(() => new URLSearchParams(window.location.search).get('tab') || 'properties');
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -512,76 +513,34 @@ export default function CottagesRooms() {
       </div>
 
       {/* Primary Section Tabs */}
-      <div style={{ 
-        display: 'flex', 
-        borderBottom: '2px solid var(--border)', 
-        marginBottom: '1.75rem',
-        gap: '0.5rem',
-        overflowX: 'auto',
-        WebkitOverflowScrolling: 'touch'
-      }}>
+      <div className="settings-nav-bar" style={{ marginBottom: '1.75rem' }}>
         <button
+          type="button"
           onClick={() => setActiveTab('properties')}
-          style={{ 
-            padding: isMobile ? '0.65rem 0.85rem' : '0.75rem 1.5rem', 
-            background: 'transparent', 
-            border: 'none', 
-            borderBottom: activeTab === 'properties' ? '3px solid var(--primary)' : '3px solid transparent', 
-            color: activeTab === 'properties' ? 'var(--primary)' : 'var(--text-muted)', 
-            fontWeight: 700, 
-            fontSize: isMobile ? '0.85rem' : '0.95rem',
-            cursor: 'pointer', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.4rem', 
-            whiteSpace: 'nowrap',
-            marginBottom: '-2px',
-            transition: 'all 0.2s'
-          }}
+          className={`settings-nav-button ${activeTab === 'properties' ? 'active' : ''}`}
         >
           <Building2 size={18} /> Properties & Rooms
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('categories')}
-          style={{ 
-            padding: isMobile ? '0.65rem 0.85rem' : '0.75rem 1.5rem', 
-            background: 'transparent', 
-            border: 'none', 
-            borderBottom: activeTab === 'categories' ? '3px solid var(--primary)' : '3px solid transparent', 
-            color: activeTab === 'categories' ? 'var(--primary)' : 'var(--text-muted)', 
-            fontWeight: 700, 
-            fontSize: isMobile ? '0.85rem' : '0.95rem',
-            cursor: 'pointer', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.4rem', 
-            whiteSpace: 'nowrap',
-            marginBottom: '-2px',
-            transition: 'all 0.2s'
-          }}
+          className={`settings-nav-button ${activeTab === 'categories' ? 'active' : ''}`}
         >
           <Tag size={18} /> Room Categories
         </button>
         <button
+          type="button"
           onClick={() => setActiveTab('rates')}
-          style={{ 
-            padding: isMobile ? '0.65rem 0.85rem' : '0.75rem 1.5rem', 
-            background: 'transparent', 
-            border: 'none', 
-            borderBottom: activeTab === 'rates' ? '3px solid var(--primary)' : '3px solid transparent', 
-            color: activeTab === 'rates' ? 'var(--primary)' : 'var(--text-muted)', 
-            fontWeight: 700, 
-            fontSize: isMobile ? '0.85rem' : '0.95rem',
-            cursor: 'pointer', 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.4rem', 
-            whiteSpace: 'nowrap',
-            marginBottom: '-2px',
-            transition: 'all 0.2s'
-          }}
+          className={`settings-nav-button ${activeTab === 'rates' ? 'active' : ''}`}
         >
           <CalendarDays size={18} /> Rate Plans
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab('addons')}
+          className={`settings-nav-button ${activeTab === 'addons' ? 'active' : ''}`}
+        >
+          <PackagePlus size={18} /> Add-ons
         </button>
       </div>
 
@@ -922,6 +881,11 @@ export default function CottagesRooms() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* --- TAB 4: ADD-ONS & PRICING --- */}
+      {activeTab === 'addons' && (
+        <PricingSettings activeResortId={activeResortId} resorts={resorts} />
       )}
 
       {/* MODALS */}

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useSettingsStore } from '../lib/store';
-import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff, Loader2, CheckCircle2, Sparkles } from 'lucide-react';
+import { LogIn, UserPlus, ShieldCheck, Mail, Lock, User, KeyRound, Eye, EyeOff, Loader2, CheckCircle2, Sparkles, CalendarDays, IndianRupee, TrendingUp, Hotel } from 'lucide-react';
 import { Preferences } from '@capacitor/preferences';
 import { resolveEffectivePlan } from '../utils/planEntitlements';
 
@@ -10,13 +10,15 @@ export default function Auth() {
   const location = useLocation();
   const navigate = useNavigate();
   const { isRecovering, setIsRecovering, isDataLoaded, globalPlans } = useSettingsStore();
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const isMobile = windowWidth <= 768;
+  const isDesktop = windowWidth >= 1100;
   const [isLogin, setIsLogin] = useState(() => {
     return !(location.search.includes('mode=signup') || location.state?.isSignUp);
   });
 
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    const handleResize = () => setWindowWidth(window.innerWidth);
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
@@ -262,9 +264,100 @@ export default function Auth() {
       paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))',
       paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))'
     }}>
-      <div className="card auth-card" style={{ 
+      <div style={{
+        width: '100%',
+        maxWidth: isDesktop ? '1120px' : (isMobile ? '100%' : (isLogin || isForgotPassword || isRecovering ? '460px' : '560px')),
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: isDesktop ? '3.5rem' : '0'
+      }}>
+        {isDesktop && (
+          <div className="auth-value-panel">
+
+
+
+
+
+
+
+
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: '#10b981',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              padding: '0.35rem 0.85rem',
+              borderRadius: '999px',
+              fontSize: '0.8rem',
+              fontWeight: '700',
+              letterSpacing: '0.05em',
+              width: 'fit-content'
+            }}>
+              STAY PILOT
+            </div>
+
+            <div>
+              <h1 className="auth-hero-heading">
+                Run your property<br />
+                with <span className="auth-hero-heading-highlight">clarity.</span>
+              </h1>
+              <p className="auth-hero-subtitle">
+                Bookings, income and expenses — all in one place.
+              </p>
+            </div>
+
+            <div className="auth-feature-grid">
+              <div className="auth-feature-card">
+                <div className="auth-feature-icon-wrapper">
+                  <CalendarDays size={20} />
+                </div>
+                <h3 className="auth-feature-title">Bookings</h3>
+                <p className="auth-feature-description">Keep every stay organized</p>
+              </div>
+
+              <div className="auth-feature-card">
+                <div className="auth-feature-icon-wrapper">
+                  <IndianRupee size={20} />
+                </div>
+                <h3 className="auth-feature-title">Financials</h3>
+                <p className="auth-feature-description">Track income & expenses</p>
+              </div>
+
+              <div className="auth-feature-card">
+                <div className="auth-feature-icon-wrapper">
+                  <TrendingUp size={20} />
+                </div>
+                <h3 className="auth-feature-title">Insights</h3>
+                <p className="auth-feature-description">See occupancy & performance</p>
+              </div>
+
+              <div className="auth-feature-card">
+                <div className="auth-feature-icon-wrapper">
+                  <Hotel size={20} />
+                </div>
+                <h3 className="auth-feature-title">Properties</h3>
+                <p className="auth-feature-description">Built for every stay</p>
+              </div>
+            </div>
+
+            <div className="auth-brand-divider">
+              <div className="auth-brand-tagline">
+                Know Your Bookings. Know Your Numbers.
+              </div>
+              <div className="auth-brand-subtagline">
+                Bookings • Income • Expenses • Simplified
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="card auth-card" style={{ 
+          flex: isDesktop ? '1 1 50%' : 'none', 
         width: '100%', 
-        maxWidth: isMobile ? '100%' : (isLogin || isForgotPassword || isRecovering ? '460px' : '560px'), 
+        maxWidth: isDesktop ? '480px' : (isMobile ? '100%' : (isLogin || isForgotPassword || isRecovering ? '460px' : '560px')), 
         background: 'var(--auth-card-bg)',
         padding: isMobile ? '1.5rem 1.25rem' : '2.5rem 2.25rem', 
         border: isMobile ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255, 255, 255, 0.1)',
@@ -421,14 +514,14 @@ export default function Auth() {
             <div className="form-group">
               <label className="auth-label">Full Name</label>
               <div style={{ position: 'relative' }}>
-                <span className="auth-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
+                <span className="auth-input-icon-left">
                   <User size={18} />
                 </span>
                 <input 
                   type="text" 
                   required 
                   className="auth-input" 
-                  style={{ paddingLeft: '3rem' }}
+
                   placeholder="John Doe"
                   value={formData.fullName}
                   onChange={e => setFormData({...formData, fullName: e.target.value})}
@@ -441,14 +534,14 @@ export default function Auth() {
             <div className="form-group">
               <label className="auth-label">{isLogin ? 'Email or Username' : 'Email Address'}</label>
               <div style={{ position: 'relative' }}>
-                <span className="auth-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
+                <span className="auth-input-icon-left">
                   {isLogin && !formData.email.includes('@') && formData.email.length > 0 ? <User size={18} /> : <Mail size={18} />}
                 </span>
                 <input 
                   type={isLogin ? "text" : "email"} 
                   required 
                   className="auth-input" 
-                  style={{ paddingLeft: '3rem' }}
+
                   placeholder={isLogin ? "email@example.com or username" : "name@company.com"}
                   value={formData.email}
                   onChange={e => setFormData({...formData, email: e.target.value})}
@@ -475,14 +568,14 @@ export default function Auth() {
                 )}
               </div>
               <div style={{ position: 'relative' }}>
-                <span className="auth-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
+                <span className="auth-input-icon-left">
                   <Lock size={18} />
                 </span>
                 <input 
                   type={showPassword ? "text" : "password"} 
                   required 
-                  className="auth-input" 
-                  style={{ paddingLeft: '3rem', paddingRight: '3rem' }}
+                  className="auth-input auth-input-with-eye" 
+
                   placeholder="••••••••"
                   value={formData.password}
                   onChange={e => setFormData({...formData, password: e.target.value})}
@@ -490,19 +583,19 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '1rem',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--auth-input-placeholder)',
-                    cursor: 'pointer',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
+                  className="auth-input-eye-btn"
+
+
+
+
+
+
+
+
+
+
+
+
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -528,14 +621,14 @@ export default function Auth() {
             <div className="form-group">
               <label className="auth-label">Confirm Password</label>
               <div style={{ position: 'relative' }}>
-                <span className="auth-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
+                <span className="auth-input-icon-left">
                   <Lock size={18} />
                 </span>
                 <input 
                   type={showConfirmPassword ? "text" : "password"} 
                   required 
-                  className="auth-input" 
-                  style={{ paddingLeft: '3rem', paddingRight: '3rem' }}
+                  className="auth-input auth-input-with-eye" 
+
                   placeholder="••••••••"
                   value={formData.confirmPassword}
                   onChange={e => setFormData({...formData, confirmPassword: e.target.value})}
@@ -543,19 +636,19 @@ export default function Auth() {
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                  style={{
-                    position: 'absolute',
-                    right: '1rem',
-                    top: '50%',
-                    transform: 'translateY(-50%)',
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--auth-input-placeholder)',
-                    cursor: 'pointer',
-                    padding: 0,
-                    display: 'flex',
-                    alignItems: 'center'
-                  }}
+                  className="auth-input-eye-btn"
+
+
+
+
+
+
+
+
+
+
+
+
                 >
                   {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
@@ -617,6 +710,7 @@ export default function Auth() {
             &larr; Back to Home
           </Link>
         </div>
+      </div>
       </div>
     </div>
   );

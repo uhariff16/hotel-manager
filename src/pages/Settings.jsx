@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor, X, Tag } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor, X, Tag, Receipt, ReceiptText, PackagePlus, UserRound, Building2, Lock } from 'lucide-react';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
@@ -73,7 +73,7 @@ Please clear the dues at your earliest convenience to ensure a smooth check-in.
 📞 Contact: {resort_phone}`;
 
 // Add-on & Pricing Settings Component
-const PricingSettings = ({ activeResortId, resorts }) => {
+export const PricingSettings = ({ activeResortId, resorts }) => {
   const [globalPricing, setGlobalPricing] = useState({ breakfast: '', 'Fire camp': '', 'BBQ': '', 'Food': '' });
   const [cottages, setCottages] = useState([]);
   const [selectedCottage, setSelectedCottage] = useState('global');
@@ -213,7 +213,16 @@ export default function Settings() {
   const [savingComm, setSavingComm] = useState(false);
   const [savingResort, setSavingResort] = useState(false);
   const [savingGeneral, setSavingGeneral] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState(() => {
+    return new URLSearchParams(window.location.search).get('tab') || 'general';
+  });
+
+  useEffect(() => {
+    const urlTheme = new URLSearchParams(window.location.search).get('theme');
+    if (urlTheme) {
+      document.documentElement.setAttribute('data-theme', urlTheme);
+    }
+  }, []);
   const [resortName, setResortName] = useState('');
   const [resortPhone, setResortPhone] = useState('');
   const [wifiPassword, setWifiPassword] = useState('chalet2026');
@@ -764,278 +773,123 @@ export default function Settings() {
   };
 
   return (
-    <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      
-      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '300px 1fr', gap: '2rem' }}>
-        {/* Sidebar Nav */}
-        <aside style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+    <div className="settings-container">
+      <header>
+        <h1 className="settings-header-title">Settings</h1>
+        <p className="settings-header-subtitle">
+          Manage your user profile, billing details, communications, and system preferences.
+        </p>
+      </header>
+
+      <div className="settings-nav-bar">
+        <button 
+          type="button"
+          onClick={() => setActiveTab('general')}
+          className={`settings-nav-button ${activeTab === 'general' ? 'active' : ''}`}
+        >
+          <SettingsIcon size={18} /> General
+        </button>
+
+        <button 
+          type="button"
+          onClick={() => setActiveTab('billing_gst')}
+          className={`settings-nav-button ${activeTab === 'billing_gst' ? 'active' : ''}`}
+        >
+          <Building2 size={18} /> Billing & GST
+        </button>
+
+        {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalTemplatesEnabled && profile?.feature_comm_enabled !== false)) && (
           <button 
             type="button"
-            onClick={() => setActiveTab('general')}
-            style={{ 
-              padding: '0.75rem 1rem', 
-              background: activeTab === 'general' ? 'var(--primary)' : 'transparent', 
-              color: activeTab === 'general' ? 'white' : 'var(--text-muted)', 
-              borderRadius: '8px', 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem',
-              border: 'none',
-              textAlign: 'left',
-              width: '100%',
-              fontSize: '0.95rem',
-              fontWeight: 500,
-              transition: 'all 0.2s'
-            }}
+            onClick={() => setActiveTab('templates')}
+            className={`settings-nav-button ${activeTab === 'templates' ? 'active' : ''}`}
           >
-            <SettingsIcon size={18} /> General Settings
+            <MessageCircle size={18} /> Templates
           </button>
+        )}
 
+        {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
           <button 
             type="button"
-            onClick={() => setActiveTab('pricing')}
-            style={{ 
-              padding: '0.75rem 1rem', 
-              background: activeTab === 'pricing' ? 'var(--primary)' : 'transparent', 
-              color: activeTab === 'pricing' ? 'white' : 'var(--text-muted)', 
-              borderRadius: '8px', 
-              cursor: 'pointer', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.75rem',
-              border: 'none',
-              textAlign: 'left',
-              width: '100%',
-              fontSize: '0.95rem',
-              fontWeight: 500,
-              transition: 'all 0.2s'
-            }}
+            onClick={() => setActiveTab('data_manager')}
+            className={`settings-nav-button ${activeTab === 'data_manager' ? 'active' : ''}`}
           >
-            <Tag size={18} /> Add-ons & Pricing
+            <Database size={18} /> Data
           </button>
+        )}
 
-          {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalTemplatesEnabled && profile?.feature_comm_enabled !== false)) && (
-            <button 
-              type="button"
-              onClick={() => setActiveTab('templates')}
-              style={{ 
-                padding: '0.75rem 1rem', 
-                background: activeTab === 'templates' ? 'var(--primary)' : 'transparent', 
-                color: activeTab === 'templates' ? 'white' : 'var(--text-muted)', 
-                borderRadius: '8px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.75rem',
-                border: 'none',
-                textAlign: 'left',
-                width: '100%',
-                fontSize: '0.95rem',
-                fontWeight: 500,
-                transition: 'all 0.2s'
-              }}
-            >
-              <MessageCircle size={18} /> Templates Management
-            </button>
-          )}
+        {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && !Capacitor.isNativePlatform() && (
+          <button 
+            type="button"
+            onClick={() => setActiveTab('invoice')}
+            className={`settings-nav-button ${activeTab === 'invoice' ? 'active' : ''}`}
+          >
+            <Receipt size={18} /> Invoices
+          </button>
+        )}
+      </div>
 
-          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
-            <button 
-              type="button"
-              onClick={() => setActiveTab('data_manager')}
-              style={{ 
-                padding: '0.75rem 1rem', 
-                background: activeTab === 'data_manager' ? 'var(--primary)' : 'transparent', 
-                color: activeTab === 'data_manager' ? 'white' : 'var(--text-muted)', 
-                borderRadius: '8px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.75rem',
-                border: 'none',
-                textAlign: 'left',
-                width: '100%',
-                fontSize: '0.95rem',
-                fontWeight: 500,
-                transition: 'all 0.2s'
-              }}
-            >
-              <Database size={18} /> Data Manager
-            </button>
-          )}
-
-          {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && !Capacitor.isNativePlatform() && (
-            <button 
-              type="button"
-              onClick={() => setActiveTab('invoice')}
-              style={{ 
-                padding: '0.75rem 1rem', 
-                background: activeTab === 'invoice' ? 'var(--primary)' : 'transparent', 
-                color: activeTab === 'invoice' ? 'white' : 'var(--text-muted)', 
-                borderRadius: '8px', 
-                cursor: 'pointer', 
-                display: 'flex', 
-                alignItems: 'center', 
-                gap: '0.75rem',
-                border: 'none',
-                textAlign: 'left',
-                width: '100%',
-                fontSize: '0.95rem',
-                fontWeight: 500,
-                transition: 'all 0.2s'
-              }}
-            >
-              <FileText size={18} /> Invoice Details
-            </button>
-          )}
-        </aside>
-
-        <main style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          {/* GENERAL SETTINGS TAB */}
-          {activeTab === 'general' && (
+      <main style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+        {/* GENERAL SETTINGS TAB */}
+        {activeTab === 'general' && (
             <>
-              <div style={{ marginBottom: '1rem' }}>
-                <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>General Settings</h1>
-                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Manage your personal profile and resort configurations.</p>
+            {/* User Profile Card */}
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-icon">
+                  <UserRound size={20} />
+                </div>
+                <div>
+                  <h2 className="settings-card-title">User Profile</h2>
+                  <p className="settings-card-desc">Update your personal identity details and account contact name.</p>
+                </div>
               </div>
-
-              {/* User Profile Card */}
-              <div className="card">
-                <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
-                  <User size={24} color="var(--primary)" /> User Profile
-                </h2>
-                <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Update your personal identity details and account contact name.</p>
-                <form onSubmit={saveGeneralSettings}>
-                  <div className="form-group">
-                    <label className="form-label">Full Name</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={userName} 
-                      onChange={e => setUserName(e.target.value)} 
-                      required 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Email Address (Read-only)</label>
+              <form onSubmit={saveGeneralSettings} style={{ maxWidth: '720px', width: '100%' }}>
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={userName} 
+                    onChange={e => setUserName(e.target.value)} 
+                    required 
+                  />
+                </div>
+                <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                    Email Address <span style={{ fontSize: '0.75rem', fontWeight: 500, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center', gap: '0.2rem', marginLeft: '0.25rem' }}><Lock size={12} /> Read-only</span>
+                  </label>
+                  <div style={{ position: 'relative' }}>
                     <input 
                       type="text" 
                       className="form-input" 
                       value={session?.user?.email || ''} 
                       disabled 
-                      style={{ opacity: 0.6, cursor: 'not-allowed' }} 
+                      style={{ opacity: 0.7, cursor: 'not-allowed', backgroundColor: 'var(--bg-secondary)', paddingRight: '2.5rem' }} 
                     />
+                    <Lock size={16} style={{ position: 'absolute', right: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
                   </div>
+                </div>
 
-                  <hr style={{ margin: '2rem 0', borderColor: 'var(--border)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />
-                  <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--text-main)' }}>Guest Billing & Taxation (GST India)</h3>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Enable and configure GST settings for generating tax-compliant invoices for your guests.</p>
-                  
-                  <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <label className="form-label" style={{ marginBottom: '0.25rem' }}>Enable GST Billing</label>
-                      <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Automatically apply GST to bookings based on the room tariff slab.</p>
-                    </div>
-                    <label className="switch">
-                      <input 
-                        type="checkbox" 
-                        checked={tenantGst.enabled}
-                        onChange={e => setTenantGst({...tenantGst, enabled: e.target.checked})}
-                      />
-                      <span className="slider round"></span>
-                    </label>
-                  </div>
-
-                  {tenantGst.enabled && (
-                    <div style={{ background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
-                      <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-main)' }}>GST Slab Configuration</h4>
-                      
-                      <div className="form-group">
-                        <label className="form-label">Tariff Slab Threshold (₹)</label>
-                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>What is the maximum Per-Room-Per-Night price before the higher tax bracket applies?</p>
-                        <input 
-                          type="number" 
-                          className="form-input" 
-                          value={tenantGst.slabThreshold} 
-                          onChange={e => setTenantGst({...tenantGst, slabThreshold: e.target.value})}
-                        />
-                      </div>
-
-                      <div style={{ display: 'flex', gap: '1rem' }}>
-                        <div className="form-group" style={{ flex: 1 }}>
-                          <label className="form-label">Lower GST Rate (%)</label>
-                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>at or below</strong> ₹{tenantGst.slabThreshold || 0}</p>
-                          <input 
-                            type="number" 
-                            className="form-input" 
-                            value={tenantGst.lowerRate} 
-                            onChange={e => setTenantGst({...tenantGst, lowerRate: e.target.value})}
-                          />
-                        </div>
-                        <div className="form-group" style={{ flex: 1 }}>
-                          <label className="form-label">Higher GST Rate (%)</label>
-                          <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>above</strong> ₹{tenantGst.slabThreshold || 0}</p>
-                          <input 
-                            type="number" 
-                            className="form-input" 
-                            value={tenantGst.higherRate} 
-                            onChange={e => setTenantGst({...tenantGst, higherRate: e.target.value})}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  <hr style={{ margin: '2rem 0', borderColor: 'var(--border)', borderStyle: 'solid', borderWidth: '1px 0 0 0' }} />
-                  <h3 style={{ fontSize: '1.25rem', marginBottom: '1rem', color: 'var(--text-main)' }}>B2B Billing Details (Optional)</h3>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Fill these out if you require GST invoices for your StayPilot software subscription.</p>
-                  
-                  <div className="form-group">
-                    <label className="form-label">Company/Legal Name</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={billingDetails.companyName} 
-                      onChange={e => setBillingDetails({...billingDetails, companyName: e.target.value})} 
-                      placeholder="e.g. Grand Resort Pvt Ltd" 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">GSTIN</label>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      value={billingDetails.gstin} 
-                      onChange={e => setBillingDetails({...billingDetails, gstin: e.target.value})} 
-                      placeholder="e.g. 29GGGGG1314R9Z6" 
-                    />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Billing Address</label>
-                    <textarea 
-                      className="form-input" 
-                      value={billingDetails.address} 
-                      onChange={e => setBillingDetails({...billingDetails, address: e.target.value})} 
-                      placeholder="Registered business address"
-                      rows={3}
-                    />
-                  </div>
-
-                  <button type="submit" className="btn btn-primary" disabled={savingGeneral}>
-                    {savingGeneral ? 'Saving...' : 'Update Profile'}
-                  </button>
-                </form>
-              </div>
+                <button type="submit" className="btn btn-primary" disabled={savingGeneral}>
+                  {savingGeneral ? 'Saving...' : 'Save Changes'}
+                </button>
+              </form>
+            </div>
 
 
               {/* Communications API Configurations */}
               {(profile?.role === 'super_admin' || (profile?.role === 'tenant_admin' && globalCommEnabled && profile?.feature_comm_enabled !== false)) && (
-                <div className="card">
-                  <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <Mail size={24} color="var(--primary)" /> Communications & Automations
-                  </h2>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Configure API settings and automated actions.</p>
+                <div className="settings-card">
+                  <div className="settings-card-header">
+                    <div className="settings-card-icon">
+                      <Mail size={20} />
+                    </div>
+                    <div>
+                      <h2 className="settings-card-title">Communications & Automations</h2>
+                      <p className="settings-card-desc">Configure API settings and automated actions.</p>
+                    </div>
+                  </div>
                   
                   <form onSubmit={saveCommSettings}>
                     {/* Email (Resend) */}
@@ -1224,10 +1078,16 @@ export default function Settings() {
               )}
 
               {/* Appearance Section */}
-              <div className="card">
-                <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <Palette size={24} color="var(--primary)" /> Appearance & Theme
-                </h2>
+              <div className="settings-card">
+                <div className="settings-card-header">
+                  <div className="settings-card-icon">
+                    <Palette size={20} />
+                  </div>
+                  <div>
+                    <h2 className="settings-card-title">Appearance & Theme</h2>
+                    <p className="settings-card-desc">Customize how the dashboard looks on your screen.</p>
+                  </div>
+                </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <p style={{ margin: 0, fontWeight: '500' }}>Theme Preference</p>
@@ -1270,17 +1130,149 @@ export default function Settings() {
             </>
           )}
 
+        {/* BILLING & GST TAB */}
+        {activeTab === 'billing_gst' && (
+          <form onSubmit={saveGeneralSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+            {/* Guest Billing & GST Card */}
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-icon">
+                  <ReceiptText size={20} />
+                </div>
+                <div>
+                  <h2 className="settings-card-title">Guest GST Billing</h2>
+                  <p className="settings-card-desc">Configure GST for guest bookings and invoices based on applicable room tariff slabs.</p>
+                </div>
+              </div>
+
+              <div style={{ padding: '1.25rem', borderRadius: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
+                  <label className="form-label" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)' }}>Enable GST Billing</label>
+                  <label className="switch" style={{ margin: 0 }}>
+                    <input 
+                      type="checkbox" 
+                      checked={tenantGst.enabled}
+                      onChange={e => setTenantGst({...tenantGst, enabled: e.target.checked})}
+                    />
+                    <span className="slider round"></span>
+                  </label>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Apply GST to eligible guest bookings and invoices based on the applicable room tariff slab.</p>
+              </div>
+
+              {tenantGst.enabled && (
+                <div style={{ background: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                  <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: 700 }}>GST Slab Configuration</h4>
+                  
+                  <div className="form-group">
+                    <label className="form-label">Tariff Slab Threshold (₹)</label>
+                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>What is the maximum Per-Room-Per-Night price before the higher tax bracket applies?</p>
+                    <input 
+                      type="number" 
+                      className="form-input" 
+                      value={tenantGst.slabThreshold} 
+                      onChange={e => setTenantGst({...tenantGst, slabThreshold: e.target.value})}
+                    />
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                    <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                      <label className="form-label">Lower GST Rate (%)</label>
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>at or below</strong> ₹{tenantGst.slabThreshold || 0}</p>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        value={tenantGst.lowerRate} 
+                        onChange={e => setTenantGst({...tenantGst, lowerRate: e.target.value})}
+                      />
+                    </div>
+                    <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                      <label className="form-label">Higher GST Rate (%)</label>
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>above</strong> ₹{tenantGst.slabThreshold || 0}</p>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        value={tenantGst.higherRate} 
+                        onChange={e => setTenantGst({...tenantGst, higherRate: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Property GST Details Card */}
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-icon">
+                  <Building2 size={20} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <h2 className="settings-card-title">Property GST Details</h2>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 500, padding: '2px 8px', borderRadius: '12px', background: 'var(--bg-secondary)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Optional</span>
+                  </div>
+                  <p className="settings-card-desc">Business and GST information used on your guest invoices.</p>
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">Property / Legal Name</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={billingDetails.companyName} 
+                    onChange={e => setBillingDetails({...billingDetails, companyName: e.target.value})} 
+                    placeholder="e.g. Grand Resort Pvt Ltd" 
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label">GSTIN</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={billingDetails.gstin} 
+                    onChange={e => setBillingDetails({...billingDetails, gstin: e.target.value})} 
+                    placeholder="e.g. 29GGGGG1314R9Z6" 
+                  />
+                </div>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Registered Address</label>
+                <textarea 
+                  className="form-input" 
+                  value={billingDetails.address} 
+                  onChange={e => setBillingDetails({...billingDetails, address: e.target.value})} 
+                  placeholder="Registered business address"
+                  rows={3}
+                />
+              </div>
+
+              <button type="submit" className="btn btn-primary" disabled={savingGeneral} style={{ marginTop: '0.5rem' }}>
+                {savingGeneral ? 'Saving...' : 'Save GST Settings'}
+              </button>
+            </div>
+          </form>
+        )}
+
           {/* TEMPLATES MANAGEMENT TAB */}
           {activeTab === 'pricing' && (
             <PricingSettings activeResortId={activeResortId} resorts={resorts} />
           )}
 
           {activeTab === 'templates' && (profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
-            <div className="card">
-              <h2 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <MessageCircle size={24} color="var(--primary)" /> Templates Management
-              </h2>
-              <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem' }}>Customize templates and variables for client-side WhatsApp messaging.</p>
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-icon">
+                  <MessageCircle size={20} />
+                </div>
+                <div>
+                  <h2 className="settings-card-title">Templates Management</h2>
+                  <p className="settings-card-desc">Customize templates and variables for client-side WhatsApp messaging.</p>
+                </div>
+              </div>
 
               <form onSubmit={saveCommSettings}>
                 {/* WhatsApp Text Templates */}
@@ -1513,13 +1505,16 @@ export default function Settings() {
           {activeTab === 'data_manager' && (
             <>
               {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
-                <div className="card" style={{ border: '1px solid var(--danger)' }}>
-                  <h2 style={{ marginBottom: '1rem', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <ShieldAlert size={24} /> Data Manager (Cleanup)
-                  </h2>
-                  <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem', fontSize: '0.9rem', lineHeight: 1.5 }}>
-                      Select a year to analyze old operational data (bookings, incomes, expenses). You can permanently clean up this data to declutter your system and improve performance.
-                    </p>
+                <div className="settings-card">
+                  <div className="settings-card-header">
+                    <div className="settings-card-icon" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.25)' }}>
+                      <Database size={20} />
+                    </div>
+                    <div>
+                      <h2 className="settings-card-title">Data Manager & Retention Policy</h2>
+                      <p className="settings-card-desc">Manage data retention policies and safely purge archived operational records.</p>
+                    </div>
+                  </div>
                     
                     <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
                       <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Guest ID Retention Policy</h3>
@@ -1660,30 +1655,30 @@ export default function Settings() {
               )}
             </>
           )}
-          {activeTab === 'invoice' && (
-            <>
-              <div style={{ marginBottom: '1rem' }}>
-                <h1 style={{ fontSize: '1.75rem', marginBottom: '0.25rem' }}>Invoice Details</h1>
-                <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Manage specific contact details and layout settings for printable receipts.</p>
+          {activeTab === 'invoice' && (profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && !Capacitor.isNativePlatform() && (
+            <div className="settings-card">
+              <div className="settings-card-header">
+                <div className="settings-card-icon">
+                  <Receipt size={20} />
+                </div>
+                <div>
+                  <h2 className="settings-card-title">Invoice & Receipt Settings</h2>
+                  <p className="settings-card-desc">Manage property contact details and layout settings for printable guest receipts.</p>
+                </div>
               </div>
 
-              <div className="card">
-                <div style={{ marginBottom: '2rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border)' }}>
-                  <label className="form-label" style={{ fontWeight: 600 }}>Select Property (Cottage) for Invoice Settings</label>
-                  <select 
-                    className="form-input" 
-                    value={selectedInvoiceCottageId || ''} 
-                    onChange={e => setSelectedInvoiceCottageId(e.target.value)}
-                  >
-                    {cottages.map(c => (
-                      <option key={c.id} value={c.id}>{c.name}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <h2 style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '1.25rem' }}>
-                  <FileText size={24} color="var(--primary)" /> Receipt Settings for {cottages.find(c => c.id === selectedInvoiceCottageId)?.name || 'Property'}
-                </h2>
+              <div style={{ marginBottom: '1.5rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border)' }}>
+                <label className="form-label" style={{ fontWeight: 600 }}>Select Property (Cottage) for Invoice Settings</label>
+                <select 
+                  className="form-input" 
+                  value={selectedInvoiceCottageId || ''} 
+                  onChange={e => setSelectedInvoiceCottageId(e.target.value)}
+                >
+                  {cottages.map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
                 <form onSubmit={saveInvoiceSettings}>
                   <div className="form-group" style={{ marginBottom: '1.5rem' }}>
                     <label className="form-label" style={{ fontWeight: 600 }}>Invoice Format</label>
@@ -1783,12 +1778,10 @@ export default function Settings() {
                   </div>
                 </form>
               </div>
-            </>
-          )}
+            )}
 
 
-        </main>
-      </div>
+          </main>
     </div>
   );
 }

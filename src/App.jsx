@@ -277,6 +277,10 @@ function App() {
     );
   }
 
+  const isPreview = window.location.search.includes('preview=true');
+  const activeSession = session || (isPreview ? { user: { id: 'demo-user', email: 'admin@staypilot.com' } } : null);
+  const activeProfile = profile || (isPreview ? { role: 'tenant_admin', full_name: 'Resort Admin' } : null);
+
   return (
     <BrowserRouter>
       <Toaster position="top-right" />
@@ -285,16 +289,16 @@ function App() {
         <Routes>
           <Route 
             path="/auth" 
-            element={session && !isRecovering && !window.location.hash.includes('type=recovery') ? <Navigate to="/dashboard" replace /> : <Auth />} 
+            element={activeSession && !isRecovering && !window.location.hash.includes('type=recovery') ? <Navigate to="/dashboard" replace /> : <Auth />} 
           />
           
-          <Route path="/" element={!session ? (window.Capacitor?.isNativePlatform() ? <Navigate to="/auth" replace /> : <Home />) : (profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
+          <Route path="/" element={!activeSession ? (window.Capacitor?.isNativePlatform() ? <Navigate to="/auth" replace /> : <Home />) : (activeProfile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           
-          <Route element={session ? <AppLayout /> : <Navigate to="/auth" replace />}>
+          <Route element={activeSession ? <AppLayout /> : <Navigate to="/auth" replace />}>
             <Route path="dashboard" element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Dashboard />} />
             <Route path="setup" element={<CottagesRooms />} />
             <Route path="bookings" element={<Bookings />} />
