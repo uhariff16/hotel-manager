@@ -262,10 +262,10 @@ export default function Auth() {
       paddingTop: 'calc(1rem + env(safe-area-inset-top, 0px))',
       paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))'
     }}>
-      <div className="card" style={{ 
+      <div className="card auth-card" style={{ 
         width: '100%', 
         maxWidth: isMobile ? '100%' : (isLogin || isForgotPassword || isRecovering ? '460px' : '560px'), 
-        background: 'var(--card-bg)',
+        background: 'var(--auth-card-bg)',
         padding: isMobile ? '1.5rem 1.25rem' : '2.5rem 2.25rem', 
         border: isMobile ? '1px solid rgba(0,0,0,0.06)' : '1px solid rgba(255, 255, 255, 0.1)',
         boxShadow: isMobile ? '0 4px 20px rgba(0,0,0,0.04)' : '0 25px 50px -12px rgba(0, 0, 0, 0.25), 0 0 1px 1px rgba(255, 255, 255, 0.1)',
@@ -276,7 +276,7 @@ export default function Auth() {
       }}>
         <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.5rem' : '2rem' }}>
           <div style={{ margin: isMobile ? '0 auto 1.5rem' : '0 auto 2rem', display: 'flex', justifyContent: 'center' }}>
-            <Link to="/" style={{ 
+            <Link to="/" className="auth-logo-wrapper" style={{ 
               display: 'inline-block', 
               background: 'var(--bg-secondary)', 
               padding: '0.65rem 1.15rem', 
@@ -287,10 +287,10 @@ export default function Auth() {
               <img src="/stay-pilot-logo-full.jpg" alt="Stay Pilot Logo" style={{ width: isMobile ? '110px' : '135px', height: 'auto', display: 'block' }} />
             </Link>
           </div>
-          <h1 style={{ fontSize: isMobile ? '1.5rem' : '2rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
+          <h1 className="auth-heading" style={{ fontSize: isMobile ? '1.5rem' : '2rem', marginBottom: '0.5rem' }}>
             {isRecovering ? 'Set New Password' : (isForgotPassword ? 'Reset Password' : (isLogin ? 'Welcome to Stay Pilot' : 'Create Your Account'))}
           </h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: isMobile ? '0.9rem' : '1rem' }}>
+          <p className="auth-subtext" style={{ fontSize: isMobile ? '0.9rem' : '1rem' }}>
             {isRecovering 
               ? 'Enter your new secure password below'
               : (isForgotPassword 
@@ -328,7 +328,7 @@ export default function Auth() {
         )}
 
         {!isLogin && !isForgotPassword && !isRecovering && planInfo && (
-          <div style={{
+          <div className="auth-plan-summary" style={{
             background: 'rgba(255, 255, 255, 0.04)',
             border: '1px solid var(--border-color, rgba(255,255,255,0.12))',
             borderRadius: '12px',
@@ -419,15 +419,15 @@ export default function Auth() {
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
           {!isLogin && !isForgotPassword && !isRecovering && (
             <div className="form-group">
-              <label className="form-label">Full Name</label>
+              <label className="auth-label">Full Name</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                <span className="auth-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
                   <User size={18} />
                 </span>
                 <input 
                   type="text" 
                   required 
-                  className="form-input" 
+                  className="auth-input" 
                   style={{ paddingLeft: '3rem' }}
                   placeholder="John Doe"
                   value={formData.fullName}
@@ -439,15 +439,15 @@ export default function Auth() {
 
           {!isRecovering && (
             <div className="form-group">
-              <label className="form-label">{isLogin ? 'Email or Username' : 'Email Address'}</label>
+              <label className="auth-label">{isLogin ? 'Email or Username' : 'Email Address'}</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                <span className="auth-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
                   {isLogin && !formData.email.includes('@') && formData.email.length > 0 ? <User size={18} /> : <Mail size={18} />}
                 </span>
                 <input 
                   type={isLogin ? "text" : "email"} 
                   required 
-                  className="form-input" 
+                  className="auth-input" 
                   style={{ paddingLeft: '3rem' }}
                   placeholder={isLogin ? "email@example.com or username" : "name@company.com"}
                   value={formData.email}
@@ -460,27 +460,28 @@ export default function Auth() {
           {!isForgotPassword && (
             <div className="form-group">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <label className="form-label" style={{ marginBottom: 0 }}>
+                <label className="auth-label" style={{ marginBottom: 0 }}>
                   {isRecovering ? 'New Password' : 'Password'}
                 </label>
                 {isLogin && (
                   <button 
                     type="button"
                     onClick={() => setIsForgotPassword(true)}
-                    style={{ background: 'none', border: 'none', color: 'var(--primary)', fontSize: '0.875rem', cursor: 'pointer', padding: 0 }}
+                    className="auth-brand-link"
+                    style={{ fontSize: '0.875rem' }}
                   >
                     Forgot Password?
                   </button>
                 )}
               </div>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                <span className="auth-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
                   <Lock size={18} />
                 </span>
                 <input 
                   type={showPassword ? "text" : "password"} 
                   required 
-                  className="form-input" 
+                  className="auth-input" 
                   style={{ paddingLeft: '3rem', paddingRight: '3rem' }}
                   placeholder="••••••••"
                   value={formData.password}
@@ -496,7 +497,7 @@ export default function Auth() {
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: 'var(--text-muted)',
+                    color: 'var(--auth-input-placeholder)',
                     cursor: 'pointer',
                     padding: 0,
                     display: 'flex',
@@ -513,9 +514,9 @@ export default function Auth() {
                     id="rememberMe" 
                     checked={rememberMe}
                     onChange={(e) => setRememberMe(e.target.checked)}
-                    style={{ width: 'auto', margin: 0, accentColor: 'var(--primary)' }}
+                    style={{ width: 'auto', margin: 0, accentColor: 'var(--brand-emerald)' }}
                   />
-                  <label htmlFor="rememberMe" style={{ fontSize: '0.875rem', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                  <label htmlFor="rememberMe" className="auth-label" style={{ fontSize: '0.875rem', cursor: 'pointer', marginBottom: 0 }}>
                     Remember Me
                   </label>
                 </div>
@@ -525,15 +526,15 @@ export default function Auth() {
 
           {(isRecovering || (!isLogin && !isForgotPassword)) && (
             <div className="form-group">
-              <label className="form-label">Confirm Password</label>
+              <label className="auth-label">Confirm Password</label>
               <div style={{ position: 'relative' }}>
-                <span style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }}>
+                <span className="auth-icon" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }}>
                   <Lock size={18} />
                 </span>
                 <input 
                   type={showConfirmPassword ? "text" : "password"} 
                   required 
-                  className="form-input" 
+                  className="auth-input" 
                   style={{ paddingLeft: '3rem', paddingRight: '3rem' }}
                   placeholder="••••••••"
                   value={formData.confirmPassword}
@@ -549,7 +550,7 @@ export default function Auth() {
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: 'var(--text-muted)',
+                    color: 'var(--auth-input-placeholder)',
                     cursor: 'pointer',
                     padding: 0,
                     display: 'flex',
@@ -564,7 +565,7 @@ export default function Auth() {
 
           <button 
             type="submit" 
-            className="btn btn-primary" 
+            className="auth-btn-primary" 
             style={{ width: '100%', height: '50px', fontSize: '1rem', marginTop: '1rem' }}
             disabled={loading}
           >
@@ -580,16 +581,16 @@ export default function Auth() {
                 setIsRecovering(false);
                 setIsLogin(true);
               }}
-              style={{ background: 'none', border: 'none', color: 'var(--primary)', fontWeight: '600', cursor: 'pointer', padding: '0' }}
+              className="auth-brand-link"
             >
               Back to Login
             </button>
           ) : (
             <>
-              <span style={{ color: 'var(--text-muted)' }}>
+              <span className="auth-subtext">
                 {isLogin ? "Don't have an account? " : "Already have an account? "}
               </span>
-              <button 
+              <button className="auth-brand-link"
                 onClick={() => {
                   if (isLogin) {
                     navigate('/pricing');
@@ -600,7 +601,7 @@ export default function Auth() {
                 style={{ 
                   background: 'none', 
                   border: 'none', 
-                  color: 'var(--primary)', 
+
                   fontWeight: '600', 
                   cursor: 'pointer',
                   padding: '0'
@@ -612,7 +613,7 @@ export default function Auth() {
           )}
         </div>
         <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-          <Link to="/" style={{ color: 'var(--text-muted)', fontSize: '0.875rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+          <Link to="/" className="auth-secondary-link" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
             &larr; Back to Home
           </Link>
         </div>

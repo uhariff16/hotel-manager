@@ -30,6 +30,17 @@
   --shadow-lg: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
   --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
   --sidebar-w: 260px;
+  --card-bg: #ffffff;
+  --auth-card-bg: #ffffff;
+  --auth-card-border: #e2e8f0;
+  --auth-input-bg: #f8fafc;
+  --auth-input-border: #cbd5e1;
+  --auth-input-text: #1a202c;
+  --auth-input-placeholder: #64748b;
+  --auth-label: #334155;
+  --auth-subtext: #64748b;
+  --brand-emerald: #10b981;
+  --brand-emerald-hover: #059669;
 }
 
 [data-theme='dark'] {
@@ -44,6 +55,19 @@
   --border: #333a45;
   
   --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+  --card-bg: #1e293b;
+
+  /* Dedicated Auth Dark Theme Tokens */
+  --auth-card-bg: #1e293b;
+  --auth-card-border: #334155;
+  --auth-input-bg: #0f172a;
+  --auth-input-border: #334155;
+  --auth-input-text: #f8fafc;
+  --auth-input-placeholder: #94a3b8;
+  --auth-label: #e2e8f0;
+  --auth-subtext: #cbd5e1;
+  --brand-emerald: #10b981;
+  --brand-emerald-hover: #059669;
 }
 
 * {
@@ -1166,3 +1190,116 @@ input[type="date"], input[type="time"] {
   border: 2px solid #10b981 !important;
   background-color: #ecfdf5 !important;
 }
+
+
+/* Dedicated Auth Page High-Contrast Styling */
+.auth-card {
+  background-color: var(--auth-card-bg) !important;
+  border: 1px solid var(--auth-card-border) !important;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4) !important;
+}
+
+.auth-logo-wrapper {
+  background-color: var(--auth-input-bg) !important;
+  border: 1px solid var(--auth-card-border) !important;
+}
+
+.auth-heading {
+  color: var(--text-main) !important;
+}
+
+.auth-subtext {
+  color: var(--auth-subtext) !important;
+}
+
+.auth-label {
+  color: var(--auth-label) !important;
+  font-weight: 600 !important;
+  font-size: 0.875rem !important;
+  margin-bottom: 0.5rem !important;
+  display: block !important;
+}
+
+.auth-input {
+  width: 100% !important;
+  height: 48px !important;
+  padding: 0 1rem !important;
+  border-radius: var(--radius-md) !important;
+  border: 1px solid var(--auth-input-border) !important;
+  background: var(--auth-input-bg) !important;
+  color: var(--auth-input-text) !important;
+  font-family: inherit !important;
+  font-size: 0.95rem !important;
+  transition: all 0.2s ease !important;
+  box-shadow: none !important;
+}
+
+.auth-input::placeholder {
+  color: var(--auth-input-placeholder) !important;
+}
+
+.auth-input:focus {
+  outline: none !important;
+  border-color: var(--brand-emerald) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.25) !important;
+}
+
+.auth-icon {
+  color: var(--auth-input-placeholder) !important;
+}
+
+.auth-btn-primary {
+  width: 100% !important;
+  height: 50px !important;
+  background: var(--brand-emerald) !important;
+  color: #ffffff !important;
+  border: none !important;
+  border-radius: var(--radius-md) !important;
+  font-weight: 600 !important;
+  font-size: 1rem !important;
+  cursor: pointer !important;
+  transition: all 0.2s ease !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem !important;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.25) !important;
+}
+
+.auth-btn-primary:hover:not(:disabled) {
+  background-color: var(--brand-emerald-hover) !important;
+}
+
+.auth-brand-link {
+  color: var(--brand-emerald) !important;
+  font-weight: 600 !important;
+  background: none !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  text-decoration: none !important;
+  transition: color 0.2s ease !important;
+}
+
+.auth-brand-link:hover {
+  color: var(--brand-emerald-hover) !important;
+  text-decoration: underline !important;
+}
+
+.auth-secondary-link {
+  color: var(--auth-subtext) !important;
+  font-size: 0.875rem !important;
+  text-decoration: none !important;
+  transition: color 0.2s ease !important;
+}
+
+.auth-secondary-link:hover {
+  color: var(--text-main) !important;
+}
+
+.auth-plan-summary {
+  background-color: var(--auth-input-bg) !important;
+  border: 1px solid var(--auth-card-border) !important;
+  border-radius: 12px !important;
+}
+
