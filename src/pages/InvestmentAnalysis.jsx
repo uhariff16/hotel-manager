@@ -66,203 +66,208 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave, windowWidth
   const isDesktop = windowWidth >= 1024;
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? '42% 1fr' : '1fr', gap: '1.5rem', alignItems: 'start' }}>
+    <div style={{ display: 'grid', gridTemplateColumns: isDesktop ? 'minmax(0, 58%) minmax(0, 42%)' : '1fr', gap: '1.25rem', alignItems: 'start' }}>
       
-      {/* LEFT COLUMN: Input Parameters */}
-      <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+      {/* LEFT COLUMN: Input Configuration Workspace */}
+      <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', minWidth: 0 }}>
         
-        {/* GROUP 1: PROPERTY CONFIGURATION */}
-        <div className="settings-card" style={{ padding: '1.25rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
-            <Building2 size={16} style={{ color: 'var(--primary)' }} /> 1. Property Configuration
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Rental Model</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <button 
-                  className={`btn ${data.rental_model === 'room' ? 'btn-primary' : 'btn-outline'}`} 
-                  style={{ fontSize: '0.75rem', padding: '0.45rem', borderRadius: '6px', fontWeight: 700, minHeight: '40px', border: data.rental_model === 'room' ? 'none' : '1px solid transparent' }} 
-                  onClick={() => setData({...data, rental_model: 'room'})}
-                >
-                  Rooms
-                </button>
-                <button 
-                  className={`btn ${data.rental_model === 'property' ? 'btn-primary' : 'btn-outline'}`} 
-                  style={{ fontSize: '0.75rem', padding: '0.45rem', borderRadius: '6px', fontWeight: 700, minHeight: '40px', border: data.rental_model === 'property' ? 'none' : '1px solid transparent' }} 
-                  onClick={() => setData({...data, rental_model: 'property'})}
-                >
-                  Property
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Property Ownership</label>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
-                <button 
-                  className={`btn ${data.property_ownership === 'owned' ? 'btn-primary' : 'btn-outline'}`} 
-                  style={{ fontSize: '0.75rem', padding: '0.45rem', borderRadius: '6px', fontWeight: 700, minHeight: '40px', border: data.property_ownership === 'owned' ? 'none' : '1px solid transparent' }} 
-                  onClick={() => setData({...data, property_ownership: 'owned', recovery_period_years: data.recovery_period_years === 1 ? 5 : data.recovery_period_years})}
-                >
-                  Owned
-                </button>
-                <button 
-                  className={`btn ${data.property_ownership === 'leased' ? 'btn-primary' : 'btn-outline'}`} 
-                  style={{ fontSize: '0.75rem', padding: '0.45rem', borderRadius: '6px', fontWeight: 700, minHeight: '40px', border: data.property_ownership === 'leased' ? 'none' : '1px solid transparent' }} 
-                  onClick={() => setData({...data, property_ownership: 'leased', recovery_period_years: data.recovery_period_years === 5 ? 1 : data.recovery_period_years})}
-                >
-                  Leased
-                </button>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Unit Count</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                style={{ height: '40px', fontSize: '0.875rem' }}
-                value={data.total_rooms} 
-                onChange={e => setData({...data, total_rooms: e.target.value === '' ? '' : Number(e.target.value)})} 
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* GROUP 2: INVESTMENT & TIMELINE */}
-        <div className="settings-card" style={{ padding: '1.25rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
-            <Wallet size={16} style={{ color: 'var(--primary)' }} /> 2. Investment & Timeline
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Total Investment (₹)</label>
-              <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.875rem' }}>₹</div>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  style={{ paddingLeft: '36px', height: '40px', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }} 
-                  value={data.total_investment} 
-                  onChange={e => setData({...data, total_investment: e.target.value === '' ? '' : Number(e.target.value)})} 
-                />
-              </div>
-            </div>
-
-            {data.property_ownership === 'owned' ? (
+        {/* 2x2 CONFIGURATION CARD GRID */}
+        <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 640 ? '1fr' : 'repeat(2, 1fr)', gap: '1.25rem', width: '100%', minWidth: 0 }}>
+          
+          {/* GROUP 1: PROPERTY CONFIGURATION */}
+          <div className="settings-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
+              <Building2 size={16} style={{ color: 'var(--primary)' }} /> 1. Property Configuration
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: 'auto' }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Recovery Period (Years)</label>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Rental Model</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  <button 
+                    className={`btn ${data.rental_model === 'room' ? 'btn-primary' : 'btn-outline'}`} 
+                    style={{ fontSize: '0.75rem', padding: '0.45rem', borderRadius: '6px', fontWeight: 700, minHeight: '40px', border: data.rental_model === 'room' ? 'none' : '1px solid transparent' }} 
+                    onClick={() => setData({...data, rental_model: 'room'})}
+                  >
+                    Rooms
+                  </button>
+                  <button 
+                    className={`btn ${data.rental_model === 'property' ? 'btn-primary' : 'btn-outline'}`} 
+                    style={{ fontSize: '0.75rem', padding: '0.45rem', borderRadius: '6px', fontWeight: 700, minHeight: '40px', border: data.rental_model === 'property' ? 'none' : '1px solid transparent' }} 
+                    onClick={() => setData({...data, rental_model: 'property'})}
+                  >
+                    Property
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Property Ownership</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.35rem', background: 'var(--bg-secondary)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                  <button 
+                    className={`btn ${data.property_ownership === 'owned' ? 'btn-primary' : 'btn-outline'}`} 
+                    style={{ fontSize: '0.75rem', padding: '0.45rem', borderRadius: '6px', fontWeight: 700, minHeight: '40px', border: data.property_ownership === 'owned' ? 'none' : '1px solid transparent' }} 
+                    onClick={() => setData({...data, property_ownership: 'owned', recovery_period_years: data.recovery_period_years === 1 ? 5 : data.recovery_period_years})}
+                  >
+                    Owned
+                  </button>
+                  <button 
+                    className={`btn ${data.property_ownership === 'leased' ? 'btn-primary' : 'btn-outline'}`} 
+                    style={{ fontSize: '0.75rem', padding: '0.45rem', borderRadius: '6px', fontWeight: 700, minHeight: '40px', border: data.property_ownership === 'leased' ? 'none' : '1px solid transparent' }} 
+                    onClick={() => setData({...data, property_ownership: 'leased', recovery_period_years: data.recovery_period_years === 5 ? 1 : data.recovery_period_years})}
+                  >
+                    Leased
+                  </button>
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Unit Count</label>
                 <input 
                   type="number" 
                   className="form-input" 
                   style={{ height: '40px', fontSize: '0.875rem' }}
-                  value={data.recovery_period_years} 
-                  onChange={e => setData({...data, recovery_period_years: e.target.value === '' ? '' : Number(e.target.value)})} 
-                  min="1" 
-                  step="0.5" 
+                  value={data.total_rooms} 
+                  onChange={e => setData({...data, total_rooms: e.target.value === '' ? '' : Number(e.target.value)})} 
                 />
               </div>
-            ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lease Start</label>
+            </div>
+          </div>
+
+          {/* GROUP 2: INVESTMENT & TIMELINE */}
+          <div className="settings-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
+              <Wallet size={16} style={{ color: 'var(--primary)' }} /> 2. Investment & Timeline
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Total Investment (₹)</label>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.875rem' }}>₹</div>
                   <input 
-                    type="date" 
+                    type="number" 
                     className="form-input" 
-                    style={{ height: '40px', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} 
-                    value={data.lease_start_date} 
-                    onChange={e => setData({...data, lease_start_date: e.target.value})} 
-                  />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lease End</label>
-                  <input 
-                    type="date" 
-                    className="form-input" 
-                    style={{ height: '40px', fontSize: '0.8rem', padding: '0.4rem 0.6rem' }} 
-                    value={data.lease_end_date} 
-                    onChange={e => setData({...data, lease_end_date: e.target.value})} 
+                    style={{ paddingLeft: '36px', height: '40px', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }} 
+                    value={data.total_investment} 
+                    onChange={e => setData({...data, total_investment: e.target.value === '' ? '' : Number(e.target.value)})} 
                   />
                 </div>
               </div>
-            )}
-          </div>
-        </div>
 
-        {/* GROUP 3: OPERATING COSTS */}
-        <div className="settings-card" style={{ padding: '1.25rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
-            <TrendingDown size={16} style={{ color: 'var(--danger)' }} /> 3. Operating Costs
-          </h3>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Monthly OpExp (₹)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                style={{ height: '40px', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}
-                value={data.monthly_operating_expenses} 
-                onChange={e => setData({...data, monthly_operating_expenses: e.target.value === '' ? '' : Number(e.target.value)})} 
-              />
-            </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Annual Fixed (₹)</label>
-              <input 
-                type="number" 
-                className="form-input" 
-                style={{ height: '40px', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}
-                value={data.annual_fixed_expenses} 
-                onChange={e => setData({...data, annual_fixed_expenses: e.target.value === '' ? '' : Number(e.target.value)})} 
-              />
+              {data.property_ownership === 'owned' ? (
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Recovery Period (Years)</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    style={{ height: '40px', fontSize: '0.875rem' }}
+                    value={data.recovery_period_years} 
+                    onChange={e => setData({...data, recovery_period_years: e.target.value === '' ? '' : Number(e.target.value)})} 
+                    min="1" 
+                    step="0.5" 
+                  />
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 400 ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lease Start</label>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      style={{ height: '40px', fontSize: '0.8rem', padding: '0.4rem 0.5rem', width: '100%', boxSizing: 'border-box' }} 
+                      value={data.lease_start_date} 
+                      onChange={e => setData({...data, lease_start_date: e.target.value})} 
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Lease End</label>
+                    <input 
+                      type="date" 
+                      className="form-input" 
+                      style={{ height: '40px', fontSize: '0.8rem', padding: '0.4rem 0.5rem', width: '100%', boxSizing: 'border-box' }} 
+                      value={data.lease_end_date} 
+                      onChange={e => setData({...data, lease_end_date: e.target.value})} 
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
 
-        {/* GROUP 4: STRATEGIC GOALS */}
-        <div className="settings-card" style={{ padding: '1.25rem' }}>
-          <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
-            <Target size={16} style={{ color: 'var(--primary)' }} /> 4. Strategic Goals
-          </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+          {/* GROUP 3: OPERATING COSTS */}
+          <div className="settings-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
+              <TrendingDown size={16} style={{ color: 'var(--danger)' }} /> 3. Operating Costs
+            </h3>
+            <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 400 ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Target ROI (%)</label>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Monthly OpExp (₹)</label>
                 <input 
                   type="number" 
                   className="form-input" 
-                  style={{ height: '40px', fontSize: '0.875rem' }}
-                  value={data.target_roi_percentage} 
-                  onChange={e => setData({...data, target_roi_percentage: e.target.value === '' ? '' : Number(e.target.value)})} 
+                  style={{ height: '40px', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}
+                  value={data.monthly_operating_expenses} 
+                  onChange={e => setData({...data, monthly_operating_expenses: e.target.value === '' ? '' : Number(e.target.value)})} 
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Occupancy Goal (%)</label>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Annual Fixed (₹)</label>
                 <input 
                   type="number" 
                   className="form-input" 
-                  style={{ height: '40px', fontSize: '0.875rem' }}
-                  value={data.expected_occupancy_rate} 
-                  onChange={e => setData({...data, expected_occupancy_rate: e.target.value === '' ? '' : Number(e.target.value)})} 
-                />
-              </div>
-            </div>
-
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Expected Avg. Selling Price (₹)</label>
-              <div style={{ position: 'relative' }}>
-                <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.875rem' }}>₹</div>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  style={{ paddingLeft: '36px', height: '40px', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }} 
-                  value={data.average_selling_price} 
-                  onChange={e => setData({...data, average_selling_price: e.target.value === '' ? '' : Number(e.target.value)})} 
-                  placeholder="Optional for scenario testing" 
+                  style={{ height: '40px', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }}
+                  value={data.annual_fixed_expenses} 
+                  onChange={e => setData({...data, annual_fixed_expenses: e.target.value === '' ? '' : Number(e.target.value)})} 
                 />
               </div>
             </div>
           </div>
+
+          {/* GROUP 4: STRATEGIC GOALS */}
+          <div className="settings-card" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
+            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, marginBottom: '1rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem' }}>
+              <Target size={16} style={{ color: 'var(--primary)' }} /> 4. Strategic Goals
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 400 ? '1fr' : '1fr 1fr', gap: '0.75rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Target ROI (%)</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    style={{ height: '40px', fontSize: '0.875rem' }}
+                    value={data.target_roi_percentage} 
+                    onChange={e => setData({...data, target_roi_percentage: e.target.value === '' ? '' : Number(e.target.value)})} 
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Occupancy Goal (%)</label>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    style={{ height: '40px', fontSize: '0.875rem' }}
+                    value={data.expected_occupancy_rate} 
+                    onChange={e => setData({...data, expected_occupancy_rate: e.target.value === '' ? '' : Number(e.target.value)})} 
+                  />
+                </div>
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontSize: '0.75rem', fontWeight: 700 }}>Expected Avg. Selling Price (₹)</label>
+                <div style={{ position: 'relative' }}>
+                  <div style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontWeight: 700, fontSize: '0.875rem' }}>₹</div>
+                  <input 
+                    type="number" 
+                    className="form-input" 
+                    style={{ paddingLeft: '36px', height: '40px', fontSize: '0.875rem', fontVariantNumeric: 'tabular-nums' }} 
+                    value={data.average_selling_price} 
+                    onChange={e => setData({...data, average_selling_price: e.target.value === '' ? '' : Number(e.target.value)})} 
+                    placeholder="Optional for scenario testing" 
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         {/* SAVE CONFIGURATION CTA */}
@@ -278,13 +283,13 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave, windowWidth
       </aside>
 
       {/* RIGHT COLUMN: Strategy Projections */}
-      <main style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-        <div className="settings-card" style={{ padding: '1.5rem' }}>
+      <main style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', width: '100%', minWidth: 0 }}>
+        <div className="settings-card" style={{ padding: '1.5rem', width: '100%', boxSizing: 'border-box' }}>
           <h3 style={{ marginBottom: '1.25rem', fontSize: '1.1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-main)' }}>
             <TrendingUp size={20} style={{ color: '#10b981' }} /> Strategy Projections
           </h3>
 
-          <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 640 ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: windowWidth < 640 ? '1fr' : 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem' }}>
             
             {/* BREAK-EVEN RATE */}
             <div style={{ padding: '1.25rem', background: 'rgba(245, 158, 11, 0.06)', borderRadius: '12px', border: '1px solid rgba(245, 158, 11, 0.25)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
@@ -294,7 +299,7 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave, windowWidth
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ night</span>
               </div>
               <span style={{ display: 'block', fontSize: '0.725rem', color: 'var(--text-muted)', lineHeight: '1.4', marginTop: 'auto', paddingTop: '0.4rem' }}>
-                Minimum avg. nightly rate required to cover all costs at target occupancy (0% profit).
+                Minimum average room rate required to cover operating costs and recover your investment at the target occupancy.
               </span>
             </div>
             
@@ -306,7 +311,7 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave, windowWidth
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600 }}>/ night</span>
               </div>
               <span style={{ display: 'block', fontSize: '0.725rem', color: 'var(--text-muted)', lineHeight: '1.4', marginTop: 'auto', paddingTop: '0.4rem' }}>
-                Target avg. nightly rate required to achieve your desired {data.target_roi_percentage}% ROI.
+                Average room rate required to cover costs, recover your investment and achieve the target ROI.
               </span>
             </div>
             
@@ -325,10 +330,10 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave, windowWidth
             
           </div>
           
-          {/* ANNUAL CORE METRICS */}
+          {/* ANNUAL FINANCIAL TARGETS */}
           <div style={{ marginTop: '1.5rem', background: 'var(--bg-secondary)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
             <h4 style={{ marginBottom: '1rem', fontSize: '0.95rem', fontWeight: 700, borderBottom: '1px solid var(--border)', paddingBottom: '0.6rem', color: 'var(--text-main)' }}>
-              Annual Core Metrics
+              Annual Financial Targets
             </h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem', fontSize: '0.875rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -336,15 +341,15 @@ const PricePlanner = ({ data, setData, propertyInfo, saving, onSave, windowWidth
                 <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>₹{Math.ceil(annualOperatingExpense + annualTotalFixed).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Amortized Capital Cost ({Math.round(recoveryYears * 10) / 10} yrs)</span>
+                <span style={{ color: 'var(--text-muted)' }}>Capital Recovery</span>
                 <span style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>₹{Math.ceil(annualCapitalCost).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Target Net Profit ({data.target_roi_percentage}% ROI)</span>
+                <span style={{ color: 'var(--text-muted)' }}>Target Profit ({data.target_roi_percentage}% ROI)</span>
                 <span style={{ fontWeight: 700, color: '#10b981', fontVariantNumeric: 'tabular-nums' }}>+ ₹{Math.ceil(targetAnnualNetProfit).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', padding: '0.85rem 1rem', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '10px', border: '1px solid rgba(16, 185, 129, 0.2)', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem' }}>Required Gross Revenue</span>
+                <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: '0.9rem' }}>Required Revenue</span>
                 <span style={{ fontWeight: 800, color: '#10b981', fontSize: '1.35rem', fontVariantNumeric: 'tabular-nums' }}>₹{Math.ceil(requiredGrossAnnualRevenue).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
@@ -763,14 +768,19 @@ const ROIPerformance = ({ investmentData, financials, range, windowWidth }) => {
 
       {/* SECTION 2: BREAK-EVEN STATUS (YTD) */}
       <div className="settings-card" style={{ padding: '1.25rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>Break-Even Progress</h3>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>YTD Revenue vs Break-Even Target</span>
           </div>
-          <span style={{ padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, background: stats.achievedBreakEven ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)', color: stats.achievedBreakEven ? '#10b981' : '#d97706', border: stats.achievedBreakEven ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(245, 158, 11, 0.25)' }}>
-            {stats.achievedBreakEven ? 'ACHIEVED' : 'NOT ACHIEVED'}
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '1.5rem', fontWeight: 800, color: stats.achievedBreakEven ? '#10b981' : '#d97706', fontVariantNumeric: 'tabular-nums' }}>
+              {stats.breakEvenAchievementPercent.toFixed(1)}%
+            </span>
+            <span style={{ padding: '0.35rem 0.75rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: 800, background: stats.achievedBreakEven ? 'rgba(16, 185, 129, 0.12)' : 'rgba(245, 158, 11, 0.12)', color: stats.achievedBreakEven ? '#10b981' : '#d97706', border: stats.achievedBreakEven ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(245, 158, 11, 0.25)' }}>
+              {stats.achievedBreakEven ? 'ACHIEVED' : 'NOT ACHIEVED'}
+            </span>
+          </div>
         </div>
 
         {/* PROGRESS BAR */}
