@@ -1028,6 +1028,34 @@ input:checked + .slider:before {
           margin-bottom: 0.5rem;
         }
         
+        .address-grid-row-1 {
+          display: grid;
+          grid-template-columns: 1fr 2fr;
+          gap: 1rem;
+          margin-bottom: 0.85rem;
+        }
+
+        .address-grid-row-2 {
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 1rem;
+          margin-bottom: 0.85rem;
+        }
+
+        @media (max-width: 768px) {
+          .address-grid-row-1 {
+            grid-template-columns: 1fr;
+            gap: 0.75rem;
+          }
+          .address-grid-row-2 {
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+          }
+          .address-grid-row-2 .form-group:last-child {
+            grid-column: 1 / -1;
+          }
+        }
+
         .premium-input, .premium-select {
           width: 100%;
           padding: 0.8rem 1rem;
