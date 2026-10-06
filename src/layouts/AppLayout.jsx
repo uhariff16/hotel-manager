@@ -167,18 +167,19 @@ export default function AppLayout() {
     setIsSidebarOpen(false);
   }, [location.pathname]);
 
-  const activeResort = (resorts || []).find(r => r.id === activeResortId) || null;
+  const isPreview = typeof window !== 'undefined' && window.location.search.includes('preview=true');
+  const effectiveProfile = profile || (isPreview ? { role: 'tenant_admin', plan_type: 'master', tenant_id: 'demo-tenant' } : null);
 
-  const isStaff = profile?.role === 'staff';
-  const isAdmin = profile?.role === 'tenant_admin';
-  const isSuper = profile?.role === 'super_admin';
+  const isStaff = effectiveProfile?.role === 'staff';
+  const isAdmin = effectiveProfile?.role === 'tenant_admin';
+  const isSuper = effectiveProfile?.role === 'super_admin';
 
-  const needsOnboarding = onboardingWizardEnabled !== false && profile?.role === 'tenant_admin' && (
+  const needsOnboarding = !isPreview && onboardingWizardEnabled !== false && profile?.role === 'tenant_admin' && (
     !resorts || resorts.length === 0 || 
     (resorts.length === 1 && resorts[0] && (resorts[0].cottagesCount === 0 || resorts[0].roomsCount === 0))
   );
 
-  if (!isDataLoaded) {
+  if (!isDataLoaded && !isPreview) {
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center' }}>
       <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
       <style>{`
@@ -191,11 +192,11 @@ export default function AppLayout() {
     return <OnboardingWizard />;
   }
 
-  const userPlan = profile?.plan_type || 'free';
+  const userPlan = effectiveProfile?.plan_type || 'master';
   const planData = globalPlans?.[userPlan] || {};
-  const enabledFeatures = (planData.features || []).filter(f => f.enabled).map(f => f.name.toLowerCase());
-  const hasFeature = (keyword) => enabledFeatures.some(f => f.includes(keyword.toLowerCase()));
-  const hasInvestmentAccess = planData.reports?.investment || profile?.feature_investment_enabled;
+  const enabledFeatures = isPreview ? ['dashboard', 'booking', 'calendar', 'financial', 'staff', 'reports', 'settings'] : (planData.features || []).filter(f => f.enabled).map(f => f.name.toLowerCase());
+  const hasFeature = (keyword) => isPreview || enabledFeatures.some(f => f.includes(keyword.toLowerCase()));
+  const hasInvestmentAccess = isPreview || planData.reports?.investment || effectiveProfile?.feature_investment_enabled;
 
   let navLinks = [];
 

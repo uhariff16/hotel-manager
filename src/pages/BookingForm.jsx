@@ -2,7 +2,7 @@ import toast from 'react-hot-toast';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X, Lock, Camera, Coffee } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X, Lock, Camera, Coffee, Utensils, Flame, PlusCircle } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import IDScanner from '../components/IDScanner';
@@ -1945,56 +1945,71 @@ export default function BookingForm() {
             <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
               <div className="form-group" style={{ gridColumn: '1 / -1' }}>
                 <label className="premium-label">Extra Add-on Services</label>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1rem' }}>
-                  {['Food', 'Fire camp', 'BBQ', 'Others'].map(addon => {
-                    const isSelected = bookingForm.addon_selections?.includes(addon);
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1rem' }}>
+                  {[
+                    { name: 'Food', icon: <Utensils size={16} /> },
+                    { name: 'Fire camp', icon: <Flame size={16} /> },
+                    { name: 'BBQ', icon: <Flame size={16} /> },
+                    { name: 'Others', icon: <PlusCircle size={16} /> }
+                  ].map(({ name, icon }) => {
+                    const isSelected = bookingForm.addon_selections?.includes(name);
                     return (
                       <div 
-                        key={addon}
+                        key={name}
                         className="addon-card" 
                         style={{ 
-                          display: 'flex', flexDirection: 'column', padding: '1rem', 
-                          border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)', 
-                          borderRadius: '8px', background: isSelected ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-secondary)',
-                          cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.2s', gap: '0.75rem'
+                          display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '0.85rem 1rem', 
+                          border: isSelected ? '1.5px solid var(--primary)' : '1px solid var(--border)', 
+                          borderRadius: '12px', background: isSelected ? 'rgba(16, 185, 129, 0.04)' : 'var(--bg-secondary)',
+                          cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.2s',
+                          boxShadow: isSelected ? '0 4px 12px rgba(16, 185, 129, 0.08)' : 'none',
+                          minHeight: '100px'
                         }}
                         onClick={() => {
                           if (!isEditing) return;
                           const newSels = isSelected 
-                            ? (bookingForm.addon_selections || []).filter(a => a !== addon)
-                            : [...(bookingForm.addon_selections || []), addon];
+                            ? (bookingForm.addon_selections || []).filter(a => a !== name)
+                            : [...(bookingForm.addon_selections || []), name];
                           setBookingForm({...bookingForm, addon_selections: newSels});
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: isSelected ? 'none' : '2px solid #cbd5e1', background: isSelected ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            {isSelected && <CheckCircle2 size={14} color="#fff" />}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <div style={{ width: '22px', height: '22px', borderRadius: '50%', border: isSelected ? 'none' : '2px solid var(--border)', background: isSelected ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                              {isSelected && <CheckCircle2 size={13} color="#fff" />}
+                            </div>
+                            <span style={{ color: isSelected ? 'var(--primary)' : 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
+                              {icon}
+                            </span>
+                            <span style={{ fontWeight: isSelected ? 700 : 600, color: isSelected ? 'var(--primary)' : 'var(--text-main)', fontSize: '0.925rem' }}>{name}</span>
                           </div>
-                          <span style={{ fontWeight: isSelected ? 700 : 500, color: isSelected ? 'var(--primary)' : 'inherit' }}>{addon}</span>
                         </div>
                         
-                        {isSelected && addon === 'Others' && (
-                          <input disabled={!isEditing} type="text" className="premium-input" style={{ width: '100%', marginTop: '0.25rem', padding: '0.4rem 0.5rem', fontSize: '0.85rem' }} placeholder="Specify custom add-on..." value={bookingForm.addon_others || ''} onClick={e => e.stopPropagation()} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
+                        {isSelected && name === 'Others' && (
+                          <input disabled={!isEditing} type="text" className="premium-input" style={{ width: '100%', marginTop: '0.5rem', padding: '0.35rem 0.6rem', fontSize: '0.85rem', height: '36px' }} placeholder="Specify custom add-on..." value={bookingForm.addon_others || ''} onClick={e => e.stopPropagation()} onChange={e => setBookingForm({...bookingForm, addon_others: e.target.value})} />
                         )}
 
                         {isSelected && (
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem', marginTop: '0.25rem' }} onClick={e => e.stopPropagation()}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)' }}>Cost (₹):</span>
-                            <input 
-                              type="number" 
-                              disabled={!isEditing}
-                              value={bookingForm.addon_costs_itemized?.[addon] ?? ''} 
-                              onChange={e => {
-                                const oldVal = Number(bookingForm.addon_costs_itemized?.[addon] || 0);
-                                const newVal = Number(e.target.value);
-                                setBookingForm({
-                                  ...bookingForm, 
-                                  addon_costs_itemized: { ...bookingForm.addon_costs_itemized, [addon]: newVal },
-                                  addons_cost: (bookingForm.addons_cost || 0) - oldVal + newVal
-                                });
-                              }}
-                              style={{ width: '100px', padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 700, color: 'var(--primary)', textAlign: 'right' }}
-                            />
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', borderTop: '1px dashed var(--border)', paddingTop: '0.65rem', marginTop: '0.65rem' }} onClick={e => e.stopPropagation()}>
+                            <span style={{ fontSize: '0.825rem', fontWeight: 600, color: 'var(--text-muted)' }}>Cost (₹):</span>
+                            <div style={{ display: 'flex', alignItems: 'center', background: 'var(--bg-color)', border: '1.5px solid var(--border)', borderRadius: '8px', padding: '0.15rem 0.5rem', width: '110px' }}>
+                              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', marginRight: '3px' }}>₹</span>
+                              <input 
+                                type="number" 
+                                disabled={!isEditing}
+                                value={bookingForm.addon_costs_itemized?.[name] ?? ''} 
+                                onChange={e => {
+                                  const oldVal = Number(bookingForm.addon_costs_itemized?.[name] || 0);
+                                  const newVal = Number(e.target.value);
+                                  setBookingForm({
+                                    ...bookingForm, 
+                                    addon_costs_itemized: { ...bookingForm.addon_costs_itemized, [name]: newVal },
+                                    addons_cost: (bookingForm.addons_cost || 0) - oldVal + newVal
+                                  });
+                                }}
+                                style={{ width: '100%', border: 'none', background: 'transparent', fontWeight: 800, fontSize: '0.9rem', color: 'var(--primary)', textAlign: 'right', outline: 'none' }}
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
@@ -2074,7 +2089,7 @@ export default function BookingForm() {
                   </div>
                 )}
 
-                {(bookingForm.booking_source === 'OTA' || bookingForm.booking_source === 'Other' || bookingForm.booking_source === 'Agent') && (
+                {bookingForm.booking_source === 'OTA' && (
                   <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-color)', marginTop: '0.75rem' }}>
                     <input disabled={!isEditing} 
                       type="checkbox" 

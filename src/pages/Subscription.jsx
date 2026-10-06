@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
-import { Check, Zap, Crown, CreditCard, Shield, X, Lock } from 'lucide-react';
+import { Check, Zap, Crown, CreditCard, Shield, X, Lock, Sparkles, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { createPortal } from 'react-dom';
 import { getTrialPresentationState } from '../lib/trial';
 import { resolveEffectivePlan } from '../utils/planEntitlements';
 import { useLocation, useNavigate } from 'react-router-dom';
-import PlanComparison, { normalizePlanReports, normalizeFeatureName, getSanitizedFeatures } from '../components/PlanComparison';
+import PlanComparison, { getSanitizedFeatures } from '../components/PlanComparison';
 
 const formatOfferDate = (dateString) => {
   if (!dateString) return '';
@@ -30,6 +30,8 @@ export default function Subscription() {
   const { profile, setProfile, globalPlans, websitePricing, globalTaxSettings } = useSettingsStore();
   const [loading, setLoading] = useState(null);
   const [subDataLoading, setSubDataLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
+  const [expandedFeatures, setExpandedFeatures] = useState({});
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
   const [switchTrialModal, setSwitchTrialModal] = useState({ isOpen: false, targetPlanKey: null });
@@ -37,13 +39,20 @@ export default function Subscription() {
 
   const [activeSubscription, setActiveSubscription] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
-  const [detailsTab, setDetailsTab] = useState('subscription');
 
   const trialState = getTrialPresentationState({
     profile,
     activeSubscription,
     globalPlans
   });
+
+  const hasBillingHistory = paymentHistory && paymentHistory.length > 0;
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     if (profile?.id) {
@@ -55,6 +64,14 @@ export default function Subscription() {
 
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Direct #billing-history navigation check: fallback gracefully if no billing records exist
+  useEffect(() => {
+    if (location.hash === '#billing-history' && !subDataLoading && !hasBillingHistory) {
+      window.history.replaceState({}, '', '/subscription');
+    }
+  }, [location.hash, subDataLoading, hasBillingHistory]);
+
   const searchParams = new URLSearchParams(location.search);
   const checkoutPlan = searchParams.get('checkout');
   const hasAutoCheckoutRun = React.useRef(false);
@@ -143,7 +160,6 @@ export default function Subscription() {
   };
 
   const handleSwitchTrialPlanClick = (targetPlanKey) => {
-    // Security / Authorization checks
     if (!trialState.isActiveTrial || trialState.isPaid || trialState.isExpired || trialState.isStaff || trialState.isSuper || trialState.isLegacy || trialState.isSuspended) {
       alert("Trial switching is only available for active, unpaid free trials.");
       return;
@@ -227,15 +243,15 @@ export default function Subscription() {
           id,
           name: config.name || (id === 'custom_1786983013013' ? 'Solo' : (id === 'pro' ? 'Growth' : (id === 'premium' ? 'Stay Master' : id.toUpperCase()))),
           description: config.description || '',
-          price: rawActive === 0 ? '₹0' : `₹${rawActive}`,
+          price: rawActive === 0 ? '₹0' : `₹${rawActive.toLocaleString('en-IN')}`,
           rawPrice: rawActive,
-          basePrice: rawBase ? `₹${rawBase}` : null,
+          basePrice: rawBase ? `₹${rawBase.toLocaleString('en-IN')}` : null,
           discountPercent,
           offerEndDate: offerActive && config.offerEndDate ? config.offerEndDate : null,
-          period: id === 'free' ? '' : '/mo',
+          period: id === 'free' ? '' : '/month',
           color: config.color || 'var(--primary)',
           popular: config.popular || false,
-          icon: id === 'free' ? <Zap size={24} /> : (id === 'premium' ? <Shield size={24} /> : <Crown size={24} />),
+          icon: id === 'free' ? <Zap size={22} /> : (id === 'premium' ? <Shield size={22} /> : <Crown size={22} />),
           features: getSanitizedFeatures(config)
         };
       })
@@ -247,6 +263,18 @@ export default function Subscription() {
   };
 
   const plansList = getPlansList();
+
+  const activePromoDates = plansList
+    .filter(p => p.offerEndDate)
+    .map(p => p.offerEndDate);
+  const globalPromoEndDate = activePromoDates.length > 0 ? activePromoDates[0] : null;
+
+  const toggleExpandFeatures = (planId) => {
+    setExpandedFeatures(prev => ({
+      ...prev,
+      [planId]: !prev[planId]
+    }));
+  };
 
   const loadRazorpayScript = () => {
     return new Promise((resolve) => {
@@ -357,475 +385,489 @@ export default function Subscription() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '60vh', gap: '1rem' }}>
         <div className="animate-spin" style={{ border: '3px solid rgba(255,255,255,0.1)', borderTop: '3px solid var(--primary)', borderRadius: '50%', width: '40px', height: '40px' }}></div>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Loading plans and pricing...</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>Loading subscription plans...</p>
       </div>
     );
   }
 
   return (
-    <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem 0' }}>
-      <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
-        <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem' }}>Choose Your Plan</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.2rem' }}>
-          Flexible pricing designed to scale with your hotel business.
+    <div style={{ width: '100%', maxWidth: '1200px', margin: '0 auto', boxSizing: 'border-box' }}>
+      
+      {/* Authenticated Page Header */}
+      <div style={{ marginBottom: '1.75rem' }}>
+        <h2 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: '0 0 0.25rem 0', letterSpacing: '-0.01em' }}>
+          Plans & Billing
+        </h2>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+          Manage your subscription, plan and billing history.
         </p>
-        <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center', gap: '1rem' }}>
-          <span className={`badge ${profile?.plan_type === 'free' ? 'badge-success' : ''}`} style={{ padding: '0.5rem 1rem' }}>
-            Current: {getPlanName(profile?.plan_type)} {trialState.isActiveTrial ? 'FREE TRIAL' : 'Account'}
-          </span>
-        </div>
       </div>
 
       {/* Switch Success Banner */}
       {switchSuccessMessage && (
         <div className="card" style={{ 
-          marginBottom: '2rem', padding: '1rem 1.5rem', borderRadius: '12px',
+          marginBottom: '1.5rem', padding: '1rem 1.25rem', borderRadius: '12px',
           background: 'rgba(16, 185, 129, 0.1)', border: '1px solid var(--success)',
-          color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'space-between'
+          color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          fontSize: '0.9rem'
         }}>
           <div style={{ fontWeight: 600 }}>✓ {switchSuccessMessage}</div>
           <button onClick={() => setSwitchSuccessMessage(null)} style={{ background: 'none', border: 'none', color: 'var(--success)', cursor: 'pointer', fontWeight: 700 }}>✕</button>
         </div>
       )}
 
-      {/* Trial Summary Hero Card */}
-      {trialState.isActiveTrial && (
-        <div className="card" style={{ 
-          marginBottom: '3rem', 
-          padding: '2rem', 
-          borderRadius: '16px',
-          background: 'linear-gradient(135deg, rgba(15, 44, 89, 0.04) 0%, rgba(5, 150, 105, 0.06) 100%)', 
-          border: '2px solid var(--primary)',
-          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.05)'
-        }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.5rem' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                <span className="badge badge-success" style={{ fontSize: '0.8rem', padding: '0.35rem 0.85rem', fontWeight: 700, letterSpacing: '0.05em' }}>
-                  ACTIVE FREE TRIAL
-                </span>
-                <span style={{ 
-                  fontSize: '0.85rem', 
-                  fontWeight: 700, 
-                  color: trialState.urgencyLevel === 'lastDay' ? '#dc2626' : (trialState.urgencyLevel === 'urgent' ? '#ea580c' : '#059669'),
-                  background: trialState.urgencyLevel === 'lastDay' ? 'rgba(220, 38, 38, 0.1)' : (trialState.urgencyLevel === 'urgent' ? 'rgba(234, 88, 12, 0.1)' : 'rgba(5, 150, 105, 0.1)'),
-                  padding: '0.3rem 0.75rem',
-                  borderRadius: '20px'
-                }}>
-                  ⏳ {trialState.daysRemaining} {trialState.daysRemaining === 1 ? 'Day' : 'Days'} Remaining
-                </span>
-              </div>
-              <h2 style={{ fontSize: '1.6rem', fontWeight: 800, margin: '0.25rem 0 0.5rem 0', color: 'var(--text-main)' }}>
-                Trialing {trialState.planName} Plan
-              </h2>
-              <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                Active from <strong>{trialState.formattedStartDate}</strong> to <strong>{trialState.formattedEndDate}</strong>. You currently have full access to all {trialState.planName} features.
-              </p>
-              {trialState.isPromoActive ? (
-                <div style={{ marginTop: '0.75rem', fontSize: '0.95rem' }}>
-                  Special promotional price: <span style={{ textDecoration: 'line-through', color: 'var(--text-muted)' }}>{trialState.priceText}/mo</span>{' '}
-                  <strong style={{ color: '#059669', fontSize: '1.1rem' }}>{trialState.offerPriceText}/mo</strong> when you subscribe before trial ends!
-                </div>
-              ) : (
-                <div style={{ marginTop: '0.75rem', fontSize: '0.95rem' }}>
-                  Regular plan price: <strong style={{ color: 'var(--text-main)', fontSize: '1.1rem' }}>{trialState.effectivePriceText}/mo</strong>
-                </div>
-              )}
+      {/* SECTION 1: YOUR SUBSCRIPTION SUMMARY CARD */}
+      <div className="card" style={{ 
+        marginBottom: '2rem', 
+        padding: '1.5rem 1.75rem', 
+        borderRadius: '16px',
+        background: 'var(--card-bg)',
+        border: '1px solid var(--border)',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.03)'
+      }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1.25rem' }}>
+          <div>
+            <div style={{ fontSize: '0.75rem', fontWeight: 800, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+              Your Subscription
             </div>
-            <div>
-              <button 
-                className="btn btn-primary" 
-                style={{ padding: '0.85rem 2rem', fontSize: '1.05rem', fontWeight: 700, boxShadow: '0 4px 14px rgba(5, 150, 105, 0.3)' }}
-                onClick={() => handleSubscribe(trialState.planKey)}
-                disabled={loading === trialState.planKey}
-              >
-                {loading === trialState.planKey ? 'Connecting...' : `Subscribe to ${trialState.planName} Now`}
-              </button>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '0.4rem' }}>
+              <h3 style={{ fontSize: '1.4rem', fontWeight: 800, margin: 0, color: 'var(--text-main)' }}>
+                {getPlanName(activeSubscription ? activeSubscription.staypilot_plan_type : profile?.plan_type)}
+              </h3>
+
+              <span style={{ 
+                padding: '0.25rem 0.75rem', 
+                borderRadius: '20px', 
+                fontSize: '0.75rem', 
+                fontWeight: 800, 
+                letterSpacing: '0.04em',
+                textTransform: 'uppercase',
+                background: trialState.isActiveTrial 
+                  ? 'rgba(245, 158, 11, 0.12)' 
+                  : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)'),
+                color: trialState.isActiveTrial 
+                  ? '#d97706' 
+                  : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? '#10b981' : 'var(--text-muted)'),
+                border: trialState.isActiveTrial 
+                  ? '1px solid rgba(245, 158, 11, 0.3)' 
+                  : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border)')
+              }}>
+                {trialState.isActiveTrial ? 'FREE TRIAL' : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? 'ACTIVE' : 'STANDARD')}
+              </span>
             </div>
-          </div>
-        </div>
-      )}
 
-      {profile?.id && (
-        <div className="card" style={{ marginBottom: '3rem', padding: '0', overflow: 'hidden', border: '1px solid var(--border)' }}>
-          <div style={{ display: 'flex', borderBottom: '1px solid var(--border)', background: 'rgba(15, 44, 89, 0.02)' }}>
-            <button 
-              onClick={() => setDetailsTab('subscription')}
-              style={{ flex: 1, padding: '1rem', background: detailsTab === 'subscription' ? 'white' : 'transparent', border: 'none', borderBottom: detailsTab === 'subscription' ? '2px solid var(--primary)' : '2px solid transparent', color: detailsTab === 'subscription' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-            >
-              <Check size={18} /> Plan Details
-            </button>
-            <button 
-              onClick={() => setDetailsTab('history')}
-              style={{ flex: 1, padding: '1rem', background: detailsTab === 'history' ? 'white' : 'transparent', border: 'none', borderBottom: detailsTab === 'history' ? '2px solid var(--primary)' : '2px solid transparent', color: detailsTab === 'history' ? 'var(--primary)' : 'var(--text-muted)', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
-            >
-              <CreditCard size={18} /> Payment History
-            </button>
-          </div>
-
-          <div style={{ padding: '2rem' }}>
-            {detailsTab === 'subscription' && (
-              activeSubscription?.status === 'active' ? (
-                <div>
-                  <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
-                    Plan Details
-                  </h2>
-                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
-                    You are currently subscribed to the <strong>{getPlanName(activeSubscription.staypilot_plan_type)}</strong> plan.
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '450px' }}>
-                    <div style={{ color: 'var(--text-muted)' }}>Current Plan:</div>
-                    <div style={{ fontWeight: 'bold' }}>{getPlanName(activeSubscription.staypilot_plan_type)}</div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Subscription Status:</div>
-                    <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>ACTIVE</div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Next Billing Date:</div>
-                    <div style={{ fontWeight: 'bold' }}>
-                      {activeSubscription.current_period_end 
-                        ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' }) 
-                        : 'Processing (Awaiting Sync)'}
-                    </div>
-                  </div>
-                </div>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem', fontVariantNumeric: 'tabular-nums' }}>
+              {activeSubscription?.status === 'active' ? (
+                <>
+                  <span>Billing: <strong>₹{activeSubscription.amount ? (activeSubscription.amount / 100).toLocaleString('en-IN') : '2,399'} / month</strong></span>
+                  <span>•</span>
+                  <span>Next Renewal: <strong>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Processing'}</strong></span>
+                </>
               ) : trialState.isActiveTrial ? (
-                <div>
-                  <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
-                    Plan Details
-                  </h2>
-                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
-                    You are currently trialing the <strong>{getPlanName(profile?.plan_type)}</strong> plan.
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '450px' }}>
-                    <div style={{ color: 'var(--text-muted)' }}>Current Plan:</div>
-                    <div style={{ fontWeight: 'bold' }}>{getPlanName(profile?.plan_type)}</div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Account Status:</div>
-                    <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>FREE TRIAL</div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Trial Ends:</div>
-                    <div style={{ fontWeight: 'bold' }}>{trialState.formattedEndDate || 'N/A'}</div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Remaining:</div>
-                    <div style={{ fontWeight: 'bold' }}>{trialState.daysRemaining} {trialState.daysRemaining === 1 ? 'Day' : 'Days'}</div>
-                  </div>
-                </div>
+                <>
+                  <span>Trial Period: <strong>{trialState.daysRemaining} {trialState.daysRemaining === 1 ? 'Day' : 'Days'} Remaining</strong> (Ends {trialState.formattedEndDate})</span>
+                </>
               ) : (profile?.is_legacy_account || trialState.isLegacy) ? (
-                <div>
-                  <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
-                    Plan Details
-                  </h2>
-                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
-                    You are currently on the <strong>{getPlanName(profile?.plan_type)}</strong> account.
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '450px' }}>
-                    <div style={{ color: 'var(--text-muted)' }}>Current Plan:</div>
-                    <div style={{ fontWeight: 'bold' }}>{getPlanName(profile?.plan_type)}</div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Account Status:</div>
-                    <div style={{ fontWeight: 'bold', color: 'var(--success)' }}>ACTIVE</div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Account Type:</div>
-                    <div style={{ fontWeight: 'bold' }}>Legacy Account</div>
-                  </div>
-                </div>
+                <>
+                  <span>Account Type: <strong>Legacy Access • Legacy Account</strong></span>
+                </>
               ) : (
-                <div>
-                  <h2 style={{ fontSize: '1.25rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>
-                    Plan Details
-                  </h2>
-                  <p style={{ margin: '0 0 1.5rem 0', color: 'var(--text-muted)' }}>
-                    You are currently on the <strong>{getPlanName(profile?.plan_type)}</strong> plan.
-                  </p>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'auto auto', gap: '1rem', fontSize: '0.95rem', maxWidth: '450px' }}>
-                    <div style={{ color: 'var(--text-muted)' }}>Current Plan:</div>
-                    <div style={{ fontWeight: 'bold' }}>{getPlanName(profile?.plan_type)}</div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Account Status:</div>
-                    <div style={{ fontWeight: 'bold', color: trialState.isExpired ? 'var(--danger)' : 'var(--success)' }}>
-                      {trialState.isExpired ? 'TRIAL EXPIRED' : 'ACTIVE'}
-                    </div>
-                    
-                    <div style={{ color: 'var(--text-muted)' }}>Account Type:</div>
-                    <div style={{ fontWeight: 'bold' }}>Standard Account</div>
-                  </div>
-                </div>
-              )
-            )}
+                <>
+                  <span>Account Status: <strong>{trialState.isExpired ? 'Trial Expired' : 'Standard Free Starter Account'}</strong></span>
+                </>
+              )}
+            </div>
+          </div>
 
-            {detailsTab === 'history' && (
-              paymentHistory.length > 0 ? (
-                <div style={{ overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
-                    <thead>
-                      <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
-                        <th style={{ padding: '0.75rem 0.5rem' }}>Date</th>
-                        <th style={{ padding: '0.75rem 0.5rem' }}>Amount</th>
-                        <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
-                        <th style={{ padding: '0.75rem 0.5rem' }}>Transaction ID</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paymentHistory.slice(0, 10).map(payment => (
-                        <tr key={payment.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '1rem 0.5rem' }}>{new Date(payment.created_at).toLocaleDateString()}</td>
-                          <td style={{ padding: '1rem 0.5rem', fontWeight: 600 }}>₹{payment.amount / 100}</td>
-                          <td style={{ padding: '1rem 0.5rem' }}>
-                            <span className={`badge ${payment.status === 'captured' ? 'badge-success' : 'badge-danger'}`}>
-                              {payment.status === 'captured' ? 'SUCCESSFUL' : payment.status.toUpperCase()}
-                            </span>
-                          </td>
-                          <td style={{ padding: '1rem 0.5rem', fontFamily: 'monospace', color: 'var(--text-muted)' }}>{payment.razorpay_payment_id || payment.id.split('-')[0]}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div style={{ color: 'var(--text-muted)', textAlign: 'center', padding: '2rem 0' }}>
-                  No payment history available.
-                </div>
-              )
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <a 
+              href="#available-plans"
+              className="btn btn-outline"
+              style={{ padding: '0.6rem 1.1rem', fontSize: '0.875rem', fontWeight: 700, borderRadius: '8px', minHeight: '40px', textDecoration: 'none' }}
+            >
+              {activeSubscription?.status === 'active' ? 'Manage Plan' : 'Explore Plans'}
+            </a>
+            {hasBillingHistory && (
+              <a 
+                href="#billing-history"
+                className="btn btn-outline"
+                style={{ padding: '0.6rem 1.1rem', fontSize: '0.875rem', fontWeight: 700, borderRadius: '8px', minHeight: '40px', textDecoration: 'none' }}
+              >
+                Billing History
+              </a>
             )}
           </div>
         </div>
-      )}
-
-      {/* Plan Cards Grid */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', justifyContent: 'center', alignItems: 'stretch' }}>
-        {plansList.map((plan) => {
-          const isCurrentPlan = profile?.plan_type === plan.id;
-          const isTrialingThisPlan = isCurrentPlan && trialState.isActiveTrial && !trialState.isPaid && !trialState.isLegacy;
-          const isPaidCurrentPlan = isCurrentPlan && trialState.isPaid;
-          const canSwitchTrial = trialState.isActiveTrial && !trialState.isLegacy && !isCurrentPlan && plan.id !== 'free';
-
-          return (
-            <div key={plan.id} className="card" style={{ 
-              display: 'flex', 
-              flexDirection: 'column',
-              flex: '1 1 250px',
-              maxWidth: '380px',
-              padding: '2.5rem',
-              position: 'relative',
-              border: isCurrentPlan ? '2px solid #059669' : (plan.popular ? '2px solid var(--primary)' : '1px solid var(--border)'),
-              zIndex: isCurrentPlan || plan.popular ? 2 : 1,
-              transition: 'all 0.3s ease',
-              boxShadow: isCurrentPlan ? '0 20px 25px -5px rgba(5, 150, 105, 0.2)' : (plan.popular ? '0 20px 25px -5px rgba(0, 0, 0, 0.1)' : '')
-            }}>
-              {isCurrentPlan ? (
-                (trialState.isActiveTrial && !trialState.isLegacy) ? (
-                  <div style={{ 
-                    position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #059669 0%, #047857 100%)', color: 'white',
-                    padding: '0.35rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
-                    boxShadow: '0 4px 10px rgba(5, 150, 105, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
-                  }}>
-                    <Zap size={14} /> FREE TRIAL
-                  </div>
-                ) : (trialState.isExpired && !trialState.isLegacy && !trialState.isPaid) ? (
-                  <div style={{ 
-                    position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
-                    background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', color: 'white',
-                    padding: '0.35rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
-                    boxShadow: '0 4px 10px rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
-                  }}>
-                    <Zap size={14} /> TRIAL EXPIRED
-                  </div>
-                ) : (
-                  <div style={{ 
-                    position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
-                    background: trialState.isPaid 
-                      ? 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)' 
-                      : 'linear-gradient(135deg, #059669 0%, #047857 100%)', 
-                    color: 'white', padding: '0.35rem 1.5rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold',
-                    boxShadow: '0 4px 10px rgba(5, 150, 105, 0.3)', display: 'flex', alignItems: 'center', gap: '0.4rem', whiteSpace: 'nowrap'
-                  }}>
-                    <Check size={14} /> YOUR CURRENT PLAN
-                  </div>
-                )
-              ) : plan.popular && (
-                <div style={{ 
-                  position: 'absolute', top: '-15px', left: '50%', transform: 'translateX(-50%)',
-                  background: 'var(--primary)', color: 'white', padding: '0.25rem 1rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold'
-                }}>
-                  MOST POPULAR
-                </div>
-              )}
-
-              <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ 
-                  width: '48px', 
-                  height: '48px', 
-                  background: 'rgba(255,255,255,0.05)', 
-                  borderRadius: '12px', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  color: plan.color
-                }}>
-                  {plan.icon}
-                </div>
-                <div>
-                  <h3 style={{ margin: 0 }}>{plan.name}</h3>
-                  <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-                    {isCurrentPlan && trialState.isActiveTrial && !trialState.isLegacy ? 'Current Trial Plan' : plan.description}
-                  </p>
-                </div>
-              </div>
-
-              <div style={{ marginBottom: '2.5rem' }}>
-                {plan.basePrice && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-                    <span style={{ textDecoration: 'line-through', color: 'var(--danger)', fontSize: '1.25rem', fontWeight: '600', opacity: 0.8 }}>{plan.basePrice}/mo</span>
-                    {plan.discountPercent && (
-                      <span style={{ background: 'rgba(34, 197, 94, 0.15)', color: 'var(--success)', padding: '0.2rem 0.6rem', borderRadius: '20px', fontSize: '0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                        <Zap size={12} fill="currentColor" /> SAVE {plan.discountPercent}%
-                      </span>
-                    )}
-                  </div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
-                  <span style={{ fontSize: '3rem', fontWeight: '800', color: 'var(--text)', letterSpacing: '-0.05em' }}>{plan.price}</span>
-                  {plan.period && <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500' }}>{plan.period}</span>}
-                </div>
-                
-                {globalTaxSettings?.enabled && plan.id !== 'free' && (
-                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: '600', marginTop: '0.25rem' }}>
-                    + {globalTaxSettings.rate}% GST
-                  </div>
-                )}
-                
-                {plan.basePrice && (
-                  <div style={{ marginTop: '0.75rem' }}>
-                    <div style={{ 
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.4rem',
-                      background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.1), rgba(245, 158, 11, 0.05))',
-                      border: '1px solid rgba(245, 158, 11, 0.2)',
-                      color: '#d97706',
-                      padding: '0.4rem 0.8rem',
-                      borderRadius: '6px',
-                      fontSize: '0.75rem',
-                      fontWeight: 'bold',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.05em'
-                    }}>
-                      <Zap size={14} fill="currentColor" />
-                      LIMITED TIME OFFER {plan.offerEndDate && `• ENDS ${formatOfferDate(plan.offerEndDate).toUpperCase()}`}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ flex: 1, marginBottom: '2.5rem' }}>
-                <h4 style={{ fontSize: '0.875rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-                  What's included
-                </h4>
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  {plan.features.map((feature, i) => (
-                    <li key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.95rem' }}>
-                      <Check size={18} color="var(--success)" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <button 
-                  className={`btn`}
-                  style={{ 
-                    width: '100%', 
-                    height: '50px', 
-                    fontSize: '1rem',
-                    fontWeight: 700,
-                    border: isCurrentPlan ? '2px solid var(--success)' : (plan.popular || isTrialingThisPlan ? 'none' : '2px solid var(--primary)'),
-                    background: isCurrentPlan ? 'rgba(16, 185, 129, 0.1)' : (plan.popular || isTrialingThisPlan ? 'var(--primary)' : 'transparent'),
-                    color: isCurrentPlan ? 'var(--success)' : (plan.popular || isTrialingThisPlan ? 'white' : 'var(--primary)'),
-                    opacity: loading === plan.id ? 0.7 : 1,
-                    cursor: (loading === plan.id || isCurrentPlan) ? 'not-allowed' : 'pointer'
-                  }}
-                  onClick={() => {
-                    if (!isCurrentPlan) handleSubscribe(plan.id);
-                  }}
-                  disabled={loading === plan.id || isCurrentPlan}
-                >
-                  {isCurrentPlan 
-                    ? 'Current Plan' 
-                    : (loading === plan.id 
-                        ? 'Connecting...' 
-                        : (plan.id === 'free' ? 'Downgrade' : `Subscribe to ${plan.name}`))}
-                </button>
-
-                {canSwitchTrial && (
-                  <button
-                    type="button"
-                    style={{
-                      width: '100%',
-                      padding: '0.4rem 0',
-                      marginTop: '0.25rem',
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--primary)',
-                      fontSize: '0.85rem',
-                      fontWeight: 600,
-                      textDecoration: 'underline',
-                      textUnderlineOffset: '3px',
-                      cursor: 'pointer',
-                      textAlign: 'center',
-                      transition: 'opacity 0.2s',
-                      opacity: loading === plan.id ? 0.6 : 1
-                    }}
-                    onClick={() => handleSwitchTrialPlanClick(plan.id)}
-                    disabled={loading === plan.id}
-                  >
-                    Switch Trial to {plan.name}
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
 
-      {/* Shared Plan Comparison Section */}
-      <div style={{ marginTop: '4rem' }}>
+      {/* SECTION 2: PROMOTIONAL BANNER (WHEN ACTIVE) */}
+      {globalPromoEndDate && (
+        <div style={{ 
+          marginBottom: '1.5rem', 
+          padding: '0.85rem 1.25rem', 
+          borderRadius: '12px',
+          background: 'linear-gradient(90deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04))',
+          border: '1px solid rgba(245, 158, 11, 0.3)',
+          color: '#d97706',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.75rem',
+          fontSize: '0.875rem',
+          fontWeight: 600
+        }}>
+          <Zap size={18} fill="currentColor" style={{ flexShrink: 0 }} />
+          <div>
+            <strong>⚡ Limited-time promotional pricing:</strong> Special pricing available until {formatOfferDate(globalPromoEndDate)}.
+          </div>
+        </div>
+      )}
+
+      {/* SECTION 3: AVAILABLE PLANS */}
+      <div id="available-plans" style={{ marginBottom: '3.5rem' }}>
+        <div style={{ marginBottom: '1.5rem' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 0.25rem 0' }}>
+            Available Plans
+          </h3>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+            Choose the plan that best fits your property and business needs.
+          </p>
+        </div>
+
+        {/* Pricing Cards Grid */}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(300px, 1fr))', 
+          gap: '1.5rem', 
+          alignItems: 'stretch' 
+        }}>
+          {plansList.map((plan) => {
+            const isCurrentPlan = profile?.plan_type === plan.id;
+            const isTrialingThisPlan = isCurrentPlan && trialState.isActiveTrial && !trialState.isPaid && !trialState.isLegacy;
+            const canSwitchTrial = trialState.isActiveTrial && !trialState.isLegacy && !isCurrentPlan && plan.id !== 'free';
+
+            const isExpanded = expandedFeatures[plan.id] || false;
+            const displayFeatures = (isMobile && !isExpanded && plan.features.length > 4) 
+              ? plan.features.slice(0, 4) 
+              : plan.features;
+
+            const rawConfig = globalPlans?.[plan.id] || {};
+            const maxResorts = rawConfig.maxResorts ?? rawConfig.max_resorts ?? rawConfig.resortLimit;
+            const maxRooms = rawConfig.maxRooms ?? rawConfig.max_rooms ?? rawConfig.roomLimit;
+            const maxStaff = rawConfig.maxStaff ?? rawConfig.max_staff ?? rawConfig.staffLimit;
+
+            const limitsList = [];
+            if (maxResorts !== undefined && maxResorts !== null) {
+              limitsList.push(Number(maxResorts) >= 999999 ? 'Unlimited Properties' : `${maxResorts} ${Number(maxResorts) === 1 ? 'Property' : 'Properties'}`);
+            }
+            if (maxRooms !== undefined && maxRooms !== null) {
+              limitsList.push(Number(maxRooms) >= 999999 ? 'Unlimited Rooms' : `Up to ${maxRooms} Rooms`);
+            }
+            if (maxStaff !== undefined && maxStaff !== null) {
+              limitsList.push(Number(maxStaff) >= 999999 ? 'Unlimited Staff' : `Up to ${maxStaff} Staff`);
+            }
+
+            return (
+              <div key={plan.id} className="card" style={{ 
+                display: 'flex', 
+                flexDirection: 'column',
+                padding: '1.75rem',
+                borderRadius: '16px',
+                position: 'relative',
+                background: 'var(--card-bg)',
+                border: isCurrentPlan ? '2px solid #10b981' : (plan.popular ? '2px solid var(--primary)' : '1px solid var(--border)'),
+                boxShadow: isCurrentPlan ? '0 10px 25px -5px rgba(16, 185, 129, 0.15)' : (plan.popular ? '0 10px 25px -5px rgba(0, 0, 0, 0.08)' : '0 2px 8px rgba(0,0,0,0.02)'),
+                transition: 'all 0.25s ease',
+                boxSizing: 'border-box'
+              }}>
+                {/* Badges Header Area */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', minHeight: '26px' }}>
+                  {plan.popular ? (
+                    <span style={{ 
+                      background: 'var(--primary)', 
+                      color: 'white', 
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: '20px', 
+                      fontSize: '0.725rem', 
+                      fontWeight: 800,
+                      letterSpacing: '0.04em',
+                      textTransform: 'uppercase'
+                    }}>
+                      MOST POPULAR
+                    </span>
+                  ) : <span />}
+
+                  {isCurrentPlan && (
+                    <span style={{ 
+                      background: 'rgba(16, 185, 129, 0.12)', 
+                      color: '#10b981', 
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      padding: '0.25rem 0.75rem', 
+                      borderRadius: '20px', 
+                      fontSize: '0.725rem', 
+                      fontWeight: 800,
+                      letterSpacing: '0.04em',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}>
+                      <Check size={13} /> CURRENT PLAN
+                    </span>
+                  )}
+                </div>
+
+                {/* Title & Description */}
+                <div style={{ marginBottom: '1.25rem' }}>
+                  <h3 style={{ fontSize: '1.35rem', fontWeight: 800, margin: '0 0 0.35rem 0', color: 'var(--text-main)' }}>
+                    {plan.name}
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)', lineHeight: '1.4', minHeight: '2.8em' }}>
+                    {plan.description}
+                  </p>
+                </div>
+
+                {/* Pricing Area */}
+                <div style={{ marginBottom: '1.25rem', paddingBottom: '1.25rem', borderBottom: '1px solid var(--border)' }}>
+                  {plan.basePrice && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                      <span style={{ textDecoration: 'line-through', color: 'var(--danger)', fontSize: '1.1rem', fontWeight: '600', opacity: 0.8 }}>
+                        {plan.basePrice}/mo
+                      </span>
+                      {plan.discountPercent && (
+                        <span style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#10b981', padding: '0.15rem 0.5rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: 800 }}>
+                          SAVE {plan.discountPercent}%
+                        </span>
+                      )}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem' }}>
+                    <span style={{ fontSize: '2.5rem', fontWeight: 800, color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.03em' }}>
+                      {plan.price}
+                    </span>
+                    {plan.period && <span style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: '600' }}>{plan.period}</span>}
+                  </div>
+                  {globalTaxSettings?.enabled && plan.id !== 'free' && (
+                    <div style={{ color: 'var(--text-muted)', fontSize: '0.775rem', fontWeight: '600', marginTop: '0.2rem' }}>
+                      + {globalTaxSettings.rate}% GST
+                    </div>
+                  )}
+                </div>
+
+                {/* PLAN LIMITS (PROMINENT) */}
+                {limitsList.length > 0 && (
+                  <div style={{ marginBottom: '1.25rem', padding: '0.75rem 0.9rem', background: 'var(--bg-secondary)', borderRadius: '10px', border: '1px solid var(--border)' }}>
+                    <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.35rem' }}>
+                      Plan Limits
+                    </div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', flexWrap: 'wrap', gap: '0.4rem 0.75rem' }}>
+                      {limitsList.map((lim, idx) => (
+                        <span key={idx} style={{ display: 'inline-flex', alignItems: 'center' }}>
+                          {idx > 0 && <span style={{ color: 'var(--text-muted)', marginRight: '0.75rem' }}>•</span>}
+                          {lim}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* FEATURES INCLUDED */}
+                <div style={{ flex: 1, marginBottom: '1.5rem' }}>
+                  <div style={{ fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', marginBottom: '0.75rem' }}>
+                    What's Included
+                  </div>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    {displayFeatures.map((feature, i) => (
+                      <li key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '0.55rem', fontSize: '0.875rem', color: 'var(--text-main)', lineHeight: '1.35' }}>
+                        <Check size={16} style={{ color: '#10b981', flexShrink: 0, marginTop: '2px' }} />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {isMobile && plan.features.length > 4 && (
+                    <button
+                      type="button"
+                      onClick={() => toggleExpandFeatures(plan.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#10b981',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        padding: '0.5rem 0 0 0',
+                        marginTop: '0.5rem',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.25rem'
+                      }}
+                    >
+                      {isExpanded ? 'Show less features' : `View all ${plan.features.length} features ↓`}
+                    </button>
+                  )}
+                </div>
+
+                {/* CTA ACTIONS */}
+                <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <button 
+                    className="btn"
+                    style={{ 
+                      width: '100%', 
+                      height: '46px', 
+                      fontSize: '0.925rem',
+                      fontWeight: 700,
+                      borderRadius: '10px',
+                      border: isCurrentPlan ? '1px solid var(--border)' : 'none',
+                      background: isCurrentPlan ? 'var(--bg-secondary)' : '#10b981',
+                      color: isCurrentPlan ? 'var(--text-muted)' : '#ffffff',
+                      opacity: (loading === plan.id || isCurrentPlan) ? 0.7 : 1,
+                      cursor: (loading === plan.id || isCurrentPlan) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isCurrentPlan ? 'none' : '0 2px 6px rgba(16, 185, 129, 0.25)'
+                    }}
+                    onClick={() => {
+                      if (!isCurrentPlan) handleSubscribe(plan.id);
+                    }}
+                    disabled={loading === plan.id || isCurrentPlan}
+                  >
+                    {isCurrentPlan 
+                      ? 'Current Plan' 
+                      : (loading === plan.id 
+                          ? 'Connecting...' 
+                          : (plan.id === 'free' ? 'Downgrade' : `Subscribe to ${plan.name}`))}
+                  </button>
+
+                  {canSwitchTrial && (
+                    <button
+                      type="button"
+                      style={{
+                        width: '100%',
+                        padding: '0.4rem 0',
+                        background: 'none',
+                        border: 'none',
+                        color: '#10b981',
+                        fontSize: '0.825rem',
+                        fontWeight: 700,
+                        cursor: 'pointer',
+                        textAlign: 'center',
+                        transition: 'opacity 0.2s',
+                        opacity: loading === plan.id ? 0.6 : 1,
+                        minHeight: '36px'
+                      }}
+                      onClick={() => handleSwitchTrialPlanClick(plan.id)}
+                      disabled={loading === plan.id}
+                    >
+                      Switch Trial to {plan.name}
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SECTION 4: DETAILED PLAN COMPARISON TABLE */}
+      <div style={{ marginBottom: '3.5rem' }}>
         <PlanComparison 
           title="Compare Plans"
           subtitle="Detailed breakdown of features, limits, and support levels across all plans."
         />
       </div>
 
-      {activeSubscription && (
-        <div style={{ textAlign: 'center', marginTop: '3rem' }}>
-          <button 
-            onClick={handleCancelSubscription}
-            disabled={loading === 'cancel'}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-muted)',
-              fontSize: '0.85rem',
-              cursor: 'pointer',
-              textDecoration: 'underline'
-            }}
-          >
-            {loading === 'cancel' ? 'Cancelling subscription...' : 'Need to downgrade to the free plan? Click here to cancel your subscription.'}
-          </button>
+      {/* SECTION 5: BILLING & PAYMENT HISTORY (Conditional rendering based on authoritative billing records) */}
+      {hasBillingHistory && (
+        <div id="billing-history" className="card" style={{ 
+          marginBottom: '2.5rem', 
+          padding: '1.5rem 1.75rem', 
+          borderRadius: '16px',
+          background: 'var(--card-bg)',
+          border: '1px solid var(--border)'
+        }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 1rem 0' }}>
+            Billing & Payment History
+          </h3>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left', color: 'var(--text-muted)' }}>
+                  <th style={{ padding: '0.75rem 0.5rem' }}>Date</th>
+                  <th style={{ padding: '0.75rem 0.5rem' }}>Amount</th>
+                  <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
+                  <th style={{ padding: '0.75rem 0.5rem' }}>Transaction ID</th>
+                </tr>
+              </thead>
+              <tbody>
+                {paymentHistory.slice(0, 10).map(payment => (
+                  <tr key={payment.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '0.85rem 0.5rem', color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
+                      {new Date(payment.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
+                    <td style={{ padding: '0.85rem 0.5rem', fontWeight: 700, color: 'var(--text-main)', fontVariantNumeric: 'tabular-nums' }}>
+                      ₹{payment.amount ? (payment.amount / 100).toLocaleString('en-IN') : '0'}
+                    </td>
+                    <td style={{ padding: '0.85rem 0.5rem' }}>
+                      <span style={{
+                        padding: '0.2rem 0.55rem',
+                        borderRadius: '12px',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        letterSpacing: '0.03em',
+                        textTransform: 'uppercase',
+                        background: payment.status === 'captured' ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                        color: payment.status === 'captured' ? '#10b981' : '#ef4444',
+                        border: payment.status === 'captured' ? '1px solid rgba(16, 185, 129, 0.25)' : '1px solid rgba(239, 68, 68, 0.25)'
+                      }}>
+                        {payment.status === 'captured' ? 'SUCCESSFUL' : payment.status.toUpperCase()}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.85rem 0.5rem', fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '0.825rem' }}>
+                      {payment.razorpay_payment_id || payment.id.split('-')[0]}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      <div className="card" style={{ marginTop: '3rem', padding: '2rem', display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'rgba(0,0,0,0.1)' }}>
-        <div style={{ background: 'rgba(255,255,255,0.05)', padding: '1rem', borderRadius: '50%', color: 'var(--primary)' }}>
-          <Shield size={32} />
+      {/* SECTION 6: REASSURANCE FOOTER */}
+      <div style={{
+        padding: '1.25rem 1.5rem',
+        borderRadius: '12px',
+        background: 'var(--bg-secondary)',
+        border: '1px solid var(--border)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: '1rem',
+        fontSize: '0.875rem',
+        color: 'var(--text-muted)',
+        marginBottom: isMobile ? '80px' : '0'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <Shield size={18} style={{ color: '#10b981' }} />
+          <span><strong>Secure Payments:</strong> Transactions are encrypted with 256-bit SSL security.</span>
         </div>
-        <div>
-          <h3 style={{ margin: 0 }}>Secure Payments</h3>
-          <p style={{ margin: 0, color: 'var(--text-muted)' }}>Your transactions are secured by 256-bit SSL encryption and processed via world-class gateways.</p>
-        </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', gap: '1rem', opacity: 0.6 }}>
-          <CreditCard size={32} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
+          {activeSubscription && (
+            <button
+              onClick={handleCancelSubscription}
+              disabled={loading === 'cancel'}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.85rem' }}
+            >
+              {loading === 'cancel' ? 'Cancelling...' : 'Cancel Subscription'}
+            </button>
+          )}
+          <button
+            onClick={() => navigate('/support')}
+            style={{ background: 'none', border: 'none', color: '#10b981', cursor: 'pointer', fontWeight: 700, fontSize: '0.875rem', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}
+          >
+            Need help choosing? Contact Support <ArrowRight size={14} />
+          </button>
         </div>
       </div>
 

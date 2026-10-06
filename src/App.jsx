@@ -8,7 +8,7 @@ import toast, { Toaster } from 'react-hot-toast';
 import { Capacitor } from '@capacitor/core';
 import { AppShortcuts } from '@capawesome/capacitor-app-shortcuts';
 
-// Mock empty pages for now
+// Lazy loaded pages
 const Dashboard = React.lazy(() => import('./pages/Dashboard'));
 const CottagesRooms = React.lazy(() => import('./pages/CottagesRooms'));
 const Bookings = React.lazy(() => import('./pages/Bookings'));
@@ -103,19 +103,14 @@ function App() {
       
       if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
         if (event === 'INITIAL_SESSION' && session?.user?.id) {
-          // Update last login on page load if session exists
           supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', session.user.id).then();
         }
         if (!profile) setIsDataLoaded(false);
         handleAuthChange(session);
       } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (event === 'SIGNED_IN' && session?.user?.id) {
-          // Update last login
           supabase.from('profiles').update({ last_login_at: new Date().toISOString() }).eq('id', session.user.id).then();
         }
-        // If we already have a profile, DO ABSOLUTELY NOTHING.
-        // Updating the Zustand store causes a full app re-render (shivering).
-        // The Supabase client internally manages the refreshed token anyway.
         if (!profile) {
            setIsDataLoaded(false);
            handleAuthChange(session);
@@ -129,23 +124,14 @@ function App() {
   const handleAuthChange = async (session) => {
     setSession(session);
 
-    // Fetch global settings (pricing, landing page) for all users regardless of auth
     try {
       const { data: superAdmins } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').order('created_at', { ascending: true }).limit(1);
       if (superAdmins && superAdmins.length > 0) {
         const settings = superAdmins[0].global_settings || {};
-        if (settings.pricing) {
-          setGlobalPlans(settings.pricing);
-        }
-        if (settings.landing_page) {
-          setLandingPageContent(settings.landing_page);
-        }
-        if (settings.website_pricing) {
-          setWebsitePricing(settings.website_pricing);
-        }
-        if (settings.tax_settings) {
-          setGlobalTaxSettings(settings.tax_settings);
-        }
+        if (settings.pricing) setGlobalPlans(settings.pricing);
+        if (settings.landing_page) setLandingPageContent(settings.landing_page);
+        if (settings.website_pricing) setWebsitePricing(settings.website_pricing);
+        if (settings.tax_settings) setGlobalTaxSettings(settings.tax_settings);
         if (settings.onboarding_wizard_enabled !== undefined) {
           setOnboardingWizardEnabled(settings.onboarding_wizard_enabled !== false);
         }
@@ -155,16 +141,13 @@ function App() {
     }
 
     if (session) {
-      // Fetch profile first to get the correct role and tenant_id
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       
-      
-        if (profile) {
-          const { data: isExpired } = await supabase.rpc('check_trial_status', { p_id: profile.id });
-          profile.is_trial_expired_server = isExpired;
-          setProfile(profile);
+      if (profile) {
+        const { data: isExpired } = await supabase.rpc('check_trial_status', { p_id: profile.id });
+        profile.is_trial_expired_server = isExpired;
+        setProfile(profile);
 
-        // Only fetch resorts if the user actually belongs to a tenant (Owners and Staff)
         if (profile.tenant_id) {
           const { data: resorts } = await supabase
             .from('resorts')
@@ -194,7 +177,6 @@ function App() {
         }
       }
     } else {
-      // Clear all state on logout
       setProfile(null);
       setResorts([]);
       setActiveResortId(null);
@@ -207,7 +189,6 @@ function App() {
 
   const isAndroid = /android/i.test(navigator.userAgent || navigator.vendor || window.opera);
   
-  // Auto-redirect to mobile app if Android and newly verified
   React.useEffect(() => {
     if (isNewlyVerified && isAndroid) {
       const timer = setTimeout(() => {
@@ -218,7 +199,6 @@ function App() {
   }, [isNewlyVerified, isAndroid]);
 
   if (isNewlyVerified) {
-
     return (
       <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
         <div style={{ background: 'white', padding: '3rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
@@ -277,7 +257,7 @@ function App() {
     );
   }
 
-  const isPreview = window.location.search.includes('preview=true');
+  const isPreview = typeof window !== 'undefined' && window.location.search.includes('preview=true');
   const activeSession = session || (isPreview ? { user: { id: 'demo-user', email: 'admin@staypilot.com' } } : null);
   const activeProfile = profile || (isPreview ? { role: 'tenant_admin', full_name: 'Resort Admin' } : null);
 
@@ -291,20 +271,18 @@ function App() {
             path="/auth" 
             element={activeSession && !isRecovering && !window.location.hash.includes('type=recovery') ? <Navigate to="/dashboard" replace /> : <Auth />} 
           />
-          
-          <Route path="/" element={!activeSession ? (window.Capacitor?.isNativePlatform() ? <Navigate to="/auth" replace /> : <Home />) : (activeProfile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Pricing />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           
-          <Route element={activeSession ? <AppLayout /> : <Navigate to="/auth" replace />}>
+          <Route element={activeSession || isPreview ? <AppLayout /> : <Navigate to="/auth" replace />}>
             <Route path="dashboard" element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Dashboard />} />
             <Route path="setup" element={<CottagesRooms />} />
             <Route path="bookings" element={<Bookings />} />
             <Route path="bookings/new" element={<BookingForm />} />
-                <Route path="enquiries" element={<EnquiriesBoard />} />
-                <Route path="enquiries/quick" element={<QuickEnquiryMobile />} />
+            <Route path="enquiries" element={<EnquiriesBoard />} />
+            <Route path="enquiries/quick" element={<QuickEnquiryMobile />} />
             <Route path="bookings/edit/:id" element={<BookingForm />} />
             <Route path="calendar" element={<CalendarView />} />
             <Route path="financials" element={<Financials />} />
@@ -318,8 +296,8 @@ function App() {
             <Route path="settings" element={profile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Settings />} />
           </Route>
 
+          <Route path="/" element={!activeSession && !isPreview ? (window.Capacitor?.isNativePlatform() ? <Navigate to="/auth" replace /> : <Home />) : (activeProfile?.role === 'staff' ? <Navigate to="/bookings" replace /> : <Navigate to="/dashboard" replace />)} />
           <Route path="/wizard" element={session ? <OnboardingWizard /> : <Navigate to="/auth" replace />} />
-
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </React.Suspense>
