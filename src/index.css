@@ -984,7 +984,11 @@ input:checked + .slider:before {
           display: grid;
           grid-template-columns: 7fr 4fr;
           gap: 2.5rem;
-          align-items: start;
+          align-items: stretch;
+        }
+
+        .form-right-col {
+          height: 100%;
         }
         
         .form-section-card {
@@ -1074,7 +1078,8 @@ input:checked + .slider:before {
         
         .sticky-receipt {
           position: sticky;
-          top: 2rem;
+          top: 1rem;
+          z-index: 5;
           background: var(--bg-secondary);
           border: 1px solid var(--border);
           border-radius: 16px;
