@@ -1042,6 +1042,18 @@ input:checked + .slider:before {
           margin-bottom: 0.85rem;
         }
 
+        .date-grid-row {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+          margin-bottom: 0.85rem;
+        }
+
+        .date-picker-input {
+          height: 42px !important;
+          font-size: 0.875rem !important;
+        }
+
         @media (max-width: 768px) {
           .address-grid-row-1 {
             grid-template-columns: 1fr;
@@ -1053,6 +1065,14 @@ input:checked + .slider:before {
           }
           .address-grid-row-2 .form-group:last-child {
             grid-column: 1 / -1;
+          }
+          .date-grid-row {
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+          }
+          .date-picker-input {
+            height: 38px !important;
+            font-size: 0.8rem !important;
           }
         }
 

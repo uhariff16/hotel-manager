@@ -2,7 +2,7 @@ import toast from 'react-hot-toast';
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
-import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X, Lock, Camera } from 'lucide-react';
+import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Globe, Wallet, Edit2, Save, ChevronUp, ChevronDown, ListCollapse, Trash2, Search, X, Lock, Camera, Coffee } from 'lucide-react';
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import IDScanner from '../components/IDScanner';
@@ -1738,41 +1738,57 @@ export default function BookingForm() {
           {/* SECTION 3: STAY SCHEDULE */}
           <div className={`form-section-card ${collapsedSections[3] ? 'collapsed' : ''}`}>
             <h3 className="form-section-title" onClick={() => toggleSection(3)}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Calendar size={18} style={{ color: 'var(--primary)' }} /> Booking Schedule & Property</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <Calendar size={18} style={{ color: 'var(--primary)' }} /> Booking Schedule & Property
+                {bookingForm.night_count > 0 && (
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', background: 'rgba(16, 185, 129, 0.1)', padding: '0.2rem 0.65rem', borderRadius: '12px', border: '1px solid rgba(16, 185, 129, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    🌙 {bookingForm.night_count} {bookingForm.night_count === 1 ? 'Night' : 'Nights'}
+                  </span>
+                )}
+              </span>
               {collapsedSections[3] ? <ChevronDown size={20} style={{ color: 'var(--text-muted)' }} /> : <ChevronUp size={20} style={{ color: 'var(--text-muted)' }} />}
             </h3>
             
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            <div className="date-grid-row">
               <div className="form-group">
                 <label className="premium-label">Check-in Date</label>
-                <input disabled={!isEditing} 
-                  type="date" 
-                  required 
-                  className="premium-input" 
-                  value={bookingForm.check_in_date} 
-                  onChange={e => {
-                    const newInDate = e.target.value;
-                    if (!newInDate) {
-                      setBookingForm({...bookingForm, check_in_date: ''});
-                      return;
-                    }
-                    const inDate = new Date(newInDate);
-                    const outDate = new Date(inDate);
-                    outDate.setDate(outDate.getDate() + 1);
-                    const newOutDate = outDate.toLocaleDateString('en-CA');
-                    setBookingForm(prev => ({...prev, check_in_date: newInDate, check_out_date: newOutDate, is_loading_edit: false}));
-                  }} 
-                />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Calendar size={14} style={{ position: 'absolute', left: '0.65rem', color: 'var(--primary)', pointerEvents: 'none', zIndex: 1 }} />
+                  <input disabled={!isEditing} 
+                    type="date" 
+                    required 
+                    className="premium-input date-picker-input" 
+                    style={{ paddingLeft: '2.1rem' }}
+                    value={bookingForm.check_in_date} 
+                    onChange={e => {
+                      const newInDate = e.target.value;
+                      if (!newInDate) {
+                        setBookingForm({...bookingForm, check_in_date: ''});
+                        return;
+                      }
+                      const inDate = new Date(newInDate);
+                      const outDate = new Date(inDate);
+                      outDate.setDate(outDate.getDate() + 1);
+                      const newOutDate = outDate.toLocaleDateString('en-CA');
+                      setBookingForm(prev => ({...prev, check_in_date: newInDate, check_out_date: newOutDate, is_loading_edit: false}));
+                    }} 
+                  />
+                </div>
               </div>
               <div className="form-group">
                 <label className="premium-label">Check-out Date</label>
-                <input disabled={!isEditing} id="check-out-date-input" type="date" required className="premium-input" value={bookingForm.check_out_date} 
-                  onChange={e => { const val = e.target.value; setBookingForm(prev => ({...prev, check_out_date: val, is_loading_edit: false})); }} 
-                />
+                <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                  <Calendar size={14} style={{ position: 'absolute', left: '0.65rem', color: 'var(--primary)', pointerEvents: 'none', zIndex: 1 }} />
+                  <input disabled={!isEditing} id="check-out-date-input" type="date" required className="premium-input date-picker-input" 
+                    style={{ paddingLeft: '2.1rem' }}
+                    value={bookingForm.check_out_date} 
+                    onChange={e => { const val = e.target.value; setBookingForm(prev => ({...prev, check_out_date: val, is_loading_edit: false})); }} 
+                  />
+                </div>
               </div>
             </div>
 
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', marginBottom: '1.25rem' }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '0.85rem' }}>
               <div className="form-group">
                 <label className="premium-label">Accommodation Booking Scope</label>
                 <select disabled={!isEditing} className="premium-select" value={bookingForm.booking_type} onChange={e => setBookingForm({...bookingForm, booking_type: e.target.value, room_ids: []})}>
@@ -1790,11 +1806,11 @@ export default function BookingForm() {
             </div>
 
             {(bookingForm.booking_type === 'Room' || bookingForm.booking_type === 'Entire Property') && (
-              <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+              <div className="form-group" style={{ marginBottom: '0.85rem' }}>
                 <label className="premium-label">
                   {bookingForm.booking_type === 'Entire Property' ? 'Rooms Included (All assigned automatically)' : 'Assign Specific Rooms (Available for Entire Stay)'}
                 </label>
-                <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', padding: '1.25rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', padding: '0.85rem 1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px solid var(--border)' }}>
                   {relevantRooms.length === 0 ? (
                     <span style={{ fontSize: '0.85rem', color: !bookingForm.cottage_id ? 'var(--text-muted)' : 'var(--danger)', fontStyle: !bookingForm.cottage_id ? 'italic' : 'normal', fontWeight: !bookingForm.cottage_id ? 'normal' : '600' }}>{!bookingForm.cottage_id ? 'Please select a property/cottage first' : 'No rooms available for the entire selected duration.'}</span>
                   ) : relevantRooms.map(r => {
@@ -1816,7 +1832,7 @@ export default function BookingForm() {
                     <label 
                       key={r.id} 
                       className={`badge-room ${isSelected ? 'selected' : ''}`}
-                      style={overrideStyle}
+                      style={{ ...overrideStyle, padding: '0.4rem 0.85rem' }}
                       title={r.isPlanLocked ? 'Locked by current plan limit' : (!isAvail ? 'Not available for selected dates' : 'Available')}
                     >
                       <input 
@@ -1845,17 +1861,18 @@ export default function BookingForm() {
                           });
                         }} 
                       />
+                      {isSelected && isAvail && <CheckCircle2 size={13} style={{ flexShrink: 0, marginRight: '2px' }} />}
                       {r.name}
-                      {!isAvail && <X size={14} style={{ marginLeft: '4px' }} />}
+                      {!isAvail && <X size={13} style={{ marginLeft: '4px' }} />}
                       </label>
                     );
                   })}
                 </div>
 
                 {dailyAvailability.length > 0 && (
-                  <div style={{ padding: '1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px dashed var(--border)', marginTop: '1rem' }}>
-                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.75rem' }}>Daily Room Availability</div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <div style={{ padding: '0.85rem 1rem', background: 'var(--bg-secondary)', borderRadius: '12px', border: '1px dashed var(--border)', marginTop: '0.85rem' }}>
+                    <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '0.5rem' }}>Daily Room Availability</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                       {dailyAvailability.map(dayInfo => (
                         <div key={dayInfo.date.toISOString()} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
                           <span style={{ fontWeight: 600, color: 'var(--text-color)' }}>{format(dayInfo.date, 'MMM d, yyyy')}</span>
@@ -1870,15 +1887,15 @@ export default function BookingForm() {
               </div>
             )}
 
-            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1.25rem' }}>
+            <div className="grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.85rem' }}>
               <div className="form-group">
                 <label className="premium-label">Breakfast Inclusions</label>
                 <div 
                   className="addon-card" 
                   style={{ 
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', 
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.85rem 1rem', 
                     border: bookingForm.breakfast === 'Included' ? '2px solid var(--primary)' : '1px solid var(--border)', 
-                    borderRadius: '8px', background: bookingForm.breakfast === 'Included' ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-secondary)',
+                    borderRadius: '10px', background: bookingForm.breakfast === 'Included' ? 'rgba(16, 185, 129, 0.05)' : 'var(--bg-secondary)',
                     cursor: isEditing ? 'pointer' : 'default', transition: 'all 0.2s'
                   }}
                   onClick={() => {
@@ -1886,11 +1903,12 @@ export default function BookingForm() {
                     setBookingForm({...bookingForm, breakfast: bookingForm.breakfast === 'Included' ? 'NA' : 'Included'});
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', border: bookingForm.breakfast === 'Included' ? 'none' : '2px solid #cbd5e1', background: bookingForm.breakfast === 'Included' ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      {bookingForm.breakfast === 'Included' && <CheckCircle2 size={14} color="#fff" />}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <Coffee size={16} style={{ color: bookingForm.breakfast === 'Included' ? 'var(--primary)' : 'var(--text-muted)', flexShrink: 0 }} />
+                    <div style={{ width: '18px', height: '18px', borderRadius: '50%', border: bookingForm.breakfast === 'Included' ? 'none' : '2px solid var(--border)', background: bookingForm.breakfast === 'Included' ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {bookingForm.breakfast === 'Included' && <CheckCircle2 size={12} color="#fff" />}
                     </div>
-                    <span style={{ fontWeight: bookingForm.breakfast === 'Included' ? 700 : 500, color: bookingForm.breakfast === 'Included' ? 'var(--primary)' : 'inherit' }}>Breakfast Included</span>
+                    <span style={{ fontWeight: bookingForm.breakfast === 'Included' ? 700 : 500, color: bookingForm.breakfast === 'Included' ? 'var(--primary)' : 'inherit', fontSize: '0.9rem' }}>Breakfast Included</span>
                   </div>
                   {bookingForm.breakfast === 'Included' && (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }} onClick={e => e.stopPropagation()}>
