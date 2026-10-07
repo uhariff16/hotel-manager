@@ -125,16 +125,16 @@ function App() {
     setSession(session);
 
     try {
-      const { data: superAdmins } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').order('created_at', { ascending: true }).limit(1);
-      if (superAdmins && superAdmins.length > 0) {
-        const settings = superAdmins[0].global_settings || {};
-        if (settings.pricing) setGlobalPlans(settings.pricing);
-        if (settings.landing_page) setLandingPageContent(settings.landing_page);
-        if (settings.website_pricing) setWebsitePricing(settings.website_pricing);
-        if (settings.tax_settings) setGlobalTaxSettings(settings.tax_settings);
-        if (settings.onboarding_wizard_enabled !== undefined) {
-          setOnboardingWizardEnabled(settings.onboarding_wizard_enabled !== false);
+      const { data: config, error: configErr } = await supabase.rpc('get_public_website_config');
+      if (config) {
+        if (config.pricing) setGlobalPlans(config.pricing);
+        if (config.landing_page) setLandingPageContent(config.landing_page);
+        if (config.website_pricing) setWebsitePricing(config.website_pricing);
+        if (config.onboarding_wizard_enabled !== undefined) {
+          setOnboardingWizardEnabled(config.onboarding_wizard_enabled !== false);
         }
+      } else if (configErr) {
+        console.warn("Public config RPC notice:", configErr.message);
       }
     } catch (err) {
       console.error("Failed to fetch global settings:", err);
