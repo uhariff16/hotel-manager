@@ -39,8 +39,77 @@ export default function Pricing() {
     window.scrollTo(0, 0);
   }, []);
 
-      const getPlansToDisplay = () => {
-      if (!websitePricing) return [];
+  const DEFAULT_PUBLIC_PLANS = [
+    {
+      key: 'custom_1786983013013',
+      id: 'custom_1786983013013',
+      name: 'Solo',
+      subtitle: 'Run one property',
+      monthlyPrice: 999,
+      badgeText: 'SOLO STAY',
+      trialEnabled: true,
+      trialDurationDays: 30,
+      maxResorts: 1,
+      maxRooms: 10,
+      maxStaff: 1,
+      publicFeatures: [
+        'Dashboard',
+        'Booking Management',
+        'Financial Management',
+        'WhatsApp Notifications',
+        'Staff Access',
+        'Basic Support'
+      ]
+    },
+    {
+      key: 'pro',
+      id: 'pro',
+      name: 'Growth',
+      subtitle: 'Run and understand a growing hospitality business',
+      monthlyPrice: 1999,
+      badgeText: 'MOST POPULAR',
+      popular: true,
+      trialEnabled: true,
+      trialDurationDays: 30,
+      maxResorts: 3,
+      maxRooms: 30,
+      maxStaff: 3,
+      publicFeatures: [
+        'Dashboard',
+        'Booking Management',
+        'Financial Management',
+        'WhatsApp Notifications',
+        'Staff Access',
+        'Priority Support'
+      ]
+    },
+    {
+      key: 'premium',
+      id: 'premium',
+      name: 'Stay Master',
+      subtitle: 'Manage multiple properties at scale',
+      monthlyPrice: 5999,
+      badgeText: 'ENTERPRISE',
+      trialEnabled: true,
+      trialDurationDays: 30,
+      maxResorts: 7,
+      maxRooms: 70,
+      maxStaff: 7,
+      publicFeatures: [
+        'Dashboard',
+        'Booking Management',
+        'Financial Management',
+        'WhatsApp Notifications',
+        'Staff Access',
+        'Priority Support'
+      ]
+    }
+  ];
+
+  const getPlansToDisplay = () => {
+    if (!websitePricing || Object.keys(websitePricing.published || websitePricing.draft || {}).length === 0) {
+      return DEFAULT_PUBLIC_PLANS;
+    }
       
       const sourceData = isPreview ? (websitePricing.draft || {}) : (websitePricing.published || {});
       
@@ -72,6 +141,7 @@ export default function Pricing() {
         .filter(plan => plan.showOnWebsite !== false && globalPlans?.[plan.key]?.enabled !== false && plan.key !== 'free')
         .sort((a, b) => (a.displayOrder || 99) - (b.displayOrder || 99));
   
+      if (activePlans.length === 0) return DEFAULT_PUBLIC_PLANS;
       return activePlans;
     };
 
