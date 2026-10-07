@@ -292,7 +292,8 @@ export default function SuperAdmin() {
     password: '', 
     fullName: '', 
     role: 'tenant_admin',
-    tenantId: '' 
+    tenantId: '',
+    planType: 'pro' 
   });
   const [formError, setFormError] = useState(null);
 
@@ -583,6 +584,7 @@ const fetchGlobalData = async () => {
           data: {
             full_name: userFormData.fullName,
             role: userFormData.role,
+            plan_type: userFormData.role === 'tenant_admin' ? (userFormData.planType || 'pro') : undefined,
             tenant_id: userFormData.role === 'staff' ? userFormData.tenantId : undefined
           }
         }
@@ -593,7 +595,10 @@ const fetchGlobalData = async () => {
       if (data?.user?.id) {
         await supabase
           .from('profiles')
-          .update({ email: userFormData.email })
+          .update({ 
+            email: userFormData.email,
+            plan_type: userFormData.role === 'tenant_admin' ? (userFormData.planType || 'pro') : undefined
+          })
           .eq('id', data.user.id);
       }
 
@@ -1065,6 +1070,17 @@ const fetchGlobalData = async () => {
                     )}
                   </select>
                 </div>
+                
+                {userFormData.role === 'tenant_admin' && (
+                  <div className="form-group">
+                    <label className="form-label">Subscription Plan</label>
+                    <select className="form-select" value={userFormData.planType || 'pro'} onChange={e => setUserFormData({...userFormData, planType: e.target.value})}>
+                      <option value="custom_1786983013013">Solo (1 Property, 10 Rooms)</option>
+                      <option value="pro">Growth (3 Properties, 30 Rooms)</option>
+                      <option value="premium">Stay Master (7 Properties, 70 Rooms)</option>
+                    </select>
+                  </div>
+                )}
                 
                 {userFormData.role === 'staff' && (
                   <div className="form-group" style={{ gridColumn: 'span 2' }}>
