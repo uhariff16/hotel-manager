@@ -9,6 +9,7 @@ import { supabase } from '../lib/supabase';
 import OnboardingWizard from '../components/OnboardingWizard';
 import { usePushNotifications } from '../hooks/usePushNotifications';
 import { useRealtimeWebNotifications } from '../hooks/useRealtimeWebNotifications';
+import { resolveEffectivePlan } from '../utils/planEntitlements';
 
 export default function AppLayout() {
   const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled, isDataLoaded, globalPlans } = useSettingsStore();
@@ -192,29 +193,26 @@ export default function AppLayout() {
     return <OnboardingWizard />;
   }
 
-  const userPlan = effectiveProfile?.plan_type || 'master';
-  const planData = globalPlans?.[userPlan] || {};
-  const enabledFeatures = isPreview ? ['dashboard', 'booking', 'calendar', 'financial', 'staff', 'reports', 'settings'] : (planData.features || []).filter(f => f.enabled).map(f => f.name.toLowerCase());
-  const hasFeature = (keyword) => isPreview || enabledFeatures.some(f => f.includes(keyword.toLowerCase()));
+  const resolvedPlan = resolveEffectivePlan(effectiveProfile, globalPlans);
+  const planData = resolvedPlan.planConfig || {};
   const hasInvestmentAccess = isPreview || planData.reports?.investment || effectiveProfile?.feature_investment_enabled;
 
   let navLinks = [];
 
   if (isStaff) {
-    // Staff only see Bookings, Calendar, and Settings
-    if (hasFeature('booking')) navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} />, tourClass: 'tour-bookings' });
+    // Staff only see Bookings, Enquiries, Calendar, and Settings
+    navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} />, tourClass: 'tour-bookings' });
     navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
-    if (hasFeature('booking') || hasFeature('calendar')) navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} />, tourClass: 'tour-calendar' });
+    navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} />, tourClass: 'tour-calendar' });
   } else {
-    // Tenants and Super Admins
-    if (hasFeature('dashboard') || isSuper) navLinks.push({ to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} />, tourClass: 'tour-dashboard' });
-      if (hasFeature('booking') || isSuper) {
-        navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} />, tourClass: 'tour-bookings' });
-      navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
-        navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} />, tourClass: 'tour-calendar' });
-      }
-    if (hasFeature('financial') || isSuper) navLinks.push({ to: '/financials', label: 'Financials', icon: <Wallet size={20} />, tourClass: 'tour-financials' });
-    if (hasFeature('report') || isSuper) navLinks.push({ to: '/reports', label: 'Reports', icon: <FileText size={20} /> });
+    // Tenants and Super Admins always have access to core operational navigation
+    navLinks.push({ to: '/dashboard', label: 'Dashboard', icon: <LayoutDashboard size={20} />, tourClass: 'tour-dashboard' });
+    navLinks.push({ to: '/bookings', label: 'Bookings', icon: <BookOpenCheck size={20} />, tourClass: 'tour-bookings' });
+    navLinks.push({ to: '/enquiries', label: 'Enquiries', icon: <ClipboardList size={20} /> });
+    navLinks.push({ to: '/calendar', label: 'Calendar', icon: <CalendarDays size={20} />, tourClass: 'tour-calendar' });
+    navLinks.push({ to: '/financials', label: 'Financials', icon: <Wallet size={20} />, tourClass: 'tour-financials' });
+    navLinks.push({ to: '/reports', label: 'Reports', icon: <FileText size={20} /> });
+    
     const managementMenu = { 
       label: 'Management', 
       icon: <Activity size={20} />, 
@@ -226,10 +224,7 @@ export default function AppLayout() {
         { to: '/staff', label: 'Staff Management', icon: <Users size={16} /> },
       ]
     };
-
-    if (hasFeature('tenant') || hasFeature('staff') || isSuper) {
-      navLinks.push(managementMenu);
-    }
+    navLinks.push(managementMenu);
     
     if (!Capacitor.isNativePlatform()) {
       navLinks.push({ to: '/subscription', label: 'Plans & Billing', icon: <CreditCard size={20} /> });
@@ -503,25 +498,21 @@ export default function AppLayout() {
 
         {/* Mobile Bottom Navigation */}
         <nav className="mobile-bottom-nav">
-          {!isStaff && (hasFeature('dashboard') || isSuper) && (
+          {!isStaff && (
             <NavLink to="/dashboard" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
               <LayoutDashboard size={24} />
               <span>Dashboard</span>
             </NavLink>
           )}
-          {(hasFeature('booking') || isSuper) && (
-            <NavLink to="/bookings" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
-              <BookOpenCheck size={24} />
-              <span>Bookings</span>
-            </NavLink>
-          )}
-          {(hasFeature('booking') || isSuper) && (
-            <NavLink to="/calendar" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
-              <CalendarDays size={24} />
-              <span>Calendar</span>
-            </NavLink>
-          )}
-          {!isStaff && (hasFeature('financial') || isSuper) && (
+          <NavLink to="/bookings" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+            <BookOpenCheck size={24} />
+            <span>Bookings</span>
+          </NavLink>
+          <NavLink to="/calendar" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
+            <CalendarDays size={24} />
+            <span>Calendar</span>
+          </NavLink>
+          {!isStaff && (
             <NavLink to="/financials" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
               <Wallet size={24} />
               <span>Finance</span>
