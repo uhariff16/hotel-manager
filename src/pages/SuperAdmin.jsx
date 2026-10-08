@@ -123,10 +123,7 @@ export default function SuperAdmin() {
   const [razorpayConfig, setRazorpayConfig] = useState({
     mode: 'test',
     testKeyId: '',
-    testKeySecret: '',
-    liveKeyId: '',
-    liveKeySecret: '',
-    webhookSecret: ''
+    liveKeyId: ''
   });
   const DEFAULT_WEBSITE_PRICING = {
     draft: {},
@@ -461,7 +458,12 @@ const fetchGlobalData = async () => {
         }
         
         if (superAdminProfile.global_settings.razorpay_settings) {
-          setRazorpayConfig(superAdminProfile.global_settings.razorpay_settings);
+          const rs = superAdminProfile.global_settings.razorpay_settings;
+          setRazorpayConfig({
+            mode: rs.mode || 'test',
+            testKeyId: rs.testKeyId || '',
+            liveKeyId: rs.liveKeyId || ''
+          });
         }
         if (superAdminProfile.global_settings.landing_page) {
           setLandingContent({
@@ -778,7 +780,11 @@ const fetchGlobalData = async () => {
       setIsUpdating(true);
       const masterAdmin = getMasterSuperAdmin();
       const settings = masterAdmin.global_settings || {};
-      settings.razorpay_settings = razorpayConfig;
+      settings.razorpay_settings = {
+        mode: razorpayConfig.mode || 'test',
+        testKeyId: (razorpayConfig.testKeyId || '').trim(),
+        liveKeyId: (razorpayConfig.liveKeyId || '').trim()
+      };
       
       const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
       if (error) throw error;
@@ -1778,36 +1784,24 @@ const fetchGlobalData = async () => {
                     </p>
                   </div>
 
+                  <div style={{ padding: '1rem 1.25rem', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#047857', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                    <Shield size={18} style={{ flexShrink: 0 }} />
+                    <span>Razorpay API and webhook secrets are securely managed through Supabase Edge Function Secrets.</span>
+                  </div>
+
                   <div className="card" style={{ padding: '1.5rem', border: '1px solid #e2e8f0' }}>
-                    <h4 style={{ marginBottom: '1rem', color: '#334155' }}>Test Credentials</h4>
+                    <h4 style={{ marginBottom: '1rem', color: '#334155' }}>Test Public Configuration</h4>
                     <div className="form-group">
                       <label className="form-label">Test Key ID</label>
-                      <input type="text" className="form-input" value={razorpayConfig.testKeyId} onChange={e => setRazorpayConfig({...razorpayConfig, testKeyId: e.target.value})} placeholder="rzp_test_..." />
-                    </div>
-                    <div className="form-group" style={{ marginTop: '1rem' }}>
-                      <label className="form-label">Test Key Secret</label>
-                      <input type="text" className="form-input" value={razorpayConfig.testKeySecret} onChange={e => setRazorpayConfig({...razorpayConfig, testKeySecret: e.target.value})} placeholder="••••••••••••••••" />
+                      <input type="text" className="form-input" value={razorpayConfig.testKeyId || ''} onChange={e => setRazorpayConfig({...razorpayConfig, testKeyId: e.target.value})} placeholder="rzp_test_..." />
                     </div>
                   </div>
 
                   <div className="card" style={{ padding: '1.5rem', border: '1px solid #e2e8f0' }}>
-                    <h4 style={{ marginBottom: '1rem', color: '#ef4444' }}>Live Credentials</h4>
+                    <h4 style={{ marginBottom: '1rem', color: '#ef4444' }}>Live Public Configuration</h4>
                     <div className="form-group">
                       <label className="form-label">Live Key ID</label>
-                      <input type="text" className="form-input" value={razorpayConfig.liveKeyId} onChange={e => setRazorpayConfig({...razorpayConfig, liveKeyId: e.target.value})} placeholder="rzp_live_..." />
-                    </div>
-                    <div className="form-group" style={{ marginTop: '1rem' }}>
-                      <label className="form-label">Live Key Secret</label>
-                      <input type="text" className="form-input" value={razorpayConfig.liveKeySecret} onChange={e => setRazorpayConfig({...razorpayConfig, liveKeySecret: e.target.value})} placeholder="••••••••••••••••" />
-                    </div>
-                  </div>
-
-                  <div className="card" style={{ padding: '1.5rem', border: '1px solid #e2e8f0' }}>
-                    <h4 style={{ marginBottom: '1rem', color: '#334155' }}>Webhook Settings</h4>
-                    <div className="form-group">
-                      <label className="form-label">Webhook Secret</label>
-                      <input type="text" className="form-input" value={razorpayConfig.webhookSecret} onChange={e => setRazorpayConfig({...razorpayConfig, webhookSecret: e.target.value})} placeholder="••••••••••••••••" />
-                      <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.5rem' }}>Used to verify incoming Razorpay webhook signatures.</p>
+                      <input type="text" className="form-input" value={razorpayConfig.liveKeyId || ''} onChange={e => setRazorpayConfig({...razorpayConfig, liveKeyId: e.target.value})} placeholder="rzp_live_..." />
                     </div>
                   </div>
                   

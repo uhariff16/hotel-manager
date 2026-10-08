@@ -47,13 +47,22 @@ serve(async (req) => {
     }
 
     // 3. Get Razorpay Credentials from Global Settings
-    const { data: adminProfiles } = await supabaseAdmin.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1)
-    const razorpayConfig = adminProfiles?.[0]?.global_settings?.razorpay_settings || {}
+    const { data: adminProfiles } = await supabaseAdmin
+      .from('profiles')
+      .select('global_settings')
+      .eq('role', 'super_admin')
+      .not('global_settings', 'is', null)
+      .order('created_at', { ascending: true })
+    const masterProfile = adminProfiles?.find(p => p.global_settings?.pricing) || adminProfiles?.[0]
+    const razorpayConfig = masterProfile?.global_settings?.razorpay_settings || {}
     
     const isLive = razorpayConfig.mode === 'live'
-    const keySecret = (isLive ? razorpayConfig.liveKeySecret : razorpayConfig.testKeySecret)?.trim()
+    const keySecret = (isLive 
+      ? Deno.env.get('RAZORPAY_LIVE_KEY_SECRET') 
+      : Deno.env.get('RAZORPAY_TEST_KEY_SECRET')
+    )?.trim()
 
-    if (!keySecret) throw new Error('Razorpay credentials not configured')
+    if (!keySecret) throw new Error(`Razorpay ${isLive ? 'Live' : 'Test'} credentials not configured in server environment`)
 
     // 4. Verify Signature Cryptographically (Bypasses Razorpay API delays completely!)
     const textEncoder = new TextEncoder()

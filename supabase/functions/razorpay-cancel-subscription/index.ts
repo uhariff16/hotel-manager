@@ -46,15 +46,23 @@ serve(async (req) => {
       .from('profiles')
       .select('global_settings')
       .eq('role', 'super_admin')
-      .limit(1)
+      .not('global_settings', 'is', null)
+      .order('created_at', { ascending: true })
       
-    const razorpayConfig = adminProfiles?.[0]?.global_settings?.razorpay_settings || {}
+    const masterProfile = adminProfiles?.find(p => p.global_settings?.pricing) || adminProfiles?.[0]
+    const razorpayConfig = masterProfile?.global_settings?.razorpay_settings || {}
     const isLive = razorpayConfig.mode === 'live'
-    const keyId = (isLive ? razorpayConfig.liveKeyId : razorpayConfig.testKeyId)?.trim()
-    const keySecret = (isLive ? razorpayConfig.liveKeySecret : razorpayConfig.testKeySecret)?.trim()
+    const keyId = (isLive 
+      ? Deno.env.get('RAZORPAY_LIVE_KEY_ID') 
+      : Deno.env.get('RAZORPAY_TEST_KEY_ID')
+    )?.trim()
+    const keySecret = (isLive 
+      ? Deno.env.get('RAZORPAY_LIVE_KEY_SECRET') 
+      : Deno.env.get('RAZORPAY_TEST_KEY_SECRET')
+    )?.trim()
 
     if (!keyId || !keySecret) {
-      throw new Error('Razorpay credentials missing')
+      throw new Error(`Razorpay ${isLive ? 'Live' : 'Test'} credentials not configured in server environment`)
     }
 
     const rzpAuthHeader = `Basic ${btoa(`${keyId}:${keySecret}`)}`

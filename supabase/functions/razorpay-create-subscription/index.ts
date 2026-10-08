@@ -43,22 +43,30 @@ serve(async (req) => {
       .from('profiles')
       .select('global_settings')
       .eq('role', 'super_admin')
-      .limit(1)
+      .not('global_settings', 'is', null)
+      .order('created_at', { ascending: true })
 
     if (adminErr || !adminProfiles || adminProfiles.length === 0) {
       throw new Error('Could not load global settings')
     }
 
-    const settings = adminProfiles[0].global_settings || {}
+    const masterProfile = adminProfiles.find(p => p.global_settings?.pricing) || adminProfiles[0]
+    const settings = masterProfile.global_settings || {}
     const pricingConfig = settings.pricing || {}
     const razorpayConfig = settings.razorpay_settings || {}
 
     const isLive = razorpayConfig.mode === 'live'
-    const keyId = (isLive ? razorpayConfig.liveKeyId : razorpayConfig.testKeyId)?.trim()
-    const keySecret = (isLive ? razorpayConfig.liveKeySecret : razorpayConfig.testKeySecret)?.trim()
+    const keyId = (isLive 
+      ? Deno.env.get('RAZORPAY_LIVE_KEY_ID') 
+      : Deno.env.get('RAZORPAY_TEST_KEY_ID')
+    )?.trim()
+    const keySecret = (isLive 
+      ? Deno.env.get('RAZORPAY_LIVE_KEY_SECRET') 
+      : Deno.env.get('RAZORPAY_TEST_KEY_SECRET')
+    )?.trim()
 
     if (!keyId || !keySecret) {
-      throw new Error('Razorpay credentials not configured')
+      throw new Error(`Razorpay ${isLive ? 'Live' : 'Test'} credentials not configured in server environment`)
     }
 
     const planData = pricingConfig[plan_type]
