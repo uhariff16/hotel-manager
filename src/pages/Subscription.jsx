@@ -228,6 +228,43 @@ export default function Subscription() {
     return true;
   };
 
+  const getRecurringBillingAmount = () => {
+    if (!activeSubscription || activeSubscription.status !== 'active') return null;
+
+    // 1. Direct amount property on activeSubscription if present and positive
+    if (activeSubscription.amount && Number(activeSubscription.amount) > 0) {
+      const numAmt = Number(activeSubscription.amount);
+      return numAmt > 10000 ? Math.round(numAmt / 100) : numAmt;
+    }
+
+    // 2. Captured payment strictly belonging to THIS active Razorpay subscription ID
+    if (activeSubscription.razorpay_subscription_id && paymentHistory?.length > 0) {
+      const subPayment = paymentHistory.find(
+        (p) => p.razorpay_subscription_id === activeSubscription.razorpay_subscription_id && p.status === 'captured' && Number(p.amount) > 0
+      );
+      if (subPayment && Number(subPayment.amount) > 0) {
+        const numAmt = Number(subPayment.amount);
+        return numAmt > 10000 ? Math.round(numAmt / 100) : numAmt;
+      }
+    }
+
+    // 3. Fallback to current configured price for activeSubscription.staypilot_plan_type from globalPlans
+    const planKey = activeSubscription.staypilot_plan_type || profile?.plan_type;
+    if (planKey && globalPlans?.[planKey]) {
+      const config = globalPlans[planKey];
+      const offerActive = isOfferValid(config);
+      const effectivePrice = offerActive && config.offerPrice !== undefined
+        ? Math.min(Number(config.price || 0), Number(config.offerPrice || 0))
+        : Number(config.price || 0);
+      if (effectivePrice > 0) {
+        return effectivePrice;
+      }
+    }
+
+    // 4. Return null (displays "Unavailable" in UI) if amount cannot be authoritatively determined
+    return null;
+  };
+
   const getPlansList = () => {
     if (!globalPlans) return [];
     
@@ -460,7 +497,7 @@ export default function Subscription() {
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem', fontVariantNumeric: 'tabular-nums' }}>
               {activeSubscription?.status === 'active' ? (
                 <>
-                  <span>Billing: <strong>₹{activeSubscription.amount ? (activeSubscription.amount / 100).toLocaleString('en-IN') : '2,399'} / month</strong></span>
+                  <span>Billing: <strong>{getRecurringBillingAmount() ? `₹${getRecurringBillingAmount().toLocaleString('en-IN')} / month` : 'Unavailable'}</strong></span>
                   <span>•</span>
                   <span>Next Renewal: <strong>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Processing'}</strong></span>
                 </>
