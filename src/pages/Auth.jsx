@@ -202,6 +202,15 @@ export default function Auth() {
         if (isSubscribeIntent && planFromUrl) {
           sessionStorage.setItem('staypilot_checkout_intent', planFromUrl);
         }
+        if (authData?.session) {
+          if (isSubscribeIntent && planFromUrl) {
+            navigate(`/subscription?checkout=${planFromUrl}&intent=subscribe`, { replace: true });
+            return;
+          }
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+
         setMessage("Signup successful! Please check your email for a verification link before signing in.");
         setIsLogin(true);
         setFormData(prev => ({ ...prev, password: '', confirmPassword: '' }));

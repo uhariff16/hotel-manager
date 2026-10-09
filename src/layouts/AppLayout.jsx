@@ -406,7 +406,11 @@ export default function AppLayout() {
             </span>
             {!trialState.isStaff && (
               <button 
-                onClick={() => navigate('/subscription')} 
+                onClick={() => {
+                  const targetPlan = profile?.plan_type || trialState?.planKey || 'pro';
+                  navigate(`/subscription?checkout=${targetPlan}&intent=subscribe`);
+                  window.dispatchEvent(new CustomEvent('staypilot:open-checkout', { detail: { planId: targetPlan } }));
+                }} 
                 style={{ 
                   background: 'white', 
                   color: trialState.urgencyLevel === 'lastDay' ? '#dc2626' : (trialState.urgencyLevel === 'urgent' ? '#ea580c' : (trialState.urgencyLevel === 'endingSoon' ? '#d97706' : '#1e40af')), 
@@ -484,7 +488,11 @@ export default function AppLayout() {
                       }
                     </p>
                     {!trialState.isStaff && (
-                      <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', fontWeight: 700 }} onClick={() => navigate('/subscription')}>
+                      <button className="btn btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', fontWeight: 700 }} onClick={() => {
+                        const targetPlan = profile?.plan_type || trialState?.planKey || 'pro';
+                        navigate(`/subscription?checkout=${targetPlan}&intent=subscribe`);
+                        window.dispatchEvent(new CustomEvent('staypilot:open-checkout', { detail: { planId: targetPlan } }));
+                      }}>
                         Subscribe Now
                       </button>
                     )}

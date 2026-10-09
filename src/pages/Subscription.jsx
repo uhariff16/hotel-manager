@@ -34,6 +34,7 @@ export default function Subscription() {
   const [expandedFeatures, setExpandedFeatures] = useState({});
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
+  const [checkoutError, setCheckoutError] = useState(null);
   const [switchTrialModal, setSwitchTrialModal] = useState({ isOpen: false, targetPlanKey: null });
   const [switchSuccessMessage, setSwitchSuccessMessage] = useState(null);
 
@@ -73,7 +74,7 @@ export default function Subscription() {
   }, [location.hash, subDataLoading, hasBillingHistory]);
 
   const searchParams = new URLSearchParams(location.search);
-  const checkoutPlan = searchParams.get('checkout');
+  const checkoutPlan = searchParams.get('checkout') || sessionStorage.getItem('staypilot_checkout_intent');
   const hasAutoCheckoutRun = React.useRef(false);
 
   const clearCheckoutIntent = () => {
@@ -131,11 +132,20 @@ export default function Subscription() {
 
       hasAutoCheckoutRun.current = true;
       clearCheckoutIntent();
-      processPayment(resolved.planKey);
+      handleSubscribe(resolved.planKey);
     };
 
     initAutoCheckout();
   }, [checkoutPlan, profile?.id, profile?.role, profile?.subscription_status, globalPlans, activeSubscription, subDataLoading]);
+
+  useEffect(() => {
+    const handleOpenCheckoutEvent = (e) => {
+      const targetPlan = e.detail?.planId || profile?.plan_type || 'pro';
+      handleSubscribe(targetPlan);
+    };
+    window.addEventListener('staypilot:open-checkout', handleOpenCheckoutEvent);
+    return () => window.removeEventListener('staypilot:open-checkout', handleOpenCheckoutEvent);
+  }, [profile?.plan_type, activeSubscription, trialState]);
 
   const fetchSubscriptionData = async () => {
      setSubDataLoading(true);
@@ -200,7 +210,7 @@ export default function Subscription() {
   };
 
   const handleCancelSubscription = async () => {
-     if (!window.confirm("Are you sure you want to cancel your subscription? You will be reverted to the Free Starter plan.")) return;
+     if (!window.confirm("Are you sure you want to cancel your subscription? You will retain paid access until the end of your current billing period.")) return;
      
      setLoading('cancel');
       try {
@@ -210,8 +220,11 @@ export default function Subscription() {
           throw new Error(error?.message || data?.error || "Unknown error occurred");
         }
 
-        alert("Subscription cancelled successfully.");
-        setProfile({...profile, plan_type: 'free'});
+        const formattedEnd = activeSubscription?.current_period_end 
+          ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+          : 'the end of your current period';
+
+        alert(`Subscription cancellation scheduled. Your paid access continues until ${formattedEnd}.`);
         window.location.reload();
       } catch (err) {
         alert("Failed to cancel subscription: " + err.message);
@@ -348,13 +361,28 @@ export default function Subscription() {
   };
 
   const processPayment = async (planId) => {
+    if (loading === planId) return;
     setLoading(planId);
+    setCheckoutError(null);
     try {
       const res = await loadRazorpayScript();
       if (!res) throw new Error("Razorpay SDK failed to load. Are you online?");
 
+      let { data: { session }, error: sessionErr } = await supabase.auth.getSession();
+      
+      if (!session || !session.access_token) {
+        const { data: refreshData, error: refreshErr } = await supabase.auth.refreshSession();
+        session = refreshData?.session;
+        if (refreshErr || !session?.access_token) {
+          throw new Error("Unauthorized: Auth session missing! Please sign in again.");
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke('razorpay-create-subscription', {
-        body: { plan_type: planId }
+        body: { plan_type: planId },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (error || (data && data.error)) {
@@ -391,8 +419,8 @@ export default function Subscription() {
         description: `Subscription for ${planId}`,
         handler: async function (response) {
           try {
-            const { data: { session } } = await supabase.auth.getSession();
-            const token = session?.access_token || '';
+            const { data: { session: currentSession } } = await supabase.auth.getSession();
+            const token = currentSession?.access_token || session?.access_token || '';
             const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://lubkdxhqnnghnjhrebat.supabase.co';
 
             const res = await fetch(`${supabaseUrl}/functions/v1/razorpay-verify`, {
@@ -419,12 +447,18 @@ export default function Subscription() {
             window.location.reload();
           } catch (err) {
             console.error(err);
-            alert("Verification error: " + err.message);
+            setCheckoutError("Verification error: " + err.message);
+          }
+        },
+        modal: {
+          ondismiss: function() {
+            setLoading(null);
           }
         },
         prefill: {
           name: profile?.full_name || '',
-          email: '',
+          email: profile?.email || '',
+          contact: profile?.phone_number || '9999999999',
         },
         theme: {
           color: "#0F2C59"
@@ -433,11 +467,13 @@ export default function Subscription() {
 
       const rzp = new window.Razorpay(options);
       rzp.on('payment.failed', function (response) {
-        alert("Payment failed: " + response.error.description);
+        setCheckoutError("Payment failed: " + (response.error?.description || 'Transaction cancelled or declined.'));
+        setLoading(null);
       });
       rzp.open();
     } catch (err) {
-      alert("Failed to initialize checkout: " + err.message);
+      console.error("Checkout initialization failed:", err);
+      setCheckoutError(err.message);
     } finally {
       setLoading(null);
     }
@@ -507,25 +543,43 @@ export default function Subscription() {
                 textTransform: 'uppercase',
                 background: trialState.isActiveTrial 
                   ? 'rgba(245, 158, 11, 0.12)' 
-                  : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)'),
+                  : (activeSubscription?.cancel_at_period_end
+                      ? 'rgba(245, 158, 11, 0.12)'
+                      : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? 'rgba(16, 185, 129, 0.12)' : 'rgba(100, 116, 139, 0.12)')),
                 color: trialState.isActiveTrial 
                   ? '#d97706' 
-                  : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? '#10b981' : 'var(--text-muted)'),
+                  : (activeSubscription?.cancel_at_period_end
+                      ? '#d97706'
+                      : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? '#10b981' : 'var(--text-muted)')),
                 border: trialState.isActiveTrial 
                   ? '1px solid rgba(245, 158, 11, 0.3)' 
-                  : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border)')
+                  : (activeSubscription?.cancel_at_period_end
+                      ? '1px solid rgba(245, 158, 11, 0.3)'
+                      : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? '1px solid rgba(16, 185, 129, 0.3)' : '1px solid var(--border)'))
               }}>
-                {trialState.isActiveTrial ? 'FREE TRIAL' : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? 'ACTIVE' : 'STANDARD')}
+                {trialState.isActiveTrial 
+                  ? 'FREE TRIAL' 
+                  : (activeSubscription?.cancel_at_period_end
+                      ? 'CANCELLATION SCHEDULED'
+                      : (activeSubscription?.status === 'active' || profile?.is_legacy_account || trialState.isLegacy ? 'ACTIVE' : 'STANDARD'))}
               </span>
             </div>
 
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', display: 'flex', flexWrap: 'wrap', gap: '1rem', fontVariantNumeric: 'tabular-nums' }}>
               {activeSubscription?.status === 'active' ? (
-                <>
-                  <span>Billing: <strong>{getRecurringBillingAmount() ? `₹${getRecurringBillingAmount().toLocaleString('en-IN')} / month` : 'Unavailable'}</strong></span>
-                  <span>•</span>
-                  <span>Next Renewal: <strong>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Processing'}</strong></span>
-                </>
+                activeSubscription?.cancel_at_period_end ? (
+                  <>
+                    <span>Access Until: <strong>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'End of Billing Cycle'}</strong></span>
+                    <span>•</span>
+                    <span>Status: <strong>No Auto-Renewal • Paid Features Preserved</strong></span>
+                  </>
+                ) : (
+                  <>
+                    <span>Billing: <strong>{getRecurringBillingAmount() ? `₹${getRecurringBillingAmount().toLocaleString('en-IN')} / month` : 'Unavailable'}</strong></span>
+                    <span>•</span>
+                    <span>Next Renewal: <strong>{activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Processing'}</strong></span>
+                  </>
+                )
               ) : trialState.isActiveTrial ? (
                 <>
                   <span>Trial Period: <strong>{trialState.daysRemaining} {trialState.daysRemaining === 1 ? 'Day' : 'Days'} Remaining</strong> (Ends {trialState.formattedEndDate})</span>
@@ -540,6 +594,12 @@ export default function Subscription() {
                 </>
               )}
             </div>
+
+            {activeSubscription?.status === 'active' && activeSubscription?.cancel_at_period_end && (
+              <div style={{ marginTop: '0.75rem', fontSize: '0.825rem', color: '#d97706', background: 'rgba(245, 158, 11, 0.08)', padding: '0.5rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span>Your subscription is scheduled for cancellation. Full paid features remain active through {activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'the end of your current billing period'} and automatic renewal has stopped.</span>
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -605,6 +665,7 @@ export default function Subscription() {
         }}>
           {plansList.map((plan) => {
             const isCurrentPlan = profile?.plan_type === plan.id;
+            const isPaidCurrentPlan = isCurrentPlan && (trialState.isPaid || activeSubscription?.status === 'active');
             const isTrialingThisPlan = isCurrentPlan && trialState.isActiveTrial && !trialState.isPaid && !trialState.isLegacy;
             const canSwitchTrial = trialState.isActiveTrial && !trialState.isLegacy && !isCurrentPlan && plan.id !== 'free';
 
@@ -779,20 +840,20 @@ export default function Subscription() {
                       fontSize: '0.925rem',
                       fontWeight: 700,
                       borderRadius: '10px',
-                      border: isCurrentPlan ? '1px solid var(--border)' : 'none',
-                      background: isCurrentPlan ? 'var(--bg-secondary)' : '#10b981',
-                      color: isCurrentPlan ? 'var(--text-muted)' : '#ffffff',
-                      opacity: (loading === plan.id || isCurrentPlan) ? 0.7 : 1,
-                      cursor: (loading === plan.id || isCurrentPlan) ? 'not-allowed' : 'pointer',
+                      border: isPaidCurrentPlan ? '1px solid var(--border)' : 'none',
+                      background: isPaidCurrentPlan ? 'var(--bg-secondary)' : '#10b981',
+                      color: isPaidCurrentPlan ? 'var(--text-muted)' : '#ffffff',
+                      opacity: (loading === plan.id || isPaidCurrentPlan) ? 0.7 : 1,
+                      cursor: (loading === plan.id || isPaidCurrentPlan) ? 'not-allowed' : 'pointer',
                       transition: 'all 0.2s ease',
-                      boxShadow: isCurrentPlan ? 'none' : '0 2px 6px rgba(16, 185, 129, 0.25)'
+                      boxShadow: isPaidCurrentPlan ? 'none' : '0 2px 6px rgba(16, 185, 129, 0.25)'
                     }}
                     onClick={() => {
-                      if (!isCurrentPlan) handleSubscribe(plan.id);
+                      if (!isPaidCurrentPlan) handleSubscribe(plan.id);
                     }}
-                    disabled={loading === plan.id || isCurrentPlan}
+                    disabled={loading === plan.id || isPaidCurrentPlan}
                   >
-                    {isCurrentPlan 
+                    {isPaidCurrentPlan 
                       ? 'Current Plan' 
                       : (loading === plan.id 
                           ? 'Connecting...' 
@@ -915,7 +976,7 @@ export default function Subscription() {
           <span><strong>Secure Payments:</strong> Transactions are encrypted with 256-bit SSL security.</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-          {activeSubscription && (
+          {activeSubscription && !activeSubscription.cancel_at_period_end && (
             <button
               onClick={handleCancelSubscription}
               disabled={loading === 'cancel'}
@@ -981,11 +1042,32 @@ export default function Subscription() {
                 {window.location.protocol === 'capacitor:' ? 'Upgrade to Pro/Premium' : 'Secure Checkout'}
               </h2>
               <button type="button" className="btn-outline" style={{ padding: '0.5rem', borderRadius: '50%' }} 
-                onClick={() => setCheckoutModal({ isOpen: false, planId: null })}
+                onClick={() => {
+                  setCheckoutError(null);
+                  setCheckoutModal({ isOpen: false, planId: null });
+                }}
               >
                 <X size={20} />
               </button>
             </div>
+            
+            {checkoutError && (
+              <div style={{ 
+                marginBottom: '1.25rem', 
+                padding: '0.75rem 1rem', 
+                borderRadius: '8px', 
+                background: 'rgba(239, 68, 68, 0.1)', 
+                border: '1px solid rgba(239, 68, 68, 0.3)', 
+                color: '#ef4444', 
+                fontSize: '0.875rem', 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <span>⚠️ {checkoutError}</span>
+              </div>
+            )}
             
             <div style={{ marginBottom: '1.5rem', background: 'rgba(0,0,0,0.03)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
               <h3 style={{ margin: '0 0 0.5rem 0' }}>{plansList.find(p => p.id === checkoutModal.planId)?.name}</h3>

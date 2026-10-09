@@ -130,6 +130,7 @@ function App() {
         if (config.pricing) setGlobalPlans(config.pricing);
         if (config.landing_page) setLandingPageContent(config.landing_page);
         if (config.website_pricing) setWebsitePricing(config.website_pricing);
+        if (config.tax_settings) setGlobalTaxSettings(config.tax_settings);
         if (config.onboarding_wizard_enabled !== undefined) {
           setOnboardingWizardEnabled(config.onboarding_wizard_enabled !== false);
         }
@@ -269,7 +270,11 @@ function App() {
         <Routes>
           <Route 
             path="/auth" 
-            element={activeSession && !isRecovering && !window.location.hash.includes('type=recovery') ? <Navigate to="/dashboard" replace /> : <Auth />} 
+            element={
+              activeSession && !isRecovering && !window.location.hash.includes('type=recovery') 
+                ? <Navigate to={sessionStorage.getItem('staypilot_checkout_intent') ? `/subscription?checkout=${sessionStorage.getItem('staypilot_checkout_intent')}&intent=subscribe` : "/dashboard"} replace /> 
+                : <Auth />
+            } 
           />
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/features" element={<Features />} />

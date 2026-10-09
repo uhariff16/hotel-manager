@@ -8,6 +8,7 @@ import * as XLSX from 'xlsx';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
 import SupportInbox from '../components/SupportInbox';
+import { normalizePlanReports } from '../components/PlanComparison';
 
 // Secondary client for creating users without affecting the admin session
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -18,10 +19,11 @@ const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export default function SuperAdmin() {
   const { profile, session, isDataLoaded, setWebsitePricing } = useSettingsStore();
-  const [stats, setStats] = useState({ users: 0, properties: 0, bookings: 0, revenue: 0 });
+  const [stats, setStats] = useState({ users: 0, staffCount: 0, properties: 0, bookings: 0, revenue: 0, testRevenue: 0, liveRevenue: 0 });
   const [tenants, setTenants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
 
   const DEFAULT_PLANS = {
     free: {
@@ -345,12 +347,17 @@ export default function SuperAdmin() {
   };
 
     const normalizePlanFeatures = (planKey, existingFeatures) => {
-    if (!existingFeatures || !Array.isArray(existingFeatures)) return existingFeatures;
+    const rawFeatures = Array.isArray(existingFeatures)
+      ? existingFeatures
+      : (typeof existingFeatures === 'object' && existingFeatures !== null && Array.isArray(existingFeatures.features)
+          ? existingFeatures.features
+          : (DEFAULT_PLANS[planKey]?.features || []));
 
     const isStandardKey = ['free', 'custom_1786983013013', 'pro', 'premium'].includes(planKey);
 
     if (isStandardKey) {
-      let cleaned = existingFeatures.filter(f => {
+      let cleaned = rawFeatures.filter(f => {
+        if (!f || typeof f !== 'object') return false;
         const norm = (f.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
         if (norm.includes('advancereports') || norm.includes('advancedreports')) return false;
         if (norm.includes('tenantadmincontrol')) return false;
@@ -380,23 +387,43 @@ export default function SuperAdmin() {
       return cleaned;
     }
 
-    return existingFeatures.map(f => {
-      if ((f.name || '').toLowerCase().includes('ai powered booking management')) {
+    return rawFeatures.map(f => {
+      if (f && typeof f === 'object' && (f.name || '').toLowerCase().includes('ai powered booking management')) {
         return { ...f, name: 'Booking Management' };
       }
       return f;
     });
   };
 
-const fetchGlobalData = async () => {
+  const fetchGlobalData = async () => {
     setLoading(true);
+    setFetchError(null);
     try {
-      const [{ data: u, error: uErr }, { data: r }, { data: b }, { data: inc }] = await Promise.all([
+      const [
+        { data: u, error: uErr },
+        { data: r, error: rErr },
+        { data: b, error: bErr },
+        { data: subs, error: subsErr },
+        { data: payments, error: payErr }
+      ] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('resorts').select('id, tenant_id, name, email, phone'),
         supabase.from('bookings').select('id, tenant_id'),
-        supabase.from('incomes').select('amount')
+        supabase.from('saas_subscriptions').select('*').order('created_at', { ascending: false }),
+        supabase.from('saas_payments').select('*').order('created_at', { ascending: false })
       ]);
+
+      const errMsgs = [];
+      if (uErr) errMsgs.push(`Profiles: ${uErr.message}`);
+      if (rErr) errMsgs.push(`Properties: ${rErr.message}`);
+      if (bErr) errMsgs.push(`Bookings: ${bErr.message}`);
+      if (subsErr) errMsgs.push(`Subscriptions: ${subsErr.message}`);
+      if (payErr) errMsgs.push(`Payments: ${payErr.message}`);
+
+      if (errMsgs.length > 0) {
+        console.warn("SuperAdmin Data Loading Notices:", errMsgs.join(' | '));
+        setFetchError(errMsgs.join(' | '));
+      }
 
       const tenantsWithData = (u || []).map(user => {
         const owner = user.role === 'staff' 
@@ -407,6 +434,9 @@ const fetchGlobalData = async () => {
         const tenantResorts = (r || []).filter(res => res.tenant_id === activeTenantId);
         const resortNamesList = tenantResorts.map(res => res.name || 'Unnamed Resort');
 
+        const tenantSub = (subs || []).find(s => s.tenant_id === activeTenantId && s.status === 'active') ||
+                          (subs || []).find(s => s.tenant_id === activeTenantId);
+
         return {
           ...user,
           ownerName: owner ? owner.full_name : 'Self',
@@ -414,12 +444,29 @@ const fetchGlobalData = async () => {
           phone: user.phone || (tenantResorts[0] && tenantResorts[0].phone) || '',
           propertyCount: resortNamesList.length,
           propertyNames: resortNamesList,
-          bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length
+          bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length,
+          activeSub: tenantSub || null,
+          effectivePlan: tenantSub?.staypilot_plan_type || user.plan_type || 'free',
+          effectiveSubStatus: tenantSub?.status || user.subscription_status || 'active'
         };
       });
 
+      // Platform revenue calculations from saas_payments with Test vs Live Mode distinction
+      let testRev = 0;
+      let liveRev = 0;
+
+      (payments || []).forEach(p => {
+        const amt = Number(p.amount) || 0;
+        const isTest = p.environment === 'test' || (p.razorpay_payment_id && String(p.razorpay_payment_id).startsWith('pay_test_'));
+        if (isTest) {
+          testRev += amt;
+        } else {
+          liveRev += amt;
+        }
+      });
+
       const superAdmins = (u || []).filter(user => user.role === 'super_admin').sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      const superAdminProfile = superAdmins.length > 0 ? superAdmins[0] : (u || []).find(user => user.id === profile.id);
+      const superAdminProfile = superAdmins.length > 0 ? superAdmins[0] : (u || []).find(user => user.id === profile?.id);
       if (superAdminProfile?.global_settings?.pricing) {
         const loaded = superAdminProfile.global_settings.pricing;
         
@@ -429,7 +476,7 @@ const fetchGlobalData = async () => {
            mergedPricing[key] = {
              ...(DEFAULT_PLANS[key] || {}),
              ...plan,
-             features: normalizePlanFeatures(key, plan),
+             features: normalizePlanFeatures(key, plan.features || (DEFAULT_PLANS[key]?.features || [])),
              reports: normalizePlanReports(key, plan)
            };
         }
@@ -483,14 +530,17 @@ const fetchGlobalData = async () => {
       setTenants(tenantsWithData);
       
       setStats({
-        users: u?.filter(u => u.role === 'tenant_admin').length || 0,
-        staffCount: u?.filter(u => u.role === 'staff').length || 0,
-        properties: r?.length || 0,
-        bookings: b?.length || 0,
-        revenue: (inc || []).reduce((sum, item) => sum + Number(item.amount), 0)
+        users: (u || []).filter(user => user.role === 'tenant_admin').length,
+        staffCount: (u || []).filter(user => user.role === 'staff').length,
+        properties: (r || []).length,
+        bookings: (b || []).length,
+        revenue: liveRev + testRev,
+        testRevenue: testRev,
+        liveRevenue: liveRev
       });
     } catch (err) {
       console.error("SuperAdmin Fetch Error:", err);
+      setFetchError(err.message || "Failed to load global control panel data");
     } finally {
       setLoading(false);
     }
@@ -946,6 +996,16 @@ const fetchGlobalData = async () => {
         ))}
       </div>
 
+      {fetchError && (
+        <div style={{ padding: '1rem 1.25rem', marginBottom: '1.5rem', background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '12px', color: '#be123c', fontSize: '0.875rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <AlertCircle size={20} style={{ flexShrink: 0 }} />
+          <div>
+            <strong style={{ display: 'block', marginBottom: '0.15rem' }}>Data Sync Warning:</strong>
+            <span>{fetchError}</span>
+          </div>
+        </div>
+      )}
+
       {/* TAB 1: OVERVIEW & STATS */}
       {adminActiveTab === 'overview' && (
         <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
@@ -989,6 +1049,11 @@ const fetchGlobalData = async () => {
                 <div>
                   <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-muted)', fontWeight: 600 }}>Platform Revenue</p>
                   <h2 style={{ margin: '0.25rem 0', color: '#059669', fontWeight: 800 }}>₹{stats.revenue.toLocaleString()}</h2>
+                  <div style={{ fontSize: '0.725rem', color: '#64748b', display: 'flex', gap: '0.5rem', marginTop: '0.2rem' }}>
+                    <span>Live: <strong style={{ color: '#059669' }}>₹{(stats.liveRevenue || 0).toLocaleString()}</strong></span>
+                    <span>•</span>
+                    <span>Test: <strong style={{ color: '#d97706' }}>₹{(stats.testRevenue || 0).toLocaleString()}</strong></span>
+                  </div>
                 </div>
                 <div style={{ padding: '0.75rem', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' }}>
                   <DollarSign size={24} />
@@ -1308,8 +1373,8 @@ const fetchGlobalData = async () => {
                           ) : tenant.role === 'tenant_admin' ? (
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                             <div>
-                              <span className={`badge ${tenant.plan_type === 'premium' ? 'badge-primary' : (tenant.plan_type === 'pro' ? 'badge-success' : 'badge-outline')}`}>
-                                {pricingConfig[tenant.plan_type]?.name?.toUpperCase() || tenant.plan_type?.toUpperCase() || 'FREE STARTER'}
+                              <span className={`badge ${tenant.effectivePlan === 'premium' ? 'badge-primary' : (tenant.effectivePlan === 'pro' ? 'badge-success' : 'badge-outline')}`}>
+                                {pricingConfig[tenant.effectivePlan]?.name?.toUpperCase() || tenant.effectivePlan?.toUpperCase() || 'FREE STARTER'}
                               </span>
                             </div>
                             <div style={{ display: 'flex', gap: '1rem', fontSize: '0.75rem', color: '#64748b' }}>
@@ -1334,16 +1399,16 @@ const fetchGlobalData = async () => {
                           display: 'inline-flex', 
                           alignItems: 'center', 
                           gap: '0.35rem', 
-                          color: tenant.subscription_status === 'active' ? '#059669' : '#ef4444', 
+                          color: tenant.effectiveSubStatus === 'active' ? '#059669' : tenant.effectiveSubStatus === 'suspended' ? '#ef4444' : '#d97706', 
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          background: tenant.subscription_status === 'active' ? 'rgba(5, 150, 105, 0.08)' : 'rgba(239, 68, 68, 0.08)',
+                          background: tenant.effectiveSubStatus === 'active' ? 'rgba(5, 150, 105, 0.08)' : tenant.effectiveSubStatus === 'suspended' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(217, 119, 6, 0.08)',
                           padding: '0.35rem 0.75rem',
                           borderRadius: '20px',
-                          border: tenant.subscription_status === 'active' ? '1px solid rgba(5, 150, 105, 0.15)' : '1px solid rgba(239, 68, 68, 0.15)'
+                          border: tenant.effectiveSubStatus === 'active' ? '1px solid rgba(5, 150, 105, 0.15)' : tenant.effectiveSubStatus === 'suspended' ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(217, 119, 6, 0.15)'
                         }}>
-                          {tenant.subscription_status === 'active' ? <CheckCircle size={14} /> : <XCircle size={14} />}
-                          {tenant.subscription_status === 'active' ? 'ACTIVE' : 'SUSPENDED'}
+                          {tenant.effectiveSubStatus === 'active' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+                          {tenant.effectiveSubStatus ? tenant.effectiveSubStatus.toUpperCase() : 'ACTIVE'}
                         </div>
                       </td>
                       <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
@@ -1602,13 +1667,13 @@ const fetchGlobalData = async () => {
                     <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid #cbd5e1' }}>
                       <h5 style={{ marginBottom: '1rem', color: '#0F2C59', fontSize: '0.85rem', textTransform: 'uppercase', fontWeight: 800 }}>Included Features</h5>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                        {plan.features.map((feat, idx) => (
+                        {(Array.isArray(plan.features) ? plan.features : []).map((feat, idx) => (
                           <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             <input 
                               type="checkbox" 
                               checked={feat.enabled} 
                               onChange={(e) => {
-                                const newFeats = [...plan.features];
+                                const newFeats = [...(Array.isArray(plan.features) ? plan.features : [])];
                                 newFeats[idx] = { ...newFeats[idx], enabled: e.target.checked };
                                 setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
                               }}
@@ -1619,7 +1684,7 @@ const fetchGlobalData = async () => {
                               className="form-input" 
                               value={feat.name}
                               onChange={(e) => {
-                                const newFeats = [...plan.features];
+                                const newFeats = [...(Array.isArray(plan.features) ? plan.features : [])];
                                 newFeats[idx] = { ...newFeats[idx], name: e.target.value };
                                 setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
                               }}
@@ -1633,7 +1698,7 @@ const fetchGlobalData = async () => {
                                 className="btn-outline" 
                                 style={{ padding: '0.25rem', color: 'var(--primary)', border: 'none', background: 'transparent' }}
                                 onClick={() => {
-                                  const newFeats = [...plan.features];
+                                  const newFeats = [...(Array.isArray(plan.features) ? plan.features : [])];
                                   newFeats.splice(idx + 1, 0, { name: 'New Feature', enabled: true });
                                   setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
                                 }}
@@ -1649,7 +1714,7 @@ const fetchGlobalData = async () => {
                                 style={{ padding: '0.25rem', color: 'var(--text-muted)', border: 'none', background: 'transparent' }}
                                 onClick={() => {
                                   if (idx === 0) return;
-                                  const newFeats = [...plan.features];
+                                  const newFeats = [...(Array.isArray(plan.features) ? plan.features : [])];
                                   const temp = newFeats[idx - 1];
                                   newFeats[idx - 1] = newFeats[idx];
                                   newFeats[idx] = temp;
@@ -1666,14 +1731,15 @@ const fetchGlobalData = async () => {
                                 className="btn-outline" 
                                 style={{ padding: '0.25rem', color: 'var(--text-muted)', border: 'none', background: 'transparent' }}
                                 onClick={() => {
-                                  if (idx === plan.features.length - 1) return;
-                                  const newFeats = [...plan.features];
+                                  const currentFeats = Array.isArray(plan.features) ? plan.features : [];
+                                  if (idx === currentFeats.length - 1) return;
+                                  const newFeats = [...currentFeats];
                                   const temp = newFeats[idx + 1];
                                   newFeats[idx + 1] = newFeats[idx];
                                   newFeats[idx] = temp;
                                   setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
                                 }}
-                                disabled={!plan.enabled || idx === plan.features.length - 1}
+                                disabled={!plan.enabled || idx === ((Array.isArray(plan.features) ? plan.features : []).length - 1)}
                                 title="Move down"
                               >
                                 <ArrowDown size={14} />
@@ -1684,7 +1750,7 @@ const fetchGlobalData = async () => {
                                 className="btn-outline" 
                                 style={{ padding: '0.25rem', color: 'var(--danger)', border: 'none', background: 'transparent' }}
                                 onClick={() => {
-                                  const newFeats = plan.features.filter((_, i) => i !== idx);
+                                  const newFeats = (Array.isArray(plan.features) ? plan.features : []).filter((_, i) => i !== idx);
                                   setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
                                 }}
                                 disabled={!plan.enabled}
@@ -1700,7 +1766,7 @@ const fetchGlobalData = async () => {
                           className="btn btn-outline" 
                           style={{ marginTop: '0.5rem', fontSize: '0.8rem', padding: '0.5rem', fontWeight: 700 }}
                           onClick={() => {
-                            const newFeats = [...plan.features, { name: 'New Feature', enabled: true }];
+                            const newFeats = [...(Array.isArray(plan.features) ? plan.features : []), { name: 'New Feature', enabled: true }];
                             setPricingConfig({...pricingConfig, [planKey]: {...plan, features: newFeats}});
                           }}
                           disabled={!plan.enabled}
