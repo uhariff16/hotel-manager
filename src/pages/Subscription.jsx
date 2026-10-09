@@ -357,7 +357,32 @@ export default function Subscription() {
         body: { plan_type: planId }
       });
 
-      if (error || (data && data.error)) throw new Error(error?.message || data?.error || 'Unknown error');
+      if (error || (data && data.error)) {
+        let errMsg = data?.error;
+        if (!errMsg && error) {
+          if (error.context && typeof error.context.clone === 'function' && !error.context.bodyUsed) {
+            try {
+              const clonedRes = error.context.clone();
+              const errJson = await clonedRes.json();
+              errMsg = errJson?.error || errJson?.message;
+            } catch {
+              try {
+                const clonedResText = error.context.clone();
+                const text = await clonedResText.text();
+                if (text && !text.includes('<html') && text.trim().length > 0) {
+                  errMsg = text.trim();
+                }
+              } catch {
+                // Ignore secondary text cloning failure
+              }
+            }
+          }
+          if (!errMsg) {
+            errMsg = error.message;
+          }
+        }
+        throw new Error(errMsg || 'Failed to initialize checkout');
+      }
 
       const options = {
         key: data.key_id,
