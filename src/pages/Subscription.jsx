@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
-import { Check, Zap, Crown, CreditCard, Shield, X, Lock, Sparkles, ArrowRight } from 'lucide-react';
+import { Check, Zap, Crown, CreditCard, Shield, X, Lock, Sparkles, ArrowRight, FileText } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { createPortal } from 'react-dom';
 import { getTrialPresentationState } from '../lib/trial';
 import { resolveEffectivePlan } from '../utils/planEntitlements';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PlanComparison, { getSanitizedFeatures } from '../components/PlanComparison';
+import SaaSInvoiceModal from '../components/SaaSInvoiceModal';
 
 const formatOfferDate = (dateString) => {
   if (!dateString) return '';
@@ -37,6 +38,7 @@ export default function Subscription() {
   const [checkoutError, setCheckoutError] = useState(null);
   const [switchTrialModal, setSwitchTrialModal] = useState({ isOpen: false, targetPlanKey: null });
   const [switchSuccessMessage, setSwitchSuccessMessage] = useState(null);
+  const [selectedInvoicePayment, setSelectedInvoicePayment] = useState(null);
 
   const [activeSubscription, setActiveSubscription] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
@@ -919,6 +921,7 @@ export default function Subscription() {
                   <th style={{ padding: '0.75rem 0.5rem' }}>Amount</th>
                   <th style={{ padding: '0.75rem 0.5rem' }}>Status</th>
                   <th style={{ padding: '0.75rem 0.5rem' }}>Transaction ID</th>
+                  <th style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>Invoice</th>
                 </tr>
               </thead>
               <tbody>
@@ -948,6 +951,16 @@ export default function Subscription() {
                     <td style={{ padding: '0.85rem 0.5rem', fontFamily: 'monospace', color: 'var(--text-muted)', fontSize: '0.825rem' }}>
                       {payment.razorpay_payment_id || payment.id.split('-')[0]}
                     </td>
+                    <td style={{ padding: '0.85rem 0.5rem', textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        style={{ padding: '0.3rem 0.65rem', fontSize: '0.8rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+                        onClick={() => setSelectedInvoicePayment(payment)}
+                      >
+                        <FileText size={14} /> Tax Invoice
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -955,6 +968,15 @@ export default function Subscription() {
           </div>
         </div>
       )}
+
+      {/* SaaS Subscription Tax Invoice Modal */}
+      <SaaSInvoiceModal
+        isOpen={Boolean(selectedInvoicePayment)}
+        onClose={() => setSelectedInvoicePayment(null)}
+        payment={selectedInvoicePayment}
+        profile={profile}
+        globalTaxSettings={globalTaxSettings}
+      />
 
       {/* SECTION 6: REASSURANCE FOOTER */}
       <div style={{
@@ -1113,9 +1135,15 @@ export default function Subscription() {
               const selectedPlan = plansList.find(p => p.id === checkoutModal.planId);
               if (!selectedPlan) return null;
               
-              const rawPrice = selectedPlan.rawPrice || 0;
-              const gstAmount = globalTaxSettings?.enabled ? Math.round(rawPrice * (globalTaxSettings.rate / 100)) : 0;
-              const totalAmount = rawPrice + gstAmount;
+              const basePricePaise = Math.round((selectedPlan.rawPrice || 0) * 100);
+              const isGstActive = Boolean(globalTaxSettings?.enabled) && Number(globalTaxSettings?.rate || 0) > 0;
+              const gstRate = isGstActive ? Number(globalTaxSettings.rate) : 0;
+              const gstAmountPaise = isGstActive ? Math.round(basePricePaise * (gstRate / 100)) : 0;
+              const totalAmountPaise = basePricePaise + gstAmountPaise;
+
+              const rawPriceDisplay = (basePricePaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+              const gstAmountDisplay = (gstAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+              const totalAmountDisplay = (totalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
@@ -1123,20 +1151,31 @@ export default function Subscription() {
                     <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Payment Breakdown</h4>
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
-                      <span>Base Plan Price</span>
-                      <span>{'₹' + rawPrice}</span>
+                      <span>Base Subscription Price ({selectedPlan.name})</span>
+                      <span>{'₹' + rawPriceDisplay}</span>
                     </div>
                     
-                    {globalTaxSettings?.enabled && (
+                    {isGstActive && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
-                        <span>GST ({globalTaxSettings.rate}%)</span>
-                        <span>{'₹' + gstAmount}</span>
+                        <span>GST ({gstRate}%)</span>
+                        <span>{'₹' + gstAmountDisplay}</span>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
+                      <span>Billing Frequency</span>
+                      <span>Monthly Recurring</span>
+                    </div>
+                    
+                    {trialState?.isActiveTrial && !trialState?.isExpired && (
+                      <div style={{ margin: '0.75rem 0', padding: '0.5rem 0.75rem', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '0.825rem', color: '#10b981' }}>
+                        💡 Active free trial ends on {trialState.formattedEndDate}. First recurring charge takes effect at trial completion.
                       </div>
                     )}
                     
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--border)', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '1.1rem' }}>
-                      <span>Total Amount</span>
-                      <span>{'₹' + totalAmount}</span>
+                      <span>Final Recurring Charge</span>
+                      <span>{'₹' + totalAmountDisplay} / month</span>
                     </div>
                   </div>
                   
@@ -1147,7 +1186,7 @@ export default function Subscription() {
                     onClick={() => processPayment(checkoutModal.planId)}
                     disabled={loading === checkoutModal.planId}
                   >
-                    {loading === checkoutModal.planId ? 'Connecting to Razorpay...' : 'Proceed to Payment (₹' + totalAmount + ')'}
+                    {loading === checkoutModal.planId ? 'Connecting to Razorpay...' : 'Proceed to Payment (₹' + totalAmountDisplay + ')'}
                   </button>
                 </div>
               );

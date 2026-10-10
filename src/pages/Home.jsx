@@ -336,7 +336,7 @@ export default function Home() {
                   <img key={i} src={src} className={`image-slider ${i === webIdx ? 'active' : ''}`} alt="Web Dashboard" />
                 ))
               ) : (
-                '[ Placeholder: Add Web Images in Super Admin ]'
+                <img src="/booking_management.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Web Dashboard" />
               )}
             </div>
           </div>
@@ -349,7 +349,7 @@ export default function Home() {
                   <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt="Mobile App" />
                 ))
               ) : (
-                '[ Add Mobile Images in Super Admin ]'
+                <img src="/calendar.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Mobile App" />
               )}
             </div>
           </div>
