@@ -418,7 +418,12 @@ export default function Subscription() {
         key: data.key_id,
         subscription_id: data.subscription_id,
         name: "Stay Pilot",
-        description: `Subscription for ${planId}`,
+        description: `Subscription for ${getPlanName(planId)}`,
+        prefill: {
+          name: profile?.full_name || '',
+          email: session?.user?.email || profile?.email || '',
+          contact: profile?.phone || ''
+        },
         handler: async function (response) {
           try {
             const { data: { session: currentSession } } = await supabase.auth.getSession();
@@ -1169,7 +1174,7 @@ export default function Subscription() {
                     
                     {trialState?.isActiveTrial && !trialState?.isExpired && (
                       <div style={{ margin: '0.75rem 0', padding: '0.5rem 0.75rem', background: 'rgba(16, 185, 129, 0.08)', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.2)', fontSize: '0.825rem', color: '#10b981' }}>
-                        💡 Active free trial ends on {trialState.formattedEndDate}. First recurring charge takes effect at trial completion.
+                        💡 Proceeding to payment will start your paid subscription immediately and transition your account from trial to active status upon successful payment capture.
                       </div>
                     )}
                     

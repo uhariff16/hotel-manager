@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3'
 
-serve(async (req) => {
+export async function processRazorpayWebhook(req: Request, targetEnv: 'test' | 'live' | 'any') {
   if (req.method !== 'POST') {
     return new Response('Method Not Allowed', { status: 405 })
   }
@@ -9,71 +9,69 @@ serve(async (req) => {
   try {
     const signature = req.headers.get('x-razorpay-signature')
     if (!signature) {
-      throw new Error('Missing signature')
+      return new Response(JSON.stringify({ error: 'Missing x-razorpay-signature header' }), { status: 401 })
     }
 
-    // Admin client to read global settings and update tables securely
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    // 1. Fetch Global Settings for Webhook Secret
-    const { data: adminProfiles, error: adminErr } = await supabaseAdmin
-      .from('profiles')
-      .select('global_settings')
-      .eq('role', 'super_admin')
-      .limit(1)
+    const testSecret = (Deno.env.get('RAZORPAY_TEST_WEBHOOK_SECRET') || Deno.env.get('RAZORPAY_WEBHOOK_SECRET'))?.trim()
+    const liveSecret = Deno.env.get('RAZORPAY_LIVE_WEBHOOK_SECRET')?.trim()
 
-    if (adminErr || !adminProfiles || adminProfiles.length === 0) {
-      throw new Error('Could not load global settings')
-    }
-
-    const razorpayConfig = adminProfiles[0].global_settings?.razorpay_settings || {}
-    const webhookSecret = razorpayConfig.webhookSecret
-
-    if (!webhookSecret) {
-      throw new Error('Webhook secret not configured in system')
-    }
-
-    // 2. Read raw body text for signature validation
     const rawBody = await req.text()
 
-    // Validate Signature
-    const textEncoder = new TextEncoder()
-    const key = await crypto.subtle.importKey(
-      'raw',
-      textEncoder.encode(webhookSecret),
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    )
-    const signatureBuffer = await crypto.subtle.sign(
-      'HMAC',
-      key,
-      textEncoder.encode(rawBody)
-    )
-    const hexSignature = Array.from(new Uint8Array(signatureBuffer))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('')
+    const verifySignature = async (bodyText: string, sig: string, secret: string): Promise<boolean> => {
+      const textEncoder = new TextEncoder()
+      const key = await crypto.subtle.importKey(
+        'raw',
+        textEncoder.encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign']
+      )
+      const signatureBuffer = await crypto.subtle.sign('HMAC', key, textEncoder.encode(bodyText))
+      const hexSig = Array.from(new Uint8Array(signatureBuffer))
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('')
+      return hexSig === sig
+    }
 
-    if (hexSignature !== signature) {
-      throw new Error('Invalid signature')
+    let verifiedEnv: 'test' | 'live' | null = null
+
+    if (targetEnv === 'test') {
+      if (!testSecret) throw new Error('Test Webhook Secret not configured')
+      const isValid = await verifySignature(rawBody, signature, testSecret)
+      if (!isValid) return new Response(JSON.stringify({ error: 'Invalid Test Webhook Signature' }), { status: 400 })
+      verifiedEnv = 'test'
+    } else if (targetEnv === 'live') {
+      if (!liveSecret) throw new Error('Live Webhook Secret not configured')
+      const isValid = await verifySignature(rawBody, signature, liveSecret)
+      if (!isValid) return new Response(JSON.stringify({ error: 'Invalid Live Webhook Signature' }), { status: 400 })
+      verifiedEnv = 'live'
+    } else {
+      if (testSecret && await verifySignature(rawBody, signature, testSecret)) {
+        verifiedEnv = 'test'
+      } else if (liveSecret && await verifySignature(rawBody, signature, liveSecret)) {
+        verifiedEnv = 'live'
+      } else {
+        return new Response(JSON.stringify({ error: 'Invalid Webhook Signature' }), { status: 400 })
+      }
     }
 
     const payload = JSON.parse(rawBody)
     const event = payload.event
-
     const subEntity = payload.payload?.subscription?.entity
     const paymentEntity = payload.payload?.payment?.entity
 
     if (!subEntity) {
-      return new Response(JSON.stringify({ status: 'ignored', reason: 'no subscription entity' }), { status: 200 })
+      return new Response(JSON.stringify({ status: 'ignored', reason: 'No subscription entity in payload' }), { status: 200 })
     }
 
     const subId = subEntity.id
 
-    // Fetch the saas_subscription record
+    // Fetch local saas_subscription record to confirm presence & tenant ownership
     const { data: saasSub, error: subErr } = await supabaseAdmin
       .from('saas_subscriptions')
       .select('*')
@@ -81,112 +79,50 @@ serve(async (req) => {
       .single()
 
     if (subErr || !saasSub) {
-      return new Response(JSON.stringify({ status: 'ignored', reason: 'subscription not found in DB' }), { status: 200 })
+      return new Response(JSON.stringify({ status: 'ignored', reason: 'Subscription ID not found in database' }), { status: 200 })
     }
 
-    const tenantId = saasSub.tenant_id
-    
-    // Fetch tenant email securely from auth.users
-    let tenantEmail = null;
-    try {
-      const { data: userResponse, error: userError } = await supabaseAdmin.auth.admin.getUserById(tenantId);
-      if (!userError && userResponse.user) {
-        tenantEmail = userResponse.user.email;
-      }
-    } catch (e) {
-      console.error("Failed to fetch tenant email", e);
+    // STRICT ENVIRONMENT GUARD: Mismatched environment rejected
+    const subEnv = saasSub.environment || 'test'
+    if (subEnv !== verifiedEnv) {
+      return new Response(JSON.stringify({ 
+        status: 'rejected', 
+        reason: `Environment mismatch: ${verifiedEnv} webhook cannot update ${subEnv} subscription.` 
+      }), { status: 400 })
     }
 
-    // 3. Process Events
-    if (event === 'subscription.activated' || event === 'subscription.authenticated') {
-      
-      const wasAlreadyActive = saasSub.status === 'active';
+    // Parse payload timestamps safely
+    const newPeriodStart = subEntity.current_start ? new Date(subEntity.current_start * 1000).toISOString() : new Date().toISOString()
+    const newPeriodEnd = subEntity.current_end ? new Date(subEntity.current_end * 1000).toISOString() : new Date(Date.now() + 30*24*60*60*1000).toISOString()
 
-      await supabaseAdmin.from('saas_subscriptions').update({
-        status: 'active',
-        current_period_start: new Date(subEntity.current_start * 1000).toISOString(),
-        current_period_end: new Date(subEntity.current_end * 1000).toISOString(),
-      }).eq('id', saasSub.id)
+    // Invoking Atomic RPC process_subscription_webhook STRICTLY (No fallbacks)
+    const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc('process_subscription_webhook', {
+      p_razorpay_sub_id: subId,
+      p_event_type: event,
+      p_event_env: verifiedEnv,
+      p_status: subEntity.status || 'active',
+      p_current_start: newPeriodStart,
+      p_current_end: newPeriodEnd,
+      p_payment_id: paymentEntity?.id || null,
+      p_amount: paymentEntity?.amount || null,
+      p_currency: paymentEntity?.currency || null,
+      p_payment_status: paymentEntity?.status || null,
+      p_payment_method: paymentEntity?.method || null,
+      p_invoice_id: paymentEntity?.invoice_id || null
+    })
 
-      await supabaseAdmin.from('profiles').update({
-        plan_type: saasSub.staypilot_plan_type
-      }).eq('id', tenantId)
-
-      // Only invoke mailer if this is the FIRST time it's being marked active
-      // (razorpay-verify might have already done this on the frontend)
-      if (tenantEmail && !wasAlreadyActive) {
-        await supabaseAdmin.functions.invoke('saas-mailer', {
-          body: {
-            type: 'subscription_activated',
-            event_data: {
-              tenant_email: tenantEmail,
-              plan_type: saasSub.staypilot_plan_type,
-              period_end: new Date(subEntity.current_end * 1000).toISOString()
-            }
-          }
-        }).catch(err => console.error("Failed to send activation email", err));
-      }
-    } else if (event === 'subscription.charged') {
-      await supabaseAdmin.from('saas_subscriptions').update({
-        status: 'active',
-        current_period_start: new Date(subEntity.current_start * 1000).toISOString(),
-        current_period_end: new Date(subEntity.current_end * 1000).toISOString(),
-      }).eq('id', saasSub.id)
-
-      if (paymentEntity) {
-        // Upsert payment to prevent duplicates (using razorpay_payment_id as unique constraint)
-        await supabaseAdmin.from('saas_payments').upsert({
-          tenant_id: tenantId,
-          razorpay_payment_id: paymentEntity.id,
-          razorpay_subscription_id: subId,
-          razorpay_invoice_id: paymentEntity.invoice_id,
-          amount: paymentEntity.amount,
-          currency: paymentEntity.currency,
-          status: paymentEntity.status,
-          payment_method: paymentEntity.method
-        }, { onConflict: 'razorpay_payment_id' })
-        
-        if (tenantEmail) {
-          await supabaseAdmin.functions.invoke('saas-mailer', {
-            body: {
-              type: 'payment_receipt',
-              event_data: {
-                tenant_email: tenantEmail,
-                amount: paymentEntity.amount,
-                payment_id: paymentEntity.id
-              }
-            }
-          }).catch(err => console.error("Failed to send receipt email", err));
-        }
-      }
-
-    } else if (event === 'subscription.cancelled' || event === 'subscription.halted' || event === 'subscription.completed') {
-      const newStatus = event.split('.')[1] // 'cancelled', 'halted', 'completed'
-      
-      await supabaseAdmin.from('saas_subscriptions').update({
-        status: newStatus
-      }).eq('id', saasSub.id)
-
-      // Revoke access immediately (if business logic dictates they keep it till end of period, this needs refinement. 
-      // But for simplicity and security, halting revokes it. Cancellation can be end of period if managed properly.
-      // Usually, Razorpay cancels at period end, but if this webhook fires, it means it's effectively over.)
-      await supabaseAdmin.from('profiles').update({
-        plan_type: 'free'
-      }).eq('id', tenantId)
-      
-      if (tenantEmail && (newStatus === 'cancelled' || newStatus === 'completed')) {
-        await supabaseAdmin.functions.invoke('saas-mailer', {
-          body: {
-            type: 'subscription_cancelled',
-            event_data: {
-              tenant_email: tenantEmail
-            }
-          }
-        }).catch(err => console.error("Failed to send cancellation email", err));
-      }
+    if (rpcErr || rpcRes?.status === 'rejected') {
+      console.error("Atomic RPC execution failed:", rpcErr?.message || rpcRes?.reason)
+      return new Response(JSON.stringify({ 
+        error: `Database transaction failed: ${rpcErr?.message || rpcRes?.reason}` 
+      }), { status: 500 })
     }
 
-    return new Response(JSON.stringify({ status: 'success' }), { status: 200, headers: { 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ status: 'success', environment: verifiedEnv, rpc_result: rpcRes }), { 
+      status: 200, 
+      headers: { 'Content-Type': 'application/json' } 
+    })
+
   } catch (error) {
     console.error('Webhook processing failed:', error.message)
     return new Response(JSON.stringify({ error: error.message }), {
@@ -194,4 +130,8 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json' }
     })
   }
+}
+
+serve(async (req) => {
+  return await processRazorpayWebhook(req, 'any')
 })

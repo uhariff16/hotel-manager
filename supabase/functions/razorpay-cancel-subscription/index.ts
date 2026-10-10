@@ -41,7 +41,7 @@ serve(async (req) => {
       throw new Error('No active subscription found')
     }
 
-    // 3. Fetch Global Settings to get Razorpay credentials
+    // 3. Fetch Global Settings & Resolve Credentials based on subscription environment
     const { data: adminProfiles } = await supabaseAdmin
       .from('profiles')
       .select('global_settings')
@@ -51,7 +51,9 @@ serve(async (req) => {
       
     const masterProfile = adminProfiles?.find(p => p.global_settings?.pricing) || adminProfiles?.[0]
     const razorpayConfig = masterProfile?.global_settings?.razorpay_settings || {}
-    const isLive = razorpayConfig.mode === 'live'
+    
+    // Authoritative stored subscription environment takes precedence
+    const isLive = saasSub.environment === 'live' || (saasSub.environment === undefined && razorpayConfig.mode === 'live')
     const keyId = (isLive 
       ? Deno.env.get('RAZORPAY_LIVE_KEY_ID') 
       : Deno.env.get('RAZORPAY_TEST_KEY_ID')
@@ -67,7 +69,7 @@ serve(async (req) => {
 
     const rzpAuthHeader = `Basic ${btoa(`${keyId}:${keySecret}`)}`
 
-    // 4. Call Razorpay to cancel subscription (cancel_at_cycle_end=0 to cancel immediately)
+    // 4. Call Razorpay to cancel subscription at the end of the billing cycle (cancel_at_cycle_end=1)
     const cancelRes = await fetch(`https://api.razorpay.com/v1/subscriptions/${saasSub.razorpay_subscription_id}/cancel`, {
       method: 'POST',
       headers: {
@@ -75,7 +77,7 @@ serve(async (req) => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        cancel_at_cycle_end: 0
+        cancel_at_cycle_end: 1
       })
     })
 
@@ -84,33 +86,38 @@ serve(async (req) => {
       throw new Error(`Failed to cancel Razorpay subscription: ${JSON.stringify(errData)}`)
     }
 
-    // 5. Update Local DB immediately (webhook will also fire, but we do it here for instant UI feedback)
+    // 5. Update Local DB: Flag subscription for end-of-cycle cancellation
+    // Paid access is PRESERVED until current_period_end per Phase 4M-B security policy.
     await supabaseAdmin.from('saas_subscriptions').update({
-      status: 'cancelled',
-      cancel_at_period_end: false
+      cancel_at_period_end: true
     }).eq('id', saasSub.id)
 
-    await supabaseAdmin.from('profiles').update({
-      plan_type: 'free'
-    }).eq('id', user.id)
-
-    // Send cancellation emails to Admin and Tenant
+    // Send cancellation notice email (indicating scheduled cancellation at period end)
     if (user.email) {
       await supabaseAdmin.functions.invoke('saas-mailer', {
         body: {
           type: 'subscription_cancelled',
           event_data: {
-            tenant_email: user.email
+            tenant_email: user.email,
+            cancel_at_period_end: true,
+            period_end: saasSub.current_period_end
           }
         }
       }).catch(err => console.error("Failed to send cancel email", err));
     }
 
-    return new Response(JSON.stringify({ status: 'success' }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+    return new Response(JSON.stringify({ 
+      status: 'success', 
+      message: 'Subscription scheduled for cancellation at the end of the current billing cycle.' 
+    }), { 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      status: 200 
+    })
   } catch (error) {
+    const isAuthError = error.message?.includes('Unauthorized') || error.message?.includes('Missing Authorization')
     return new Response(JSON.stringify({ error: error.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200, // Return 200 so supabase-js doesn't mask the error body
+      status: isAuthError ? 401 : 400,
     })
   }
 })
