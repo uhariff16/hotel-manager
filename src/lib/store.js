@@ -23,9 +23,11 @@ export const useSettingsStore = create(
       globalTaxSettings: null,
       onboardingWizardEnabled: true,
       isDataLoaded: false,
+      resortsLoadError: null,
       
       updateSettings: (newSettings) => set((state) => ({ ...state, ...newSettings })),
       setIsDataLoaded: (loaded) => set({ isDataLoaded: loaded }),
+      setResortsLoadError: (error) => set({ resortsLoadError: error }),
       toggleTheme: () => set((state) => ({ theme: state.theme === 'system' ? 'light' : (state.theme === 'light' ? 'dark' : 'system') })),
       
       setSession: (session) => set({ session }),
@@ -38,7 +40,7 @@ export const useSettingsStore = create(
       setWebsitePricing: (websitePricing) => set({ websitePricing }),
       setGlobalTaxSettings: (globalTaxSettings) => set({ globalTaxSettings }),
       setOnboardingWizardEnabled: (enabled) => set({ onboardingWizardEnabled: enabled }),
-      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false, globalPlans: null, landingPageContent: null, websitePricing: null, globalTaxSettings: null, onboardingWizardEnabled: true })
+      logout: () => set({ session: null, profile: null, resorts: [], activeResortId: null, isRecovering: false, globalPlans: null, landingPageContent: null, websitePricing: null, globalTaxSettings: null, onboardingWizardEnabled: true, resortsLoadError: null })
     }),
     {
       name: 'hotel-manager-settings',

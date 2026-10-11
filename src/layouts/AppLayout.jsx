@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { ClipboardList, LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy } from 'lucide-react';
+import { ClipboardList, LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy, AlertCircle } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { getTrialPresentationState } from '../lib/trial';
 import { Capacitor } from '@capacitor/core';
@@ -12,7 +12,7 @@ import { useRealtimeWebNotifications } from '../hooks/useRealtimeWebNotification
 import { resolveEffectivePlan } from '../utils/planEntitlements';
 
 export default function AppLayout() {
-  const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled, isDataLoaded, globalPlans } = useSettingsStore();
+  const { resortName, logoUrl, profile, resorts, activeResortId, setActiveResortId, logout, onboardingWizardEnabled, isDataLoaded, globalPlans, resortsLoadError } = useSettingsStore();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
   const location = useLocation();
   const navigate = useNavigate();
@@ -175,11 +175,7 @@ export default function AppLayout() {
   const isAdmin = effectiveProfile?.role === 'tenant_admin';
   const isSuper = effectiveProfile?.role === 'super_admin';
 
-  const needsOnboarding = !isPreview && onboardingWizardEnabled !== false && profile?.role === 'tenant_admin' && (
-    !resorts || resorts.length === 0 || 
-    (resorts.length === 1 && resorts[0] && (resorts[0].cottagesCount === 0 || resorts[0].roomsCount === 0))
-  );
-
+  // 1. Data Loading Guard: Never evaluate onboarding until data fetch completes
   if (!isDataLoaded && !isPreview) {
     return <div style={{ display: 'flex', height: '100vh', justifyContent: 'center', alignItems: 'center' }}>
       <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid var(--border)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
@@ -188,6 +184,49 @@ export default function AppLayout() {
       `}</style>
     </div>;
   }
+
+  // 2. Query Error Guard: If property loading failed, display error/retry UI rather than triggering setup wizard
+  if (resortsLoadError && !isPreview) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', justifyContent: 'center', alignItems: 'center', padding: '20px', textAlign: 'center' }}>
+        <div style={{ maxWidth: '420px', background: 'var(--card-bg, #fff)', border: '1px solid var(--border, #e2e8f0)', borderRadius: '12px', padding: '32px', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
+            <AlertCircle size={24} />
+          </div>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text, #1e293b)', marginBottom: '8px' }}>Unable to Load Property Data</h2>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted, #64748b)', marginBottom: '20px', lineHeight: '1.5' }}>
+            We encountered an issue retrieving your hotel records. Your data is safe. Please check your connection or retry.
+          </p>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+            <button 
+              onClick={() => window.location.reload()}
+              style={{ padding: '8px 20px', background: 'var(--primary, #2f855a)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 500, cursor: 'pointer' }}
+            >
+              Retry
+            </button>
+            <button 
+              onClick={logout}
+              style={{ padding: '8px 16px', background: 'transparent', color: 'var(--text-muted, #64748b)', border: '1px solid var(--border, #cbd5e1)', borderRadius: '8px', cursor: 'pointer' }}
+            >
+              Log Out
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3. Property Existence Check:
+  // - True only if loaded, no error, and verified zero resorts or zero rooms/cottages in newly initialised resort
+  const hasExistingProperties = Boolean(
+    resorts && resorts.length > 0 && 
+    (resorts.length > 1 || (resorts[0] && (resorts[0].cottagesCount > 0 || resorts[0].roomsCount > 0)))
+  );
+
+  const needsOnboarding = !isPreview && 
+    onboardingWizardEnabled !== false && 
+    profile?.role === 'tenant_admin' && 
+    !hasExistingProperties;
 
   if (needsOnboarding) {
     return <OnboardingWizard />;

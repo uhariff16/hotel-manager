@@ -55,7 +55,7 @@ function App() {
     }
   }, []);
 
-  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setGlobalTaxSettings, setOnboardingWizardEnabled, setIsDataLoaded } = useSettingsStore();
+  const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setGlobalTaxSettings, setOnboardingWizardEnabled, setIsDataLoaded, setResortsLoadError } = useSettingsStore();
   const [isNewlyVerified, setIsNewlyVerified] = React.useState(false);
 
   useEffect(() => {
@@ -150,29 +150,50 @@ function App() {
         setProfile(profile);
 
         if (profile.tenant_id) {
-          const { data: resorts } = await supabase
+          const { data: resorts, error: resortsError } = await supabase
             .from('resorts')
             .select('*')
             .eq('tenant_id', profile.tenant_id);
           
-          if (resorts && resorts.length > 0) {
+          if (resortsError) {
+            console.error("Error fetching tenant resorts:", resortsError);
+            setResortsLoadError(resortsError.message || "Failed to load property data");
+          } else if (resorts && resorts.length > 0) {
             try {
-              const [{ count: cottagesCount }, { count: roomsCount }] = await Promise.all([
+              const [
+                { count: cottagesCount, error: cottagesError }, 
+                { count: roomsCount, error: roomsError }
+              ] = await Promise.all([
                 supabase.from('cottages').select('*', { count: 'exact', head: true }).eq('resort_id', resorts[0].id),
                 supabase.from('rooms').select('*', { count: 'exact', head: true }).eq('resort_id', resorts[0].id)
               ]);
-              resorts[0].cottagesCount = cottagesCount || 0;
-              resorts[0].roomsCount = roomsCount || 0;
+
+              if (cottagesError || roomsError) {
+                const countErr = cottagesError || roomsError;
+                console.error("Error fetching onboarding counts:", countErr);
+                setResortsLoadError(countErr.message || "Failed to load cottage/room counts");
+                setResorts(resorts);
+                setActiveResortId(resorts[0].id);
+              } else {
+                resorts[0].cottagesCount = cottagesCount ?? 0;
+                resorts[0].roomsCount = roomsCount ?? 0;
+                setResortsLoadError(null);
+                setResorts(resorts);
+                setActiveResortId(resorts[0].id);
+              }
             } catch (err) {
-              console.error("Error fetching onboarding counts:", err);
+              console.error("Exception fetching onboarding counts:", err);
+              setResortsLoadError(err.message || "Exception loading property counts");
+              setResorts(resorts);
+              setActiveResortId(resorts[0].id);
             }
-            setResorts(resorts);
-            setActiveResortId(resorts[0].id);
           } else {
+            setResortsLoadError(null);
             setResorts([]);
             setActiveResortId(null);
           }
         } else {
+          setResortsLoadError(null);
           setResorts([]);
           setActiveResortId(null);
         }
@@ -183,6 +204,7 @@ function App() {
       setActiveResortId(null);
       setIsRecovering(false);
       setSession(null);
+      setResortsLoadError(null);
     }
     
     setIsDataLoaded(true);
