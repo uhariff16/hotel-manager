@@ -142,7 +142,7 @@ export default function CottagesRooms() {
       end_date: ratePlanForm.end_date || null,
       priority: Number(ratePlanForm.priority) || 0,
       days_of_week: ratePlanForm.days_of_week,
-      tenant_id: session.user.id,
+      tenant_id: profile?.tenant_id || session.user.id,
       resort_id: activeResortId
     };
 
@@ -184,7 +184,7 @@ export default function CottagesRooms() {
       name: editingCategory.name,
       capacity: Number(editingCategory.capacity),
       resort_id: activeResortId,
-      tenant_id: session.user.id,
+      tenant_id: profile?.tenant_id || session.user.id,
       cottage_id: editingCategory.cottage_id || null
     };
 
@@ -264,7 +264,7 @@ export default function CottagesRooms() {
       weekday_price: 0,
       weekend_price: 0,
       seasonal_price: 0,
-      tenant_id: session.user.id, 
+      tenant_id: profile?.tenant_id || session.user.id, 
       resort_id: activeResortId 
     };
 
@@ -374,7 +374,7 @@ export default function CottagesRooms() {
       weekday_price: 0,
       weekend_price: 0,
       seasonal_price: 0,
-      tenant_id: session.user.id,
+      tenant_id: profile?.tenant_id || session.user.id,
       resort_id: activeResortId
     };
 

@@ -570,17 +570,13 @@ export default function Bookings() {
       if (error) throw error;
 
       if (amtSettled > 0) {
-        const { error: incomeErr } = await supabase.from('incomes').insert([{
-          resort_id: activeResortId,
-          tenant_id: profile?.tenant_id,
-          booking_id: b.id,
-          amount: amtSettled,
-          source: 'Room Rent',
-          notes: `OTA Settlement: ${b.guest_name} (${b.reference_number}) - via OTA`,
-          date: new Date().toLocaleDateString('en-CA'),
-          payment_mode: 'Bank Transfer'
-        }]);
-        if (incomeErr) console.error("Error inserting OTA income", incomeErr);
+        const { error: incomeErr } = await supabase.rpc('record_checkout_settlement', {
+          p_booking_id: b.id,
+          p_amount: amtSettled,
+          p_payment_mode: 'Bank Transfer',
+          p_notes: `OTA Settlement: ${b.guest_name} (${b.reference_number}) - via OTA`
+        });
+        if (incomeErr) console.error("Error inserting OTA income via RPC", incomeErr);
       }
 
       setBookings(prev => prev.map(x => x.id === b.id ? { ...x, ota_payment_status: 'Settled' } : x));
@@ -655,42 +651,25 @@ export default function Bookings() {
   };
 
   const handleRevertToCheckIn = async (b) => {
-    if (!window.confirm(`Are you sure you want to revert ${b.guest_name} to 'Checked-in'? This will DELETE the settlement record from Financials.`)) return;
+    if (!window.confirm(`Are you sure you want to revert ${b.guest_name} to 'Checked-in'? This will record an auditable settlement reversal in Financials.`)) return;
     
     try {
-      // 1. Delete the settlement income record first
-      await supabase
-        .from('incomes')
-        .delete()
-        .eq('booking_id', b.id)
-        .ilike('notes', '%Settlement%');
+      const { data: revertRes, error: rpcErr } = await supabase.rpc('revert_booking_to_checkin', {
+        p_booking_id: b.id
+      });
+      if (rpcErr) throw rpcErr;
 
-      // 2. Fetch ALL remaining income records for this booking to get the REAL paid amount
-      const { data: allIncomes } = await supabase
-        .from('incomes')
-        .select('amount')
-        .eq('booking_id', b.id);
-
-      const totalRealPaid = (allIncomes || []).reduce((sum, inc) => sum + Number(inc.amount), 0);
-      const restoredBalance = Number(b.total_amount) - totalRealPaid;
-
-      // 3. Update the booking with the true recalculated values
-      const { error: bookingErr } = await supabase.from('bookings').update({ 
-          status: 'Checked-in',
-          advance_paid: totalRealPaid,
-          balance_amount: restoredBalance
-      }).eq('id', b.id);
-      
-      if (bookingErr) throw bookingErr;
+      const restoredAdvance = revertRes?.advance_paid ?? b.advance_paid;
+      const restoredBalance = revertRes?.balance_amount ?? b.balance_amount;
 
       setBookings(prev => prev.map(x => x.id === b.id ? { 
           ...x, 
           status: 'Checked-in', 
-          advance_paid: totalRealPaid,
+          advance_paid: restoredAdvance, 
           balance_amount: restoredBalance 
       } : x));
 
-      alert("Booking reverted. Financials and Balance have been synchronized.");
+      alert("Booking reverted to Checked-in. Financials and Balance have been synchronized.");
     } catch (err) {
       alert("Error reverting status: " + err.message);
     }
@@ -739,17 +718,14 @@ export default function Bookings() {
         
       if (bookingErr) throw bookingErr;
 
-      if (amtPaid > 0 || discount > 0) {
-        await supabase.from('incomes').insert([{
-          resort_id: activeResortId,
-          tenant_id: profile?.tenant_id,
-          booking_id: settlingBooking.id,
-          amount: amtPaid,
-          source: 'Room Rent',
-          notes: `Settlement: ${settlingBooking.guest_name} (${settlingBooking.reference_number})${discount > 0 ? ` [Discount: ₹${discount}]` : ''}${settlementData.notes ? ` - ${settlementData.notes}` : ''}`,
-          date: new Date().toLocaleDateString('en-CA'),
-          payment_mode: settlementData.paymentMode || 'UPI'
-        }]);
+      if (amtPaid > 0) {
+        const { error: incomeErr } = await supabase.rpc('record_checkout_settlement', {
+          p_booking_id: settlingBooking.id,
+          p_amount: amtPaid,
+          p_payment_mode: settlementData.paymentMode || 'UPI',
+          p_notes: `Settlement: ${settlingBooking.guest_name} (${settlingBooking.reference_number})${discount > 0 ? ` [Discount: ₹${discount}]` : ''}${settlementData.notes ? ` - ${settlementData.notes}` : ''}`
+        });
+        if (incomeErr) console.error("Error inserting settlement via RPC", incomeErr);
       }
 
       setBookings(prev => prev.map(x => x.id === settlingBooking.id ? { 
@@ -782,14 +758,44 @@ export default function Bookings() {
     }
   };
 
-  const deleteBooking = async (id) => {
-    if (!window.confirm("Are you sure you want to cancel this booking?")) return;
+  const deleteBooking = async (b) => {
+    const isAdmin = profile?.role === 'tenant_admin' || profile?.role === 'super_admin';
+    if (!isAdmin) {
+      alert("Unauthorized: Only Tenant Admins can permanently delete a booking and its financial records.");
+      return;
+    }
+
+    const bookingRef = b.reference_number || b.id;
+    const confirmPrompt = window.prompt(
+      `⚠️ PERMANENT BOOKING DELETION WARNING\n\n` +
+      `Booking Reference: ${bookingRef}\n` +
+      `Guest Name: ${b.guest_name}\n\n` +
+      `Deleting this booking will permanently delete the booking AND all associated financial records (advances, settlements, and reversals).\n\n` +
+      `An immutable audit snapshot will be preserved.\n\n` +
+      `To proceed, enter the deletion reason (e.g. 'Guest cancelled before check-in' or 'Duplicate booking test'):`
+    );
+
+    if (!confirmPrompt || !confirmPrompt.trim()) {
+      return;
+    }
+
+    const reason = confirmPrompt.trim();
+
     try {
-      const { error } = await supabase.from('bookings').update({ status: 'Cancelled' }).eq('id', id);
+      const { data, error } = await supabase.rpc('delete_booking_with_financials', {
+        p_booking_id: b.id,
+        p_deletion_reason: reason
+      });
+
       if (error) throw error;
-      setBookings(prev => prev.map(x => x.id === id ? { ...x, status: 'Cancelled' } : x));
+
+      setBookings(prev => prev.filter(x => x.id !== b.id));
+      if (selectedDetailedBooking?.id === b.id) {
+        setSelectedDetailedBooking(null);
+      }
+      alert(`Booking ${bookingRef} and ${data?.deleted_incomes_count || 0} associated financial transaction(s) have been permanently deleted. An immutable audit record has been created.`);
     } catch (err) {
-      alert("Error cancelling booking: " + err.message);
+      alert("Error deleting booking: " + err.message);
     }
   };
 
@@ -797,16 +803,32 @@ export default function Bookings() {
     const isAdmin = profile?.role === 'tenant_admin' || profile?.role === 'super_admin';
     if (!isAdmin) return alert("Only admins can perform bulk deletion.");
     if (selectedBookings.length === 0) return;
-    if (!window.confirm(`⚠️ DANGER: Are you sure you want to PERMANENTLY DELETE ${selectedBookings.length} selected bookings and all their associated payments?`)) return;
+
+    const confirmPrompt = window.prompt(
+      `⚠️ BULK BOOKING DELETION WARNING\n\n` +
+      `You have selected ${selectedBookings.length} booking(s) for permanent deletion.\n` +
+      `This will delete each booking along with all linked advances, settlements, and reversals.\n\n` +
+      `To proceed, type 'DELETE ${selectedBookings.length}' below:`
+    );
+
+    if (confirmPrompt !== `DELETE ${selectedBookings.length}`) {
+      alert("Bulk deletion cancelled. Confirmation text did not match.");
+      return;
+    }
 
     setLoading(true);
+    let successCount = 0;
     try {
-      await supabase.from('incomes').delete().in('booking_id', selectedBookings);
-      const { error } = await supabase.from('bookings').delete().in('id', selectedBookings);
-      if (error) throw error;
+      for (const bookingId of selectedBookings) {
+        const { error } = await supabase.rpc('delete_booking_with_financials', {
+          p_booking_id: bookingId,
+          p_deletion_reason: 'Bulk deletion by tenant admin'
+        });
+        if (!error) successCount++;
+      }
       setBookings(prev => prev.filter(b => !selectedBookings.includes(b.id)));
       setSelectedBookings([]);
-      alert(`Successfully deleted ${selectedBookings.length} bookings.`);
+      alert(`Successfully deleted ${successCount} of ${selectedBookings.length} bookings and their financial records.`);
     } catch (err) {
       alert("Error during bulk delete: " + err.message);
     } finally {
@@ -1633,8 +1655,8 @@ export default function Bookings() {
                             <button onClick={() => handleRevertToCheckIn(b)} className="bk-icon-btn bk-icon-revert" title="Revert to Check-in"><RotateCcw size={16} /></button>
                           )}
                           <button onClick={() => navigate(`/bookings/edit/${b.id}`)} className="bk-icon-btn bk-icon-edit" title="Edit Booking"><Edit2 size={16} /></button>
-                          {(b.status === 'Pending' || b.status === 'Confirmed') && (
-                            <button onClick={() => deleteBooking(b.id)} className="bk-icon-btn bk-icon-delete" title="Delete Booking"><Trash2 size={16} /></button>
+                          {(b.status === 'Pending' || b.status === 'Confirmed' || b.status === 'Cancelled') && (
+                            <button onClick={() => deleteBooking(b)} className="bk-icon-btn bk-icon-delete" title="Delete Booking"><Trash2 size={16} /></button>
                           )}
                         </div>
                       </td>
@@ -2086,8 +2108,17 @@ export default function Bookings() {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto', flex: 1, justifyContent: 'flex-end' }}>
-                
+              <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto', flex: 1, justifyContent: 'flex-end', alignItems: 'center' }}>
+                {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
+                  <button 
+                    onClick={() => deleteBooking(selectedDetailedBooking)} 
+                    className="btn btn-outline" 
+                    style={{ borderColor: 'var(--danger)', color: 'var(--danger)', height: '40px', padding: '0 1rem', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                    title="Delete entire booking and associated payments"
+                  >
+                    <Trash2 size={16} /> Delete Booking
+                  </button>
+                )}
                 <button 
                   onClick={() => setSelectedDetailedBooking(null)} 
                   className="btn btn-primary" 

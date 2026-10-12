@@ -179,6 +179,10 @@ export default function Financials() {
   };
 
   const loadIncomeForEdit = (inc) => {
+    if (inc.booking_id || inc.transaction_type) {
+      alert("This transaction was generated from a booking. To remove it, delete the associated booking.");
+      return;
+    }
     setEditingIncomeId(inc.id);
     let refNum = '';
     if (inc.booking_id && inc.bookings?.reference_number) {
@@ -240,6 +244,14 @@ export default function Financials() {
   };
 
   const deleteRecord = async (table, id) => {
+    if (table === 'incomes') {
+      const income = incomes.find(i => i.id === id);
+      if (income && (income.booking_id || income.transaction_type)) {
+        alert("This transaction was generated from a booking. To remove it, delete the associated booking.");
+        return;
+      }
+    }
+
     if(!window.confirm('Delete record?')) return;
 
     if (table === 'incomes') {
@@ -247,7 +259,7 @@ export default function Financials() {
       if (income && income.booking_id) {
          const { data: bData } = await supabase.from('bookings').select('*').eq('id', income.booking_id).single();
          if (bData) {
-            const isSettlement = income.notes?.toLowerCase().includes('settlement');
+            const isSettlement = income.transaction_type ? (income.transaction_type === 'settlement') : income.notes?.toLowerCase().includes('settlement');
             if (isSettlement) {
                const match = income.notes?.match(/\[Discount:\s*₹?(\d+)\]/i);
                const discount = match ? Number(match[1]) : 0;
@@ -548,15 +560,18 @@ export default function Financials() {
                           <div>
                              <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: '0.95rem' }}>{i.source}</div>
                              <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '2px' }}>{formatDateShort(i.date)} &bull; {propName}</div>
-                             {(i.notes?.toLowerCase().includes('advance') || i.notes?.toLowerCase().includes('settlement') || i.notes?.toLowerCase().includes('adjustment')) && (
+                              {(i.transaction_type || i.notes?.toLowerCase().includes('advance') || i.notes?.toLowerCase().includes('settlement') || i.notes?.toLowerCase().includes('adjustment')) && (
                                 <div style={{ marginTop: '0.4rem', display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                                  {i.notes?.toLowerCase().includes('advance') && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700 }}>Advance</span>}
-                                  {i.notes?.toLowerCase().includes('ota settlement') ? (
+                                  {(i.transaction_type === 'advance' || (!i.transaction_type && i.notes?.toLowerCase().includes('advance'))) && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', fontWeight: 700 }}>Advance</span>}
+                                  {(i.transaction_type === 'settlement' && i.payment_mode === 'OTA') || (!i.transaction_type && i.notes?.toLowerCase().includes('ota settlement')) ? (
                                     <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(245, 158, 11, 0.1)', color: '#d97706', fontWeight: 700 }}>OTA Settlement</span>
-                                  ) : i.notes?.toLowerCase().includes('settlement') ? (
+                                  ) : (i.transaction_type === 'settlement' || (!i.transaction_type && i.notes?.toLowerCase().includes('settlement') && !i.notes?.toLowerCase().includes('reversal'))) ? (
                                     <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(139, 92, 246, 0.1)', color: '#8b5cf6', fontWeight: 700 }}>Settlement</span>
                                   ) : null}
-                                  {i.notes?.toLowerCase().includes('adjustment') && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>Adjustment</span>}
+                                  {(i.transaction_type === 'settlement_reversal') && (
+                                    <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>Reversal</span>
+                                  )}
+                                  {(i.transaction_type === 'refund' || (!i.transaction_type && i.notes?.toLowerCase().includes('adjustment'))) && <span style={{ fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', fontWeight: 700 }}>Adjustment</span>}
                                 </div>
                              )}
                              {i.bookings?.reference_number && (
@@ -569,8 +584,29 @@ export default function Financials() {
                           <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.5rem' }}>
                             <div style={{ color: '#10b981', fontWeight: 800, fontSize: '1.1rem', fontVariantNumeric: 'tabular-nums' }}>₹{Number(i.amount).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
                             <div style={{ display: 'flex', gap: '0.4rem' }}>
-                               <button onClick={() => loadIncomeForEdit(i)} title="Edit Income" style={{ color: 'var(--primary)', padding: '0.4rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Edit2 size={14}/></button>
-                               <button onClick={() => deleteRecord('incomes', i.id)} title="Delete Income" style={{ color: '#ef4444', padding: '0.4rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={14}/></button>
+                               {i.booking_id || i.transaction_type ? (
+                                 <button 
+                                   onClick={() => alert("This transaction was generated from a booking. To remove it, delete the associated booking.")} 
+                                   title="This transaction was generated from a booking. To remove it, delete the associated booking." 
+                                   style={{ color: 'var(--text-muted)', padding: '0.4rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'not-allowed', opacity: 0.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                 >
+                                   <Edit2 size={14}/>
+                                 </button>
+                               ) : (
+                                 <button onClick={() => loadIncomeForEdit(i)} title="Edit Income" style={{ color: 'var(--primary)', padding: '0.4rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Edit2 size={14}/></button>
+                               )}
+
+                               {i.booking_id || i.transaction_type ? (
+                                 <button 
+                                   onClick={() => alert("This transaction was generated from a booking. To remove it, delete the associated booking.")} 
+                                   title="This transaction was generated from a booking. To remove it, delete the associated booking." 
+                                   style={{ color: 'var(--text-muted)', padding: '0.4rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'not-allowed', opacity: 0.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                 >
+                                   <Trash2 size={14}/>
+                                 </button>
+                               ) : (
+                                 <button onClick={() => deleteRecord('incomes', i.id)} title="Delete Income" style={{ color: '#ef4444', padding: '0.4rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={14}/></button>
+                               )}
                             </div>
                           </div>
                         </div>
@@ -639,8 +675,29 @@ export default function Financials() {
                           </td>
                           <td style={{ textAlign: 'center', padding: '0.85rem 0.5rem', verticalAlign: 'top' }}>
                             <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'center', alignItems: 'center' }}>
-                              <button onClick={() => loadIncomeForEdit(i)} title="Edit Income" style={{ color: 'var(--text-main)', padding: '0.35rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Edit2 size={14}/></button>
-                              <button onClick={() => deleteRecord('incomes', i.id)} title="Delete Income" style={{ color: '#ef4444', padding: '0.35rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={14}/></button>
+                              {i.booking_id || i.transaction_type ? (
+                                <button 
+                                  onClick={() => alert("This transaction was generated from a booking. To remove it, delete the associated booking.")} 
+                                  title="This transaction was generated from a booking. To remove it, delete the associated booking." 
+                                  style={{ color: 'var(--text-muted)', padding: '0.35rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'not-allowed', opacity: 0.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Edit2 size={14}/>
+                                </button>
+                              ) : (
+                                <button onClick={() => loadIncomeForEdit(i)} title="Edit Income" style={{ color: 'var(--text-main)', padding: '0.35rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Edit2 size={14}/></button>
+                              )}
+
+                              {i.booking_id || i.transaction_type ? (
+                                <button 
+                                  onClick={() => alert("This transaction was generated from a booking. To remove it, delete the associated booking.")} 
+                                  title="This transaction was generated from a booking. To remove it, delete the associated booking." 
+                                  style={{ color: 'var(--text-muted)', padding: '0.35rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'not-allowed', opacity: 0.5, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                                >
+                                  <Trash2 size={14}/>
+                                </button>
+                              ) : (
+                                <button onClick={() => deleteRecord('incomes', i.id)} title="Delete Income" style={{ color: '#ef4444', padding: '0.35rem', background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '6px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><Trash2 size={14}/></button>
+                              )}
                             </div>
                           </td>
                         </tr>

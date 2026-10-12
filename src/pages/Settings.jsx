@@ -395,13 +395,10 @@ export default function Settings() {
 
   const fetchGlobalSettings = async () => {
     try {
-      const { data: adminList } = await supabase.from('profiles').select('global_settings').eq('role', 'super_admin').limit(1);
-      if (adminList && adminList.length > 0) {
-        const data = adminList[0];
-        if (data && data.global_settings) {
-          setGlobalCommEnabled(data.global_settings.comm_features_enabled !== false);
-          setGlobalTemplatesEnabled(data.global_settings.templates_enabled !== false);
-        }
+      const { data: globalSettings, error: rpcErr } = await supabase.rpc('get_published_global_settings');
+      if (globalSettings && !rpcErr) {
+        setGlobalCommEnabled(globalSettings.comm_features_enabled !== false);
+        setGlobalTemplatesEnabled(globalSettings.templates_enabled !== false);
       }
       
       // Fetch latest profile to ensure toggles/permissions are fresh

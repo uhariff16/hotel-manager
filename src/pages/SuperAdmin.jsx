@@ -300,6 +300,7 @@ export default function SuperAdmin() {
   const [editingUser, setEditingUser] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [newAdminPassword, setNewAdminPassword] = useState('');
+  const [manualReason, setManualReason] = useState('');
   const [isResettingPassword, setIsResettingPassword] = useState(false);
   const [isTogglingStatus, setIsTogglingStatus] = useState(false);
   const [adminActiveTab, setAdminActiveTab] = useState(
@@ -578,6 +579,39 @@ export default function SuperAdmin() {
       alert("Failed to update status: " + err.message);
     } finally {
       setIsTogglingStatus(false);
+    }
+  };
+
+  const handleManualAssignPlan = async () => {
+    if (!editingUser || !manualReason.trim()) {
+      alert("Please provide a reason for Super Admin manual plan assignment.");
+      return;
+    }
+    setIsUpdating(true);
+    try {
+      const { data, error } = await supabase.rpc('admin_assign_tenant_plan', {
+        p_tenant_id: editingUser.id,
+        p_target_plan_type: editingUser.plan_type,
+        p_reason: manualReason.trim()
+      });
+
+      if (error || data?.status === 'rejected') {
+        throw new Error(error?.message || data?.reason || "Manual plan assignment failed");
+      }
+
+      alert(`Plan '${editingUser.plan_type}' assigned to ${editingUser.full_name} via Super Admin authority. Entitlement source set to super_admin_manual.`);
+      const updatedUser = { 
+        ...editingUser, 
+        entitlement_source: 'super_admin_manual',
+        assignment_reason: manualReason.trim()
+      };
+      setEditingUser(updatedUser);
+      setTenants(prev => prev.map(t => t.id === editingUser.id ? updatedUser : t));
+      setManualReason('');
+    } catch (err) {
+      alert("Manual plan assignment failed: " + err.message);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -2140,7 +2174,12 @@ export default function SuperAdmin() {
               </div>
 
               <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label className="form-label">Subscription Plan</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <label className="form-label" style={{ margin: 0 }}>Subscription Plan</label>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.12)', color: 'var(--primary)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
+                    Source: {editingUser.entitlement_source || (editingUser.is_legacy_account ? 'grandfathered_legacy' : 'standard')}
+                  </span>
+                </div>
                 <select 
                   className="form-select" 
                   value={editingUser.plan_type} 
@@ -2152,6 +2191,31 @@ export default function SuperAdmin() {
                   ))}
                 </select>
                 {editingUser.role === 'staff' && <small style={{ color: 'var(--text-muted)' }}>Plans apply to Tenants only</small>}
+
+                {editingUser.role === 'tenant_admin' && (
+                  <div style={{ marginTop: '0.75rem', background: 'rgba(15, 44, 89, 0.04)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(15, 44, 89, 0.15)' }}>
+                    <div style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.35rem' }}>
+                      👑 Super Admin Direct Manual Plan Assignment
+                    </div>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      style={{ marginBottom: '0.5rem', fontSize: '0.85rem' }} 
+                      value={manualReason} 
+                      onChange={e => setManualReason(e.target.value)} 
+                      placeholder="Reason for assignment (e.g. Grandfathered Stay Master restoration)" 
+                    />
+                    <button 
+                      type="button" 
+                      className="btn btn-outline" 
+                      style={{ width: '100%', fontSize: '0.85rem', fontWeight: 700, borderColor: 'var(--primary)', color: 'var(--primary)' }} 
+                      onClick={handleManualAssignPlan} 
+                      disabled={isUpdating || !manualReason.trim()}
+                    >
+                      Assign Plan Manually (No Payment)
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="form-group" style={{ marginBottom: '1.5rem' }}>

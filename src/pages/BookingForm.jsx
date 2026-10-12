@@ -628,14 +628,20 @@ export default function BookingForm() {
           });
           setOriginalStatus(b.status);
 
-          // Fetch settlement incomes and discounts to prevent balance override
+          // Fetch settlement incomes and discounts to prevent balance override using structured columns
           const { data: bookingIncomes } = await supabase
             .from('incomes')
-            .select('amount, notes')
+            .select('id, amount, transaction_type, parent_income_id, notes')
             .eq('booking_id', id);
             
           const totalSettled = (bookingIncomes || [])
-            .filter(inc => inc.notes?.toLowerCase().includes('settlement'))
+            .filter(inc => {
+              if (inc.transaction_type) {
+                return inc.transaction_type === 'settlement' || inc.transaction_type === 'settlement_reversal';
+              }
+              // Fallback for legacy historical rows
+              return inc.notes?.toLowerCase().includes('settlement');
+            })
             .reduce((sum, inc) => sum + Number(inc.amount), 0);
           
           setSettlementPaid(totalSettled);
@@ -1001,10 +1007,13 @@ export default function BookingForm() {
           : 'Not Applicable'
       };
       
-      // If status was Completed and now it's NOT, delete the auto-settled income record
-      if (id && originalStatus === 'Completed' && bookingForm.status !== 'Completed') {
-          // Delete any income record that was created as a settlement for this booking
-          await supabase.from('incomes').delete().eq('booking_id', id).ilike('notes', '%Settlement%');
+      // Status adjustments are managed safely; historical income settlements must not be deleted from the client.
+
+      // For new bookings, initialize advance_paid to 0 and balance_amount to total_amount in the row;
+      // sync_booking_advance_payment will record the income transaction and update booking advance_paid/balance_amount atomically.
+      if (!id) {
+        bookingData.advance_paid = 0;
+        bookingData.balance_amount = bookingData.total_amount;
       }
 
       let result;
@@ -1030,39 +1039,24 @@ export default function BookingForm() {
 
       const targetId = id || result.data?.[0]?.id;
       
-      // Synchronize advance payment with incomes table
-      if (targetId) {
+      // Synchronize advance payment with incomes table via secure server-side RPC
+      let paymentSyncFailed = false;
+      if (targetId && Number(bookingForm.advance_paid || 0) >= 0) {
         try {
-          const { data: existingIncomes } = await supabase
-            .from('incomes')
-            .select('id, amount, notes')
-            .eq('booking_id', targetId);
-            
-          const guestIncomes = (existingIncomes || []).filter(inc => {
-            const notes = inc.notes?.toLowerCase() || '';
-            if (notes.includes('ota settlement')) return false;
-            return notes.includes('advance') || notes.includes('adjustment') || notes.includes('refund') || notes.includes('settlement');
+          const { error: rpcErr } = await supabase.rpc('sync_booking_advance_payment', {
+            p_booking_id: targetId,
+            p_target_advance_paid: Number(bookingForm.advance_paid || 0),
+            p_payment_mode: bookingForm.is_ota_collected ? 'OTA' : 'UPI'
           });
-          
-          const totalLogged = guestIncomes.reduce((sum, inc) => sum + Number(inc.amount), 0);
-          const difference = Number(bookingForm.advance_paid || 0) - totalLogged;
-          
-          if (difference !== 0) {
-            await supabase.from('incomes').insert([{
-              resort_id: activeResortId,
-              tenant_id: profile?.tenant_id,
-              booking_id: targetId,
-              amount: difference,
-              source: 'Room Rent',
-              notes: difference > 0 
-                ? `Advance Payment: ${bookingForm.guest_name} (${bookingForm.reference_number})`
-                : `Adjustment/Refund: ${bookingForm.guest_name} (${bookingForm.reference_number})`,
-              date: new Date().toLocaleDateString('en-CA'),
-              payment_mode: 'UPI'
-            }]);
+          if (rpcErr) {
+            paymentSyncFailed = true;
+            console.error("Error syncing advance payment via RPC:", rpcErr);
+            alert(`Attention: Booking saved with Reference ${bookingForm.reference_number || targetId}, but advance payment could not be synchronized to Financials: ${rpcErr.message}. You can retry updating the advance payment by editing this booking.`);
           }
         } catch (syncErr) {
+          paymentSyncFailed = true;
           console.error("Error syncing advance payment to incomes:", syncErr);
+          alert(`Attention: Booking saved with Reference ${bookingForm.reference_number || targetId}, but an unexpected error occurred while syncing payment: ${syncErr.message}.`);
         }
       }
 
@@ -1074,6 +1068,13 @@ export default function BookingForm() {
           resort_id: activeResortId
         }
       }).catch(err => console.error("Notification Trigger Error:", err));
+
+      if (paymentSyncFailed) {
+        // If payment sync failed, do not show generic success toast; navigate to booking list with warning
+        toast.error("Booking created, but payment sync failed. Please review booking in the list.");
+      } else {
+        toast.success(id ? 'Booking updated successfully!' : 'Booking created successfully!');
+      }
 
       navigate('/bookings');
     } catch (err) {

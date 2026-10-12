@@ -36,6 +36,7 @@ export default function Subscription() {
   
   const [checkoutModal, setCheckoutModal] = useState({ isOpen: false, planId: null });
   const [checkoutError, setCheckoutError] = useState(null);
+  const [confirmLegacyTransition, setConfirmLegacyTransition] = useState(false);
   const [switchTrialModal, setSwitchTrialModal] = useState({ isOpen: false, targetPlanKey: null });
   const [switchSuccessMessage, setSwitchSuccessMessage] = useState(null);
   const [selectedInvoicePayment, setSelectedInvoicePayment] = useState(null);
@@ -380,8 +381,21 @@ export default function Subscription() {
         }
       }
 
+      // IMMUTABLE AUTH USER ID & TENANT IDENTITY CONSISTENCY GUARD
+      if (session?.user?.id && profile?.id && session.user.id !== profile.id) {
+        throw new Error(`Account session mismatch: Active authenticated user ID (${session.user.id}) does not match loaded profile (${profile.id}). Please refresh the page.`);
+      }
+
+      // LEGACY ACCOUNT TRANSITION GUARD
+      if (profile?.is_legacy_account === true && !confirmLegacyTransition) {
+        throw new Error("This is a grandfathered legacy account. Please confirm legacy account transition before proceeding to checkout.");
+      }
+
       const { data, error } = await supabase.functions.invoke('razorpay-create-subscription', {
-        body: { plan_type: planId },
+        body: { 
+          plan_type: planId,
+          confirm_legacy_transition: confirmLegacyTransition 
+        },
         headers: {
           Authorization: `Bearer ${session.access_token}`
         }
@@ -422,7 +436,7 @@ export default function Subscription() {
         prefill: {
           name: profile?.full_name || '',
           email: session?.user?.email || profile?.email || '',
-          contact: profile?.phone || ''
+          contact: profile?.phone || profile?.phone_number || ''
         },
         handler: async function (response) {
           try {
@@ -461,11 +475,6 @@ export default function Subscription() {
           ondismiss: function() {
             setLoading(null);
           }
-        },
-        prefill: {
-          name: profile?.full_name || '',
-          email: profile?.email || '',
-          contact: profile?.phone_number || '9999999999',
         },
         theme: {
           color: "#0F2C59"
@@ -1152,6 +1161,36 @@ export default function Subscription() {
 
               return (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                  {/* Account Identity Confirmation Card */}
+                  <div style={{ background: 'rgba(59, 130, 246, 0.06)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '8px', padding: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <h5 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Account Confirmation</h5>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.3)' }}>TEST Mode</span>
+                    </div>
+                    <div style={{ fontSize: '0.875rem', color: 'var(--text-main)', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                      <div>Authenticated Account: <strong>{profile?.email || 'N/A'}</strong> (Tenant ID: <code style={{ fontSize: '0.8rem' }}>{profile?.id || 'N/A'}</code>)</div>
+                      <div>Property/Tenant Name: <strong>{profile?.full_name || 'Stay Pilot Property'}</strong></div>
+                      <div>Selected Plan: <strong>{selectedPlan.name}</strong></div>
+                    </div>
+                  </div>
+
+                  {/* Legacy Account Transition Confirmation */}
+                  {profile?.is_legacy_account === true && (
+                    <div style={{ background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.3)', borderRadius: '8px', padding: '0.85rem' }}>
+                      <div style={{ fontSize: '0.825rem', color: '#d97706', fontWeight: 600, marginBottom: '0.5rem' }}>
+                        ⚠️ Legacy Account Notice: Purchasing a subscription will explicitly transition your property ({profile?.full_name || profile?.email}) from grandfathered legacy access to the paid {selectedPlan.name} plan.
+                      </div>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', color: 'var(--text-main)' }}>
+                        <input 
+                          type="checkbox" 
+                          checked={confirmLegacyTransition} 
+                          onChange={(e) => setConfirmLegacyTransition(e.target.checked)} 
+                        />
+                        I confirm transition for property "{profile?.full_name || profile?.email}" (ID: {profile?.id?.slice(0, 8)}...)
+                      </label>
+                    </div>
+                  )}
+
                   <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '8px', padding: '1.25rem' }}>
                     <h4 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>Payment Breakdown</h4>
                     
@@ -1189,7 +1228,7 @@ export default function Subscription() {
                     className="btn btn-primary" 
                     style={{ width: '100%', height: '50px', fontSize: '1.1rem', marginTop: '1rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
                     onClick={() => processPayment(checkoutModal.planId)}
-                    disabled={loading === checkoutModal.planId}
+                    disabled={loading === checkoutModal.planId || (profile?.is_legacy_account === true && !confirmLegacyTransition)}
                   >
                     {loading === checkoutModal.planId ? 'Connecting to Razorpay...' : 'Proceed to Payment (₹' + totalAmountDisplay + ')'}
                   </button>

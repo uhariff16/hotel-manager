@@ -135,9 +135,9 @@ export default function Dashboard() {
             .eq('resort_id', activeResortId)
             .order('created_at', { ascending: true }),
 
-          // 2. Incomes for selected year
+          // 2. Incomes for selected year (joining bookings to support historical booking incomes)
           supabase.from('incomes')
-            .select('amount, date, resort_id, cottage_id')
+            .select('amount, date, resort_id, cottage_id, bookings(cottage_id)')
             .eq('resort_id', activeResortId)
             .gte('date', startOfYearStr)
             .lte('date', endOfYearStr),
@@ -196,7 +196,9 @@ export default function Dashboard() {
         }
 
         // --- FILTER RECORDS BASED ON SELECTED PROPERTY ---
-        const incFiltered = currentPropId === 'all' ? incList : incList.filter(i => i.cottage_id === currentPropId);
+        const incFiltered = currentPropId === 'all' 
+          ? incList 
+          : incList.filter(i => (i.cottage_id === currentPropId || i.bookings?.cottage_id === currentPropId));
         const expFiltered = currentPropId === 'all' ? expList : expList.filter(e => e.cottage_id === currentPropId);
         const yearBksFiltered = currentPropId === 'all' ? yearBksList : yearBksList.filter(b => b.cottage_id === currentPropId);
         const liveBksFiltered = currentPropId === 'all' ? liveBksList : liveBksList.filter(b => b.cottage_id === currentPropId);
