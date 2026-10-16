@@ -2,13 +2,66 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, ShieldCheck, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send, FileText, Info, Building2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
 import SupportInbox from '../components/SupportInbox';
 import { normalizePlanReports } from '../components/PlanComparison';
+import {
+  DEFAULT_TRADE_NAME, TRADE_NAME_MAX_LENGTH, GST_ACTIVATION_RELEASE_APPROVED,
+  ConfigValidationError, ConfigAuthorizationError,
+  emptySellerForm, sellerFormFromDb, validateSellerIdentityInput, assessSellerReadiness,
+  emptyGstForm, gstFormFromDb, toDatetimeLocal, isGstEffective,
+  saveSellerIdentityConfig, saveGstConfiguration,
+  resolveCanonicalSuperAdmin, MASTER_ADMIN_EMAIL, CANONICAL_SUPER_ADMIN_ID
+} from '../lib/invoiceIssuerConfig';
+
+const SELLER_KEY_LABELS = {
+  legal_name: 'Proprietor Legal Name', address: 'Address', city: 'City',
+  state: 'State', pincode: 'PIN Code', email: 'Billing Email'
+};
+
+
+export const INDIAN_STATES = [
+  { name: 'Andaman and Nicobar Islands', code: '35' },
+  { name: 'Andhra Pradesh', code: '37' },
+  { name: 'Arunachal Pradesh', code: '12' },
+  { name: 'Assam', code: '18' },
+  { name: 'Bihar', code: '10' },
+  { name: 'Chandigarh', code: '04' },
+  { name: 'Chhattisgarh', code: '22' },
+  { name: 'Dadra and Nagar Haveli and Daman and Diu', code: '26' },
+  { name: 'Delhi', code: '07' },
+  { name: 'Goa', code: '30' },
+  { name: 'Gujarat', code: '24' },
+  { name: 'Haryana', code: '06' },
+  { name: 'Himachal Pradesh', code: '02' },
+  { name: 'Jammu and Kashmir', code: '01' },
+  { name: 'Jharkhand', code: '20' },
+  { name: 'Karnataka', code: '29' },
+  { name: 'Kerala', code: '32' },
+  { name: 'Ladakh', code: '38' },
+  { name: 'Lakshadweep', code: '31' },
+  { name: 'Madhya Pradesh', code: '23' },
+  { name: 'Maharashtra', code: '27' },
+  { name: 'Manipur', code: '14' },
+  { name: 'Meghalaya', code: '17' },
+  { name: 'Mizoram', code: '15' },
+  { name: 'Nagaland', code: '13' },
+  { name: 'Odisha', code: '21' },
+  { name: 'Puducherry', code: '34' },
+  { name: 'Punjab', code: '03' },
+  { name: 'Rajasthan', code: '08' },
+  { name: 'Sikkim', code: '11' },
+  { name: 'Tamil Nadu', code: '33' },
+  { name: 'Telangana', code: '36' },
+  { name: 'Tripura', code: '16' },
+  { name: 'Uttar Pradesh', code: '09' },
+  { name: 'Uttarakhand', code: '05' },
+  { name: 'West Bengal', code: '19' }
+];
 
 // Secondary client for creating users without affecting the admin session
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -122,6 +175,25 @@ export default function SuperAdmin() {
     companyName: '',
     address: ''
   });
+  
+  // Phase R3: Invoice Issuer (Seller) Identity State. Basic mode: only Trade Name is mandatory.
+  const [sellerIdentity, setSellerIdentity] = useState(emptySellerForm());
+  const [sellerSavedDb, setSellerSavedDb] = useState(null); // last persisted seller_identity (snake_case)
+  const [sellerDirty, setSellerDirty] = useState([]);       // fields the operator has edited since last load/save
+  const [showSellerAdditional, setShowSellerAdditional] = useState(false);
+  const [sellerErrors, setSellerErrors] = useState({});
+  const [sellerValidationSuccess, setSellerValidationSuccess] = useState(false);
+  const [isSavingSeller, setIsSavingSeller] = useState(false);
+  const [sellerSavedSuccess, setSellerSavedSuccess] = useState(false);
+
+  // Phase R3: GST configuration (inert; stored under global_settings.gst_configuration)
+  const [gstForm, setGstForm] = useState(emptyGstForm());
+  const [gstSavedConfig, setGstSavedConfig] = useState(null);
+  const [gstLocked, setGstLocked] = useState(false);
+  const [gstErrors, setGstErrors] = useState({});
+  const [isSavingGst, setIsSavingGst] = useState(false);
+  const [adminProfiles, setAdminProfiles] = useState([]);
+
   const [razorpayConfig, setRazorpayConfig] = useState({
     mode: 'test',
     testKeyId: '',
@@ -312,9 +384,31 @@ export default function SuperAdmin() {
     const isAuthReady = isDataLoaded && Boolean(session?.user?.id);
   const isPlatformAdmin = isAuthReady && ['super_admin', 'support_admin', 'billing_admin'].includes(profile?.role);
 
-  const getMasterSuperAdmin = () => {
-    const superAdmins = tenants.filter(u => u.role === 'super_admin').sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-    return superAdmins.length > 0 ? superAdmins[0] : profile;
+  const resolveAdminProfiles = async () => {
+    if (adminProfiles && adminProfiles.length > 0) {
+      return adminProfiles;
+    }
+    const fromTenants = (tenants || []).filter(u => u.role === 'super_admin');
+    if (fromTenants.length > 0) {
+      return fromTenants;
+    }
+    try {
+      const { data: dbAdmins } = await supabase.from('profiles').select('*').eq('role', 'super_admin');
+      if (dbAdmins && dbAdmins.length > 0) {
+        setAdminProfiles(dbAdmins);
+        return dbAdmins;
+      }
+    } catch (e) {
+      console.warn("Could not query super_admin profiles:", e);
+    }
+    return profile?.role === 'super_admin' ? [profile] : [];
+  };
+
+  const getMasterSuperAdmin = (candidateProfiles = null) => {
+    const pool = candidateProfiles || (adminProfiles.length > 0 ? adminProfiles : (tenants || []).filter(u => u.role === 'super_admin'));
+    const canonical = resolveCanonicalSuperAdmin(pool);
+    if (canonical) return canonical;
+    return null;
   };
 
   const profileId = profile?.id;
@@ -466,9 +560,14 @@ export default function SuperAdmin() {
         }
       });
 
-      const superAdmins = (u || []).filter(user => user.role === 'super_admin').sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-      const superAdminProfile = superAdmins.length > 0 ? superAdmins[0] : (u || []).find(user => user.id === profile?.id);
-      if (superAdminProfile?.global_settings?.pricing) {
+      const loadedSuperAdmins = (u || []).filter(user => user.role === 'super_admin');
+      setAdminProfiles(loadedSuperAdmins);
+
+      const superAdminProfile = getMasterSuperAdmin(loadedSuperAdmins);
+      if (!superAdminProfile) {
+        console.error(`CANONICAL_SUPER_ADMIN_NOT_FOUND: Authoritative Super Admin profile (${CANONICAL_SUPER_ADMIN_ID}) was not found.`);
+        setFetchError(`Authoritative Super Admin profile (${CANONICAL_SUPER_ADMIN_ID}) was not found. Global settings cannot be loaded.`);
+      } else if (superAdminProfile?.global_settings?.pricing) {
         const loaded = superAdminProfile.global_settings.pricing;
         
         // Merge loaded pricing with DEFAULT_PLANS defaults for missing fields
@@ -503,6 +602,22 @@ export default function SuperAdmin() {
         
         if (superAdminProfile.global_settings.tax_settings) {
           setTaxSettings(superAdminProfile.global_settings.tax_settings);
+        }
+        
+        if (superAdminProfile.global_settings.seller_identity) {
+          setSellerIdentity(sellerFormFromDb(superAdminProfile.global_settings.seller_identity));
+          setSellerSavedDb(superAdminProfile.global_settings.seller_identity);
+          setSellerDirty([]);
+          setSellerSavedSuccess(true);
+        }
+
+        {
+          // GST configuration is stored under its own key; it is never merged into legacy tax_settings.
+          const gstDb = superAdminProfile.global_settings.gst_configuration || null;
+          const g = gstFormFromDb(gstDb);
+          setGstSavedConfig(gstDb);
+          setGstForm({ ...g.form, effectiveFrom: toDatetimeLocal(g.form.effectiveFrom) });
+          setGstLocked(g.locked);
         }
         
         if (superAdminProfile.global_settings.razorpay_settings) {
@@ -728,15 +843,54 @@ export default function SuperAdmin() {
     }
   };
 
+  const updateGlobalConfigSection = async (section, params = {}) => {
+    if (!profile || profile.role !== 'super_admin') {
+      throw new Error('Unauthorized: Only Super Administrators can modify global configuration.');
+    }
+    if (!supabase || typeof supabase.rpc !== 'function') {
+      throw new Error('update_saas_global_configuration RPC is unavailable on the client.');
+    }
+    const allAdmins = await resolveAdminProfiles();
+    const masterAdmin = getMasterSuperAdmin(allAdmins);
+    if (!masterAdmin) {
+      throw new Error(`Authoritative Super Admin profile (${CANONICAL_SUPER_ADMIN_ID}) could not be resolved.`);
+    }
+
+    const { data, error } = await supabase.rpc('update_saas_global_configuration', {
+      p_section: section,
+      p_canonical_id: masterAdmin.id,
+      ...params
+    });
+
+    if (error) {
+      if (error.code === '42501' || error.message?.includes('FORBIDDEN') || error.message?.includes('UNAUTHORIZED')) {
+        throw new Error('Unauthorized: Only Super Administrators can modify global configuration.');
+      }
+      throw error;
+    }
+    if (!data) {
+      throw new Error('No data returned from update_saas_global_configuration.');
+    }
+
+    // Synchronize local states for canonical profile in adminProfiles and tenants
+    setAdminProfiles(prev => (prev || []).map(p => p.id === masterAdmin.id ? {
+      ...p,
+      global_settings: data
+    } : p));
+    setTenants(prev => (prev || []).map(p => p.id === masterAdmin.id ? {
+      ...p,
+      global_settings: data
+    } : p));
+
+    return data;
+  };
+
   const handleSavePricing = async () => {
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
-      settings.pricing = pricingConfig;
-      
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
+      await updateGlobalConfigSection('pricing', {
+        p_pricing: pricingConfig
+      });
       alert("Global pricing configuration updated successfully!");
     } catch (err) {
       alert("Failed to save pricing: " + err.message);
@@ -748,12 +902,9 @@ export default function SuperAdmin() {
   const handleSaveEmailTemplates = async () => {
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
-      settings.email_templates = emailTemplates;
-      
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
+      await updateGlobalConfigSection('email_templates', {
+        p_email_templates: emailTemplates
+      });
       alert("Email templates updated successfully!");
     } catch (err) {
       alert("Failed to save email templates: " + err.message);
@@ -765,17 +916,13 @@ export default function SuperAdmin() {
   const handleSaveWebsiteDraft = async (newDraftData) => {
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
       const updatedWebsitePricing = {
         ...websitePricingConfig,
         draft: newDraftData
       };
-      settings.website_pricing = updatedWebsitePricing;
-      settings.pricing = pricingConfig;
-      
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
+      await updateGlobalConfigSection('website_pricing', {
+        p_website_pricing: updatedWebsitePricing
+      });
       setWebsitePricingConfig(updatedWebsitePricing);
       setWebsitePricing(updatedWebsitePricing);
     } catch (err) {
@@ -788,8 +935,6 @@ export default function SuperAdmin() {
   const handlePublishWebsitePricing = async () => {
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
       const newVersionNum = (websitePricingConfig.currentVersion || 0) + 1;
       
       const mergedDraft = {};
@@ -824,11 +969,9 @@ export default function SuperAdmin() {
         currentVersion: newVersionNum
       };
       
-      settings.website_pricing = updatedWebsitePricing;
-      settings.pricing = pricingConfig;
-      
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
+      await updateGlobalConfigSection('website_pricing', {
+        p_website_pricing: updatedWebsitePricing
+      });
       
       setWebsitePricingConfig(updatedWebsitePricing);
       setWebsitePricing(updatedWebsitePricing);
@@ -844,13 +987,12 @@ export default function SuperAdmin() {
   const handleSaveTaxSettings = async () => {
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
-      settings.tax_settings = taxSettings;
-      
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
-      
+      const updatedSettings = await updateGlobalConfigSection('tax_settings', {
+        p_tax_settings: taxSettings
+      });
+      if (updatedSettings.tax_settings) {
+        setTaxSettings(updatedSettings.tax_settings);
+      }
       alert("Tax Settings Saved Successfully!");
     } catch (err) {
       alert("Failed to save Tax settings: " + err.message);
@@ -859,19 +1001,258 @@ export default function SuperAdmin() {
     }
   };
 
+  // Phase R3: Seller identity (basic non-GST mode) & GST configuration handlers.
+  // Rules live in src/lib/invoiceIssuerConfig.js (pure + unit tested).
+  const sellerReadiness = assessSellerReadiness(sellerSavedDb);
+  const gstEffectiveState = isGstEffective(gstSavedConfig, new Date(), { seller: sellerSavedDb });
+
+  const renderSellerField = ({ field, label, optional = true, type = 'text', placeholder, maxLength, textarea = false, fullWidth = false, onChange, hint }) => {
+    const common = {
+      id: `seller-${field}`,
+      className: 'form-input',
+      value: sellerIdentity[field],
+      onChange: onChange || ((e) => handleSellerFieldChange(field, e.target.value)),
+      placeholder,
+      maxLength,
+      style: { borderColor: sellerErrors[field] ? '#dc2626' : undefined }
+    };
+    return (
+      <div className="form-group" style={fullWidth ? { gridColumn: '1 / -1' } : undefined}>
+        <label className="form-label" htmlFor={`seller-${field}`} style={{ fontWeight: 600, color: '#334155' }}>
+          {label}{' '}
+          {optional
+            ? <span style={{ color: '#64748b', fontWeight: 400 }}>(Optional)</span>
+            : <span style={{ color: '#dc2626' }}>*</span>}
+        </label>
+        {textarea ? <textarea {...common} rows={2} /> : <input type={type} {...common} />}
+        {hint && <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', marginBottom: 0 }}>{hint}</p>}
+        {sellerErrors[field] && (
+          <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0, fontWeight: 500 }}>{sellerErrors[field]}</p>
+        )}
+      </div>
+    );
+  };
+
+  const markSellerDirty = (field) => {
+    setSellerDirty(prev => (prev.includes(field) ? prev : [...prev, field]));
+  };
+
+  const handleSellerFieldChange = (field, value) => {
+    setSellerIdentity(prev => ({ ...prev, [field]: value }));
+    markSellerDirty(field);
+    if (sellerErrors[field]) {
+      setSellerErrors(prev => ({ ...prev, [field]: undefined }));
+    }
+    setSellerValidationSuccess(false);
+    setSellerSavedSuccess(false);
+  };
+
+  const handleSellerStateChange = (e) => {
+    const selectedStateName = e.target.value;
+    const found = INDIAN_STATES.find(s => s.name === selectedStateName);
+    setSellerIdentity(prev => ({
+      ...prev,
+      state: selectedStateName,
+      stateCode: found ? found.code : ''
+    }));
+    markSellerDirty('state');
+    if (sellerErrors.state) {
+      setSellerErrors(prev => ({ ...prev, state: undefined }));
+    }
+    setSellerValidationSuccess(false);
+    setSellerSavedSuccess(false);
+  };
+
+  const handleSellerPanChange = (e) => {
+    handleSellerFieldChange('pan', e.target.value.toUpperCase());
+  };
+
+  const handleValidateSellerIdentity = (e) => {
+    if (e) e.preventDefault();
+    const errors = validateSellerIdentityInput(sellerIdentity, sellerDirty);
+    setSellerErrors(errors);
+    const isValid = Object.keys(errors).length === 0;
+    setSellerValidationSuccess(isValid);
+    if (!isValid) {
+      toast.error('Please resolve the validation errors in Invoice Issuer Details.');
+    } else {
+      toast.success('Invoice issuer details are valid.');
+    }
+  };
+
+  const handleSaveSellerIdentity = async (e) => {
+    if (e) e.preventDefault();
+    if (isSavingSeller) return;
+
+    try {
+      setIsSavingSeller(true);
+      const allAdmins = await resolveAdminProfiles();
+      const masterAdmin = getMasterSuperAdmin(allAdmins);
+
+      const result = await saveSellerIdentityConfig({
+        supabase,
+        actorProfile: profile,
+        masterAdminId: masterAdmin?.id,
+        form: sellerIdentity,
+        dirty: sellerDirty
+      });
+
+      setSellerErrors({});
+      setSellerIdentity(sellerFormFromDb(result.identity));
+      setSellerSavedDb(result.identity);
+      setSellerDirty([]);
+      setSellerValidationSuccess(true);
+      setSellerSavedSuccess(true);
+
+      // Synchronize in-memory adminProfiles and tenants state
+      setAdminProfiles(prev => prev.map(p => p.id === masterAdmin?.id ? {
+        ...p,
+        global_settings: {
+          ...(p.global_settings || {}),
+          seller_identity: result.identity
+        }
+      } : p));
+      setTenants(prev => prev.map(p => p.id === masterAdmin?.id ? {
+        ...p,
+        global_settings: {
+          ...(p.global_settings || {}),
+          seller_identity: result.identity
+        }
+      } : p));
+
+      toast.success(result.formalInvoiceReady
+        ? 'Invoice Issuer Details saved and verified.'
+        : 'Saved. Payment acknowledgments are ready; add the additional details to enable formal commercial invoices.');
+    } catch (err) {
+      if (err instanceof ConfigValidationError) {
+        setSellerErrors(err.errors);
+        toast.error('Please resolve validation errors before saving Invoice Issuer Details.');
+      } else if (err instanceof ConfigAuthorizationError) {
+        toast.error('Unauthorized: Only Super Administrators can modify invoice issuer configuration.');
+      } else {
+        console.error('Failed to save seller identity:', err);
+        toast.error('Failed to save Invoice Issuer Details: ' + (err.message || 'Unknown error'));
+      }
+      setSellerSavedSuccess(false);
+    } finally {
+      setIsSavingSeller(false);
+    }
+  };
+
+  const isPersistedGstConfigured = Boolean(gstSavedConfig);
+  const isPersistedGstEnabled = Boolean(gstSavedConfig && gstSavedConfig.enabled === true);
+  const isPersistedGstEffective = Boolean(
+    isPersistedGstEnabled &&
+    gstSavedConfig.status === 'active' &&
+    (!gstSavedConfig.effective_from || new Date(gstSavedConfig.effective_from).getTime() <= Date.now())
+  );
+  const isGstScheduled = Boolean(
+    isPersistedGstEnabled &&
+    gstSavedConfig.effective_from &&
+    new Date(gstSavedConfig.effective_from).getTime() > Date.now()
+  );
+  const hasUnsavedGstChanges = Boolean(
+    gstSavedConfig === null
+      ? (gstForm.enabled || Boolean(gstForm.ratePercent) || Boolean(gstForm.gstin) || Boolean(gstForm.pricingMode) || (gstForm.status && gstForm.status !== 'draft'))
+      : (
+          gstForm.enabled !== Boolean(gstSavedConfig.enabled) ||
+          String(gstForm.ratePercent || '') !== String(gstSavedConfig.rate_percent ?? '') ||
+          String(gstForm.gstin || '') !== String(gstSavedConfig.gstin ?? '') ||
+          String(gstForm.pricingMode || '') !== String(gstSavedConfig.pricing_mode ?? '') ||
+          String(gstForm.status || '') !== String(gstSavedConfig.status ?? 'draft') ||
+          toDatetimeLocal(gstForm.effectiveFrom) !== toDatetimeLocal(gstSavedConfig.effective_from)
+        )
+  );
+
+  const handleGstFieldChange = (field, value) => {
+    setGstForm(prev => ({
+      ...prev,
+      [field]: value,
+      ...(field === 'enabled' ? { status: value ? (prev.status === 'disabled' ? 'draft' : prev.status) : 'disabled' } : {})
+    }));
+    if (gstErrors[field] || (field === 'enabled' && (gstErrors.seller || gstErrors.enabled))) {
+      setGstErrors(prev => ({
+        ...prev,
+        [field]: undefined,
+        ...(field === 'enabled' ? { seller: undefined, enabled: undefined } : {})
+      }));
+    }
+  };
+
+  const handleSaveGstConfiguration = async (e) => {
+    if (e) e.preventDefault();
+    if (isSavingGst) return;
+
+    try {
+      setIsSavingGst(true);
+      const allAdmins = await resolveAdminProfiles();
+      const masterAdmin = getMasterSuperAdmin(allAdmins);
+
+      const result = await saveGstConfiguration({
+        supabase,
+        actorProfile: profile,
+        masterAdminId: masterAdmin?.id,
+        form: gstForm
+      });
+
+      setGstErrors({});
+      setGstSavedConfig(result.configuration);
+      const rehydrated = gstFormFromDb(result.configuration);
+      setGstForm({ ...rehydrated.form, effectiveFrom: toDatetimeLocal(rehydrated.form.effectiveFrom) });
+
+      // Synchronize in-memory adminProfiles and tenants state
+      setAdminProfiles(prev => prev.map(p => p.id === masterAdmin?.id ? {
+        ...p,
+        global_settings: {
+          ...(p.global_settings || {}),
+          gst_configuration: result.configuration,
+          tax_settings: {
+            enabled: result.configuration.enabled,
+            rate: result.configuration.rate_percent || 0,
+            gstin: result.configuration.gstin || '',
+            pricing_mode: result.configuration.pricing_mode || 'exclusive',
+            effective_from: result.configuration.effective_from || null,
+            updated_at: new Date().toISOString()
+          }
+        }
+      } : p));
+
+      setTenants(prev => prev.map(p => p.id === masterAdmin?.id ? {
+        ...p,
+        global_settings: {
+          ...(p.global_settings || {}),
+          gst_configuration: result.configuration
+        }
+      } : p));
+
+      toast.success(result.configuration.enabled ? 'GST enabled successfully for SaaS subscriptions.' : 'GST configuration saved (GST disabled).');
+    } catch (err) {
+      if (err instanceof ConfigValidationError) {
+        setGstErrors(err.errors);
+        toast.error('Please resolve the GST configuration errors.');
+      } else if (err instanceof ConfigAuthorizationError) {
+        toast.error('Unauthorized: Only Super Administrators can modify GST configuration.');
+      } else {
+        console.error('Failed to save GST configuration:', err);
+        toast.error('Failed to save GST configuration: ' + (err.message || 'Unknown error'));
+      }
+    } finally {
+      setIsSavingGst(false);
+    }
+  };
+
   const handleSaveRazorpaySettings = async () => {
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
-      settings.razorpay_settings = {
+      const sanitized = {
         mode: razorpayConfig.mode || 'test',
         testKeyId: (razorpayConfig.testKeyId || '').trim(),
         liveKeyId: (razorpayConfig.liveKeyId || '').trim()
       };
       
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
+      await updateGlobalConfigSection('razorpay_settings', {
+        p_razorpay_settings: sanitized
+      });
       
       alert("Razorpay Settings Saved Successfully!");
     } catch (err) {
@@ -885,8 +1266,6 @@ export default function SuperAdmin() {
     if (!confirm("Roll back to this version? This will become the new active draft and immediately publish to the website.")) return;
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
       const historyVersion = websitePricingConfig.history[versionIndex];
       const newVersionNum = (websitePricingConfig.currentVersion || 0) + 1;
       
@@ -906,10 +1285,9 @@ export default function SuperAdmin() {
         currentVersion: newVersionNum
       };
       
-      settings.website_pricing = updatedWebsitePricing;
-      
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
+      await updateGlobalConfigSection('website_pricing', {
+        p_website_pricing: updatedWebsitePricing
+      });
       
       setWebsitePricingConfig(updatedWebsitePricing);
       setWebsitePricing(updatedWebsitePricing);
@@ -924,14 +1302,13 @@ export default function SuperAdmin() {
   const handleSaveGlobalFeatures = async () => {
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
-      settings.comm_features_enabled = globalCommEnabled;
-      settings.templates_enabled = globalTemplatesEnabled;
-      settings.onboarding_wizard_enabled = globalOnboardingWizardEnabled;
-      
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
+      await updateGlobalConfigSection('features', {
+        p_features: {
+          comm_features_enabled: globalCommEnabled,
+          templates_enabled: globalTemplatesEnabled,
+          onboarding_wizard_enabled: globalOnboardingWizardEnabled
+        }
+      });
       alert("Global feature settings updated successfully!");
     } catch (err) {
       alert("Failed to save global features: " + err.message);
@@ -943,12 +1320,9 @@ export default function SuperAdmin() {
   const handleSaveLandingPage = async () => {
     try {
       setIsUpdating(true);
-      const masterAdmin = getMasterSuperAdmin();
-      const settings = masterAdmin.global_settings || {};
-      settings.landing_page = landingContent;
-      
-      const { error } = await supabase.from('profiles').update({ global_settings: settings }).eq('id', masterAdmin.id);
-      if (error) throw error;
+      await updateGlobalConfigSection('landing_page', {
+        p_landing_page: landingContent
+      });
       alert("Landing page content updated successfully!");
     } catch (err) {
       alert("Failed to save landing page: " + err.message);
@@ -2039,54 +2413,371 @@ export default function SuperAdmin() {
             </div>
           </div>
 
-          {/* Tax Settings Controls */}
+          {/* Phase R3 Stage 1: Stay Pilot — Invoice Issuer Details */}
           <div className="card" style={{ marginBottom: '2.5rem', background: 'white', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)', textAlign: 'left' }}>
-            <h3 style={{ marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
-              <DollarSign size={20} /> Billing & Taxation (GST)
-            </h3>
-            <p style={{ color: '#64748B', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
-              Configure platform-wide GST settings for B2B invoicing on subscriptions.
-            </p>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', background: '#f8fafc', padding: '1rem 1.5rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                <input 
-                  type="checkbox" 
-                  id="global_tax_enabled"
-                  checked={taxSettings.enabled}
-                  onChange={(e) => setTaxSettings(prev => ({ ...prev, enabled: e.target.checked }))}
-                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                />
-                <label htmlFor="global_tax_enabled" style={{ fontWeight: 'bold', color: '#1e293b', cursor: 'pointer', fontSize: '0.9rem' }}>
-                  Enable GST on Subscriptions
-                </label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+              <div>
+                <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: '1.25rem' }}>
+                  <FileText size={22} style={{ color: 'var(--primary, #0F2C59)' }} /> Stay Pilot — Invoice Issuer Details
+                </h3>
+                <p style={{ color: '#64748B', fontSize: '0.875rem', margin: '0.35rem 0 0 0' }}>
+                  Configure verified seller identity for Stay Pilot subscription commercial invoices.
+                </p>
               </div>
 
-              {taxSettings.enabled && (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div className="form-group">
-                    <label className="form-label">GST Rate (%)</label>
-                    <input type="number" className="form-input" value={taxSettings.rate} onChange={e => setTaxSettings({...taxSettings, rate: parseFloat(e.target.value) || 0})} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Platform GSTIN</label>
-                    <input type="text" className="form-input" value={taxSettings.gstin} onChange={e => setTaxSettings({...taxSettings, gstin: e.target.value})} placeholder="e.g. 29GGGGG1314R9Z6" />
-                  </div>
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Billing Company Name</label>
-                    <input type="text" className="form-input" value={taxSettings.companyName} onChange={e => setTaxSettings({...taxSettings, companyName: e.target.value})} placeholder="Your SaaS Company Name" />
-                  </div>
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Billing Address</label>
-                    <textarea className="form-input" value={taxSettings.address} onChange={e => setTaxSettings({...taxSettings, address: e.target.value})} placeholder="Registered Address" rows={3}></textarea>
+          {/* GST Status Display (derived, read-only). GST is never active in this build. */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '20px', padding: '0.4rem 0.9rem' }} data-testid="gst-status-badge">
+                <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: gstEffectiveState.effective ? '#059669' : '#64748b' }}></span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#334155', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                  {gstEffectiveState.effective ? 'GST: Active' : 'GST: Disabled — Non-GST Billing'}
+                </span>
+              </div>
+            </div>
+
+            {/* GST Informational Notice */}
+            <div style={{ marginBottom: '1.75rem', padding: '1rem 1.25rem', borderRadius: '12px', background: 'rgba(241, 245, 249, 0.85)', border: '1px solid #cbd5e1', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <Info size={20} style={{ color: '#475569', flexShrink: 0, marginTop: '2px' }} />
+              <div style={{ fontSize: '0.85rem', color: '#334155', lineHeight: 1.5 }}>
+                <strong>Unregistered Supplier Notice:</strong> GST is not charged on subscription payments and no CGST, SGST or IGST is shown. Only the <strong>Trade Name</strong> is required for basic non-GST configuration. Proprietor and address details are optional and are never printed on payment acknowledgments.
+              </div>
+            </div>
+
+            {/* Basic mode: Trade Name is the only mandatory field */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+              {renderSellerField({
+                field: 'tradeName', label: 'Trade Name', optional: false, placeholder: DEFAULT_TRADE_NAME,
+                maxLength: TRADE_NAME_MAX_LENGTH,
+                hint: 'Shown on Stay Pilot payment acknowledgments. Default: Stay Pilot.'
+              })}
+            </div>
+
+            {/* Formal-invoice readiness (mirrors the fields R3 Stage 3B requires) */}
+            <div style={{ marginTop: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.825rem', color: '#475569' }} data-testid="seller-readiness">
+              <div>
+                <span style={{ fontWeight: 700 }}>Payment acknowledgment:</span>{' '}
+                {sellerReadiness.acknowledgmentReady
+                  ? <span style={{ color: '#059669', fontWeight: 700 }}>Ready (Trade Name saved)</span>
+                  : <span style={{ color: '#d97706', fontWeight: 700 }}>Save a Trade Name to enable</span>}
+              </div>
+              <div>
+                <span style={{ fontWeight: 700 }}>Formal commercial invoice:</span>{' '}
+                {sellerReadiness.formalInvoiceReady
+                  ? <span style={{ color: '#059669', fontWeight: 700 }}>Ready</span>
+                  : <span style={{ color: '#d97706', fontWeight: 700 }}>
+                      Needs additional details: {sellerReadiness.missingForFormalInvoice.map(k => SELLER_KEY_LABELS[k] || k).join(', ')}
+                    </span>}
+              </div>
+            </div>
+
+            {/* Collapsible additional details (all optional in basic mode) */}
+            <div style={{ marginTop: '1.25rem', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+              <button
+                type="button"
+                data-testid="seller-additional-toggle"
+                aria-expanded={showSellerAdditional}
+                aria-controls="seller-additional-details"
+                onClick={() => setShowSellerAdditional(v => !v)}
+                style={{ width: '100%', textAlign: 'left', background: '#f8fafc', border: 'none', borderRadius: '12px', padding: '0.9rem 1.1rem', cursor: 'pointer', fontWeight: 700, color: '#0F2C59', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+              >
+                <span>Additional details (optional)</span>
+                <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>{showSellerAdditional ? 'Hide ▲' : 'Show ▼'}</span>
+              </button>
+              {showSellerAdditional && (
+                <div id="seller-additional-details" style={{ padding: '1.1rem' }}>
+                  <p style={{ margin: '0 0 1rem 0', fontSize: '0.8rem', color: '#64748b' }}>
+                    Required only for formal commercial invoices (and, in a future approved release, GST invoices). Never shown on basic payment acknowledgments. Leave a field blank to clear it.
+                  </p>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1.25rem' }}>
+                    {renderSellerField({ field: 'legalName', label: 'Proprietor Legal Name', placeholder: 'Full Legal Name as per Government ID' })}
+                    {renderSellerField({ field: 'address', label: 'Business / Correspondence Address', textarea: true, fullWidth: true, placeholder: 'Door/Office No., Street, Locality, Landmark' })}
+                    {renderSellerField({ field: 'city', label: 'City', placeholder: 'e.g. Kodaikanal' })}
+
+                    <div className="form-group">
+                      <label className="form-label" htmlFor="seller-state" style={{ fontWeight: 600, color: '#334155' }}>
+                        State <span style={{ color: '#64748b', fontWeight: 400 }}>(Optional)</span>
+                      </label>
+                      <select
+                        id="seller-state"
+                        className="form-input"
+                        value={sellerIdentity.state}
+                        onChange={handleSellerStateChange}
+                        style={{ borderColor: sellerErrors.state ? '#dc2626' : undefined }}
+                      >
+                        <option value="">Select Indian State...</option>
+                        {INDIAN_STATES.map(s => (
+                          <option key={s.code} value={s.name}>{s.name} ({s.code})</option>
+                        ))}
+                      </select>
+                      {sellerErrors.state && (
+                        <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0, fontWeight: 500 }}>{sellerErrors.state}</p>
+                      )}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, color: '#334155' }}>State Code (GST State Identifier)</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={sellerIdentity.stateCode ? `${sellerIdentity.stateCode} (${sellerIdentity.state})` : ''}
+                        readOnly
+                        placeholder="Derived automatically from selected state"
+                        style={{ background: '#f8fafc', color: '#475569', cursor: 'not-allowed' }}
+                      />
+                    </div>
+
+                    {renderSellerField({
+                      field: 'pincode', label: 'PIN Code', maxLength: 6, placeholder: '6-digit postal code (e.g. 624101)',
+                      onChange: (e) => handleSellerFieldChange('pincode', e.target.value.replace(/\D/g, ''))
+                    })}
+                    {renderSellerField({ field: 'email', label: 'Billing Contact Email', type: 'email', placeholder: 'e.g. billing@staypilot.com' })}
+                    {renderSellerField({ field: 'phone', label: 'Contact Phone', type: 'tel', placeholder: 'e.g. +91 98765 43210' })}
+                    {renderSellerField({
+                      field: 'pan', label: 'Proprietor PAN', maxLength: 10, placeholder: 'e.g. ABCDE1234F',
+                      onChange: handleSellerPanChange,
+                      hint: '10-character Permanent Account Number. Never printed on payment acknowledgments.'
+                    })}
                   </div>
                 </div>
               )}
             </div>
 
-            <div style={{ marginTop: '1.5rem', textAlign: 'right' }}>
-              <button className="btn btn-primary" onClick={handleSaveTaxSettings} disabled={isUpdating} style={{ padding: '0.75rem 2rem', fontWeight: 700 }}>
-                {isUpdating ? 'Saving...' : 'Save Tax Settings'}
+            {/* Validation & Persistence Banners */}
+            <div style={{ marginTop: '1.75rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {sellerSavedSuccess && (
+                <div style={{ padding: '1rem 1.25rem', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.08)', border: '1px solid #10b981', color: '#065f46', fontSize: '0.875rem' }}>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <ShieldCheck size={18} style={{ color: '#10b981' }} /> Invoice Issuer Details Persisted
+                  </div>
+                  <div>
+                    Stored authoritatively in <code>profiles.global_settings.seller_identity</code>. Fields you did not edit were preserved.
+                  </div>
+                </div>
+              )}
+
+              {sellerValidationSuccess && !sellerSavedSuccess && (
+                <div style={{ padding: '1rem 1.25rem', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid #3b82f6', color: '#1e40af', fontSize: '0.875rem' }}>
+                  <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+                    <CheckCircle size={18} style={{ color: '#3b82f6' }} /> Configuration Validated (Unsaved Changes)
+                  </div>
+                  <div>
+                    Click <strong>Save Invoice Issuer Details</strong> to persist this configuration.
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+                <div style={{ fontSize: '0.825rem', color: '#64748b' }}>
+                  <span style={{ fontWeight: 600 }}>Status:</span>{' '}
+                  {sellerSavedSuccess ? (
+                    <span style={{ color: '#059669', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <CheckCircle size={14} /> Persisted in Global Settings
+                    </span>
+                  ) : (
+                    <span style={{ color: '#d97706', fontWeight: 600 }}>● Unsaved Changes</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={handleValidateSellerIdentity}
+                    style={{ padding: '0.75rem 1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.4rem' }}
+                  >
+                    <CheckCircle size={16} /> Validate Form
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSaveSellerIdentity}
+                    disabled={isSavingSeller || profile?.role !== 'super_admin'}
+                    style={{ padding: '0.75rem 1.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+                  >
+                    <Save size={16} /> {isSavingSeller ? 'Saving to Database...' : 'Save Invoice Issuer Details'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Phase R3: Stay Pilot — GST Configuration */}
+          <div className="card" style={{ marginBottom: '2.5rem', background: 'white', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)', textAlign: 'left' }} data-testid="gst-config-card">
+            <div style={{ marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: '1.25rem' }}>
+                <FileText size={22} style={{ color: 'var(--primary, #0F2C59)' }} /> Stay Pilot — GST Configuration
+              </h3>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0.35rem 0 0 0' }}>
+                Centrally control GST rate, GSTIN, and pricing mode for SaaS subscriptions.
+              </p>
+            </div>
+
+            <div style={{
+              marginBottom: '1.5rem',
+              padding: '1rem 1.25rem',
+              borderRadius: '12px',
+              background: isPersistedGstEffective
+                ? 'rgba(236, 253, 245, 0.7)'
+                : isGstScheduled
+                  ? 'rgba(254, 243, 199, 0.7)'
+                  : 'rgba(241, 245, 249, 0.85)',
+              border: `1px solid ${
+                isPersistedGstEffective
+                  ? '#a7f3d0'
+                  : isGstScheduled
+                    ? '#fde68a'
+                    : '#cbd5e1'
+              }`,
+              display: 'flex',
+              alignItems: 'flex-start',
+              gap: '0.75rem'
+            }}>
+              <AlertCircle size={20} style={{
+                color: isPersistedGstEffective
+                  ? '#047857'
+                  : isGstScheduled
+                    ? '#b45309'
+                    : '#475569',
+                flexShrink: 0,
+                marginTop: '2px'
+              }} />
+              <div style={{
+                fontSize: '0.85rem',
+                color: isPersistedGstEffective
+                  ? '#065f46'
+                  : isGstScheduled
+                    ? '#92400e'
+                    : '#334155',
+                lineHeight: 1.5,
+                width: '100%'
+              }}>
+                {isPersistedGstEffective ? (
+                  <><strong>GST is Active:</strong> Persisted settings are calculating GST ({gstSavedConfig.rate_percent}% {gstSavedConfig.pricing_mode || ''}) on SaaS subscriptions with tax invoice generation.</>
+                ) : isGstScheduled ? (
+                  <><strong>GST Activation Scheduled:</strong> Configured to activate on {new Date(gstSavedConfig.effective_from).toLocaleString()}. Until then, billing remains non-GST.</>
+                ) : (
+                  <><strong>{isPersistedGstConfigured ? 'GST is Disabled' : 'GST is Not Configured'}:</strong> Subscription payments and invoices remain strictly non-GST (commercial acknowledgments, 0% tax). To activate, check Enable GST and configure valid GSTIN, rate, and pricing mode.</>
+                )}
+                {hasUnsavedGstChanges && (
+                  <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed #cbd5e1', color: '#b45309', fontWeight: 600, fontSize: '0.8rem' }}>
+                    ⚠️ You have unsaved form changes ({gstForm.enabled ? 'GST Enabled in form' : 'GST Disabled in form'}). Click "Save GST Configuration" below to apply.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem' }}>
+              <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontWeight: 700, color: '#0F2C59', cursor: 'pointer', fontSize: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    data-testid="gst-enabled"
+                    checked={gstForm.enabled}
+                    onChange={(e) => handleGstFieldChange('enabled', e.target.checked)}
+                    disabled={profile?.role !== 'super_admin'}
+                    style={{ width: '20px', height: '20px', cursor: 'pointer', accentColor: '#0F2C59' }}
+                  />
+                  <span>Enable GST for Subscriptions</span>
+                  {hasUnsavedGstChanges ? (
+                    <span style={{ background: '#fef3c7', color: '#92400e', padding: '0.2rem 0.65rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                      Unsaved: {gstForm.enabled ? 'Enabled' : 'Disabled'}
+                    </span>
+                  ) : isPersistedGstEffective ? (
+                    <span style={{ background: '#dcfce7', color: '#166534', padding: '0.2rem 0.65rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                      Active
+                    </span>
+                  ) : isGstScheduled ? (
+                    <span style={{ background: '#fef3c7', color: '#92400e', padding: '0.2rem 0.65rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 700 }}>
+                      Scheduled
+                    </span>
+                  ) : isPersistedGstConfigured ? (
+                    <span style={{ background: '#f1f5f9', color: '#64748b', padding: '0.2rem 0.65rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>
+                      GST Disabled
+                    </span>
+                  ) : (
+                    <span style={{ background: '#f1f5f9', color: '#64748b', padding: '0.2rem 0.65rem', borderRadius: '6px', fontSize: '0.75rem', fontWeight: 600 }}>
+                      Not Configured
+                    </span>
+                  )}
+                </label>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="gst-rate" style={{ fontWeight: 600, color: '#334155' }}>GST Percentage</label>
+                <input id="gst-rate" type="text" inputMode="decimal" className="form-input" value={gstForm.ratePercent} disabled={profile?.role !== 'super_admin'}
+                  onChange={(e) => handleGstFieldChange('ratePercent', e.target.value)}
+                  placeholder="Enter approved rate (no default)" style={{ borderColor: gstErrors.ratePercent ? '#dc2626' : undefined }} />
+                {gstErrors.ratePercent && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{gstErrors.ratePercent}</p>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="gst-gstin" style={{ fontWeight: 600, color: '#334155' }}>GSTIN <span style={{ color: '#64748b', fontWeight: 400 }}>(required to activate)</span></label>
+                <input id="gst-gstin" type="text" className="form-input" maxLength={15} value={gstForm.gstin} disabled={profile?.role !== 'super_admin'}
+                  onChange={(e) => handleGstFieldChange('gstin', e.target.value.toUpperCase())}
+                  placeholder="15-character GSTIN" style={{ textTransform: 'uppercase', borderColor: gstErrors.gstin ? '#dc2626' : undefined }} />
+                {gstErrors.gstin && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{gstErrors.gstin}</p>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="gst-mode" style={{ fontWeight: 600, color: '#334155' }}>GST Pricing Mode</label>
+                <select id="gst-mode" className="form-input" value={gstForm.pricingMode} disabled={profile?.role !== 'super_admin'}
+                  onChange={(e) => handleGstFieldChange('pricingMode', e.target.value)}
+                  style={{ borderColor: gstErrors.pricingMode ? '#dc2626' : undefined }}>
+                  <option value="">Not selected</option>
+                  <option value="inclusive">Inclusive (tax included in listed price)</option>
+                  <option value="exclusive">Exclusive (tax added on top)</option>
+                </select>
+                {gstErrors.pricingMode && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{gstErrors.pricingMode}</p>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="gst-effective" style={{ fontWeight: 600, color: '#334155' }}>Effective From</label>
+                <input id="gst-effective" type="datetime-local" className="form-input" value={gstForm.effectiveFrom} disabled={profile?.role !== 'super_admin'}
+                  onChange={(e) => handleGstFieldChange('effectiveFrom', e.target.value)}
+                  style={{ borderColor: gstErrors.effectiveFrom ? '#dc2626' : undefined }} />
+                <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', marginBottom: 0 }}>Applies to future transactions only. Historical invoices are never changed.</p>
+                {gstErrors.effectiveFrom && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{gstErrors.effectiveFrom}</p>}
+              </div>
+
+              <div className="form-group">
+                <label className="form-label" htmlFor="gst-status" style={{ fontWeight: 600, color: '#334155' }}>Configuration Status</label>
+                <select id="gst-status" className="form-input" value={gstForm.status} disabled={profile?.role !== 'super_admin'}
+                  onChange={(e) => handleGstFieldChange('status', e.target.value)}
+                  style={{ borderColor: gstErrors.status ? '#dc2626' : undefined }}>
+                  <option value="draft">Draft</option>
+                  <option value="pending_verification">Pending verification</option>
+                  <option value="active">Active</option>
+                </select>
+                {gstErrors.status && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{gstErrors.status}</p>}
+              </div>
+
+              {gstErrors.seller && (
+                <div style={{ gridColumn: '1 / -1', color: '#dc2626', fontSize: '0.8rem', fontWeight: 500 }}>{gstErrors.seller}</div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+              <div style={{ fontSize: '0.825rem', color: '#64748b' }}>
+                <span style={{ fontWeight: 600 }}>Saved status:</span>{' '}
+                <span data-testid="gst-saved-status" style={{ fontWeight: 700, color: isPersistedGstEffective ? '#166534' : '#334155' }}>
+                  {!isPersistedGstConfigured
+                    ? 'Not configured'
+                    : !isPersistedGstEnabled
+                      ? 'GST Disabled'
+                      : isPersistedGstEffective
+                        ? 'Active'
+                        : isGstScheduled
+                          ? `Scheduled (${new Date(gstSavedConfig.effective_from).toLocaleDateString()})`
+                          : (gstSavedConfig.status || 'draft').replace('_', ' ')
+                  }
+                </span>
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveGstConfiguration}
+                disabled={isSavingGst || profile?.role !== 'super_admin'}
+                style={{ padding: '0.75rem 1.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <Save size={16} /> {isSavingGst ? 'Saving...' : 'Save GST Configuration'}
               </button>
             </div>
           </div>

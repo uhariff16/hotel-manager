@@ -7,6 +7,7 @@
     "dev": "vite --host",
     "build": "vite build",
     "lint": "eslint .",
+    "test:invoice-issuer": "node --test tests/invoice_issuer_config.test.mjs tests/issuer_config_server_authorization.test.mjs",
     "preview": "vite preview"
   },
   "dependencies": {
