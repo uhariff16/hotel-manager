@@ -128,7 +128,44 @@ serve(async (req) => {
       throw new Error(`Plan '${plan_type}' not found in global pricing settings`)
     }
 
-    // 4. ATOMIC CHECKOUT RESERVATION LEASE RPC (Blocks unresolved reconciliation_required records)
+    // 4. MANDATORY PRE-CHECKOUT BILLING VALIDATION GUARD
+    // Prevents acquiring reservation lease or initiating Razorpay checkout if tenant cannot be invoiced
+    let tenantProfile = userProfile
+    if (tenantId !== userProfile.id) {
+      const { data: tProf, error: tErr } = await supabaseAdmin
+        .from('profiles')
+        .select('id, full_name, email, global_settings')
+        .eq('id', tenantId)
+        .single()
+      if (!tErr && tProf) {
+        tenantProfile = tProf
+      }
+    }
+
+    const tenantBilling = tenantProfile.global_settings?.billing || tenantProfile.global_settings?.tenant_billing || {}
+    const bName = String(tenantBilling.name || tenantProfile.full_name || '').trim()
+    const bEmail = String(tenantBilling.email || user.email || '').trim()
+    const bAddress = String(tenantBilling.address_line1 || tenantBilling.address || '').trim()
+    const bState = String(tenantBilling.state || '').trim()
+
+    const missingBillingFields: string[] = []
+    if (!bName || bName.length < 2) missingBillingFields.push('name')
+    if (!bEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bEmail)) missingBillingFields.push('email')
+    if (!bAddress || bAddress.length < 3) missingBillingFields.push('address')
+    if (!bState || bState.length < 2) missingBillingFields.push('state')
+
+    if (missingBillingFields.length > 0) {
+      return new Response(JSON.stringify({
+        error: 'MISSING_BILLING_DETAILS',
+        message: 'Billing profile incomplete. Please update your billing details in Settings before subscribing.',
+        missing_fields: missingBillingFields
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      })
+    }
+
+    // 5. ATOMIC CHECKOUT RESERVATION LEASE RPC (Blocks unresolved reconciliation_required records)
     const { data: rpcRes, error: rpcErr } = await supabaseAdmin.rpc('acquire_checkout_reservation', {
       p_tenant_id: tenantId,
       p_plan_type: targetPlanKey,
@@ -139,7 +176,16 @@ serve(async (req) => {
       throw new Error(`Failed to acquire checkout reservation: ${rpcErr.message}`)
     }
 
-    if (rpcRes.status === 'blocked_reconciliation_required') {
+    if (rpcRes.status === 'blocked' || rpcRes.status === 'blocked_active_subscription') {
+      return new Response(JSON.stringify({ 
+        error: `You already have an active paid subscription (${rpcRes.plan_type || 'paid plan'}). Plan changes are managed via support.` 
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      })
+    }
+
+    if (rpcRes.status === 'reconciliation_required' || rpcRes.status === 'blocked_reconciliation_required') {
       return new Response(JSON.stringify({ 
         error: `Your account has an unresolved subscription transaction (Ref: ${rpcRes.razorpay_subscription_id || 'unresolved'}). Please contact support to complete your plan activation.` 
       }), {
@@ -148,16 +194,7 @@ serve(async (req) => {
       })
     }
 
-    if (rpcRes.status === 'blocked_active_subscription') {
-      return new Response(JSON.stringify({ 
-        error: `You already have an active paid subscription (${rpcRes.plan_type}). Plan changes are managed via support.` 
-      }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400
-      })
-    }
-
-    if (rpcRes.status === 'reservation_in_progress') {
+    if (rpcRes.status === 'pending_lease' || rpcRes.status === 'reservation_in_progress') {
       return new Response(JSON.stringify({ 
         error: 'A checkout reservation is currently in progress for your account. Please wait a moment and try again.' 
       }), {
@@ -166,15 +203,19 @@ serve(async (req) => {
       })
     }
 
-    if (rpcRes.status === 'reusable_lease') {
+    if (rpcRes.status === 'reuse' || rpcRes.status === 'reusable_lease') {
       return new Response(
-        JSON.stringify({ subscription_id: rpcRes.subscription_id, key_id: keyId }),
+        JSON.stringify({ subscription_id: rpcRes.razorpay_subscription_id || rpcRes.subscription_id, key_id: keyId }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
       )
     }
 
     checkoutToken = rpcRes.checkout_token
     reservationId = rpcRes.reservation_id
+
+    if (rpcRes.status !== 'proceed' && rpcRes.status !== 'lease_granted') {
+      throw new Error(`Checkout reservation rejected: ${rpcRes.reason || rpcRes.status || 'Unknown status'}`)
+    }
 
     const rzpAuthHeader = `Basic ${btoa(`${keyId}:${keySecret}`)}`
 
@@ -194,13 +235,28 @@ serve(async (req) => {
     const basePriceRupees = isPromoActive ? promoPrice : basePrice
     const basePricePaise = Math.round(basePriceRupees * 100)
     
-    // Apply Super Admin GST settings if enabled
+    // Apply Super Admin GST settings if enabled and effective (server-side time check)
     const taxSettings = settings.tax_settings || {}
-    const isGstEnabled = Boolean(taxSettings.enabled) && Number(taxSettings.rate || 0) > 0
+    const isEffective = !taxSettings.effective_from || new Date(taxSettings.effective_from).getTime() <= Date.now()
+    const isGstEnabled = Boolean(taxSettings.enabled) && Number(taxSettings.rate || 0) > 0 && isEffective
     const gstRate = isGstEnabled ? Number(taxSettings.rate) : 0
-    
-    const gstAmountPaise = isGstEnabled ? Math.round(basePricePaise * (gstRate / 100)) : 0
-    const priceInPaise = basePricePaise + gstAmountPaise
+    const pricingMode = taxSettings.pricing_mode === 'inclusive' ? 'inclusive' : 'exclusive'
+
+    let priceInPaise = basePricePaise
+    let gstAmountPaise = 0
+    let effectiveBasePaise = basePricePaise
+
+    if (isGstEnabled) {
+      if (pricingMode === 'inclusive') {
+        priceInPaise = basePricePaise
+        effectiveBasePaise = Math.round(priceInPaise / (1 + (gstRate / 100)))
+        gstAmountPaise = priceInPaise - effectiveBasePaise
+      } else {
+        gstAmountPaise = Math.round(basePricePaise * (gstRate / 100))
+        priceInPaise = basePricePaise + gstAmountPaise
+        effectiveBasePaise = basePricePaise
+      }
+    }
 
     // 6. Automatic Razorpay Plan Lookup / Creation with Strict Environment Isolation
     let rzpPlanId = isLive ? planData.razorpay_live_plan_id : (planData.razorpay_test_plan_id || planData.razorpay_plan_id)
@@ -220,7 +276,8 @@ serve(async (req) => {
             p.amount === priceInPaise && 
             p.period === 'monthly' && 
             p.interval === 1 && 
-            (p.notes?.plan_type === targetPlanKey || p.item?.name?.includes(targetPlanKey) || p.item?.name?.includes(planData.displayPlanName || planData.name || ''))
+            (p.notes?.plan_type === targetPlanKey || p.item?.name?.includes(targetPlanKey) || p.item?.name?.includes(planData.displayPlanName || planData.name || '')) &&
+            (!isGstEnabled || (p.notes?.gst_rate === String(gstRate) && (p.notes?.pricing_mode || 'exclusive') === pricingMode))
           )
           if (matchingPlan) {
             existingPlanId = matchingPlan.id
@@ -247,13 +304,14 @@ serve(async (req) => {
               name: `Stay Pilot ${planData.displayPlanName || planData.name || plan_type} (${isLive ? 'Live' : 'Test'}${isGstEnabled ? ` - ${gstRate}% GST` : ''})`,
               amount: priceInPaise,
               currency: 'INR',
-              description: `Monthly SaaS Subscription${isGstEnabled ? ` (incl. ${gstRate}% GST)` : ''}`
+              description: `Monthly SaaS Subscription${isGstEnabled ? ` (${pricingMode === 'inclusive' ? 'incl.' : '+'} ${gstRate}% GST)` : ''}`
             },
             notes: { 
               plan_type: targetPlanKey, 
               environment: envMode,
               gst_rate: String(gstRate),
-              base_price_paise: String(basePricePaise),
+              pricing_mode: pricingMode,
+              base_price_paise: String(effectiveBasePaise),
               gst_amount_paise: String(gstAmountPaise)
             }
           })
@@ -296,89 +354,332 @@ serve(async (req) => {
       }
     }
 
-    // 8. Create Razorpay Customer
-    const tenantBilling = userProfile.global_settings?.tenant_billing || {}
-    
-    const customerPayload: Record<string, any> = {
-      name: tenantBilling.companyName || userProfile.full_name || 'Stay Pilot Tenant',
-      email: user.email,
-      notes: { tenant_id: tenantId }
-    }
-    
-    if (tenantBilling.gstin) {
-      customerPayload.gstin = tenantBilling.gstin
+    // 8. CUSTOMER RESOLUTION & IDENTITY BINDING (Phase R2)
+    let rzpCustomerId: string | null = null
+
+    // Step A1: Check local environment-aware customer mapping table
+    const { data: existingCustMapping } = await supabaseAdmin
+      .from('razorpay_customers')
+      .select('razorpay_customer_id')
+      .eq('tenant_id', tenantId)
+      .eq('environment', envMode)
+      .maybeSingle()
+
+    let candidateCustId = existingCustMapping?.razorpay_customer_id || null
+
+    // Step A2: Fallback check saas_subscriptions for previously stashed customer ID
+    if (!candidateCustId) {
+      const { data: stashedSub } = await supabaseAdmin
+        .from('saas_subscriptions')
+        .select('razorpay_customer_id')
+        .eq('tenant_id', tenantId)
+        .eq('environment', envMode)
+        .not('razorpay_customer_id', 'is', null)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (stashedSub?.razorpay_customer_id) {
+        candidateCustId = stashedSub.razorpay_customer_id
+      }
     }
 
-    const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
-      method: 'POST',
-      headers: {
-        'Authorization': rzpAuthHeader,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(customerPayload)
-    })
-    
-    let rzpCustomerId = null
-    if (customerRes.ok) {
-      const cData = await customerRes.json()
-      rzpCustomerId = cData.id
-    }
-
-    // 9. Create Razorpay Subscription Entity
-    const subRes = await fetch('https://api.razorpay.com/v1/subscriptions', {
-      method: 'POST',
-      headers: {
-        'Authorization': rzpAuthHeader,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        plan_id: rzpPlanId,
-        customer_id: rzpCustomerId,
-        total_count: 240, // 20 years max allowed for UPI Autopay
-        customer_notify: 0,
-        notes: {
-          tenant_id: tenantId,
-          plan_type: targetPlanKey
+    if (candidateCustId) {
+      // Step B: Verify the customer still exists on Razorpay API in this environment
+      try {
+        const verifyCustRes = await fetch(`https://api.razorpay.com/v1/customers/${candidateCustId}`, {
+          headers: { 'Authorization': rzpAuthHeader }
+        })
+        if (verifyCustRes.ok) {
+          rzpCustomerId = candidateCustId
+          // Backfill into razorpay_customers if missing from primary mapping table
+          if (!existingCustMapping?.razorpay_customer_id) {
+            await supabaseAdmin.from('razorpay_customers').upsert({
+              tenant_id: tenantId,
+              environment: envMode,
+              razorpay_customer_id: rzpCustomerId,
+              email: user.email,
+              name: userProfile.full_name || 'Stay Pilot Tenant',
+              updated_at: new Date().toISOString()
+            }, { onConflict: 'tenant_id,environment' })
+          }
+        } else if (verifyCustRes.status === 404) {
+          console.warn(`[Phase R2] Existing customer ${candidateCustId} not found on Razorpay ${envMode}. Purging stale mapping.`)
+          await supabaseAdmin
+            .from('razorpay_customers')
+            .delete()
+            .eq('tenant_id', tenantId)
+            .eq('environment', envMode)
         }
-      })
-    })
-
-    if (!subRes.ok) {
-      const errData = await subRes.json()
-      throw new Error(`Failed to create Razorpay Subscription: ${JSON.stringify(errData)}`)
+      } catch (err) {
+        console.warn(`[Phase R2] Error verifying customer with Razorpay:`, err)
+      }
     }
 
+    // Step C: If no verified customer ID exists, create one authoritatively on Razorpay
+    if (!rzpCustomerId) {
+      const tenantBilling = userProfile.global_settings?.tenant_billing || {}
+      const customerContact = userProfile.phone || userProfile.phone_number || undefined
+      
+      const customerPayload: Record<string, any> = {
+        name: tenantBilling.companyName || userProfile.full_name || 'Stay Pilot Tenant',
+        email: user.email,
+        fail_existing: 0,
+        notes: { 
+          tenant_id: tenantId,
+          environment: envMode
+        }
+      }
+
+      if (customerContact) {
+        customerPayload.contact = customerContact
+      }
+      
+      if (tenantBilling.gstin) {
+        customerPayload.gstin = tenantBilling.gstin
+      }
+
+      const customerRes = await fetch('https://api.razorpay.com/v1/customers', {
+        method: 'POST',
+        headers: {
+          'Authorization': rzpAuthHeader,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(customerPayload)
+      })
+      
+      if (!customerRes.ok) {
+        const errData = await customerRes.json().catch(() => ({}))
+        const errDesc = errData?.error?.description || errData?.message || ''
+        
+        // If customer already exists on Razorpay for this merchant, retrieve and reuse it
+        if (errDesc.includes('Customer already exists') || customerRes.status === 400) {
+          console.warn(`[Phase R2] Customer exists on Razorpay for ${user.email}. Looking up existing customer record.`)
+          const lookupRes = await fetch('https://api.razorpay.com/v1/customers?count=50', {
+            headers: { 'Authorization': rzpAuthHeader }
+          })
+          if (lookupRes.ok) {
+            const listData = await lookupRes.json()
+            const match = listData.items?.find((c: any) => c.email?.toLowerCase() === user.email?.toLowerCase())
+            if (match?.id) {
+              rzpCustomerId = match.id
+              console.log(`[Phase R2] Successfully reused existing Razorpay customer: ${rzpCustomerId} for ${user.email}`)
+            }
+          }
+        }
+
+        if (!rzpCustomerId) {
+          console.error(`[Phase R2] Razorpay customer creation failed on ${envMode}:`, errData)
+          throw new Error(`Failed to create verified Razorpay customer on ${envMode}: ${errDesc || JSON.stringify(errData)}`)
+        }
+      } else {
+        const cData = await customerRes.json()
+        if (!cData.id) {
+          throw new Error(`Razorpay returned customer without valid ID: ${JSON.stringify(cData)}`)
+        }
+        rzpCustomerId = cData.id
+      }
+
+      // Step D: Persist the verified customer mapping with safe recovery retry
+      let saveCustErr: any = null
+      for (let attempt = 1; attempt <= 2; attempt++) {
+        const { error: err } = await supabaseAdmin
+          .from('razorpay_customers')
+          .upsert({
+            tenant_id: tenantId,
+            environment: envMode,
+            razorpay_customer_id: rzpCustomerId,
+            email: user.email,
+            name: customerPayload.name,
+            contact: customerContact || null,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'tenant_id,environment'
+          })
+        saveCustErr = err
+        if (!saveCustErr) break
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      }
+
+      // If persistence remains unsuccessful, DO NOT proceed to create a subscription!
+      if (saveCustErr) {
+        console.error(`[Phase R2] Failed to persist razorpay_customers mapping after retry:`, saveCustErr)
+
+        // Preserve recoverable customer identifier on saas_subscriptions lease row
+        await supabaseAdmin
+          .from('saas_subscriptions')
+          .update({
+            razorpay_customer_id: rzpCustomerId,
+            updated_at: new Date().toISOString()
+          })
+          .eq('tenant_id', tenantId)
+          .eq('checkout_token', checkoutToken)
+
+        // Stop checkout immediately before creating any subscription entity
+        throw new Error(`CUSTOMER_MAPPING_PERSISTENCE_FAILED: Razorpay customer ${rzpCustomerId} created, but database mapping persistence failed. Checkout halted to prevent duplicate customer creation.`)
+      }
+    }
+
+    // STRICT IDENTITY VALIDATION GUARD: Customer ID MUST be non-null
+    if (!rzpCustomerId) {
+      throw new Error(`CUSTOMER_IDENTITY_ERROR: Unable to resolve or create a verified Razorpay customer for tenant ${tenantId} on ${envMode}. Checkout halted.`)
+    }
+
+    // 9. Create Razorpay Subscription Entity with 3-Way Outcome Differentiation
+    let subRes: Response | null = null
+    let subFetchError: any = null
+
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000)
+
+      subRes = await fetch('https://api.razorpay.com/v1/subscriptions', {
+        method: 'POST',
+        headers: {
+          'Authorization': rzpAuthHeader,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          plan_id: rzpPlanId,
+          customer_id: rzpCustomerId,
+          total_count: 240, // 20 years max allowed for UPI Autopay
+          customer_notify: 0,
+          notes: {
+            tenant_id: tenantId,
+            plan_type: targetPlanKey,
+            environment: envMode
+          }
+        }),
+        signal: controller.signal
+      })
+      clearTimeout(timeoutId)
+    } catch (fetchErr: any) {
+      subFetchError = fetchErr
+    }
+
+    // OUTCOME 1: Uncertain API Outcome (Network timeout, abort, connection drop, or 5xx server error)
+    if (subFetchError || (subRes && subRes.status >= 500)) {
+      const errorMsg = subFetchError 
+        ? `Timeout or network failure during Razorpay subscription creation (${subFetchError.message || subFetchError})`
+        : `Razorpay API server error HTTP ${subRes?.status}`
+
+      console.error(`[Phase R2 UNCERTAIN_OUTCOME] ${errorMsg}. Tenant: ${tenantId}, Reservation: ${reservationId}. Locking lease for reconciliation.`)
+
+      // Flag reservation as reconciliation_required and DO NOT release lease
+      await supabaseAdmin.rpc('record_orphaned_checkout_subscription', {
+        p_tenant_id: tenantId,
+        p_reservation_id: reservationId,
+        p_checkout_token: checkoutToken,
+        p_razorpay_sub_id: `UNKNOWN_TIMEOUT_${Date.now()}`,
+        p_razorpay_plan_id: rzpPlanId,
+        p_reason: errorMsg
+      }).catch((e: any) => console.error("Failed to flag uncertain reservation", e))
+
+      return new Response(JSON.stringify({ 
+        error: `CHECKOUT_UNCERTAIN_OUTCOME: The payment gateway took too long to respond. To prevent duplicate subscription creation, your reservation is temporarily held for verification. Please contact support. Reference: ${reservationId}`
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 504
+      })
+    }
+
+    // OUTCOME 2: Confirmed API Rejection (HTTP 4xx - e.g. 400 Bad Request, 401, 404, 422)
+    if (subRes && !subRes.ok) {
+      const errData = await subRes.json().catch(() => ({ error: { description: 'Razorpay API rejected subscription creation' } }))
+      const errDesc = errData?.error?.description || errData?.message || `HTTP ${subRes.status}`
+      console.warn(`[Phase R2 CONFIRMED_REJECTION] Razorpay rejected subscription: ${errDesc}. Safe to release lease.`)
+
+      // Confirmed rejection: Razorpay definitely did NOT create resource. Safe to release lease.
+      await supabaseAdmin.rpc('release_checkout_reservation', {
+        p_tenant_id: tenantId,
+        p_checkout_token: checkoutToken,
+        p_reason: `confirmed_rejection: ${errDesc}`
+      }).catch((e: any) => console.error("Failed to release lease on confirmed rejection", e))
+
+      return new Response(JSON.stringify({ 
+        error: `Subscription creation rejected by Razorpay: ${errDesc}`
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400
+      })
+    }
+
+    // OUTCOME 3: Confirmed API Success (HTTP 200/201 with verified subscription ID)
     const subData = await subRes.json()
     rzpSubIdCreated = subData.id
 
     // 10. Update EXACT Reservation Row Matching BOTH reservation_id AND checkout_token
-    const { data: updatedRows, error: writeSubErr } = await supabaseAdmin
-      .from('saas_subscriptions')
-      .update({
-        razorpay_customer_id: rzpCustomerId,
-        razorpay_subscription_id: subData.id,
-        razorpay_plan_id: rzpPlanId,
-        staypilot_plan_type: targetPlanKey,
-        status: 'created',
-        environment: envMode,
-        cancel_at_period_end: false,
-        checkout_token: null,
-        updated_at: new Date().toISOString()
+    // 10. Update EXACT Reservation Row Matching tenant_id AND checkout_token
+    let writeSubErr: any = null
+    let updatedRows: any = null
+
+    // Attempt atomic confirm_checkout_reservation RPC first
+    let confirmRes: any = null
+    let confirmErr: any = null
+    try {
+      const cRes = await supabaseAdmin.rpc('confirm_checkout_reservation', {
+        p_tenant_id: tenantId,
+        p_checkout_token: checkoutToken,
+        p_razorpay_sub_id: subData.id,
+        p_razorpay_plan_id: rzpPlanId,
+        p_plan_type: targetPlanKey,
+        p_razorpay_customer_id: rzpCustomerId,
+        p_environment: envMode
       })
-      .eq('id', reservationId)
-      .eq('checkout_token', checkoutToken)
-      .select('id')
+      confirmRes = cRes.data
+      confirmErr = cRes.error
+    } catch (e: any) {
+      confirmErr = e
+    }
+
+    if (!confirmErr && confirmRes?.status === 'success') {
+      updatedRows = [{ id: tenantId }]
+    } else {
+      // Direct update matching tenant_id and checkout_token
+      let updateQuery = supabaseAdmin
+        .from('saas_subscriptions')
+        .update({
+          razorpay_customer_id: rzpCustomerId,
+          razorpay_subscription_id: subData.id,
+          razorpay_plan_id: rzpPlanId,
+          staypilot_plan_type: targetPlanKey,
+          status: 'created',
+          environment: envMode,
+          cancel_at_period_end: false,
+          checkout_token: null,
+          checkout_expires_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('tenant_id', tenantId)
+        .eq('checkout_token', checkoutToken)
+
+      if (reservationId) {
+        updateQuery = updateQuery.eq('id', reservationId)
+      }
+
+      const res = await updateQuery.select('id')
+      writeSubErr = res.error
+      updatedRows = res.data
+    }
 
     if (writeSubErr || !updatedRows || updatedRows.length !== 1) {
       // POST-RAZORPAY DB PERSISTENCE FAILURE: Explicitly check record_orphaned_checkout_subscription RPC result
-      const { data: recRes, error: recErr } = await supabaseAdmin.rpc('record_orphaned_checkout_subscription', {
-        p_tenant_id: tenantId,
-        p_reservation_id: reservationId,
-        p_checkout_token: checkoutToken,
-        p_razorpay_sub_id: rzpSubIdCreated,
-        p_razorpay_plan_id: rzpPlanId,
-        p_reason: writeSubErr ? writeSubErr.message : 'Zero rows updated during persistence'
-      }).catch((e: any) => ({ error: { message: e.message } }))
+      let recRes: any = null
+      let recErr: any = null
+      try {
+        const rRes = await supabaseAdmin.rpc('record_orphaned_checkout_subscription', {
+          p_tenant_id: tenantId,
+          p_reservation_id: reservationId,
+          p_checkout_token: checkoutToken,
+          p_razorpay_sub_id: rzpSubIdCreated,
+          p_razorpay_plan_id: rzpPlanId,
+          p_reason: writeSubErr ? writeSubErr.message : 'Zero rows updated during persistence'
+        })
+        recRes = rRes.data
+        recErr = rRes.error
+      } catch (e: any) {
+        recErr = e
+      }
 
       if (recErr || recRes?.status === 'reconciliation_recording_failed') {
         console.error(`[CRITICAL_CHECKOUT_ORPHAN_UNRECORDED] Failed to record orphaned Razorpay subscription in DB. Tenant ID: ${tenantId}, Reservation ID: ${reservationId}, Razorpay Sub ID: ${rzpSubIdCreated}. Error: ${recErr?.message || recRes?.reason || 'Unknown'}`)
@@ -389,25 +690,36 @@ serve(async (req) => {
       throw new Error(`CHECKOUT_RECONCILIATION_REQUIRED: Subscription created on Razorpay (${rzpSubIdCreated}) but database update failed. Reference: ${rzpSubIdCreated}. Please contact support to complete activation.`)
     }
 
-    // Return subscription_id to frontend for modal display
+    // Return subscription_id and customer_id to frontend for modal display
     return new Response(
-      JSON.stringify({ subscription_id: subData.id, key_id: keyId }),
+      JSON.stringify({ 
+        subscription_id: subData.id, 
+        key_id: keyId,
+        customer_id: rzpCustomerId 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )
-  } catch (error) {
+  } catch (error: any) {
+    console.error(`[CHECKOUT_ERROR] Error in razorpay-create-subscription:`, error?.message || error)
+
     // PRE-RAZORPAY API FAILURE RECOVERY: Release lease token if Razorpay sub was not created yet
-    if (tenantId && checkoutToken && !rzpSubIdCreated && supabaseAdmin) {
-      await supabaseAdmin.rpc('release_checkout_reservation', {
-        p_tenant_id: tenantId,
-        p_checkout_token: checkoutToken,
-        p_reason: error.message
-      }).catch((e: any) => console.error("Failed to release checkout lease", e))
+    try {
+      if (tenantId && checkoutToken && !rzpSubIdCreated && supabaseAdmin) {
+        await supabaseAdmin.rpc('release_checkout_reservation', {
+          p_tenant_id: tenantId,
+          p_checkout_token: checkoutToken,
+          p_reason: String(error?.message || error || 'Unknown checkout error')
+        })
+      }
+    } catch (releaseErr) {
+      console.error("Failed to release checkout lease", releaseErr)
     }
 
-    const isAuthError = error.message?.includes('Unauthorized') || error.message?.includes('Missing Authorization')
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMsg = String(error?.message || error || 'Unknown checkout error')
+    const isAuthError = errorMsg.includes('Unauthorized') || errorMsg.includes('Missing Authorization')
+    return new Response(JSON.stringify({ error: errorMsg }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: isAuthError ? 401 : (error.message?.includes('reservation is currently in progress') ? 409 : 400),
+      status: isAuthError ? 401 : (errorMsg.includes('reservation is currently in progress') ? 409 : 400),
     })
   }
 })

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
-import { Check, Zap, Crown, CreditCard, Shield, X, Lock, Sparkles, ArrowRight, FileText } from 'lucide-react';
+import { Check, Zap, Crown, CreditCard, Shield, X, Lock, Sparkles, ArrowRight, FileText, Building2, AlertTriangle, Loader2, CheckCircle2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { createPortal } from 'react-dom';
 import { getTrialPresentationState } from '../lib/trial';
@@ -8,6 +8,8 @@ import { resolveEffectivePlan } from '../utils/planEntitlements';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PlanComparison, { getSanitizedFeatures } from '../components/PlanComparison';
 import SaaSInvoiceModal from '../components/SaaSInvoiceModal';
+import { validateTenantBilling, loadTenantBillingProfile, saveTenantBillingProfile } from '../lib/tenantBilling';
+import { INDIAN_STATES, getStateCodeByName } from '../lib/indianStates';
 
 const formatOfferDate = (dateString) => {
   if (!dateString) return '';
@@ -40,6 +42,16 @@ export default function Subscription() {
   const [switchTrialModal, setSwitchTrialModal] = useState({ isOpen: false, targetPlanKey: null });
   const [switchSuccessMessage, setSwitchSuccessMessage] = useState(null);
   const [selectedInvoicePayment, setSelectedInvoicePayment] = useState(null);
+
+  // Pre-Checkout Billing Validation Prompt Modal State
+  const [billingPromptModal, setBillingPromptModal] = useState({
+    isOpen: false,
+    pendingPlanId: null,
+    billing: null,
+    errors: {},
+    saving: false,
+    error: null
+  });
 
   const [activeSubscription, setActiveSubscription] = useState(null);
   const [paymentHistory, setPaymentHistory] = useState([]);
@@ -360,7 +372,62 @@ export default function Subscription() {
        return;
     }
 
+    // MANDATORY PRE-CHECKOUT BILLING VALIDATION GUARD
+    const billing = loadTenantBillingProfile(profile);
+    const validation = validateTenantBilling(billing);
+    if (!validation.isValid) {
+      setBillingPromptModal({
+        isOpen: true,
+        pendingPlanId: planId,
+        billing: billing,
+        errors: validation.errors,
+        saving: false,
+        error: null
+      });
+      return;
+    }
+
     setCheckoutModal({ isOpen: true, planId });
+  };
+
+  const handleSaveBillingAndContinue = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const billingToSave = billingPromptModal.billing;
+    const validation = validateTenantBilling(billingToSave);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0] || 'Please complete all required billing fields.';
+      setBillingPromptModal(prev => ({
+        ...prev,
+        errors: validation.errors,
+        error: firstError
+      }));
+      return;
+    }
+
+    setBillingPromptModal(prev => ({ ...prev, saving: true, error: null }));
+    try {
+      const savedBilling = await saveTenantBillingProfile(supabase, billingToSave);
+      const currentGlobal = profile?.global_settings || {};
+      const updatedProfile = {
+        ...profile,
+        global_settings: {
+          ...currentGlobal,
+          billing: savedBilling
+        }
+      };
+      setProfile(updatedProfile);
+      const pendingPlan = billingPromptModal.pendingPlanId;
+      setBillingPromptModal({ isOpen: false, pendingPlanId: null, billing: null, errors: {}, saving: false, error: null });
+      if (pendingPlan) {
+        setCheckoutModal({ isOpen: true, planId: pendingPlan });
+      }
+    } catch (err) {
+      setBillingPromptModal(prev => ({
+        ...prev,
+        saving: false,
+        error: err.message || 'Failed to save billing profile.'
+      }));
+    }
   };
 
   const processPayment = async (planId) => {
@@ -403,12 +470,14 @@ export default function Subscription() {
 
       if (error || (data && data.error)) {
         let errMsg = data?.error;
+        let errCode = data?.code || data?.error;
         if (!errMsg && error) {
           if (error.context && typeof error.context.clone === 'function' && !error.context.bodyUsed) {
             try {
               const clonedRes = error.context.clone();
               const errJson = await clonedRes.json();
               errMsg = errJson?.error || errJson?.message;
+              if (errJson?.error) errCode = errJson.error;
             } catch {
               try {
                 const clonedResText = error.context.clone();
@@ -425,6 +494,25 @@ export default function Subscription() {
             errMsg = error.message;
           }
         }
+
+        // Server-side MISSING_BILLING_DETAILS interceptor
+        if (errCode === 'MISSING_BILLING_DETAILS' || errMsg === 'MISSING_BILLING_DETAILS' || (typeof errMsg === 'string' && (errMsg.includes('MISSING_BILLING_DETAILS') || errMsg.includes('Billing profile incomplete')))) {
+          setLoading(null);
+          setCheckoutError(null);
+          setCheckoutModal({ isOpen: false, planId: null });
+          const currentBilling = loadTenantBillingProfile(profile);
+          const validation = validateTenantBilling(currentBilling);
+          setBillingPromptModal({
+            isOpen: true,
+            pendingPlanId: planId,
+            billing: currentBilling,
+            errors: validation.errors,
+            saving: false,
+            error: null
+          });
+          return;
+        }
+
         throw new Error(errMsg || 'Failed to initialize checkout');
       }
 
@@ -1235,6 +1323,273 @@ export default function Subscription() {
                 </div>
               );
             })()}
+          </div>
+        </div>
+      , document.body)}
+
+      {/* Pre-Checkout Billing Profile Prompt Modal */}
+      {billingPromptModal.isOpen && createPortal(
+        <div className="modal-overlay" style={{ zIndex: 10000 }}>
+          <div className="modal-content" style={{ maxWidth: '540px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.25rem' }}>
+                <Building2 color="var(--primary)" size={22} />
+                Billing Details Required
+              </h2>
+              <button 
+                type="button" 
+                className="btn-outline" 
+                style={{ padding: '0.4rem', borderRadius: '50%' }}
+                onClick={() => setBillingPromptModal({ isOpen: false, pendingPlanId: null, billing: null, errors: {}, saving: false, error: null })}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{ padding: '0.75rem 1rem', borderRadius: '8px', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', marginBottom: '1.25rem' }}>
+              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.5 }}>
+                Before subscribing to <strong>{getPlanName(billingPromptModal.pendingPlanId)}</strong>, please complete your billing profile. These details are required for your official payment acknowledgments and invoices.
+              </p>
+            </div>
+
+            {billingPromptModal.error && (
+              <div style={{ 
+                marginBottom: '1rem', 
+                padding: '0.75rem 1rem', 
+                borderRadius: '8px', 
+                background: 'rgba(239, 68, 68, 0.1)', 
+                border: '1px solid rgba(239, 68, 68, 0.3)', 
+                color: '#ef4444', 
+                fontSize: '0.85rem', 
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}>
+                <AlertTriangle size={16} />
+                <span>{billingPromptModal.error}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveBillingAndContinue}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Customer / Business Name <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    className={`form-input ${billingPromptModal.errors?.name ? 'is-invalid' : ''}`}
+                    value={billingPromptModal.billing?.name || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setBillingPromptModal(prev => ({
+                        ...prev,
+                        billing: { ...prev.billing, name: val },
+                        errors: { ...prev.errors, name: null }
+                      }));
+                    }}
+                    placeholder="e.g. Acme Resorts Pvt Ltd or John Doe" 
+                    required
+                  />
+                  {billingPromptModal.errors?.name && (
+                    <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{billingPromptModal.errors.name}</span>
+                  )}
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Billing Email <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="email" 
+                    className={`form-input ${billingPromptModal.errors?.email ? 'is-invalid' : ''}`}
+                    value={billingPromptModal.billing?.email || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setBillingPromptModal(prev => ({
+                        ...prev,
+                        billing: { ...prev.billing, email: val },
+                        errors: { ...prev.errors, email: null }
+                      }));
+                    }}
+                    placeholder="e.g. accounts@acmeresorts.com" 
+                    required
+                  />
+                  {billingPromptModal.errors?.email && (
+                    <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{billingPromptModal.errors.email}</span>
+                  )}
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Address Line 1 <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    className={`form-input ${billingPromptModal.errors?.address || billingPromptModal.errors?.address_line1 ? 'is-invalid' : ''}`}
+                    value={billingPromptModal.billing?.address_line1 || billingPromptModal.billing?.address || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setBillingPromptModal(prev => ({
+                        ...prev,
+                        billing: { ...prev.billing, address_line1: val, address: val },
+                        errors: { ...prev.errors, address: null, address_line1: null }
+                      }));
+                    }}
+                    placeholder="Flat / Building / Street" 
+                    required
+                  />
+                  {(billingPromptModal.errors?.address || billingPromptModal.errors?.address_line1) && (
+                    <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{billingPromptModal.errors?.address || billingPromptModal.errors?.address_line1}</span>
+                  )}
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Address Line 2 (Optional)
+                  </label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={billingPromptModal.billing?.address_line2 || ''} 
+                    onChange={e => {
+                      const val = e.target.value;
+                      setBillingPromptModal(prev => ({
+                        ...prev,
+                        billing: { ...prev.billing, address_line2: val }
+                      }));
+                    }}
+                    placeholder="Locality / Landmark" 
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.75rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                      City <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      className={`form-input ${billingPromptModal.errors?.city ? 'is-invalid' : ''}`}
+                      value={billingPromptModal.billing?.city || ''} 
+                      onChange={e => {
+                        const val = e.target.value;
+                        setBillingPromptModal(prev => ({
+                          ...prev,
+                          billing: { ...prev.billing, city: val },
+                          errors: { ...prev.errors, city: null }
+                        }));
+                      }}
+                      placeholder="e.g. Bengaluru" 
+                      required
+                    />
+                    {billingPromptModal.errors?.city && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{billingPromptModal.errors.city}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                      State / UT <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <select
+                      className={`form-input ${billingPromptModal.errors?.state ? 'is-invalid' : ''}`}
+                      value={billingPromptModal.billing?.state || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const code = getStateCodeByName(val) || '';
+                        setBillingPromptModal(prev => ({
+                          ...prev,
+                          billing: { ...prev.billing, state: val, state_code: code },
+                          errors: { ...prev.errors, state: null }
+                        }));
+                      }}
+                      required
+                    >
+                      <option value="">-- State --</option>
+                      {INDIAN_STATES.map(s => (
+                        <option key={s.code} value={s.name}>
+                          {s.name} ({s.code})
+                        </option>
+                      ))}
+                    </select>
+                    {billingPromptModal.errors?.state && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{billingPromptModal.errors.state}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                      PIN Code <span style={{ color: '#ef4444' }}>*</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      maxLength={6}
+                      className={`form-input ${billingPromptModal.errors?.pincode ? 'is-invalid' : ''}`}
+                      value={billingPromptModal.billing?.pincode || ''} 
+                      onChange={e => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setBillingPromptModal(prev => ({
+                          ...prev,
+                          billing: { ...prev.billing, pincode: digits },
+                          errors: { ...prev.errors, pincode: null }
+                        }));
+                      }}
+                      placeholder="e.g. 560001" 
+                      required
+                    />
+                    {billingPromptModal.errors?.pincode && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{billingPromptModal.errors.pincode}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: '0.875rem' }}>
+                    Business GSTIN <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(Optional)</span>
+                  </label>
+                  <input 
+                    type="text" 
+                    maxLength={15}
+                    className={`form-input ${billingPromptModal.errors?.gstin ? 'is-invalid' : ''}`}
+                    value={billingPromptModal.billing?.gstin || ''} 
+                    onChange={e => {
+                      const val = e.target.value.toUpperCase();
+                      setBillingPromptModal(prev => ({
+                        ...prev,
+                        billing: { ...prev.billing, gstin: val },
+                        errors: { ...prev.errors, gstin: null }
+                      }));
+                    }}
+                    placeholder="e.g. 29AAAAA0000A1Z5" 
+                  />
+                  {billingPromptModal.errors?.gstin && (
+                    <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.2rem', display: 'block' }}>{billingPromptModal.errors.gstin}</span>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem', justifyContent: 'flex-end' }}>
+                <button 
+                  type="button" 
+                  className="btn btn-outline" 
+                  onClick={() => setBillingPromptModal({ isOpen: false, pendingPlanId: null, billing: null, errors: {}, saving: false, error: null })}
+                  disabled={billingPromptModal.saving}
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  className="btn btn-primary" 
+                  disabled={billingPromptModal.saving}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  {billingPromptModal.saving ? <Loader2 size={16} className="spin" /> : <Lock size={16} />}
+                  {billingPromptModal.saving ? 'Saving...' : 'Save & Proceed to Checkout'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       , document.body)}

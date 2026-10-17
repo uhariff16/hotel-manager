@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor, X, Tag, Receipt, ReceiptText, PackagePlus, UserRound, Building2, Lock } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, CheckCircle, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor, X, Tag, Receipt, ReceiptText, PackagePlus, UserRound, Building2, Lock, AlertCircle, Info, CreditCard } from 'lucide-react';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
+import { INDIAN_STATES, getStateCodeByName } from '../lib/indianStates';
+import { validateTenantBilling, formatFullAddress, loadTenantBillingProfile, saveTenantBillingProfile, saveTenantGuestGstSettings } from '../lib/tenantBilling';
 
 const DEFAULT_CONFIRM_TEMPLATE = `🏡 Booking Confirmed – {resort_name}
 
@@ -194,12 +196,46 @@ export default function Settings() {
     address: profile?.global_settings?.tenant_billing?.address || ''
   });
   const [idRetentionDays, setIdRetentionDays] = useState(profile?.global_settings?.id_retention_days || 30);
-    const [tenantGst, setTenantGst] = useState({
+  const [tenantGst, setTenantGst] = useState({
     enabled: profile?.global_settings?.tenant_gst?.enabled || false,
     slabThreshold: profile?.global_settings?.tenant_gst?.slabThreshold ?? 7500,
     lowerRate: profile?.global_settings?.tenant_gst?.lowerRate ?? 5,
     higherRate: profile?.global_settings?.tenant_gst?.higherRate ?? 18
   });
+
+  // Stay Pilot Subscription Billing Profile State
+  const [subscriptionBilling, setSubscriptionBilling] = useState(() => loadTenantBillingProfile(profile));
+  const [subscriptionBillingErrors, setSubscriptionBillingErrors] = useState({});
+  const [savingSubscriptionBilling, setSavingSubscriptionBilling] = useState(false);
+  const [subscriptionBillingSuccess, setSubscriptionBillingSuccess] = useState(false);
+  const [subscriptionBillingError, setSubscriptionBillingError] = useState(null);
+
+  // Guest GST Settings Save States
+  const [savingGuestGst, setSavingGuestGst] = useState(false);
+  const [guestGstSuccess, setGuestGstSuccess] = useState(false);
+  const [guestGstError, setGuestGstError] = useState(null);
+
+  // Synchronize state when store profile changes/loads
+  useEffect(() => {
+    if (profile) {
+      if (!userName && profile.full_name) {
+        setUserName(profile.full_name);
+      }
+      setBillingDetails({
+        companyName: profile?.global_settings?.tenant_billing?.companyName || '',
+        gstin: profile?.global_settings?.tenant_billing?.gstin || '',
+        address: profile?.global_settings?.tenant_billing?.address || ''
+      });
+      setTenantGst({
+        enabled: profile?.global_settings?.tenant_gst?.enabled || false,
+        slabThreshold: profile?.global_settings?.tenant_gst?.slabThreshold ?? 7500,
+        lowerRate: profile?.global_settings?.tenant_gst?.lowerRate ?? 5,
+        higherRate: profile?.global_settings?.tenant_gst?.higherRate ?? 18
+      });
+      setSubscriptionBilling(loadTenantBillingProfile(profile));
+    }
+  }, [profile]);
+
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
   useEffect(() => {
@@ -634,31 +670,89 @@ export default function Settings() {
     e.preventDefault();
     setSavingGeneral(true);
     try {
-      // Update Profile (User Name and Billing Details)
-      const currentGlobalSettings = profile?.global_settings || {};
-      const newGlobalSettings = {
-        ...currentGlobalSettings,
-        tenant_billing: billingDetails,
-        tenant_gst: tenantGst
-      };
-
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
-        .update({ 
-          full_name: userName,
-          global_settings: newGlobalSettings
-        })
+        .update({ full_name: userName })
         .eq('id', profile.id)
         .select();
       if (profileError) throw profileError;
       if (profileData && profileData.length > 0) {
-        setProfile(profileData[0]);
+        setProfile({ ...profile, full_name: profileData[0].full_name });
       }
-      alert("Profile and Billing Details updated successfully!");
+      alert("Profile name updated successfully!");
     } catch (err) {
       alert("Error updating profile: " + err.message);
     } finally {
       setSavingGeneral(false);
+    }
+  };
+
+  const handleSaveGuestGst = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    setSavingGuestGst(true);
+    setGuestGstError(null);
+    setGuestGstSuccess(false);
+    try {
+      await saveTenantGuestGstSettings(supabase, {
+        tenantGst: {
+          enabled: Boolean(tenantGst.enabled),
+          slabThreshold: Number(tenantGst.slabThreshold) || 7500,
+          lowerRate: Number(tenantGst.lowerRate) || 5,
+          higherRate: Number(tenantGst.higherRate) || 18
+        },
+        tenantBilling: {
+          companyName: (billingDetails.companyName || '').trim(),
+          gstin: (billingDetails.gstin || '').trim().toUpperCase(),
+          address: (billingDetails.address || '').trim()
+        }
+      });
+      const currentGlobal = profile?.global_settings || {};
+      setProfile({
+        ...profile,
+        global_settings: {
+          ...currentGlobal,
+          tenant_gst: tenantGst,
+          tenant_billing: billingDetails
+        }
+      });
+      setGuestGstSuccess(true);
+      setTimeout(() => setGuestGstSuccess(false), 4000);
+    } catch (err) {
+      setGuestGstError(err.message || "Failed to update guest GST settings.");
+    } finally {
+      setSavingGuestGst(false);
+    }
+  };
+
+  const handleSaveSubscriptionBilling = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    const validation = validateTenantBilling(subscriptionBilling);
+    setSubscriptionBillingErrors(validation.errors);
+    if (!validation.isValid) {
+      const firstError = Object.values(validation.errors)[0] || 'Please resolve the highlighted billing errors.';
+      setSubscriptionBillingError(firstError);
+      return;
+    }
+
+    setSavingSubscriptionBilling(true);
+    setSubscriptionBillingError(null);
+    setSubscriptionBillingSuccess(false);
+    try {
+      const savedBilling = await saveTenantBillingProfile(supabase, subscriptionBilling);
+      const currentGlobal = profile?.global_settings || {};
+      setProfile({
+        ...profile,
+        global_settings: {
+          ...currentGlobal,
+          billing: savedBilling
+        }
+      });
+      setSubscriptionBillingSuccess(true);
+      setTimeout(() => setSubscriptionBillingSuccess(false), 4000);
+    } catch (err) {
+      setSubscriptionBillingError(err.message || "Failed to update billing profile.");
+    } finally {
+      setSavingSubscriptionBilling(false);
     }
   };
 
@@ -1129,129 +1223,386 @@ export default function Settings() {
 
         {/* BILLING & GST TAB */}
         {activeTab === 'billing_gst' && (
-          <form onSubmit={saveGeneralSettings} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
-            {/* Guest Billing & GST Card */}
-            <div className="settings-card">
-              <div className="settings-card-header">
-                <div className="settings-card-icon">
-                  <ReceiptText size={20} />
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            {/* SECTION A: Guest Booking GST Settings */}
+            <form onSubmit={handleSaveGuestGst} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+              <div className="settings-card">
+                <div className="settings-card-header">
+                  <div className="settings-card-icon" style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6' }}>
+                    <ReceiptText size={20} />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <h2 className="settings-card-title">Property Guest GST Settings</h2>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.1)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.2)' }}>
+                        Guest Receipts
+                      </span>
+                    </div>
+                    <p className="settings-card-desc">Configure GST rates and property details that appear on receipts and folios YOU issue to YOUR GUESTS.</p>
+                  </div>
                 </div>
-                <div>
-                  <h2 className="settings-card-title">Guest GST Billing</h2>
-                  <p className="settings-card-desc">Configure GST for guest bookings and invoices based on applicable room tariff slabs.</p>
-                </div>
-              </div>
 
-              <div style={{ padding: '1.25rem', borderRadius: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
-                  <label className="form-label" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)' }}>Enable GST Billing</label>
-                  <label className="switch" style={{ margin: 0 }}>
-                    <input 
-                      type="checkbox" 
-                      checked={tenantGst.enabled}
-                      onChange={e => setTenantGst({...tenantGst, enabled: e.target.checked})}
-                    />
-                    <span className="slider round"></span>
-                  </label>
-                </div>
-                <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Apply GST to eligible guest bookings and invoices based on the applicable room tariff slab.</p>
-              </div>
+                {guestGstSuccess && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', color: '#059669', fontSize: '0.875rem', fontWeight: 600, marginBottom: '1.25rem' }}>
+                    <CheckCircle2 size={18} />
+                    <span>Property Guest GST settings updated successfully.</span>
+                  </div>
+                )}
 
-              {tenantGst.enabled && (
-                <div style={{ background: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)' }}>
-                  <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: 700 }}>GST Slab Configuration</h4>
-                  
-                  <div className="form-group">
-                    <label className="form-label">Tariff Slab Threshold (₹)</label>
-                    <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>What is the maximum Per-Room-Per-Night price before the higher tax bracket applies?</p>
+                {guestGstError && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', fontSize: '0.875rem', fontWeight: 600, marginBottom: '1.25rem' }}>
+                    <AlertTriangle size={18} />
+                    <span>{guestGstError}</span>
+                  </div>
+                )}
+
+                <div style={{ padding: '1.25rem', borderRadius: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', marginBottom: '0.35rem' }}>
+                    <label className="form-label" style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-main)' }}>Enable Guest GST Billing</label>
+                    <label className="switch" style={{ margin: 0 }}>
+                      <input 
+                        type="checkbox" 
+                        checked={tenantGst.enabled}
+                        onChange={e => setTenantGst({...tenantGst, enabled: e.target.checked})}
+                      />
+                      <span className="slider round"></span>
+                    </label>
+                  </div>
+                  <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Apply GST to eligible guest bookings and invoices based on the applicable room tariff slab.</p>
+                </div>
+
+                {tenantGst.enabled && (
+                  <div style={{ background: 'var(--bg-color)', padding: '1.25rem', borderRadius: '12px', border: '1px solid var(--border)', marginBottom: '1.5rem' }}>
+                    <h4 style={{ margin: '0 0 1rem 0', fontSize: '1rem', color: 'var(--text-main)', fontWeight: 700 }}>GST Slab Configuration</h4>
+                    
+                    <div className="form-group">
+                      <label className="form-label">Tariff Slab Threshold (₹)</label>
+                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>What is the maximum Per-Room-Per-Night price before the higher tax bracket applies?</p>
+                      <input 
+                        type="number" 
+                        className="form-input" 
+                        value={tenantGst.slabThreshold} 
+                        onChange={e => setTenantGst({...tenantGst, slabThreshold: e.target.value})}
+                      />
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
+                      <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                        <label className="form-label">Lower GST Rate (%)</label>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>at or below</strong> ₹{tenantGst.slabThreshold || 0}</p>
+                        <input 
+                          type="number" 
+                          className="form-input" 
+                          value={tenantGst.lowerRate} 
+                          onChange={e => setTenantGst({...tenantGst, lowerRate: e.target.value})}
+                        />
+                      </div>
+                      <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
+                        <label className="form-label">Higher GST Rate (%)</label>
+                        <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>above</strong> ₹{tenantGst.slabThreshold || 0}</p>
+                        <input 
+                          type="number" 
+                          className="form-input" 
+                          value={tenantGst.higherRate} 
+                          onChange={e => setTenantGst({...tenantGst, higherRate: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Property Identity for Guest Receipts */}
+                <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: 700 }}>Property Identity for Guest Invoices</h4>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Property / Legal Name</label>
                     <input 
-                      type="number" 
+                      type="text" 
                       className="form-input" 
-                      value={tenantGst.slabThreshold} 
-                      onChange={e => setTenantGst({...tenantGst, slabThreshold: e.target.value})}
+                      value={billingDetails.companyName} 
+                      onChange={e => setBillingDetails({...billingDetails, companyName: e.target.value})} 
+                      placeholder="e.g. Grand Resort Pvt Ltd" 
+                    />
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label">Property GSTIN (Optional)</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={billingDetails.gstin} 
+                      onChange={e => setBillingDetails({...billingDetails, gstin: e.target.value})} 
+                      placeholder="e.g. 29GGGGG1314R9Z6" 
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                  <label className="form-label">Property Registered Address</label>
+                  <textarea 
+                    className="form-input" 
+                    value={billingDetails.address} 
+                    onChange={e => setBillingDetails({...billingDetails, address: e.target.value})} 
+                    placeholder="Registered business address printed on guest receipts"
+                    rows={2}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <button type="submit" className="btn btn-primary" disabled={savingGuestGst} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {savingGuestGst ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                    {savingGuestGst ? 'Saving Guest GST...' : 'Save Guest GST Settings'}
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            {/* SECTION B: Stay Pilot Subscription Billing Profile */}
+            <form onSubmit={handleSaveSubscriptionBilling} style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+              <div className="settings-card" style={{ border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                <div className="settings-card-header">
+                  <div className="settings-card-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#059669' }}>
+                    <Building2 size={20} />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <h2 className="settings-card-title">Stay Pilot Subscription Billing Profile</h2>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '2px 8px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.1)', color: '#059669', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
+                          SaaS Invoices
+                        </span>
+                      </div>
+                      <div>
+                        {validateTenantBilling(subscriptionBilling).isValid ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, padding: '4px 10px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                            <CheckCircle2 size={14} /> Profile Complete
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, padding: '4px 10px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                            <AlertTriangle size={14} /> Incomplete — Required for Paid Subscriptions
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p className="settings-card-desc">
+                      Authoritative legal identity and tax address used on commercial payment acknowledgments and invoices issued by <strong>Stay Pilot to YOU</strong>.
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.875rem 1rem', borderRadius: '10px', background: 'rgba(59, 130, 246, 0.05)', border: '1px solid rgba(59, 130, 246, 0.2)', marginBottom: '1.25rem', display: 'flex', alignItems: 'flex-start', gap: '0.65rem' }}>
+                  <Info size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: '2px' }} />
+                  <div style={{ fontSize: '0.825rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    Under Indian commercial accounting guidelines, official SaaS payment acknowledgments require customer legal name, verified email, physical address, state, and 6-digit PIN code. Completing this profile ensures instantaneous tax receipt generation upon subscription payment.
+                  </div>
+                </div>
+
+                {subscriptionBillingSuccess && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderRadius: '8px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.25)', color: '#059669', fontSize: '0.875rem', fontWeight: 600, marginBottom: '1.25rem' }}>
+                    <CheckCircle2 size={18} />
+                    <span>Subscription billing profile saved successfully.</span>
+                  </div>
+                )}
+
+                {subscriptionBillingError && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderRadius: '8px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.25)', color: '#ef4444', fontSize: '0.875rem', fontWeight: 600, marginBottom: '1.25rem' }}>
+                    <AlertTriangle size={18} />
+                    <span>{subscriptionBillingError}</span>
+                  </div>
+                )}
+
+                {/* Form Fields */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Customer / Business Name <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      className={`form-input ${subscriptionBillingErrors.name ? 'is-invalid' : ''}`}
+                      value={subscriptionBilling.name || ''} 
+                      onChange={e => {
+                        setSubscriptionBilling({ ...subscriptionBilling, name: e.target.value });
+                        if (subscriptionBillingErrors.name) setSubscriptionBillingErrors({ ...subscriptionBillingErrors, name: null });
+                      }}
+                      placeholder="e.g. Acme Resorts Pvt Ltd or John Doe" 
+                      required
+                    />
+                    {subscriptionBillingErrors.name && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem', display: 'block' }}>{subscriptionBillingErrors.name}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Billing Email <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                      type="email" 
+                      className={`form-input ${subscriptionBillingErrors.email ? 'is-invalid' : ''}`}
+                      value={subscriptionBilling.email || ''} 
+                      onChange={e => {
+                        setSubscriptionBilling({ ...subscriptionBilling, email: e.target.value });
+                        if (subscriptionBillingErrors.email) setSubscriptionBillingErrors({ ...subscriptionBillingErrors, email: null });
+                      }}
+                      placeholder="e.g. accounts@acmeresorts.com" 
+                      required
+                    />
+                    {subscriptionBillingErrors.email && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem', display: 'block' }}>{subscriptionBillingErrors.email}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Address Line 1 <span style={{ color: '#ef4444' }}>*</span></label>
+                  <input 
+                    type="text" 
+                    className={`form-input ${subscriptionBillingErrors.address_line1 || subscriptionBillingErrors.address ? 'is-invalid' : ''}`}
+                    value={subscriptionBilling.address_line1 || ''} 
+                    onChange={e => {
+                      setSubscriptionBilling({ ...subscriptionBilling, address_line1: e.target.value });
+                      if (subscriptionBillingErrors.address_line1 || subscriptionBillingErrors.address) {
+                        setSubscriptionBillingErrors({ ...subscriptionBillingErrors, address_line1: null, address: null });
+                      }
+                    }}
+                    placeholder="Flat / Building / Plot No., Street Name" 
+                    required
+                  />
+                  {(subscriptionBillingErrors.address_line1 || subscriptionBillingErrors.address) && (
+                    <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem', display: 'block' }}>{subscriptionBillingErrors.address_line1 || subscriptionBillingErrors.address}</span>
+                  )}
+                </div>
+
+                <div className="form-group" style={{ marginBottom: '1.25rem' }}>
+                  <label className="form-label" style={{ fontWeight: 600 }}>Address Line 2 (Optional)</label>
+                  <input 
+                    type="text" 
+                    className="form-input" 
+                    value={subscriptionBilling.address_line2 || ''} 
+                    onChange={e => setSubscriptionBilling({ ...subscriptionBilling, address_line2: e.target.value })}
+                    placeholder="Locality, Landmark, Area" 
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>City <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      className={`form-input ${subscriptionBillingErrors.city ? 'is-invalid' : ''}`}
+                      value={subscriptionBilling.city || ''} 
+                      onChange={e => {
+                        setSubscriptionBilling({ ...subscriptionBilling, city: e.target.value });
+                        if (subscriptionBillingErrors.city) setSubscriptionBillingErrors({ ...subscriptionBillingErrors, city: null });
+                      }}
+                      placeholder="e.g. Bengaluru" 
+                      required
+                    />
+                    {subscriptionBillingErrors.city && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem', display: 'block' }}>{subscriptionBillingErrors.city}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>State / Union Territory <span style={{ color: '#ef4444' }}>*</span></label>
+                    <select
+                      className={`form-input ${subscriptionBillingErrors.state ? 'is-invalid' : ''}`}
+                      value={subscriptionBilling.state || ''}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const code = getStateCodeByName(val) || '';
+                        setSubscriptionBilling({
+                          ...subscriptionBilling,
+                          state: val,
+                          state_code: code
+                        });
+                        if (subscriptionBillingErrors.state) setSubscriptionBillingErrors({ ...subscriptionBillingErrors, state: null });
+                      }}
+                      required
+                    >
+                      <option value="">-- Select State / UT --</option>
+                      {INDIAN_STATES.map(s => (
+                        <option key={s.code} value={s.name}>
+                          {s.name} ({s.code})
+                        </option>
+                      ))}
+                    </select>
+                    {subscriptionBillingErrors.state && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem', display: 'block' }}>{subscriptionBillingErrors.state}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>PIN Code <span style={{ color: '#ef4444' }}>*</span></label>
+                    <input 
+                      type="text" 
+                      maxLength={6}
+                      className={`form-input ${subscriptionBillingErrors.pincode ? 'is-invalid' : ''}`}
+                      value={subscriptionBilling.pincode || ''} 
+                      onChange={e => {
+                        const digits = e.target.value.replace(/\D/g, '').slice(0, 6);
+                        setSubscriptionBilling({ ...subscriptionBilling, pincode: digits });
+                        if (subscriptionBillingErrors.pincode) setSubscriptionBillingErrors({ ...subscriptionBillingErrors, pincode: null });
+                      }}
+                      placeholder="e.g. 560001" 
+                      required
+                    />
+                    {subscriptionBillingErrors.pincode && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem', display: 'block' }}>{subscriptionBillingErrors.pincode}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>Country</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={subscriptionBilling.country || 'India'} 
+                      readOnly 
+                      style={{ backgroundColor: 'var(--bg-secondary)', cursor: 'not-allowed' }}
                     />
                   </div>
 
-                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                    <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
-                      <label className="form-label">Lower GST Rate (%)</label>
-                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>at or below</strong> ₹{tenantGst.slabThreshold || 0}</p>
-                      <input 
-                        type="number" 
-                        className="form-input" 
-                        value={tenantGst.lowerRate} 
-                        onChange={e => setTenantGst({...tenantGst, lowerRate: e.target.value})}
-                      />
-                    </div>
-                    <div className="form-group" style={{ flex: 1, minWidth: '200px' }}>
-                      <label className="form-label">Higher GST Rate (%)</label>
-                      <p style={{ margin: '0 0 0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>For rooms priced <strong>above</strong> ₹{tenantGst.slabThreshold || 0}</p>
-                      <input 
-                        type="number" 
-                        className="form-input" 
-                        value={tenantGst.higherRate} 
-                        onChange={e => setTenantGst({...tenantGst, higherRate: e.target.value})}
-                      />
-                    </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>
+                      Business GSTIN <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>(Optional)</span>
+                    </label>
+                    <input 
+                      type="text" 
+                      maxLength={15}
+                      className={`form-input ${subscriptionBillingErrors.gstin ? 'is-invalid' : ''}`}
+                      value={subscriptionBilling.gstin || ''} 
+                      onChange={e => {
+                        const val = e.target.value.toUpperCase();
+                        setSubscriptionBilling({ ...subscriptionBilling, gstin: val });
+                        if (subscriptionBillingErrors.gstin) setSubscriptionBillingErrors({ ...subscriptionBillingErrors, gstin: null });
+                      }}
+                      placeholder="e.g. 29AAAAA0000A1Z5" 
+                    />
+                    {subscriptionBillingErrors.gstin && (
+                      <span style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '0.25rem', display: 'block' }}>{subscriptionBillingErrors.gstin}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: 600 }}>GST State Code</label>
+                    <input 
+                      type="text" 
+                      className="form-input" 
+                      value={subscriptionBilling.state_code || getStateCodeByName(subscriptionBilling.state) || '--'} 
+                      readOnly 
+                      style={{ backgroundColor: 'var(--bg-secondary)', cursor: 'not-allowed' }}
+                    />
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Property GST Details Card */}
-            <div className="settings-card">
-              <div className="settings-card-header">
-                <div className="settings-card-icon">
-                  <Building2 size={20} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                    <h2 className="settings-card-title">Property GST Details</h2>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 500, padding: '2px 8px', borderRadius: '12px', background: 'var(--bg-secondary)', color: 'var(--text-muted)', border: '1px solid var(--border)' }}>Optional</span>
-                  </div>
-                  <p className="settings-card-desc">Business and GST information used on your guest invoices.</p>
+                <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+                  <button type="submit" className="btn btn-primary" disabled={savingSubscriptionBilling} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                    {savingSubscriptionBilling ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                    {savingSubscriptionBilling ? 'Saving Billing Profile...' : 'Save Subscription Billing Profile'}
+                  </button>
                 </div>
               </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem', marginBottom: '1.25rem' }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">Property / Legal Name</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    value={billingDetails.companyName} 
-                    onChange={e => setBillingDetails({...billingDetails, companyName: e.target.value})} 
-                    placeholder="e.g. Grand Resort Pvt Ltd" 
-                  />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label">GSTIN</label>
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    value={billingDetails.gstin} 
-                    onChange={e => setBillingDetails({...billingDetails, gstin: e.target.value})} 
-                    placeholder="e.g. 29GGGGG1314R9Z6" 
-                  />
-                </div>
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">Registered Address</label>
-                <textarea 
-                  className="form-input" 
-                  value={billingDetails.address} 
-                  onChange={e => setBillingDetails({...billingDetails, address: e.target.value})} 
-                  placeholder="Registered business address"
-                  rows={3}
-                />
-              </div>
-
-              <button type="submit" className="btn btn-primary" disabled={savingGeneral} style={{ marginTop: '0.5rem' }}>
-                {savingGeneral ? 'Saving...' : 'Save GST Settings'}
-              </button>
-            </div>
-          </form>
+            </form>
+          </div>
         )}
 
           {/* TEMPLATES MANAGEMENT TAB */}
