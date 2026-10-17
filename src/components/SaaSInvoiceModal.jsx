@@ -1,21 +1,28 @@
 import React from 'react';
-import { X, Printer, CheckCircle2, ShieldCheck } from 'lucide-react';
+import { X, Printer, CheckCircle2, ShieldCheck, Ban, AlertTriangle, Clock } from 'lucide-react';
 
 export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceRecord, profile, globalTaxSettings }) {
   if (!isOpen || (!payment && !invoiceRecord)) return null;
 
   // Use immutable snapshot stored invoice record if available; otherwise calculate from payment & current tax settings
-  const inv = invoiceRecord || payment?.saas_invoice;
+  const inv = invoiceRecord || payment?.saas_invoice || (Array.isArray(payment?.saas_invoices) ? payment.saas_invoices[0] : payment?.saas_invoices);
+
+  const isVoided = inv?.invoice_status === 'void' || payment?.invoice_status === 'void';
+  const isPending = !inv && payment?.invoice_status === 'pending';
+  const isManualReview = !inv && payment?.invoice_status === 'manual_review';
+  const isFailed = !inv && payment?.invoice_status === 'failed';
 
   const isGstActive = inv 
-    ? (inv.tax_type !== 'exempt' && Number(inv.gst_rate) > 0)
+    ? (inv.tax_type !== 'exempt' && inv.tax_type !== 'unregistered' && Number(inv.gst_rate) > 0)
     : (Boolean(globalTaxSettings?.enabled) && Number(globalTaxSettings?.rate || 0) > 0);
 
   const gstRate = inv ? Number(inv.gst_rate || 0) : (isGstActive ? Number(globalTaxSettings.rate) : 0);
-  const taxType = inv ? inv.tax_type : (isGstActive ? 'intra_state' : 'exempt');
+  const taxType = inv ? inv.tax_type : (isGstActive ? 'intra_state' : 'unregistered');
 
   const totalPaise = inv ? Number(inv.total_amount_paise) : Number(payment.amount || 0);
-  const totalRupees = totalPaise > 1000 ? totalPaise / 100 : totalPaise;
+  const totalRupees = inv 
+    ? Number(inv.total_amount_paise) / 100 
+    : (Number(payment.amount || 0) > 1000 ? Number(payment.amount) / 100 : Number(payment.amount || 0));
 
   let baseAmountRupees = inv ? Number(inv.base_amount_paise) / 100 : totalRupees;
   let gstAmountRupees = inv ? (Number(inv.total_amount_paise) - Number(inv.base_amount_paise)) / 100 : 0;
@@ -39,15 +46,15 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
     year: 'numeric'
   });
 
-  const tenantBilling = profile?.global_settings?.tenant_billing || {};
-  const supplierName = inv?.supplier_name || globalTaxSettings?.companyName || 'Stay Pilot Hospitality SaaS';
-  const supplierGstin = inv?.supplier_gstin || globalTaxSettings?.gstin || 'Unspecified';
+  const tenantBilling = profile?.global_settings?.billing || profile?.global_settings?.tenant_billing || {};
+  const supplierName = inv?.supplier_trade_name || inv?.supplier_name || globalTaxSettings?.companyName || 'Stay Pilot';
+  const supplierGstin = isGstActive ? (inv?.supplier_gstin || globalTaxSettings?.gstin || null) : null;
   const supplierAddress = inv?.supplier_address || globalTaxSettings?.address || 'India';
 
-  const customerName = inv?.customer_name || tenantBilling.companyName || profile?.full_name || 'Valued Tenant';
-  const customerGstin = inv?.customer_gstin || tenantBilling.gstin;
+  const customerName = inv?.customer_name || tenantBilling.name || tenantBilling.companyName || profile?.full_name || 'Valued Tenant';
+  const customerGstin = isGstActive ? (inv?.customer_gstin || tenantBilling.gstin) : null;
   const customerAddress = inv?.customer_address || tenantBilling.address || 'Registered Property Address';
-  const customerEmail = inv?.customer_email || profile?.email || 'N/A';
+  const customerEmail = inv?.customer_email || tenantBilling.email || profile?.email || 'N/A';
 
   const handlePrint = () => {
     window.print();
@@ -60,7 +67,7 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
         {/* Action Header (Screen Only) */}
         <div className="no-print" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
           <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <ShieldCheck size={18} style={{ color: '#10b981' }} /> Stay Pilot Tax Invoice (Immutable Snapshot)
+            <ShieldCheck size={18} style={{ color: '#10b981' }} /> {isGstActive ? 'Stay Pilot Tax Invoice (Immutable Snapshot)' : 'Stay Pilot Commercial Payment Acknowledgment (Immutable Snapshot)'}
           </span>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <button
@@ -82,6 +89,24 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
         {/* Invoice Printable Document */}
         <div id="saas-invoice-printable" style={{ padding: '2rem 2.25rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
           
+          {/* Status Alert Banners */}
+          {isVoided && (
+            <div style={{ background: '#fef2f2', border: '1px solid #f87171', color: '#b91c1c', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem' }}>
+              <Ban size={18} style={{ color: '#ef4444', flexShrink: 0 }} />
+              <div>
+                <strong>DOCUMENT VOIDED:</strong> This document has been revoked. {inv?.void_reason ? `Reason: ${inv.void_reason}.` : ''} {inv?.voided_at ? `Voided on: ${new Date(inv.voided_at).toLocaleDateString('en-IN')}.` : ''}
+              </div>
+            </div>
+          )}
+          {isManualReview && (
+            <div style={{ background: '#fffbeb', border: '1px solid #fcd34d', color: '#b45309', padding: '0.75rem 1rem', borderRadius: '8px', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.85rem' }}>
+              <AlertTriangle size={18} style={{ color: '#f59e0b', flexShrink: 0 }} />
+              <div>
+                <strong>PENDING VERIFICATION:</strong> Payment was received successfully. The commercial document is currently undergoing administrative review.
+              </div>
+            </div>
+          )}
+
           {/* Header & Logo */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '2rem', borderBottom: '2px solid #10b981', paddingBottom: '1.25rem' }}>
             <div>
@@ -90,7 +115,7 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
             </div>
             <div style={{ textAlign: 'right' }}>
               <div style={{ fontSize: '1.2rem', fontWeight: 800, color: isGstActive ? '#059669' : '#3b82f6', textTransform: 'uppercase' }}>
-                {isGstActive ? 'Tax Invoice' : 'Payment Receipt'}
+                {isGstActive ? 'Tax Invoice' : 'Commercial Payment Acknowledgment'}
               </div>
               <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.2rem', fontFamily: 'monospace' }}>{invoiceNumber}</div>
               <div style={{ fontSize: '0.825rem', color: '#64748b' }}>Date: {invoiceDate}</div>
@@ -132,7 +157,7 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
               <tr style={{ background: '#0f172a', color: '#ffffff', textAlign: 'left' }}>
                 <th style={{ padding: '0.75rem 1rem', borderRadius: '6px 0 0 0' }}>Service Description</th>
                 <th style={{ padding: '0.75rem 0.5rem', textAlign: 'center' }}>SAC Code</th>
-                <th style={{ padding: '0.75rem 1rem', textAlign: 'right', borderRadius: '0 6px 0 0' }}>Taxable Amount (₹)</th>
+                <th style={{ padding: '0.75rem 1rem', textAlign: 'right', borderRadius: '0 6px 0 0' }}>{isGstActive ? 'Taxable Amount (₹)' : 'Amount (₹)'}</th>
               </tr>
             </thead>
             <tbody>
@@ -154,7 +179,7 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
             <div style={{ width: '300px', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.875rem' }}>
               
               <div style={{ display: 'flex', justifyContent: 'space-between', color: '#475569' }}>
-                <span>Taxable Base Amount</span>
+                <span>{isGstActive ? 'Taxable Base Amount' : 'Base Amount'}</span>
                 <span>₹{baseAmountRupees.toLocaleString('en-IN', { minimumFractionDigits: 2 })}</span>
               </div>
 
@@ -191,13 +216,23 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
               <strong>Payment Method:</strong> Razorpay Online Payment<br />
               <strong>Payment Ref:</strong> <span style={{ fontFamily: 'monospace' }}>{inv?.razorpay_payment_id || payment?.razorpay_payment_id || payment?.id}</span>
             </div>
-            <div style={{ textAlign: 'right', color: '#10b981', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-              <CheckCircle2 size={16} /> Verified & Issued
+            <div style={{ textAlign: 'right', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+              {isVoided ? (
+                <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Ban size={16} /> Revoked & Voided</span>
+              ) : isManualReview ? (
+                <span style={{ color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={16} /> Under Administrative Review</span>
+              ) : isPending ? (
+                <span style={{ color: '#3b82f6', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><Clock size={16} /> Generation in Progress</span>
+              ) : isFailed ? (
+                <span style={{ color: '#ef4444', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><AlertTriangle size={16} /> Generation Failed</span>
+              ) : (
+                <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '0.3rem' }}><CheckCircle2 size={16} /> Verified & Issued</span>
+              )}
             </div>
           </div>
 
           <div style={{ marginTop: '2rem', textAlign: 'center', fontSize: '0.75rem', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
-            This is an immutable computer-generated tax invoice issued by Stay Pilot. Questions? Email support@staypilot.co.in
+            This is an immutable computer-generated {isGstActive ? 'tax invoice' : 'commercial payment acknowledgment'} issued by Stay Pilot. Questions? Email support@staypilot.co.in
           </div>
         </div>
       </div>

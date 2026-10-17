@@ -163,7 +163,7 @@ export default function Subscription() {
        setActiveSubscription(subData || null);
 
        const { data: payData } = await supabase.from('saas_payments')
-         .select('*').eq('tenant_id', profile.id).order('created_at', { ascending: false });
+         .select('*, saas_invoices(*)').eq('tenant_id', profile.id).order('created_at', { ascending: false });
        if (payData) setPaymentHistory(payData);
      } catch (e) {
        console.error("Failed to load subscription data", e);
@@ -972,7 +972,7 @@ export default function Subscription() {
                         style={{ padding: '0.3rem 0.65rem', fontSize: '0.8rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                         onClick={() => setSelectedInvoicePayment(payment)}
                       >
-                        <FileText size={14} /> Tax Invoice
+                        <FileText size={14} /> {payment.saas_invoices?.[0]?.invoice_status === 'void' ? 'Voided Document' : (globalTaxSettings?.enabled ? 'Tax Invoice' : 'Acknowledgment')}
                       </button>
                     </td>
                   </tr>
