@@ -17,6 +17,13 @@ import {
   saveSellerIdentityConfig, saveGstConfiguration,
   resolveCanonicalSuperAdmin, MASTER_ADMIN_EMAIL, CANONICAL_SUPER_ADMIN_ID
 } from '../lib/invoiceIssuerConfig';
+import {
+  DEFAULT_INVOICE_NUMBERING,
+  VALID_YEAR_FORMATS,
+  validateDualNumberingConfig,
+  computeInvoiceNumberPreview,
+  saveInvoiceNumberingConfig
+} from '../lib/invoiceNumberingConfig';
 
 const SELLER_KEY_LABELS = {
   legal_name: 'Proprietor Legal Name', address: 'Address', city: 'City',
@@ -193,6 +200,14 @@ export default function SuperAdmin() {
   const [gstErrors, setGstErrors] = useState({});
   const [isSavingGst, setIsSavingGst] = useState(false);
   const [adminProfiles, setAdminProfiles] = useState([]);
+
+  // Super Admin Controlled Commercial Acknowledgment & Invoice Numbering State
+  const [numberingConfig, setNumberingConfig] = useState(DEFAULT_INVOICE_NUMBERING);
+  const [numberingErrors, setNumberingErrors] = useState({});
+  const [isSavingNumbering, setIsSavingNumbering] = useState(false);
+  const [numberingSavedSuccess, setNumberingSavedSuccess] = useState(false);
+  const [numberingActiveTab, setNumberingActiveTab] = useState('test'); // 'test' | 'live'
+  const [serverNumberingPreview, setServerNumberingPreview] = useState({ test: null, live: null });
 
   const [razorpayConfig, setRazorpayConfig] = useState({
     mode: 'test',
@@ -619,6 +634,14 @@ export default function SuperAdmin() {
           setGstForm({ ...g.form, effectiveFrom: toDatetimeLocal(g.form.effectiveFrom) });
           setGstLocked(g.locked);
         }
+
+        if (superAdminProfile.global_settings.invoice_numbering) {
+          const numDb = superAdminProfile.global_settings.invoice_numbering;
+          setNumberingConfig({
+            test: { ...DEFAULT_INVOICE_NUMBERING.test, ...(numDb.test || {}) },
+            live: { ...DEFAULT_INVOICE_NUMBERING.live, ...(numDb.live || {}) }
+          });
+        }
         
         if (superAdminProfile.global_settings.razorpay_settings) {
           const rs = superAdminProfile.global_settings.razorpay_settings;
@@ -654,11 +677,29 @@ export default function SuperAdmin() {
         testRevenue: testRev,
         liveRevenue: liveRev
       });
+
+      // Fetch authoritative numbering previews for TEST and LIVE series
+      await fetchNumberingPreviews();
     } catch (err) {
       console.error("SuperAdmin Fetch Error:", err);
       setFetchError(err.message || "Failed to load global control panel data");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchNumberingPreviews = async () => {
+    try {
+      const { data: testData, error: testErr } = await supabase.rpc('get_next_invoice_number_preview', { p_environment: 'test' });
+      const { data: liveData, error: liveErr } = await supabase.rpc('get_next_invoice_number_preview', { p_environment: 'live' });
+      if (!testErr && testData) {
+        setServerNumberingPreview(prev => ({ ...prev, test: testData }));
+      }
+      if (!liveErr && liveData) {
+        setServerNumberingPreview(prev => ({ ...prev, live: liveData }));
+      }
+    } catch (err) {
+      console.warn("Failed to fetch numbering preview:", err);
     }
   };
 
@@ -1258,6 +1299,85 @@ export default function SuperAdmin() {
       }
     } finally {
       setIsSavingGst(false);
+    }
+  };
+
+  const handleNumberingFieldChange = (env, field, value) => {
+    setNumberingConfig(prev => ({
+      ...prev,
+      [env]: {
+        ...prev[env],
+        [field]: value
+      }
+    }));
+    setNumberingSavedSuccess(false);
+    if (numberingErrors[env]?.[field] || numberingErrors.conflict) {
+      setNumberingErrors(prev => {
+        const next = { ...prev };
+        if (next[env]) {
+          const nextEnv = { ...next[env] };
+          delete nextEnv[field];
+          if (Object.keys(nextEnv).length === 0) delete next[env];
+          else next[env] = nextEnv;
+        }
+        delete next.conflict;
+        return next;
+      });
+    }
+  };
+
+  const handleSaveInvoiceNumbering = async (e) => {
+    if (e) e.preventDefault();
+    if (isSavingNumbering) return;
+
+    const { errors, isValid } = validateDualNumberingConfig(numberingConfig);
+    if (!isValid) {
+      setNumberingErrors(errors);
+      toast.error('Please resolve invoice numbering errors before saving.');
+      return;
+    }
+
+    try {
+      setIsSavingNumbering(true);
+      const allAdmins = await resolveAdminProfiles();
+      const masterAdmin = getMasterSuperAdmin(allAdmins);
+
+      const saved = await saveInvoiceNumberingConfig({
+        supabase,
+        actorProfile: profile,
+        masterAdminId: masterAdmin?.id,
+        config: numberingConfig
+      });
+
+      setNumberingErrors({});
+      setNumberingSavedSuccess(true);
+      setNumberingConfig(saved);
+
+      // Synchronize in-memory adminProfiles and tenants state
+      setAdminProfiles(prev => prev.map(p => p.id === masterAdmin?.id ? {
+        ...p,
+        global_settings: {
+          ...(p.global_settings || {}),
+          invoice_numbering: saved
+        }
+      } : p));
+
+      setTenants(prev => prev.map(p => p.id === masterAdmin?.id ? {
+        ...p,
+        global_settings: {
+          ...(p.global_settings || {}),
+          invoice_numbering: saved
+        }
+      } : p));
+
+      toast.success('Commercial acknowledgment and invoice numbering settings saved.');
+      await fetchNumberingPreviews();
+    } catch (err) {
+      console.error('Failed to save invoice numbering:', err);
+      toast.error('Failed to save numbering settings: ' + (err.message || 'Unknown error'));
+      setNumberingSavedSuccess(false);
+    } finally {
+      setIsSavingNumbering(false);
     }
   };
 
@@ -2798,6 +2918,220 @@ export default function SuperAdmin() {
                 style={{ padding: '0.75rem 1.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
                 <Save size={16} /> {isSavingGst ? 'Saving...' : 'Save GST Configuration'}
+              </button>
+            </div>
+          </div>
+
+          {/* Super Admin Controlled: Commercial Payment Acknowledgment & Invoice Numbering */}
+          <div className="card" style={{ marginBottom: '2.5rem', background: 'white', border: '1px solid rgba(15, 44, 89, 0.08)', borderRadius: '16px', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)', textAlign: 'left' }} data-testid="invoice-numbering-card">
+            <div style={{ marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.6rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: '1.25rem' }}>
+                <FileText size={22} style={{ color: 'var(--primary, #0F2C59)' }} /> Commercial Acknowledgment & Invoice Numbering
+              </h3>
+              <p style={{ color: '#64748b', fontSize: '0.875rem', margin: '0.35rem 0 0 0' }}>
+                Configure independent numbering sequences, prefixes, padding, and year policies for Sandbox TEST mode and Real-time LIVE payments.
+              </p>
+            </div>
+
+            {/* Mode Switcher Tabs */}
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={() => setNumberingActiveTab('test')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: numberingActiveTab === 'test' ? '#f59e0b' : '#f1f5f9',
+                  color: numberingActiveTab === 'test' ? '#ffffff' : '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                <span>TEST Mode Series</span>
+                <span style={{ fontSize: '0.7rem', background: numberingActiveTab === 'test' ? 'rgba(0,0,0,0.15)' : '#e2e8f0', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>Sandbox / QA</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setNumberingActiveTab('live')}
+                style={{
+                  padding: '0.5rem 1rem',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: numberingActiveTab === 'live' ? '#10b981' : '#f1f5f9',
+                  color: numberingActiveTab === 'live' ? '#ffffff' : '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem'
+                }}
+              >
+                <span>LIVE Production Series</span>
+                <span style={{ fontSize: '0.7rem', background: numberingActiveTab === 'live' ? 'rgba(0,0,0,0.15)' : '#e2e8f0', padding: '0.15rem 0.4rem', borderRadius: '4px' }}>Real Customer Payments</span>
+              </button>
+            </div>
+
+            {/* Conflict Error Notice */}
+            {numberingErrors.conflict && (
+              <div style={{ marginBottom: '1.25rem', padding: '0.75rem 1rem', borderRadius: '8px', background: '#fef2f2', border: '1px solid #f87171', color: '#b91c1c', fontSize: '0.85rem' }}>
+                <strong>Configuration Conflict:</strong> {numberingErrors.conflict}
+              </div>
+            )}
+
+            {/* Active Tab Configuration Form */}
+            {(() => {
+              const env = numberingActiveTab;
+              const envConfig = numberingConfig[env] || DEFAULT_INVOICE_NUMBERING[env];
+              const envErrors = numberingErrors[env] || {};
+              const serverPreview = serverNumberingPreview[env];
+              const isSeriesActive = serverPreview?.is_series_active || false;
+              const nextSeq = serverPreview?.next_sequence_number || envConfig.starting_number || (env === 'live' ? 1 : 1001);
+              const previewString = serverPreview?.formatted_preview || computeInvoiceNumberPreview(envConfig, nextSeq);
+
+              return (
+                <div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1.25rem', marginBottom: '1.5rem' }}>
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, color: '#334155' }}>
+                        Invoice Prefix <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={envConfig.prefix}
+                        disabled={profile?.role !== 'super_admin'}
+                        onChange={(e) => handleNumberingFieldChange(env, 'prefix', e.target.value.toUpperCase())}
+                        placeholder={env === 'live' ? 'SP-INV-' : 'SP-TEST-INV-'}
+                        style={{ fontFamily: 'monospace', fontWeight: 600, borderColor: envErrors.prefix ? '#dc2626' : undefined }}
+                      />
+                      <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', marginBottom: 0 }}>
+                        {env === 'live' ? 'Prefix for real-time customer invoices.' : 'Prefix for sandbox test transactions (must differ from LIVE prefix).'}
+                      </p>
+                      {envErrors.prefix && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{envErrors.prefix}</p>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, color: '#334155' }}>
+                        Year Component Format
+                      </label>
+                      <select
+                        className="form-input"
+                        value={envConfig.year_format || 'YYYY'}
+                        disabled={profile?.role !== 'super_admin'}
+                        onChange={(e) => handleNumberingFieldChange(env, 'year_format', e.target.value)}
+                        style={{ borderColor: envErrors.year_format ? '#dc2626' : undefined }}
+                      >
+                        <option value="YYYY">YYYY (4-digit year, e.g. {new Date().getFullYear()})</option>
+                        <option value="YY">YY (2-digit year, e.g. {String(new Date().getFullYear()).slice(-2)})</option>
+                        <option value="none">None (Omit year from number)</option>
+                      </select>
+                      <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', marginBottom: 0 }}>
+                        Automatic year timestamp injected between prefix and sequence number.
+                      </p>
+                      {envErrors.year_format && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{envErrors.year_format}</p>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, color: '#334155' }}>
+                        Numeric Padding Length (Digits)
+                      </label>
+                      <input
+                        type="number"
+                        min="3"
+                        max="10"
+                        className="form-input"
+                        value={envConfig.padding || 5}
+                        disabled={profile?.role !== 'super_admin'}
+                        onChange={(e) => handleNumberingFieldChange(env, 'padding', parseInt(e.target.value, 10) || 5)}
+                        style={{ borderColor: envErrors.padding ? '#dc2626' : undefined }}
+                      />
+                      <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', marginBottom: 0 }}>
+                        E.g. 5 digits formats sequence 1 as 00001 (Range: 3 to 10).
+                      </p>
+                      {envErrors.padding && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{envErrors.padding}</p>}
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label" style={{ fontWeight: 600, color: '#334155' }}>
+                        Starting Number
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        className="form-input"
+                        value={envConfig.starting_number || (env === 'live' ? 1 : 1001)}
+                        disabled={profile?.role !== 'super_admin'}
+                        onChange={(e) => handleNumberingFieldChange(env, 'starting_number', parseInt(e.target.value, 10) || 1)}
+                        style={{ borderColor: envErrors.starting_number ? '#dc2626' : undefined }}
+                      />
+                      <p style={{ color: '#64748b', fontSize: '0.75rem', marginTop: '0.25rem', marginBottom: 0 }}>
+                        {isSeriesActive 
+                          ? `Active series: Series has issued ${serverPreview.total_issued} invoices. Starting number cannot be rewound.`
+                          : 'Initial counter value when starting a new numbering series.'}
+                      </p>
+                      {envErrors.starting_number && <p style={{ color: '#dc2626', fontSize: '0.8rem', marginTop: '0.35rem', marginBottom: 0 }}>{envErrors.starting_number}</p>}
+                    </div>
+                  </div>
+
+                  {/* Read-Only Next Invoice Number Preview Card */}
+                  <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: env === 'live' ? '#059669' : '#d97706', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem' }}>
+                        Next Document Number Preview ({env.toUpperCase()} Environment)
+                      </div>
+                      <div style={{ fontFamily: 'monospace', fontSize: '1.35rem', fontWeight: 800, color: '#0f172a', letterSpacing: '0.02em' }}>
+                        {previewString}
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.25rem' }}>
+                        Next Sequence Position: <strong>#{nextSeq}</strong> &bull; Total Issued in Series: <strong>{serverPreview?.total_issued || 0}</strong>
+                      </div>
+                    </div>
+                    <div>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.35rem 0.75rem',
+                        borderRadius: '20px',
+                        fontSize: '0.8rem',
+                        fontWeight: 700,
+                        background: isSeriesActive ? 'rgba(16, 185, 129, 0.1)' : 'rgba(100, 116, 139, 0.1)',
+                        color: isSeriesActive ? '#059669' : '#475569'
+                      }}>
+                        <CheckCircle size={14} /> {isSeriesActive ? 'Active Invoicing Series' : 'Fresh Numbering Series'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Bottom Persistence Action Bar */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', borderTop: '1px solid #e2e8f0', paddingTop: '1.25rem' }}>
+              <div style={{ fontSize: '0.825rem', color: '#64748b' }}>
+                <span style={{ fontWeight: 600 }}>Status:</span>{' '}
+                {numberingSavedSuccess ? (
+                  <span style={{ color: '#059669', fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                    <CheckCircle size={14} /> Persisted & Verified
+                  </span>
+                ) : (
+                  <span style={{ color: '#d97706', fontWeight: 600 }}>● Configuration changes ready</span>
+                )}
+              </div>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSaveInvoiceNumbering}
+                disabled={isSavingNumbering || profile?.role !== 'super_admin'}
+                style={{ padding: '0.75rem 1.75rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <Save size={16} /> {isSavingNumbering ? 'Saving Numbering...' : 'Save Numbering Configuration'}
               </button>
             </div>
           </div>

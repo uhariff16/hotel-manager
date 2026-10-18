@@ -100,19 +100,19 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
 
   const tenantBilling = profile?.global_settings?.billing || profile?.global_settings?.tenant_billing || {};
   
-  // Supplier Information from snapshot
+  // Supplier Information from snapshot (Proprietor legal name, address, PAN, email, phone are optional)
   const supplierTradeName = inv?.supplier_trade_name || inv?.supplier_name || 'Stay Pilot';
-  const supplierLegalName = inv?.supplier_legal_name || 'Mohamed Hassan Ariff';
+  const supplierLegalName = inv?.supplier_legal_name || null;
   const supplierAddressParts = [
-    inv?.supplier_address || globalTaxSettings?.address || '38, Siya Maricar Street, Nagore',
-    inv?.supplier_city || 'Nagapattinam',
-    inv?.supplier_state ? `${inv.supplier_state}${inv.supplier_pincode ? ` - ${inv.supplier_pincode}` : ''}` : 'Tamil Nadu - 611002'
+    inv?.supplier_address || (isGstActive ? globalTaxSettings?.address : null),
+    inv?.supplier_city || null,
+    inv?.supplier_state ? `${inv.supplier_state}${inv.supplier_pincode ? ` - ${inv.supplier_pincode}` : ''}` : null
   ].filter(Boolean);
-  const supplierAddressFormatted = supplierAddressParts.join(', ');
+  const supplierAddressFormatted = supplierAddressParts.length > 0 ? supplierAddressParts.join(', ') : null;
   const supplierGstin = isGstActive ? (inv?.supplier_gstin || globalTaxSettings?.gstin || null) : null;
   const supplierPan = inv?.supplier_pan || inv?.seller_snapshot?.pan || null;
-  const supplierEmail = inv?.supplier_email || inv?.seller_snapshot?.email || 'billing@staypilot.co.in';
-  const supplierPhone = inv?.supplier_phone || inv?.seller_snapshot?.phone || '+918220320178';
+  const supplierEmail = inv?.supplier_email || inv?.seller_snapshot?.email || null;
+  const supplierPhone = inv?.supplier_phone || inv?.seller_snapshot?.phone || null;
 
   // Customer Information from snapshot
   const customerName = inv?.customer_name || tenantBilling.name || tenantBilling.companyName || profile?.full_name || 'Valued Tenant';
@@ -441,7 +441,9 @@ export default function SaaSInvoiceModal({ isOpen, onClose, payment, invoiceReco
                 {supplierLegalName && supplierLegalName !== supplierTradeName && (
                   <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Proprietor: {supplierLegalName}</div>
                 )}
-                <div style={{ color: '#475569', marginTop: '0.35rem', lineHeight: 1.45, fontSize: '0.825rem' }}>{supplierAddressFormatted}</div>
+                {supplierAddressFormatted && (
+                  <div style={{ color: '#475569', marginTop: '0.35rem', lineHeight: 1.45, fontSize: '0.825rem' }}>{supplierAddressFormatted}</div>
+                )}
                 {supplierPan && (
                   <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#334155' }}>
                     <strong>PAN:</strong> <span style={{ fontFamily: 'monospace' }}>{supplierPan}</span>

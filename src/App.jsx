@@ -145,7 +145,7 @@ function App() {
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', session.user.id).single();
       
       if (profile) {
-        const { data: isExpired } = await supabase.rpc('check_trial_status', { p_id: profile.id });
+        const { data: isExpired } = await supabase.rpc('is_trial_expired');
         profile.is_trial_expired_server = isExpired;
         setProfile(profile);
 
