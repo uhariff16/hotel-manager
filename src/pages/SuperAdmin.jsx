@@ -829,12 +829,32 @@ export default function SuperAdmin() {
     
     setIsUpdating(true);
     try {
-      const { error } = await supabase.from('profiles').delete().eq('id', userId);
-      if (error) throw error;
-      setTenants(tenants.filter(t => t.id !== userId));
+      // Try server-authoritative admin_delete_tenant RPC
+      let deleteSuccess = false;
+      let lastError = null;
+      
+      const { data, error: rpcError } = await supabase.rpc('admin_delete_tenant', { p_tenant_id: userId });
+      if (!rpcError && data?.success) {
+        deleteSuccess = true;
+      } else {
+        lastError = rpcError;
+        // Fallback to direct delete (which now succeeds via ON DELETE SET NULL)
+        const { error: directError } = await supabase.from('profiles').delete().eq('id', userId);
+        if (!directError) {
+          deleteSuccess = true;
+        } else {
+          lastError = directError;
+        }
+      }
+
+      if (!deleteSuccess) {
+        throw lastError || new Error("Deletion failed.");
+      }
+
+      setTenants(prev => prev.filter(t => t.id !== userId));
       setEditingUser(null);
       setConfirmingDelete(false);
-      alert("Account removed successfully.");
+      alert(`Account "${name || 'User'}" removed successfully.`);
       fetchGlobalData();
     } catch (err) { 
       alert("Delete failed: " + err.message); 
