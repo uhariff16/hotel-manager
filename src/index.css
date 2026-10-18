@@ -889,16 +889,23 @@ input:checked + .slider:before {
       display: none !important;
     }
     @page {
-      margin: 0.5cm;
+      size: A4 portrait;
+      margin: 10mm 12mm;
     }
     body {
-      background: white;
+      background: white !important;
+      color: black !important;
     }
     body * {
       visibility: hidden;
     }
+    .no-print, .no-print * {
+      display: none !important;
+      visibility: hidden !important;
+    }
+    /* Booking Receipt Print Support */
     .print-receipt-container, .print-receipt-container * {
-      visibility: visible;
+      visibility: visible !important;
     }
     .print-receipt-container {
       position: absolute;
@@ -908,6 +915,55 @@ input:checked + .slider:before {
       background: white !important;
       color: black !important;
       padding: 0 !important;
+    }
+    /* SaaS Invoice / Commercial Payment Acknowledgment Print Support */
+    .saas-invoice-portal, .saas-invoice-portal * {
+      visibility: visible !important;
+    }
+    .saas-invoice-portal {
+      position: absolute !important;
+      left: 0 !important;
+      top: 0 !important;
+      width: 100% !important;
+      background: white !important;
+      color: black !important;
+      padding: 0 !important;
+      margin: 0 !important;
+    }
+    .saas-invoice-portal .saas-invoice-modal-overlay {
+      position: static !important;
+      background: transparent !important;
+      backdrop-filter: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      height: auto !important;
+      display: block !important;
+      box-shadow: none !important;
+    }
+    .saas-invoice-portal .saas-invoice-modal-content {
+      position: static !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      max-height: none !important;
+      height: auto !important;
+      overflow: visible !important;
+      box-shadow: none !important;
+      border: none !important;
+      border-radius: 0 !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      background: white !important;
+      display: block !important;
+    }
+    .saas-invoice-portal #saas-invoice-printable {
+      padding: 0 !important;
+      margin: 0 !important;
+      width: 100% !important;
+      background: white !important;
+      display: block !important;
+      page-break-inside: avoid !important;
+      break-inside: avoid !important;
     }
   }
 
