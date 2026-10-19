@@ -258,6 +258,10 @@ test('STAY PILOT — Super Admin QA Account Cleanup, Archive & Reusable Email Re
   const newMigrationPath = path.join(ROOT, 'supabase', 'migrations', '20261019140000_super_admin_qa_cleanup_archive_reset.sql');
   await db.exec(fs.readFileSync(newMigrationPath, 'utf8'));
 
+  // Apply environment-aware QA designation migration
+  const qaDesignationMigrationPath = path.join(ROOT, 'supabase', 'migrations', '20261019160000_update_qa_designation_environment_aware.sql');
+  await db.exec(fs.readFileSync(qaDesignationMigrationPath, 'utf8'));
+
   // Helper: create a disposable QA tenant
   let tenantSeq = 100;
   const createQaTenant = async (email, plan = 'premium', status = 'trialing') => {
@@ -732,8 +736,137 @@ test('STAY PILOT — Super Admin QA Account Cleanup, Archive & Reusable Email Re
     assert.equal(inv43.rows[0].invoice_status, 'issued');
   });
 
-  // Case 18: Rollback migration cleanly reverses objects while preserving audit logs
-  await t.test('Case 18: Rollback migration cleanly reverses objects while permanently preserving audit logs', async () => {
+  // Case 18: QA Designation allows accounts with captured TEST payment and issued TEST invoice
+  await t.test('Case 18: QA designation succeeds for accounts with captured TEST payment and issued TEST invoice', async () => {
+    const email = 'test_records_designate@staypilot.test';
+    tenantSeq++;
+    const id = `00000000-0000-0000-0000-${String(tenantSeq).padStart(12, '0')}`;
+    await db.exec(`
+      INSERT INTO public.profiles (id, email, full_name, role, plan_type, subscription_status, is_disposable_qa)
+      VALUES ('${id}', '${email}', 'QA Tenant Test Records', 'tenant_admin', 'premium', 'active', false);
+      INSERT INTO public.saas_payments (tenant_id, razorpay_payment_id, amount, status, environment)
+      VALUES ('${id}', 'pay_test_designate_01', 1499, 'captured', 'test');
+      INSERT INTO public.saas_invoices (tenant_id, invoice_number, invoice_status, customer_name, customer_email, total_amount, environment)
+      VALUES ('${id}', 'SP-2627-TEST-9901', 'issued', 'Test QA User', '${email}', 1499, 'test');
+      INSERT INTO public.saas_subscriptions (tenant_id, razorpay_subscription_id, status, environment)
+      VALUES ('${id}', 'sub_test_designate_01', 'active', 'test');
+    `);
+
+    await setAuthContext(CANONICAL_SUPER_ADMIN_ID);
+    const res = await db.query(`SELECT public.set_account_qa_disposable('${id}', true, 'Approved TEST designation');`);
+    assert.equal(res.rows[0].set_account_qa_disposable.success, true);
+    assert.equal(res.rows[0].set_account_qa_disposable.is_disposable_qa, true);
+
+    const check = await db.query(`SELECT is_disposable_qa FROM public.profiles WHERE id = '${id}';`);
+    assert.equal(check.rows[0].is_disposable_qa, true);
+
+    const reg = await db.query(`SELECT * FROM public.disposable_qa_accounts WHERE tenant_id = '${id}';`);
+    assert.equal(reg.rows.length, 1);
+  });
+
+  // Case 19: QA Designation strictly blocked for accounts with LIVE payment
+  await t.test('Case 19: QA designation strictly blocked for accounts with LIVE payment', async () => {
+    const email = 'live_pay_designate@staypilot.test';
+    tenantSeq++;
+    const id = `00000000-0000-0000-0000-${String(tenantSeq).padStart(12, '0')}`;
+    await db.exec(`
+      INSERT INTO public.profiles (id, email, full_name, role, plan_type, subscription_status, is_disposable_qa)
+      VALUES ('${id}', '${email}', 'QA Tenant Live Pay', 'tenant_admin', 'premium', 'active', false);
+      INSERT INTO public.saas_payments (tenant_id, razorpay_payment_id, amount, status, environment)
+      VALUES ('${id}', 'pay_live_designate_01', 5999, 'captured', 'live');
+    `);
+
+    await setAuthContext(CANONICAL_SUPER_ADMIN_ID);
+    await assert.rejects(
+      async () => {
+        await db.query(`SELECT public.set_account_qa_disposable('${id}', true);`);
+      },
+      (err) => {
+        assert.match(err.message, /FINANCIAL_PROTECTION/i);
+        assert.match(err.message, /LIVE financial records/i);
+        return true;
+      }
+    );
+  });
+
+  // Case 20: QA Designation strictly blocked for accounts with LIVE invoice
+  await t.test('Case 20: QA designation strictly blocked for accounts with LIVE invoice', async () => {
+    const email = 'live_inv_designate@staypilot.test';
+    tenantSeq++;
+    const id = `00000000-0000-0000-0000-${String(tenantSeq).padStart(12, '0')}`;
+    await db.exec(`
+      INSERT INTO public.profiles (id, email, full_name, role, plan_type, subscription_status, is_disposable_qa)
+      VALUES ('${id}', '${email}', 'QA Tenant Live Inv', 'tenant_admin', 'premium', 'active', false);
+      INSERT INTO public.saas_invoices (tenant_id, invoice_number, invoice_status, customer_name, customer_email, total_amount, environment)
+      VALUES ('${id}', 'SP-2627-LIVE-9902', 'issued', 'Live Customer', '${email}', 5999, 'live');
+    `);
+
+    await setAuthContext(CANONICAL_SUPER_ADMIN_ID);
+    await assert.rejects(
+      async () => {
+        await db.query(`SELECT public.set_account_qa_disposable('${id}', true);`);
+      },
+      (err) => {
+        assert.match(err.message, /FINANCIAL_PROTECTION/i);
+        assert.match(err.message, /LIVE financial records/i);
+        return true;
+      }
+    );
+  });
+
+  // Case 21: QA Designation strictly blocked for accounts with UNKNOWN environment financial records
+  await t.test('Case 21: QA designation strictly blocked for accounts with UNKNOWN environment record', async () => {
+    const email = 'unknown_env_designate@staypilot.test';
+    tenantSeq++;
+    const id = `00000000-0000-0000-0000-${String(tenantSeq).padStart(12, '0')}`;
+    await db.exec(`
+      INSERT INTO public.profiles (id, email, full_name, role, plan_type, subscription_status, is_disposable_qa)
+      VALUES ('${id}', '${email}', 'QA Tenant Unknown Env', 'tenant_admin', 'premium', 'active', false);
+      INSERT INTO public.saas_payments (tenant_id, razorpay_payment_id, amount, status, environment)
+      VALUES ('${id}', 'pay_unknown_designate_01', 999, 'captured', NULL);
+    `);
+
+    await setAuthContext(CANONICAL_SUPER_ADMIN_ID);
+    await assert.rejects(
+      async () => {
+        await db.query(`SELECT public.set_account_qa_disposable('${id}', true);`);
+      },
+      (err) => {
+        assert.match(err.message, /FINANCIAL_PROTECTION/i);
+        assert.match(err.message, /unknown or unverified financial environments/i);
+        return true;
+      }
+    );
+  });
+
+  // Case 22: Protected accounts cannot be designated as disposable QA
+  await t.test('Case 22: Super Admin and Cheerful Chalet cannot be designated as disposable QA', async () => {
+    await setAuthContext(CANONICAL_SUPER_ADMIN_ID);
+    await assert.rejects(
+      async () => {
+        await db.query(`SELECT public.set_account_qa_disposable('${CANONICAL_SUPER_ADMIN_ID}', true);`);
+      },
+      (err) => {
+        assert.match(err.message, /PROTECTED_ACCOUNT/i);
+        return true;
+      }
+    );
+    await assert.rejects(
+      async () => {
+        await db.query(`SELECT public.set_account_qa_disposable('${CHEERFUL_CHALET_ID}', true);`);
+      },
+      (err) => {
+        assert.match(err.message, /PROTECTED_ACCOUNT/i);
+        return true;
+      }
+    );
+  });
+
+  // Case 23: Rollback migrations cleanly reverse objects while preserving audit logs
+  await t.test('Case 23: Rollback migrations cleanly reverse objects while permanently preserving audit logs', async () => {
+    const rollbackQaPath = path.join(ROOT, 'supabase', 'migrations', 'rollback_20261019160000_update_qa_designation_environment_aware.sql');
+    await db.exec(fs.readFileSync(rollbackQaPath, 'utf8'));
+
     const rollbackPath = path.join(ROOT, 'supabase', 'migrations', 'rollback_20261019140000_super_admin_qa_cleanup_archive_reset.sql');
     await db.exec(fs.readFileSync(rollbackPath, 'utf8'));
 

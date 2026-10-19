@@ -902,8 +902,31 @@ export default function SuperAdmin() {
   const [isResettingQa, setIsResettingQa] = useState(false);
   const [isTogglingQa, setIsTogglingQa] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [tenantQaEligibility, setTenantQaEligibility] = useState(null);
+  const [loadingEligibility, setLoadingEligibility] = useState(false);
 
   const isCanonicalSuperAdmin = (profile?.id === CANONICAL_SUPER_ADMIN_ID) || (session?.user?.id === CANONICAL_SUPER_ADMIN_ID);
+
+  useEffect(() => {
+    if (editingUser?.id && isCanonicalSuperAdmin) {
+      let cancelled = false;
+      setLoadingEligibility(true);
+      setTenantQaEligibility(null);
+      supabase.rpc('get_tenant_qa_eligibility', { p_tenant_id: editingUser.id })
+        .then(({ data, error }) => {
+          if (!cancelled && !error && data) {
+            setTenantQaEligibility(data);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          if (!cancelled) setLoadingEligibility(false);
+        });
+      return () => { cancelled = true; };
+    } else {
+      setTenantQaEligibility(null);
+    }
+  }, [editingUser?.id, isCanonicalSuperAdmin]);
 
   const parseEdgeFunctionError = async (err, fallbackMsg) => {
     if (err?.context && typeof err.context.clone === 'function' && !err.context.bodyUsed) {
@@ -3590,13 +3613,67 @@ export default function SuperAdmin() {
                   <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 0.8rem 0' }}>
                     Designating an account as disposable QA enables safe reset operations for repeated signup and onboarding testing.
                   </p>
+
+                  {/* ELIGIBILITY & INELIGIBILITY REASON FEEDBACK */}
+                  {loadingEligibility && (
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <RefreshCw size={11} className="spin" /> Verifying account financial classification...
+                    </div>
+                  )}
+
+                  {!loadingEligibility && tenantQaEligibility && (
+                    <div style={{ marginBottom: '0.8rem' }}>
+                      {tenantQaEligibility.financial_classification === 'TEST_ONLY' && (
+                        <div style={{ padding: '0.5rem 0.75rem', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '6px', fontSize: '0.78rem', color: '#6d28d9', marginBottom: '0.5rem' }}>
+                          🟣 <strong>Verified TEST Mode:</strong> Account contains {tenantQaEligibility.financials.test_payments} test payment(s) and {tenantQaEligibility.financials.test_invoices} test invoice(s). Eligible for disposable QA designation.
+                        </div>
+                      )}
+                      {tenantQaEligibility.financial_classification === 'LIVE' && (
+                        <div style={{ padding: '0.5rem 0.75rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '0.78rem', color: '#b91c1c', marginBottom: '0.5rem' }}>
+                          🔴 <strong>Ineligible for QA Designation:</strong> Account contains recorded LIVE financial records under mandatory legal tax retention. Designation and reset are strictly blocked.
+                        </div>
+                      )}
+                      {tenantQaEligibility.financial_classification === 'UNKNOWN' && (
+                        <div style={{ padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', fontSize: '0.78rem', color: '#b45309', marginBottom: '0.5rem' }}>
+                          ⚠️ <strong>Ineligible for QA Designation:</strong> Account contains unverified or ambiguous financial environment records. Cannot be designated or reset.
+                        </div>
+                      )}
+                      {['super_admin'].includes(editingUser.role) || editingUser.email === 'cheerfulchalet@gmail.com' ? (
+                        <div style={{ padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.78rem', color: '#334155', marginBottom: '0.5rem' }}>
+                          🛡️ <strong>Permanently Protected Account:</strong> Platform administrator and core hotel accounts are permanently protected from QA classification.
+                        </div>
+                      ) : null}
+                      {editingUser.is_disposable_qa && tenantQaEligibility.block_reasons?.length > 0 && (
+                        <div style={{ padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fed7aa', borderRadius: '6px', fontSize: '0.75rem', color: '#9a3412', marginBottom: '0.5rem' }}>
+                          <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>Reset Ineligibility Reasons:</div>
+                          <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                            {tenantQaEligibility.block_reasons.map((r, i) => <li key={i}>{r}</li>)}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
                     <button
                       type="button"
                       className="btn btn-outline"
                       style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
                       onClick={handleToggleQaDisposable}
-                      disabled={isTogglingQa}
+                      disabled={
+                        isTogglingQa || 
+                        (!editingUser.is_disposable_qa && tenantQaEligibility && (
+                          tenantQaEligibility.financial_classification === 'LIVE' ||
+                          tenantQaEligibility.financial_classification === 'UNKNOWN' ||
+                          ['super_admin'].includes(editingUser.role) ||
+                          editingUser.email === 'cheerfulchalet@gmail.com'
+                        ))
+                      }
+                      title={
+                        tenantQaEligibility?.financial_classification === 'LIVE' ? 'Cannot designate account with LIVE financial records' :
+                        tenantQaEligibility?.financial_classification === 'UNKNOWN' ? 'Cannot designate account with unverified financial environment' :
+                        editingUser.email === 'cheerfulchalet@gmail.com' ? 'Core system account is protected' : ''
+                      }
                     >
                       {isTogglingQa ? 'Updating...' : (editingUser.is_disposable_qa ? 'Revoke QA Status' : 'Mark as Disposable QA')}
                     </button>
