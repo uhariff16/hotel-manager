@@ -514,13 +514,15 @@ export default function SuperAdmin() {
         { data: r, error: rErr },
         { data: b, error: bErr },
         { data: subs, error: subsErr },
-        { data: payments, error: payErr }
+        { data: payments, error: payErr },
+        { data: invoices, error: invErr }
       ] = await Promise.all([
         supabase.from('profiles').select('*').order('created_at', { ascending: false }),
         supabase.from('resorts').select('id, tenant_id, name, email, phone'),
         supabase.from('bookings').select('id, tenant_id'),
         supabase.from('saas_subscriptions').select('*').order('created_at', { ascending: false }),
-        supabase.from('saas_payments').select('*').order('created_at', { ascending: false })
+        supabase.from('saas_payments').select('*').order('created_at', { ascending: false }),
+        supabase.from('saas_invoices').select('id, tenant_id, environment, invoice_status')
       ]);
 
       const errMsgs = [];
@@ -529,6 +531,7 @@ export default function SuperAdmin() {
       if (bErr) errMsgs.push(`Bookings: ${bErr.message}`);
       if (subsErr) errMsgs.push(`Subscriptions: ${subsErr.message}`);
       if (payErr) errMsgs.push(`Payments: ${payErr.message}`);
+      if (invErr) errMsgs.push(`Invoices: ${invErr.message}`);
 
       if (errMsgs.length > 0) {
         console.warn("SuperAdmin Data Loading Notices:", errMsgs.join(' | '));
@@ -547,6 +550,31 @@ export default function SuperAdmin() {
         const tenantSub = (subs || []).find(s => s.tenant_id === activeTenantId && s.status === 'active') ||
                           (subs || []).find(s => s.tenant_id === activeTenantId);
 
+        // Environment-aware financial classification
+        const tenantPayments = (payments || []).filter(p => p.tenant_id === activeTenantId);
+        const tenantInvoices = (invoices || []).filter(inv => inv.tenant_id === activeTenantId);
+        const tenantSubs = (subs || []).filter(s => s.tenant_id === activeTenantId);
+
+        const hasLive = 
+          tenantPayments.some(p => String(p.environment || '').toLowerCase() === 'live') ||
+          tenantInvoices.some(inv => String(inv.environment || '').toLowerCase() === 'live') ||
+          tenantSubs.some(s => String(s.environment || '').toLowerCase() === 'live');
+
+        const hasUnknown =
+          tenantPayments.some(p => !p.environment || !['test', 'live'].includes(String(p.environment).toLowerCase())) ||
+          tenantInvoices.some(inv => !inv.environment || !['test', 'live'].includes(String(inv.environment).toLowerCase())) ||
+          tenantSubs.some(s => !s.environment || !['test', 'live'].includes(String(s.environment).toLowerCase()));
+
+        const hasTest =
+          tenantPayments.some(p => String(p.environment || '').toLowerCase() === 'test') ||
+          tenantInvoices.some(inv => String(inv.environment || '').toLowerCase() === 'test') ||
+          tenantSubs.some(s => String(s.environment || '').toLowerCase() === 'test');
+
+        let financialEnv = 'NONE';
+        if (hasLive) financialEnv = 'LIVE';
+        else if (hasUnknown) financialEnv = 'UNKNOWN';
+        else if (hasTest) financialEnv = 'TEST_ONLY';
+
         return {
           ...user,
           ownerName: owner ? owner.full_name : 'Self',
@@ -557,7 +585,9 @@ export default function SuperAdmin() {
           bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length,
           activeSub: tenantSub || null,
           effectivePlan: tenantSub?.staypilot_plan_type || user.plan_type || 'free',
-          effectiveSubStatus: tenantSub?.status || user.subscription_status || 'active'
+          effectiveSubStatus: tenantSub?.status || user.subscription_status || 'active',
+          financialEnv,
+          is_archived: Boolean(user.is_archived)
         };
       });
 
@@ -861,6 +891,157 @@ export default function SuperAdmin() {
   };
 
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  // QA Test Account & Archiving State
+  const [tenantSubFilter, setTenantSubFilter] = useState('active'); // 'active' | 'qa' | 'archived'
+  const [qaResetModalOpen, setQaResetModalOpen] = useState(false);
+  const [qaResetPreview, setQaResetPreview] = useState(null);
+  const [loadingQaPreview, setLoadingQaPreview] = useState(false);
+  const [qaConfirmText, setQaConfirmText] = useState('');
+  const [qaConfirmEmail, setQaConfirmEmail] = useState('');
+  const [isResettingQa, setIsResettingQa] = useState(false);
+  const [isTogglingQa, setIsTogglingQa] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
+
+  const isCanonicalSuperAdmin = (profile?.id === CANONICAL_SUPER_ADMIN_ID) || (session?.user?.id === CANONICAL_SUPER_ADMIN_ID);
+
+  const parseEdgeFunctionError = async (err, fallbackMsg) => {
+    if (err?.context && typeof err.context.clone === 'function' && !err.context.bodyUsed) {
+      try {
+        const cloned = err.context.clone();
+        const errJson = await cloned.json();
+        if (errJson?.error) return errJson.error;
+        if (errJson?.message) return errJson.message;
+      } catch {
+        try {
+          const clonedText = err.context.clone();
+          const text = await clonedText.text();
+          if (text && !text.includes('<html') && text.trim().length > 0) return text.trim();
+        } catch {}
+      }
+    }
+    return err?.message || fallbackMsg;
+  };
+
+  const handleToggleQaDisposable = async () => {
+    if (!isCanonicalSuperAdmin) {
+      alert("Only the canonical Super Administrator can manage QA designations.");
+      return;
+    }
+    if (!editingUser) return;
+    setIsTogglingQa(true);
+    try {
+      const nextVal = !editingUser.is_disposable_qa;
+      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+        body: {
+          targetUserId: editingUser.id,
+          action: 'set_qa_disposable',
+          payload: { isDisposable: nextVal, notes: nextVal ? 'Designated via Super Admin UI' : null }
+        }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setEditingUser(prev => ({ ...prev, is_disposable_qa: nextVal }));
+      setTenants(prev => prev.map(t => t.id === editingUser.id ? { ...t, is_disposable_qa: nextVal } : t));
+      toast.success(nextVal ? "Account designated as Disposable QA Test Account" : "Disposable QA designation revoked");
+    } catch (err) {
+      const errMsg = await parseEdgeFunctionError(err, "Failed to update QA designation");
+      toast.error("Failed to update QA designation: " + errMsg);
+    } finally {
+      setIsTogglingQa(false);
+    }
+  };
+
+  const handleToggleArchiveAccount = async () => {
+    if (!isCanonicalSuperAdmin) {
+      alert("Only the canonical Super Administrator can archive accounts.");
+      return;
+    }
+    if (!editingUser) return;
+    setIsArchiving(true);
+    try {
+      const nextArchived = !editingUser.is_archived;
+      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+        body: {
+          targetUserId: editingUser.id,
+          action: 'archive_account',
+          payload: { isArchived: nextArchived }
+        }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      setEditingUser(prev => ({ ...prev, is_archived: nextArchived }));
+      setTenants(prev => prev.map(t => t.id === editingUser.id ? { ...t, is_archived: nextArchived } : t));
+      toast.success(nextArchived ? "Account archived successfully. Tenant access disabled." : "Account restored from archive.");
+      fetchGlobalData();
+    } catch (err) {
+      const errMsg = await parseEdgeFunctionError(err, "Failed to update archive status");
+      toast.error(errMsg);
+    } finally {
+      setIsArchiving(false);
+    }
+  };
+
+  const handleOpenQaResetModal = async () => {
+    if (!editingUser) return;
+    setQaResetModalOpen(true);
+    setLoadingQaPreview(true);
+    setQaResetPreview(null);
+    setQaConfirmText('');
+    setQaConfirmEmail('');
+    try {
+      const { data, error } = await supabase.rpc('get_tenant_qa_eligibility', {
+        p_tenant_id: editingUser.id
+      });
+      if (error) {
+        // Fallback to legacy preview function if new RPC not yet available
+        const fallback = await supabase.rpc('get_qa_account_reset_preview', {
+          p_tenant_id: editingUser.id
+        });
+        if (fallback.error) throw fallback.error;
+        setQaResetPreview(fallback.data);
+      } else {
+        setQaResetPreview(data);
+      }
+    } catch (err) {
+      toast.error("Failed to load reset preview: " + err.message);
+    } finally {
+      setLoadingQaPreview(false);
+    }
+  };
+
+  const handleExecuteQaReset = async () => {
+    if (!editingUser || !qaResetPreview) return;
+    if (qaConfirmText !== 'RESET' || qaConfirmEmail.trim().toLowerCase() !== editingUser.email.trim().toLowerCase()) {
+      alert("Please enter 'RESET' and the exact target email to confirm.");
+      return;
+    }
+    setIsResettingQa(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('admin-manage-user', {
+        body: {
+          targetUserId: editingUser.id,
+          action: 'reset_test_account',
+          payload: { confirmEmail: editingUser.email }
+        }
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast.success(`Test account ${editingUser.email} has been completely reset.`);
+      setTenants(prev => prev.filter(t => t.id !== editingUser.id));
+      setQaResetModalOpen(false);
+      setEditingUser(null);
+      fetchGlobalData();
+    } catch (err) {
+      const errMsg = await parseEdgeFunctionError(err, "Account reset failed");
+      toast.error("Account reset failed: " + errMsg);
+    } finally {
+      setIsResettingQa(false);
+    }
+  };
 
   const deleteAccount = async (userId, name) => {
     if (!confirmingDelete) {
@@ -1791,6 +1972,62 @@ export default function SuperAdmin() {
               </div>
             </div>
             
+            {adminActiveTab !== 'platform_staff' && (
+              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: tenantSubFilter === 'active' ? '#0F2C59' : '#f1f5f9',
+                    color: tenantSubFilter === 'active' ? '#ffffff' : '#475569',
+                    border: 'none',
+                    fontWeight: 700,
+                    borderRadius: '20px',
+                    padding: '0.35rem 0.9rem',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setTenantSubFilter('active')}
+                >
+                  Active Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && !t.is_archived).length})
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: tenantSubFilter === 'qa' ? '#b45309' : '#f1f5f9',
+                    color: tenantSubFilter === 'qa' ? '#ffffff' : '#475569',
+                    border: 'none',
+                    fontWeight: 700,
+                    borderRadius: '20px',
+                    padding: '0.35rem 0.9rem',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setTenantSubFilter('qa')}
+                >
+                  🧪 QA Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && t.is_disposable_qa && !t.is_archived).length})
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: tenantSubFilter === 'archived' ? '#475569' : '#f1f5f9',
+                    color: tenantSubFilter === 'archived' ? '#ffffff' : '#475569',
+                    border: 'none',
+                    fontWeight: 700,
+                    borderRadius: '20px',
+                    padding: '0.35rem 0.9rem',
+                    fontSize: '0.8rem',
+                    cursor: 'pointer'
+                  }}
+                  onClick={() => setTenantSubFilter('archived')}
+                >
+                  🗄️ Archived Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && t.is_archived).length})
+                </button>
+              </div>
+            )}
+
             <div className="table-container" style={{ overflowX: 'auto' }}>
               <table className="table" style={{ width: '100%', minWidth: '1200px', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
@@ -1805,16 +2042,27 @@ export default function SuperAdmin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tenants.filter(t => 
-                    (adminActiveTab === 'platform_staff' 
+                  {tenants.filter(t => {
+                    const matchesRole = (adminActiveTab === 'platform_staff' 
                       ? ['super_admin', 'support_admin', 'billing_admin'].includes(t.role)
                       : ['tenant_admin', 'staff'].includes(t.role)
-                    ) &&
-                    (t.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                    t.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    t.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    t.role?.toLowerCase().includes(searchTerm.toLowerCase()))
-                  ).map(tenant => (
+                    );
+                    if (!matchesRole) return false;
+
+                    if (adminActiveTab !== 'platform_staff') {
+                      if (tenantSubFilter === 'active' && t.is_archived) return false;
+                      if (tenantSubFilter === 'qa' && (!t.is_disposable_qa || t.is_archived)) return false;
+                      if (tenantSubFilter === 'archived' && !t.is_archived) return false;
+                    }
+
+                    const term = searchTerm.toLowerCase();
+                    return (
+                      t.full_name?.toLowerCase().includes(term) || 
+                      t.email?.toLowerCase().includes(term) ||
+                      t.id?.toLowerCase().includes(term) ||
+                      t.role?.toLowerCase().includes(term)
+                    );
+                  }).map(tenant => (
                     <tr key={tenant.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s ease', ':hover': { backgroundColor: '#f8fafc' } }}>
                       <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -1829,8 +2077,31 @@ export default function SuperAdmin() {
                           </div>
                           <div>
                             <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#1e293b' }}>{tenant.full_name}</div>
-                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.2rem', display: 'flex', gap: '0.5rem' }}>
+                            <div style={{ fontSize: '0.7rem', color: '#94a3b8', marginTop: '0.2rem', display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
                               <span>ID: {tenant.id.substring(0, 8)}...</span>
+                              {tenant.is_archived && (
+                                <span style={{ fontSize: '0.65rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '1px 5px', fontWeight: 700 }}>
+                                  🗄️ ARCHIVED
+                                </span>
+                              )}
+                              {tenant.is_disposable_qa && (
+                                <span style={{ fontSize: '0.65rem', background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '4px', padding: '1px 5px', fontWeight: 700 }}>
+                                  🧪 QA TEST ACCOUNT
+                                </span>
+                              )}
+                              {tenant.financialEnv && tenant.financialEnv !== 'NONE' && (
+                                <span style={{
+                                  fontSize: '0.65rem',
+                                  borderRadius: '4px',
+                                  padding: '1px 5px',
+                                  fontWeight: 700,
+                                  background: tenant.financialEnv === 'LIVE' ? '#fef2f2' : tenant.financialEnv === 'TEST_ONLY' ? '#f3e8ff' : '#fef3c7',
+                                  color: tenant.financialEnv === 'LIVE' ? '#991b1b' : tenant.financialEnv === 'TEST_ONLY' ? '#6b21a8' : '#92400e',
+                                  border: `1px solid ${tenant.financialEnv === 'LIVE' ? '#fecaca' : tenant.financialEnv === 'TEST_ONLY' ? '#e9d5ff' : '#fde68a'}`
+                                }}>
+                                  {tenant.financialEnv === 'LIVE' ? '🔴 LIVE FINANCIALS' : tenant.financialEnv === 'TEST_ONLY' ? '🟣 TEST MODE' : '⚠️ UNKNOWN ENV'}
+                                </span>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -3297,6 +3568,68 @@ export default function SuperAdmin() {
                 <label htmlFor="feat_comm" style={{ fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', color: '#0F2C59' }}>Enable Communications & Automations</label>
               </div>
 
+              {/* QA TEST ACCOUNT CONTROLS (CANONICAL SUPER ADMIN ONLY) */}
+              {isCanonicalSuperAdmin && (
+                <div style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <label className="form-label" style={{ margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0F2C59' }}>
+                      🧪 Disposable QA Test Account
+                    </label>
+                    <span style={{
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: '12px',
+                      background: editingUser.is_disposable_qa ? '#fef3c7' : '#f1f5f9',
+                      color: editingUser.is_disposable_qa ? '#92400e' : '#64748b',
+                      border: `1px solid ${editingUser.is_disposable_qa ? '#fde68a' : '#cbd5e1'}`
+                    }}>
+                      {editingUser.is_disposable_qa ? 'Classified QA' : 'Normal Account'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 0.8rem 0' }}>
+                    Designating an account as disposable QA enables safe reset operations for repeated signup and onboarding testing.
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
+                      onClick={handleToggleQaDisposable}
+                      disabled={isTogglingQa}
+                    >
+                      {isTogglingQa ? 'Updating...' : (editingUser.is_disposable_qa ? 'Revoke QA Status' : 'Mark as Disposable QA')}
+                    </button>
+                    {editingUser.is_disposable_qa && (
+                      <button
+                        type="button"
+                        className="btn btn-outline"
+                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', color: '#b45309', borderColor: '#f59e0b', background: '#fffbeb', fontWeight: 700 }}
+                        onClick={handleOpenQaResetModal}
+                      >
+                        <RefreshCw size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Reset Test Account
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      style={{
+                        fontSize: '0.8rem',
+                        padding: '0.4rem 0.8rem',
+                        color: editingUser.is_archived ? '#166534' : '#475569',
+                        borderColor: editingUser.is_archived ? '#bbf7d0' : '#cbd5e1',
+                        background: editingUser.is_archived ? '#f0fdf4' : '#f8fafc',
+                        fontWeight: 700
+                      }}
+                      onClick={handleToggleArchiveAccount}
+                      disabled={isArchiving || ['super_admin'].includes(editingUser.role) || editingUser.email === 'cheerfulchalet@gmail.com'}
+                    >
+                      {isArchiving ? 'Updating...' : (editingUser.is_archived ? 'Restore from Archive' : 'Archive QA Account')}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <button 
                   type="button" 
@@ -3317,6 +3650,209 @@ export default function SuperAdmin() {
                 Cancel
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* RESET QA TEST ACCOUNT MODAL */}
+      {qaResetModalOpen && editingUser && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: '1rem' }}>
+          <div className="card" style={{ maxWidth: '550px', width: '100%', maxHeight: '90vh', overflowY: 'auto', background: 'white', borderRadius: '12px', padding: '1.5rem', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0F2C59', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                🧪 Reset QA Test Account
+              </h3>
+              <button type="button" className="btn btn-link" style={{ padding: 0, minWidth: 'auto', color: '#64748b' }} onClick={() => setQaResetModalOpen(false)}>
+                ✕
+              </button>
+            </div>
+
+            <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '6px', marginBottom: '1rem', border: '1px solid #e2e8f0', fontSize: '0.85rem' }}>
+              <div><strong>Target:</strong> {editingUser.full_name || 'N/A'} ({editingUser.email})</div>
+              <div style={{ color: '#64748b', fontSize: '0.75rem' }}>Tenant ID: {editingUser.id}</div>
+            </div>
+
+            {loadingQaPreview && (
+              <div style={{ textAlign: 'center', padding: '2rem 0', color: '#64748b' }}>
+                <RefreshCw size={24} className="spin" style={{ marginBottom: '0.5rem' }} />
+                <div>Checking retention invariants and gathering dependency preview...</div>
+              </div>
+            )}
+
+            {!loadingQaPreview && qaResetPreview && (() => {
+              const isBlocked = Boolean(qaResetPreview.is_blocked || !qaResetPreview.is_reset_eligible || (qaResetPreview.block_reasons && qaResetPreview.block_reasons.length > 0));
+              const counts = qaResetPreview.operational_counts || qaResetPreview.counts || {};
+              const fin = qaResetPreview.financials || {};
+              const classification = qaResetPreview.financial_classification || (isBlocked ? 'BLOCKED' : 'TEST_ONLY');
+
+              return (
+                <>
+                  {/* Financial Environment Classification Banner */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.65rem 0.85rem',
+                    borderRadius: '8px',
+                    marginBottom: '1rem',
+                    border: '1px solid',
+                    background: classification === 'LIVE' ? '#fef2f2' : (classification === 'TEST_ONLY' ? '#f3e8ff' : '#f8fafc'),
+                    borderColor: classification === 'LIVE' ? '#fecaca' : (classification === 'TEST_ONLY' ? '#e9d5ff' : '#e2e8f0'),
+                    color: classification === 'LIVE' ? '#991b1b' : (classification === 'TEST_ONLY' ? '#6b21a8' : '#334155')
+                  }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span>Financial Mode:</span>
+                      <strong>{classification === 'TEST_ONLY' ? '🧪 Confirmed TEST Environment' : classification === 'LIVE' ? '🔴 LIVE Financial Records' : classification === 'UNKNOWN' ? '⚠️ Unknown Environment' : '⚪ Zero Financial Records'}</strong>
+                    </div>
+                    <span style={{
+                      fontSize: '0.7rem',
+                      fontWeight: 800,
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      background: classification === 'TEST_ONLY' ? '#6b21a8' : (classification === 'LIVE' ? '#991b1b' : '#64748b'),
+                      color: '#ffffff'
+                    }}>
+                      {classification}
+                    </span>
+                  </div>
+
+                  {/* Financial Environment Breakdown */}
+                  <div style={{ marginBottom: '1.25rem', background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontWeight: 700, fontSize: '0.8rem', color: '#0F2C59', marginBottom: '0.5rem' }}>Financial Audit Breakdown:</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', fontSize: '0.75rem' }}>
+                      <div style={{ background: '#ffffff', padding: '0.4rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#6b21a8', fontWeight: 600 }}>TEST Mode:</span><br/>
+                        Payments: <strong>{fin.test_payments || 0}</strong><br/>
+                        Invoices: <strong>{fin.test_invoices || 0}</strong><br/>
+                        Subs: <strong>{fin.test_subscriptions || 0}</strong>
+                      </div>
+                      <div style={{ background: '#ffffff', padding: '0.4rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#991b1b', fontWeight: 600 }}>LIVE Mode:</span><br/>
+                        Payments: <strong style={{ color: fin.live_payments > 0 ? '#dc2626' : 'inherit' }}>{fin.live_payments || 0}</strong><br/>
+                        Invoices: <strong style={{ color: fin.live_invoices > 0 ? '#dc2626' : 'inherit' }}>{fin.live_invoices || 0}</strong><br/>
+                        Subs: <strong style={{ color: fin.live_subscriptions > 0 ? '#dc2626' : 'inherit' }}>{fin.live_subscriptions || 0}</strong>
+                      </div>
+                      <div style={{ background: '#ffffff', padding: '0.4rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#b45309', fontWeight: 600 }}>Active / Unknown:</span><br/>
+                        Active Subs: <strong style={{ color: fin.active_subscriptions > 0 ? '#b45309' : 'inherit' }}>{fin.active_subscriptions || 0}</strong><br/>
+                        Unknown Pay: <strong>{fin.unknown_payments || 0}</strong><br/>
+                        Unknown Inv: <strong>{fin.unknown_invoices || 0}</strong>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Eligibility Status Alert */}
+                  {isBlocked ? (
+                    <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', padding: '1rem', marginBottom: '1.25rem', color: '#991b1b' }}>
+                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                        <AlertCircle size={18} /> Reset Blocked by Invariants
+                      </div>
+                      <ul style={{ margin: '0 0 0 1.25rem', padding: 0, fontSize: '0.85rem' }}>
+                        {qaResetPreview.block_reasons?.map((reason, idx) => (
+                          <li key={idx} style={{ marginBottom: '0.25rem' }}>{reason}</li>
+                        ))}
+                      </ul>
+                      <div style={{ marginTop: '0.75rem', fontSize: '0.8rem', color: '#b91c1c' }}>
+                        Accounts with LIVE financial records, active subscriptions, unmapped environments, or protected system roles cannot be reset.
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '1rem', marginBottom: '1.25rem', color: '#166534' }}>
+                      <div style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                        <CheckCircle size={18} /> Account Verified Eligible for Reset (TEST Environment)
+                      </div>
+                      <div style={{ fontSize: '0.8rem', color: '#15803d' }}>
+                        Safety invariants passed. Any financial records belong strictly to Razorpay TEST mode. TEST invoices will be unlinked (preserving monotonic sequential numbering), bookings and operational data will be purged, and the Supabase Auth user identity will be deleted so the email can be re-registered.
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Dependency Breakdown */}
+                  <div style={{ marginBottom: '1.25rem' }}>
+                    <label className="form-label" style={{ fontWeight: 700, fontSize: '0.85rem' }}>Operational Data Cleanup Scope:</label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem', fontSize: '0.8rem' }}>
+                      <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#64748b' }}>Properties:</span> <strong>{counts.resorts || 0}</strong>
+                      </div>
+                      <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#64748b' }}>Cottages:</span> <strong>{counts.cottages || 0}</strong>
+                      </div>
+                      <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#64748b' }}>Rooms:</span> <strong>{counts.rooms || 0}</strong>
+                      </div>
+                      <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#64748b' }}>Bookings:</span> <strong>{counts.bookings || 0}</strong>
+                      </div>
+                      <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#64748b' }}>Incomes:</span> <strong>{counts.incomes || 0}</strong>
+                      </div>
+                      <div style={{ background: '#f8fafc', padding: '0.5rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ color: '#64748b' }}>Expenses:</span> <strong>{counts.expenses || 0}</strong>
+                      </div>
+                    </div>
+                    <p style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.5rem', marginBottom: 0 }}>
+                      Executing reset will purge all listed operational data, unlink TEST invoices, delete the tenant profile, and remove the Supabase Auth identity.
+                    </p>
+                  </div>
+
+                  {!isBlocked && (
+                    <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '1rem', marginBottom: '1.25rem' }}>
+                      <div style={{ fontWeight: 700, fontSize: '0.85rem', color: '#991b1b', marginBottom: '0.5rem' }}>
+                        ⚠️ Double Confirmation Required:
+                      </div>
+                      <div style={{ marginBottom: '0.75rem' }}>
+                        <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>1. Type <code>RESET</code>:</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          style={{ width: '100%', padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                          placeholder="RESET"
+                          value={qaConfirmText}
+                          onChange={e => setQaConfirmText(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label" style={{ fontSize: '0.75rem', marginBottom: '0.25rem' }}>2. Type exact account email (<code>{editingUser.email}</code>):</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          style={{ width: '100%', padding: '0.4rem 0.6rem', fontSize: '0.85rem' }}
+                          placeholder={editingUser.email}
+                          value={qaConfirmEmail}
+                          onChange={e => setQaConfirmEmail(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.8rem', borderTop: '1px solid #e2e8f0', paddingTop: '1rem' }}>
+                    <button
+                      type="button"
+                      className="btn btn-outline"
+                      onClick={() => setQaResetModalOpen(false)}
+                      disabled={isResettingQa}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      style={{ background: '#b45309', borderColor: '#b45309', fontWeight: 700 }}
+                      disabled={
+                        loadingQaPreview ||
+                        isBlocked ||
+                        qaConfirmText !== 'RESET' ||
+                        qaConfirmEmail.trim().toLowerCase() !== editingUser.email.trim().toLowerCase() ||
+                        isResettingQa
+                      }
+                      onClick={handleExecuteQaReset}
+                    >
+                      {isResettingQa ? 'Resetting Test Account...' : 'Confirm & Reset Account'}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

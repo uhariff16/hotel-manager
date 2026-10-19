@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.staypilot.app",
+      "sha256_cert_fingerprints": [
+        "8E:81:61:93:DB:6A:19:76:1F:07:8F:B6:BA:75:76:64:E8:52:81:FC:51:01:1E:17:E3:FF:22:71:C6:80:4D:81"
+      ]
+    }
+  }
+]

@@ -188,7 +188,8 @@ export default function Auth() {
               full_name: formData.fullName,
               role: 'tenant_admin',
               plan_type: planFromUrl
-            }
+            },
+            emailRedirectTo: `${window.location.origin}/verify-email`
           }
         });
         if (authError) throw authError;

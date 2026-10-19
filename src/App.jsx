@@ -32,6 +32,8 @@ const Features = React.lazy(() => import('./pages/Features'));
 const Pricing = React.lazy(() => import('./pages/Pricing'));
 const PrivacyPolicy = React.lazy(() => import('./pages/PrivacyPolicy'));
 const OnboardingWizard = React.lazy(() => import('./components/OnboardingWizard'));
+const EmailVerification = React.lazy(() => import('./pages/EmailVerification'));
+import { App as CapApp } from '@capacitor/app';
 
 function App() {
 
@@ -52,11 +54,28 @@ function App() {
           window.location.href = '/enquiries/quick';
         }
       });
+
+      CapApp.addListener('appUrlOpen', (event) => {
+        if (event.url.includes('/auth') || event.url.startsWith('staypilot://auth')) {
+          window.location.href = '/auth';
+        }
+      });
     }
   }, []);
 
   const { theme, session, profile, isRecovering, setSession, setProfile, setResorts, setActiveResortId, setIsRecovering, setGlobalPlans, setLandingPageContent, setWebsitePricing, setGlobalTaxSettings, setOnboardingWizardEnabled, setIsDataLoaded, setResortsLoadError } = useSettingsStore();
-  const [isNewlyVerified, setIsNewlyVerified] = React.useState(false);
+  const checkHasVerificationContext = () => {
+    if (typeof window === 'undefined') return false;
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    if (hash.includes('type=signup') || hash.includes('type=invite') || hash.includes('type=email_change')) return true;
+    if (search.includes('type=signup') || search.includes('type=invite') || search.includes('type=email_change')) return true;
+    if (hash.includes('error_code=') || search.includes('error_code=')) return true;
+    if (hash.includes('error=') || search.includes('error=')) return true;
+    if (sessionStorage.getItem('staypilot_email_verified') === 'true') return true;
+    return false;
+  };
+  const [hasPendingVerification, setHasPendingVerification] = React.useState(checkHasVerificationContext());
 
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -84,9 +103,7 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    if (window.location.href.includes('type=signup') || window.location.href.includes('type=invite')) {
-      setIsNewlyVerified(true);
-    }
+    // Verification context handled via hasPendingVerification & EmailVerification
 
     // Auth Listener
     setIsDataLoaded(false);
@@ -210,44 +227,11 @@ function App() {
     setIsDataLoaded(true);
   };
 
-  const isAndroid = /android/i.test(navigator.userAgent || navigator.vendor || window.opera);
-  
-  React.useEffect(() => {
-    if (isNewlyVerified && isAndroid) {
-      const timer = setTimeout(() => {
-        window.location.href = "staypilot://auth";
-      }, 1500);
-      return () => clearTimeout(timer);
-    }
-  }, [isNewlyVerified, isAndroid]);
-
-  if (isNewlyVerified) {
+    if (hasPendingVerification) {
     return (
-      <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-        <div style={{ background: 'white', padding: '3rem', borderRadius: '1rem', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', textAlign: 'center', maxWidth: '400px', width: '90%' }}>
-          <div style={{ background: '#10b981', color: 'white', width: '64px', height: '64px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
-            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-          </div>
-          <h1 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#0f172a', marginBottom: '1rem' }}>Email Verified!</h1>
-          <p style={{ color: '#64748b', marginBottom: '2rem', fontSize: '1.1rem' }}>Your email has been successfully confirmed. {isAndroid && "Redirecting to the app..."}</p>
-          
-          {isAndroid && (
-            <button 
-              onClick={() => { window.location.href = "staypilot://auth"; }}
-              style={{ background: '#10b981', color: 'white', padding: '0.75rem 2rem', borderRadius: '0.5rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '1rem', width: '100%', marginBottom: '1rem' }}
-            >
-              Open Mobile App
-            </button>
-          )}
-
-          <button 
-            onClick={() => setIsNewlyVerified(false)}
-            style={{ background: isAndroid ? '#f1f5f9' : '#0F2C59', color: isAndroid ? '#475569' : 'white', padding: '0.75rem 2rem', borderRadius: '0.5rem', fontWeight: 'bold', border: 'none', cursor: 'pointer', fontSize: '1rem', width: '100%' }}
-          >
-            {isAndroid ? 'Continue on Web' : 'Continue to Setup'}
-          </button>
-        </div>
-      </div>
+      <React.Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
+        <EmailVerification onDismissVerification={() => setHasPendingVerification(false)} />
+      </React.Suspense>
     );
   }
 
@@ -301,6 +285,7 @@ function App() {
           <Route path="/how-it-works" element={<HowItWorks />} />
           <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Pricing />} />
+          <Route path="/verify-email" element={<EmailVerification onDismissVerification={() => setHasPendingVerification(false)} />} />
           <Route path="/privacy" element={<PrivacyPolicy />} />
           
           <Route element={activeSession || isPreview ? <AppLayout /> : <Navigate to="/auth" replace />}>
