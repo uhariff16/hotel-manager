@@ -48,10 +48,25 @@ export default function EmailVerification({ onDismissVerification }) {
       // 2. Handle Explicit Error from Supabase Auth (e.g. otp_expired, access_denied)
       if (error || errorCode) {
         if (!mounted) return;
+
+        // Check if user is already authenticated and email is already confirmed
+        try {
+          const { data: { session: existingSession } } = await supabase.auth.getSession();
+          if (existingSession?.user?.email_confirmed_at) {
+            setStatus('success');
+            const email = existingSession.user.email || '';
+            setVerifiedEmail(email);
+            sessionStorage.setItem('staypilot_email_verified', 'true');
+            sessionStorage.setItem('staypilot_verified_email', email);
+            window.history.replaceState({}, document.title, window.location.pathname);
+            return;
+          }
+        } catch (_) {}
+
         setStatus('error');
         const formattedDesc = errorDesc 
           ? decodeURIComponent(errorDesc.replace(/\+/g, ' '))
-          : (errorCode === 'otp_expired' ? 'This verification link has expired.' : 'The verification link is invalid or has already been used.');
+          : (errorCode === 'otp_expired' ? 'This verification link has expired or has already been used.' : 'The verification link is invalid or has already been used.');
         setErrorMessage(formattedDesc);
         // Clean URL history to avoid exposing error params or replay attacks
         window.history.replaceState({}, document.title, window.location.pathname);

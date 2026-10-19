@@ -229,9 +229,12 @@ function App() {
 
     if (hasPendingVerification) {
     return (
-      <React.Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
-        <EmailVerification onDismissVerification={() => setHasPendingVerification(false)} />
-      </React.Suspense>
+      <BrowserRouter>
+        <Toaster position="top-right" />
+        <React.Suspense fallback={<div style={{ padding: '2rem' }}>Loading...</div>}>
+          <EmailVerification onDismissVerification={() => setHasPendingVerification(false)} />
+        </React.Suspense>
+      </BrowserRouter>
     );
   }
 
