@@ -505,6 +505,12 @@ export default function SuperAdmin() {
     });
   };
 
+  const resolveEffectiveSubStatus = (userObj, subObj) => {
+    if (userObj?.subscription_status === 'suspended') return 'suspended';
+    if (userObj?.global_settings?.is_disabled === true) return 'disabled';
+    return subObj?.status || userObj?.subscription_status || 'active';
+  };
+
   const fetchGlobalData = async () => {
     setLoading(true);
     setFetchError(null);
@@ -585,7 +591,7 @@ export default function SuperAdmin() {
           bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length,
           activeSub: tenantSub || null,
           effectivePlan: tenantSub?.staypilot_plan_type || user.plan_type || 'free',
-          effectiveSubStatus: tenantSub?.status || user.subscription_status || 'active',
+          effectiveSubStatus: resolveEffectiveSubStatus(user, tenantSub),
           financialEnv,
           is_archived: Boolean(user.is_archived)
         };
@@ -759,8 +765,14 @@ export default function SuperAdmin() {
       });
       if (error || data?.error) throw new Error(error?.message || data?.error || 'Unknown error');
       alert(data.message || "Account status updated.");
-      setEditingUser({...editingUser, global_settings: { ...(editingUser.global_settings || {}), is_disabled: !currentlyDisabled } });
-      setTenants(tenants.map(t => t.id === editingUser.id ? {...t, global_settings: { ...(t.global_settings || {}), is_disabled: !currentlyDisabled } } : t));
+      const updatedGlobalSettings = { ...(editingUser.global_settings || {}), is_disabled: !currentlyDisabled };
+      const updatedUser = {
+        ...editingUser,
+        global_settings: updatedGlobalSettings,
+        effectiveSubStatus: resolveEffectiveSubStatus({ ...editingUser, global_settings: updatedGlobalSettings }, editingUser.activeSub)
+      };
+      setEditingUser(updatedUser);
+      setTenants(tenants.map(t => t.id === editingUser.id ? updatedUser : t));
     } catch (err) {
       alert("Failed to update status: " + err.message);
     } finally {
@@ -835,7 +847,11 @@ export default function SuperAdmin() {
         alert("Account updated successfully!");
       }
       
-      setTenants(prev => prev.map(t => t.id === editingUser.id ? editingUser : t));
+      const updatedTenant = {
+        ...editingUser,
+        effectiveSubStatus: resolveEffectiveSubStatus(editingUser, editingUser.activeSub)
+      };
+      setTenants(prev => prev.map(t => t.id === editingUser.id ? updatedTenant : t));
       setEditingUser(null);
     } catch (err) {
       alert("Update failed: " + err.message);
@@ -1964,7 +1980,7 @@ export default function SuperAdmin() {
                       t.propertyCount || 0,
                       t.bookingCount || 0,
                       pricingConfig[t.plan_type]?.name || t.plan_type || 'Free Starter',
-                      t.subscription_status === 'active' ? 'Active' : 'Suspended',
+                      (t.effectiveSubStatus || t.subscription_status || 'active').toUpperCase(),
                       t.created_at ? new Date(t.created_at).toLocaleDateString('en-CA') : ''
                     ]);
 
@@ -2241,13 +2257,13 @@ export default function SuperAdmin() {
                           display: 'inline-flex', 
                           alignItems: 'center', 
                           gap: '0.35rem', 
-                          color: tenant.effectiveSubStatus === 'active' ? '#059669' : tenant.effectiveSubStatus === 'suspended' ? '#ef4444' : '#d97706', 
+                          color: tenant.effectiveSubStatus === 'active' ? '#059669' : (tenant.effectiveSubStatus === 'suspended' || tenant.effectiveSubStatus === 'disabled') ? '#ef4444' : '#d97706', 
                           fontSize: '0.75rem',
                           fontWeight: 800,
-                          background: tenant.effectiveSubStatus === 'active' ? 'rgba(5, 150, 105, 0.08)' : tenant.effectiveSubStatus === 'suspended' ? 'rgba(239, 68, 68, 0.08)' : 'rgba(217, 119, 6, 0.08)',
+                          background: tenant.effectiveSubStatus === 'active' ? 'rgba(5, 150, 105, 0.08)' : (tenant.effectiveSubStatus === 'suspended' || tenant.effectiveSubStatus === 'disabled') ? 'rgba(239, 68, 68, 0.08)' : 'rgba(217, 119, 6, 0.08)',
                           padding: '0.35rem 0.75rem',
                           borderRadius: '20px',
-                          border: tenant.effectiveSubStatus === 'active' ? '1px solid rgba(5, 150, 105, 0.15)' : tenant.effectiveSubStatus === 'suspended' ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(217, 119, 6, 0.15)'
+                          border: tenant.effectiveSubStatus === 'active' ? '1px solid rgba(5, 150, 105, 0.15)' : (tenant.effectiveSubStatus === 'suspended' || tenant.effectiveSubStatus === 'disabled') ? '1px solid rgba(239, 68, 68, 0.15)' : '1px solid rgba(217, 119, 6, 0.15)'
                         }}>
                           {tenant.effectiveSubStatus === 'active' ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
                           {tenant.effectiveSubStatus ? tenant.effectiveSubStatus.toUpperCase() : 'ACTIVE'}
