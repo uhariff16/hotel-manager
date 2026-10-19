@@ -165,18 +165,37 @@ test('STAY PILOT — Super Admin QA Account Cleanup, Archive & Reusable Email Re
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
       booking_id uuid,
       booking_reference text,
-      tenant_id uuid,
+      tenant_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
       guest_name text,
       guest_phone text,
       total_booking_amount numeric,
       advance_paid numeric,
       balance_amount numeric,
       financial_records_snapshot jsonb,
-      deleted_by_user_id uuid,
+      deleted_by_user_id uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
       deleted_by_role text,
       deletion_reason text,
       created_at timestamptz DEFAULT now()
     );
+
+    CREATE OR REPLACE FUNCTION public.enforce_booking_deletion_audits_immutability()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql
+    AS $$
+    BEGIN
+      RAISE EXCEPTION 'Audit trail records are strictly immutable and cannot be updated or deleted';
+    END;
+    $$;
+
+    CREATE TRIGGER trg_enforce_booking_deletion_audits_immutability
+      BEFORE UPDATE OR DELETE ON public.booking_deletion_audits
+      FOR EACH ROW
+      EXECUTE FUNCTION public.enforce_booking_deletion_audits_immutability();
+
+    -- Apply FK fix migration to drop mutating ON DELETE SET NULL constraints
+    ALTER TABLE public.booking_deletion_audits
+      DROP CONSTRAINT IF EXISTS booking_deletion_audits_tenant_id_fkey,
+      DROP CONSTRAINT IF EXISTS booking_deletion_audits_deleted_by_user_id_fkey;
 
     CREATE TABLE public.saas_payments (
       id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

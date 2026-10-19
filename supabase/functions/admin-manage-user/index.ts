@@ -149,8 +149,8 @@ serve(async (req) => {
           for (const sub of activeSubs) {
             // Strict check: Only TEST subscriptions can be automatically cancelled/reconciled
             if (sub.environment === 'test') {
-              const razorpayKeyId = Deno.env.get('RAZORPAY_KEY_ID_TEST') || Deno.env.get('RAZORPAY_KEY_ID')
-              const razorpaySecret = Deno.env.get('RAZORPAY_KEY_SECRET_TEST') || Deno.env.get('RAZORPAY_KEY_SECRET')
+              const razorpayKeyId = Deno.env.get('RAZORPAY_TEST_KEY_ID') || Deno.env.get('RAZORPAY_KEY_ID_TEST') || Deno.env.get('RAZORPAY_KEY_ID')
+              const razorpaySecret = Deno.env.get('RAZORPAY_TEST_KEY_SECRET') || Deno.env.get('RAZORPAY_KEY_SECRET_TEST') || Deno.env.get('RAZORPAY_KEY_SECRET')
               if (razorpayKeyId && razorpaySecret && sub.razorpay_subscription_id) {
                 try {
                   const auth = btoa(`${razorpayKeyId}:${razorpaySecret}`)
