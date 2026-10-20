@@ -257,16 +257,18 @@ a {
 /* Sidebar Nav */
 .nav-links {
   list-style: none;
-  padding: 1rem;
+  padding: 1rem 1rem 3rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
   flex: 1 1 auto;
   min-height: 0;
-  overflow-y: auto;
+  overflow-y: scroll;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
 }
 
 .sidebar-footer {
@@ -286,6 +288,7 @@ a {
   font-weight: 500;
   transition: all 0.2s;
   gap: 1rem;
+  touch-action: pan-y;
 }
 
 .nav-item:hover {
@@ -436,6 +439,7 @@ a {
   .sidebar.open {
     left: 0;
     pointer-events: auto;
+    touch-action: pan-y;
   }
 
   .main-content {
@@ -500,11 +504,13 @@ a {
     z-index: 2100;
     backdrop-filter: blur(2px);
     -webkit-backdrop-filter: blur(2px);
+    touch-action: none;
   }
-}
 
-body.mobile-sidebar-open {
-  overflow: hidden !important;
+  body.mobile-sidebar-open {
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
 }
 
 /* --- NEW PREMIUM POLISH --- */

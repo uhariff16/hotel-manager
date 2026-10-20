@@ -340,7 +340,18 @@ export default function AppLayout() {
           </div>
         )}
 
-        <nav ref={navLinksRef} className="nav-links" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+        <nav 
+          ref={navLinksRef} 
+          className="nav-links" 
+          style={{ 
+            flex: '1 1 auto', 
+            minHeight: 0, 
+            overflowY: 'scroll', 
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            paddingBottom: '2.5rem'
+          }}
+        >
           {navLinks.map((link) => {
             if (link.isSubmenu) {
               return (
