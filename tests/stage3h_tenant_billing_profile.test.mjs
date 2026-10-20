@@ -205,7 +205,7 @@ async function setupDatabase() {
   `);
 
   // 2. Load Stage 3B Invoicing Engine SQL
-  const stage3bSqlPath = path.join(rootDir, 'supabase', 'phase_r3_stage3b_invoicing_engine.sql');
+  const stage3bSqlPath = path.join(rootDir, 'supabase', 'archived', 'phase_r3_stage3b_invoicing_engine.sql');
   if (fs.existsSync(stage3bSqlPath)) {
     const stage3bSql = fs.readFileSync(stage3bSqlPath, 'utf8');
     await db.exec(stage3bSql);
