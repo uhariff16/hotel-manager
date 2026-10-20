@@ -158,6 +158,8 @@ export default function AppLayout() {
     setSupportUnreadCount(count || 0);
   };
 
+  const navLinksRef = React.useRef(null);
+
   React.useEffect(() => {
     if (isManagementActive) {
       setIsManagementOpen(true);
@@ -167,6 +169,20 @@ export default function AppLayout() {
   React.useEffect(() => {
     setIsSidebarOpen(false);
   }, [location.pathname]);
+
+  React.useEffect(() => {
+    if (isSidebarOpen) {
+      document.body.classList.add('mobile-sidebar-open');
+      if (navLinksRef.current) {
+        navLinksRef.current.scrollTop = 0;
+      }
+    } else {
+      document.body.classList.remove('mobile-sidebar-open');
+    }
+    return () => {
+      document.body.classList.remove('mobile-sidebar-open');
+    };
+  }, [isSidebarOpen]);
 
   const isPreview = typeof window !== 'undefined' && window.location.search.includes('preview=true');
   const effectiveProfile = profile || (isPreview ? { role: 'tenant_admin', plan_type: 'master', tenant_id: 'demo-tenant' } : null);
@@ -324,7 +340,7 @@ export default function AppLayout() {
           </div>
         )}
 
-        <nav className="nav-links" style={{ flex: 1 }}>
+        <nav ref={navLinksRef} className="nav-links" style={{ flex: '1 1 auto', minHeight: 0, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {navLinks.map((link) => {
             if (link.isSubmenu) {
               return (
@@ -544,7 +560,7 @@ export default function AppLayout() {
         </div>
 
         {/* Mobile Bottom Navigation */}
-        <nav className="mobile-bottom-nav">
+        <nav className={`mobile-bottom-nav ${isSidebarOpen ? 'drawer-open' : ''}`}>
           {!isStaff && (
             <NavLink to="/dashboard" className={({ isActive }) => `mobile-nav-item ${isActive ? 'active' : ''}`}>
               <LayoutDashboard size={24} />

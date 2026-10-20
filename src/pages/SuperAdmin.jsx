@@ -3463,285 +3463,380 @@ export default function SuperAdmin() {
 
       {/* Account Management Modal */}
       {editingUser && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="card" style={{ width: '420px', maxWidth: '90%', animation: 'scaleUp 0.2s ease-out', textAlign: 'left', borderRadius: '16px', padding: '2rem' }}>
-            <h2 style={{ marginBottom: '1.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Manage Account</h2>
-            <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'rgba(15, 44, 89, 0.05)', borderRadius: '8px', border: '1px solid rgba(15, 44, 89, 0.1)' }}>
-              <p style={{ margin: 0, fontWeight: 800, color: '#0F2C59' }}>{editingUser.full_name}</p>
-              <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--primary)', fontWeight: 600 }}>{editingUser.email}</p>
-              <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>ID: {editingUser.id}</p>
+        <div 
+          className="tenant-manage-modal-overlay"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !confirmingDelete && !isUpdating) {
+              setEditingUser(null);
+              setConfirmingDelete(false);
+            }
+          }}
+        >
+          <div className="card tenant-manage-modal-dialog">
+            <div className="tenant-manage-modal-header">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+                  <h2 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: '1.35rem' }}>
+                    Manage Account: {editingUser.full_name || 'User'}
+                  </h2>
+                  <span className="tenant-manage-id-badge">ID: {editingUser.id}</span>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.85rem', color: '#64748b', fontWeight: 500 }}>
+                  {editingUser.email}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn-link"
+                style={{
+                  padding: '0.35rem 0.6rem',
+                  minWidth: 'auto',
+                  color: '#64748b',
+                  fontSize: '1.25rem',
+                  lineHeight: 1,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  textDecoration: 'none'
+                }}
+                onClick={() => {
+                  setEditingUser(null);
+                  setConfirmingDelete(false);
+                }}
+                title="Close"
+                aria-label="Close"
+              >
+                ✕
+              </button>
             </div>
 
-            <form onSubmit={handleUpdateUser}>
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <label className="form-label">Email Address</label>
-                <input 
-                  type="email" 
-                  className="form-input" 
-                  value={editingUser.email || ''} 
-                  onChange={e => setEditingUser({...editingUser, email: e.target.value})}
-                  placeholder="e.g. email@example.com"
-                />
-              </div>
+            <form onSubmit={handleUpdateUser} className="tenant-manage-modal-form">
+              <div className="tenant-manage-modal-body">
+                {/* Responsive Two-Column Grid */}
+                <div className="tenant-manage-modal-grid">
+                  {/* Column 1: Account Access & Status */}
+                  <div className="tenant-manage-column">
+                    <div className="tenant-manage-card">
+                      <h3 className="tenant-section-header">
+                        <Shield size={16} style={{ color: '#0F2C59' }} /> Account Access & Status
+                      </h3>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem', marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--danger)' }}>
-                    <Lock size={16} /> Reset Password
-                  </label>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input 
-                      type="password" 
-                      className="form-input" 
-                      value={newAdminPassword} 
-                      onChange={e => setNewAdminPassword(e.target.value)}
-                      placeholder="Enter new password (min 6 chars)"
-                    />
-                    <button 
-                      type="button" 
-                      className="btn btn-outline" 
-                      onClick={handleAdminResetPassword} 
-                      disabled={isResettingPassword || newAdminPassword.length < 6}
-                    >
-                      {isResettingPassword ? 'Resetting...' : 'Reset'}
-                    </button>
-                  </div>
-                </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600, color: '#334155', fontSize: '0.85rem', marginBottom: '0.35rem' }}>Email Address</label>
+                        <input 
+                          type="email" 
+                          className="form-input" 
+                          value={editingUser.email || ''} 
+                          onChange={e => setEditingUser({...editingUser, email: e.target.value})}
+                          placeholder="e.g. email@example.com"
+                        />
+                      </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <ShieldAlert size={16} /> Login Access
-                  </label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '0.9rem', color: editingUser.global_settings?.is_disabled ? 'var(--danger)' : '#10b981', fontWeight: 600 }}>
-                      {editingUser.global_settings?.is_disabled ? 'Account is Disabled' : 'Account is Enabled'}
-                    </span>
-                    <button 
-                      type="button" 
-                      className="btn btn-outline" 
-                      onClick={handleAdminToggleStatus} 
-                      disabled={isTogglingStatus}
-                    >
-                      {isTogglingStatus ? 'Updating...' : (editingUser.global_settings?.is_disabled ? 'Enable Account' : 'Disable Account')}
-                    </button>
-                  </div>
-                </div>
-              </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600, color: '#334155', fontSize: '0.85rem', marginBottom: '0.35rem' }}>Account Status</label>
+                        <select 
+                          className="form-select" 
+                          value={editingUser.subscription_status || 'active'} 
+                          onChange={e => setEditingUser({...editingUser, subscription_status: e.target.value})}
+                        >
+                          <option value="active">Active</option>
+                          <option value="suspended">Suspended</option>
+                        </select>
+                      </div>
 
-              <div className="form-group" style={{ marginBottom: '1rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                  <label className="form-label" style={{ margin: 0 }}>Subscription Plan</label>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, padding: '0.15rem 0.5rem', borderRadius: '12px', background: 'rgba(59, 130, 246, 0.12)', color: 'var(--primary)', border: '1px solid rgba(59, 130, 246, 0.3)' }}>
-                    Source: {editingUser.entitlement_source || (editingUser.is_legacy_account ? 'grandfathered_legacy' : 'standard')}
-                  </span>
-                </div>
-                <select 
-                  className="form-select" 
-                  value={editingUser.plan_type} 
-                  onChange={e => setEditingUser({...editingUser, plan_type: e.target.value})}
-                  disabled={editingUser.role === 'staff'}
-                >
-                  {Object.entries(pricingConfig).sort(([a], [b]) => { const order = ['free', 'pro', 'luxury']; const idxA = order.indexOf(a); const idxB = order.indexOf(b); return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB); }).map(([planKey, planVal]) => (
-                    <option key={planKey} value={planKey}>{planVal.name?.toUpperCase() || planKey.toUpperCase()}</option>
-                  ))}
-                </select>
-                {editingUser.role === 'staff' && <small style={{ color: 'var(--text-muted)' }}>Plans apply to Tenants only</small>}
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600, color: '#334155', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <ShieldAlert size={15} style={{ color: '#64748b' }} /> Login Access
+                        </label>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', gap: '0.75rem', flexWrap: 'wrap' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{
+                              display: 'inline-block',
+                              width: '8px',
+                              height: '8px',
+                              borderRadius: '50%',
+                              background: editingUser.global_settings?.is_disabled ? '#ef4444' : '#10b981'
+                            }} />
+                            <span style={{ fontSize: '0.875rem', color: editingUser.global_settings?.is_disabled ? '#dc2626' : '#166534', fontWeight: 600 }}>
+                              {editingUser.global_settings?.is_disabled ? 'Account is Disabled' : 'Account is Enabled'}
+                            </span>
+                          </div>
+                          <button 
+                            type="button" 
+                            className="btn btn-outline" 
+                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', fontWeight: 600 }}
+                            onClick={handleAdminToggleStatus} 
+                            disabled={isTogglingStatus}
+                          >
+                            {isTogglingStatus ? 'Updating...' : (editingUser.global_settings?.is_disabled ? 'Enable Account' : 'Disable Account')}
+                          </button>
+                        </div>
+                      </div>
 
-                {editingUser.role === 'tenant_admin' && (
-                  <div style={{ marginTop: '0.75rem', background: 'rgba(15, 44, 89, 0.04)', padding: '0.85rem', borderRadius: '8px', border: '1px solid rgba(15, 44, 89, 0.15)' }}>
-                    <div style={{ fontSize: '0.825rem', fontWeight: 700, color: 'var(--primary)', marginBottom: '0.35rem' }}>
-                      👑 Super Admin Direct Manual Plan Assignment
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <label className="form-label" style={{ fontWeight: 600, color: '#334155', fontSize: '0.85rem', marginBottom: '0.35rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <Lock size={15} style={{ color: '#64748b' }} /> Reset Password
+                        </label>
+                        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                          <input 
+                            type="password" 
+                            className="form-input" 
+                            style={{ flex: '1 1 180px' }}
+                            value={newAdminPassword} 
+                            onChange={e => setNewAdminPassword(e.target.value)} 
+                            placeholder="Enter new password (min 6 chars)"
+                          />
+                          <button 
+                            type="button" 
+                            className="btn btn-outline" 
+                            style={{ fontSize: '0.8rem', padding: '0.4rem 0.85rem', fontWeight: 600 }}
+                            onClick={handleAdminResetPassword} 
+                            disabled={isResettingPassword || newAdminPassword.length < 6}
+                          >
+                            {isResettingPassword ? 'Resetting...' : 'Reset'}
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                    <input 
-                      type="text" 
-                      className="form-input" 
-                      style={{ marginBottom: '0.5rem', fontSize: '0.85rem' }} 
-                      value={manualReason} 
-                      onChange={e => setManualReason(e.target.value)} 
-                      placeholder="Reason for assignment (e.g. Grandfathered Stay Master restoration)" 
-                    />
-                    <button 
-                      type="button" 
-                      className="btn btn-outline" 
-                      style={{ width: '100%', fontSize: '0.85rem', fontWeight: 700, borderColor: 'var(--primary)', color: 'var(--primary)' }} 
-                      onClick={handleManualAssignPlan} 
-                      disabled={isUpdating || !manualReason.trim()}
-                    >
-                      Assign Plan Manually (No Payment)
-                    </button>
                   </div>
-                )}
-              </div>
 
-              <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                <label className="form-label">Account Status</label>
-                <select 
-                  className="form-select" 
-                  value={editingUser.subscription_status || 'active'} 
-                  onChange={e => setEditingUser({...editingUser, subscription_status: e.target.value})}
-                >
-                  <option value="active">Active</option>
-                  <option value="suspended">Suspended</option>
-                </select>
-              </div>
+                  {/* Column 2: Subscription & Permissions */}
+                  <div className="tenant-manage-column">
+                    <div className="tenant-manage-card">
+                      <h3 className="tenant-section-header">
+                        <DollarSign size={16} style={{ color: '#0F2C59' }} /> Subscription & Permissions
+                      </h3>
 
-              <div className="form-group" style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.8rem', background: 'rgba(5, 150, 105, 0.04)', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.1)' }}>
-                <input 
-                  type="checkbox" 
-                  id="feat_inv" 
-                  checked={!!editingUser.feature_investment_enabled} 
-                  onChange={e => setEditingUser({...editingUser, feature_investment_enabled: e.target.checked})} 
-                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                />
-                <label htmlFor="feat_inv" style={{ fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', color: '#0F2C59' }}>Enable Investment Analysis</label>
-              </div>
+                      <div className="form-group" style={{ marginBottom: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.35rem' }}>
+                          <label className="form-label" style={{ fontWeight: 600, color: '#334155', fontSize: '0.85rem', margin: 0 }}>Subscription Plan</label>
+                          <span style={{ fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: '12px', background: '#f1f5f9', color: '#475569', border: '1px solid #e2e8f0' }}>
+                            Source: {editingUser.entitlement_source || (editingUser.is_legacy_account ? 'grandfathered_legacy' : 'standard')}
+                          </span>
+                        </div>
+                        <select 
+                          className="form-select" 
+                          value={editingUser.plan_type} 
+                          onChange={e => setEditingUser({...editingUser, plan_type: e.target.value})}
+                          disabled={editingUser.role === 'staff'}
+                        >
+                          {Object.entries(pricingConfig).sort(([a], [b]) => { const order = ['free', 'pro', 'luxury']; const idxA = order.indexOf(a); const idxB = order.indexOf(b); return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB); }).map(([planKey, planVal]) => (
+                            <option key={planKey} value={planKey}>{planVal.name?.toUpperCase() || planKey.toUpperCase()}</option>
+                          ))}
+                        </select>
+                        {editingUser.role === 'staff' && <small style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.25rem' }}>Plans apply to Tenants only</small>}
 
-              <div className="form-group" style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem', padding: '0.8rem', background: 'rgba(5, 150, 105, 0.04)', borderRadius: '8px', border: '1px solid rgba(5, 150, 105, 0.1)' }}>
-                <input 
-                  type="checkbox" 
-                  id="feat_comm" 
-                  checked={editingUser.feature_comm_enabled !== false} 
-                  onChange={e => setEditingUser({...editingUser, feature_comm_enabled: e.target.checked})} 
-                  style={{ width: '20px', height: '20px', cursor: 'pointer' }}
-                />
-                <label htmlFor="feat_comm" style={{ fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', color: '#0F2C59' }}>Enable Communications & Automations</label>
-              </div>
+                        {editingUser.role === 'tenant_admin' && (
+                          <div style={{ marginTop: '0.75rem', background: '#f8fafc', padding: '0.85rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ fontSize: '0.8rem', fontWeight: 700, color: '#0F2C59', marginBottom: '0.4rem' }}>
+                              👑 Super Admin Direct Manual Plan Assignment
+                            </div>
+                            <input 
+                              type="text" 
+                              className="form-input" 
+                              style={{ marginBottom: '0.5rem', fontSize: '0.85rem' }} 
+                              value={manualReason} 
+                              onChange={e => setManualReason(e.target.value)} 
+                              placeholder="Reason for assignment (e.g. Grandfathered Stay Master restoration)" 
+                            />
+                            <button 
+                              type="button" 
+                              className="btn btn-outline" 
+                              style={{ width: '100%', fontSize: '0.8rem', fontWeight: 700, borderColor: '#cbd5e1', color: '#0F2C59' }} 
+                              onClick={handleManualAssignPlan} 
+                              disabled={isUpdating || !manualReason.trim()}
+                            >
+                              Assign Plan Manually (No Payment)
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
-              {/* QA TEST ACCOUNT CONTROLS (CANONICAL SUPER ADMIN ONLY) */}
-              {isCanonicalSuperAdmin && (
-                <div style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                    <label className="form-label" style={{ margin: 0, fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0F2C59' }}>
-                      🧪 Disposable QA Test Account
-                    </label>
-                    <span style={{
-                      fontSize: '0.75rem',
-                      fontWeight: 700,
-                      padding: '0.2rem 0.6rem',
-                      borderRadius: '12px',
-                      background: editingUser.is_disposable_qa ? '#fef3c7' : '#f1f5f9',
-                      color: editingUser.is_disposable_qa ? '#92400e' : '#64748b',
-                      border: `1px solid ${editingUser.is_disposable_qa ? '#fde68a' : '#cbd5e1'}`
-                    }}>
-                      {editingUser.is_disposable_qa ? 'Classified QA' : 'Normal Account'}
-                    </span>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        <div className="tenant-checkbox-card">
+                          <input 
+                            type="checkbox" 
+                            id="feat_inv" 
+                            checked={!!editingUser.feature_investment_enabled} 
+                            onChange={e => setEditingUser({...editingUser, feature_investment_enabled: e.target.checked})} 
+                            style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0, accentColor: '#0F2C59' }}
+                          />
+                          <label htmlFor="feat_inv" style={{ fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', color: '#1e293b', margin: 0 }}>Enable Investment Analysis</label>
+                        </div>
+
+                        <div className="tenant-checkbox-card">
+                          <input 
+                            type="checkbox" 
+                            id="feat_comm" 
+                            checked={editingUser.feature_comm_enabled !== false} 
+                            onChange={e => setEditingUser({...editingUser, feature_comm_enabled: e.target.checked})} 
+                            style={{ width: '18px', height: '18px', cursor: 'pointer', flexShrink: 0, accentColor: '#0F2C59' }}
+                          />
+                          <label htmlFor="feat_comm" style={{ fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', color: '#1e293b', margin: 0 }}>Enable Communications & Automations</label>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', margin: '0 0 0.8rem 0' }}>
-                    Designating an account as disposable QA enables safe reset operations for repeated signup and onboarding testing.
-                  </p>
 
-                  {/* ELIGIBILITY & INELIGIBILITY REASON FEEDBACK */}
-                  {loadingEligibility && (
-                    <div style={{ fontSize: '0.75rem', color: '#64748b', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <RefreshCw size={11} className="spin" /> Verifying account financial classification...
+                  {/* QA TEST ACCOUNT CONTROLS (CANONICAL SUPER ADMIN ONLY) */}
+                  {isCanonicalSuperAdmin && (
+                    <div className="tenant-manage-card" style={{ gridColumn: '1 / -1' }}>
+                      <h3 className="tenant-section-header">
+                        <span style={{ fontSize: '1.1rem' }}>🧪</span> Disposable QA Test Account
+                      </h3>
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155' }}>Classification Status</span>
+                          <span style={{
+                            fontSize: '0.75rem',
+                            fontWeight: 700,
+                            padding: '0.2rem 0.65rem',
+                            borderRadius: '12px',
+                            background: editingUser.is_disposable_qa ? '#fef3c7' : '#f1f5f9',
+                            color: editingUser.is_disposable_qa ? '#92400e' : '#64748b',
+                            border: `1px solid ${editingUser.is_disposable_qa ? '#fde68a' : '#cbd5e1'}`
+                          }}>
+                            {editingUser.is_disposable_qa ? 'Classified QA' : 'Normal Account'}
+                          </span>
+                        </div>
+                        <p style={{ fontSize: '0.8rem', color: '#64748b', margin: '0 0 0.85rem 0', lineHeight: 1.4 }}>
+                          Designating an account as disposable QA enables safe reset operations for repeated signup and onboarding testing.
+                        </p>
+
+                        {/* ELIGIBILITY & INELIGIBILITY REASON FEEDBACK */}
+                        {loadingEligibility && (
+                          <div style={{ fontSize: '0.78rem', color: '#64748b', marginBottom: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <RefreshCw size={12} className="spin" /> Verifying account financial classification...
+                          </div>
+                        )}
+
+                        {!loadingEligibility && tenantQaEligibility && (
+                          <div style={{ marginBottom: '0.85rem' }}>
+                            {tenantQaEligibility.financial_classification === 'TEST_ONLY' && (
+                              <div style={{ padding: '0.6rem 0.85rem', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '8px', fontSize: '0.78rem', color: '#6d28d9', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                                🟣 <strong>Verified TEST Mode:</strong> Account contains {tenantQaEligibility.financials.test_payments} test payment(s) and {tenantQaEligibility.financials.test_invoices} test invoice(s). Eligible for disposable QA designation.
+                              </div>
+                            )}
+                            {tenantQaEligibility.financial_classification === 'LIVE' && (
+                              <div style={{ padding: '0.6rem 0.85rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '8px', fontSize: '0.78rem', color: '#b91c1c', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                                🔴 <strong>Ineligible for QA Designation:</strong> Account contains recorded LIVE financial records under mandatory legal tax retention. Designation and reset are strictly blocked.
+                              </div>
+                            )}
+                            {tenantQaEligibility.financial_classification === 'UNKNOWN' && (
+                              <div style={{ padding: '0.6rem 0.85rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', fontSize: '0.78rem', color: '#b45309', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                                ⚠️ <strong>Ineligible for QA Designation:</strong> Account contains unverified or ambiguous financial environment records. Cannot be designated or reset.
+                              </div>
+                            )}
+                            {['super_admin'].includes(editingUser.role) || editingUser.email === 'cheerfulchalet@gmail.com' ? (
+                              <div style={{ padding: '0.6rem 0.85rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.78rem', color: '#334155', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                                🛡️ <strong>Permanently Protected Account:</strong> Platform administrator and core hotel accounts are permanently protected from QA classification.
+                              </div>
+                            ) : null}
+                            {editingUser.is_disposable_qa && tenantQaEligibility.block_reasons?.length > 0 && (
+                              <div style={{ padding: '0.6rem 0.85rem', background: '#fffbeb', border: '1px solid #fed7aa', borderRadius: '8px', fontSize: '0.75rem', color: '#9a3412', marginBottom: '0.5rem', lineHeight: 1.4 }}>
+                                <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>Reset Ineligibility Reasons:</div>
+                                <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
+                                  {tenantQaEligibility.block_reasons.map((r, i) => <li key={i}>{r}</li>)}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', fontWeight: 600 }}
+                            onClick={handleToggleQaDisposable}
+                            disabled={
+                              isTogglingQa || 
+                              (!editingUser.is_disposable_qa && tenantQaEligibility && (
+                                tenantQaEligibility.financial_classification === 'LIVE' ||
+                                tenantQaEligibility.financial_classification === 'UNKNOWN' ||
+                                ['super_admin'].includes(editingUser.role) ||
+                                editingUser.email === 'cheerfulchalet@gmail.com'
+                              ))
+                            }
+                            title={
+                              tenantQaEligibility?.financial_classification === 'LIVE' ? 'Cannot designate account with LIVE financial records' :
+                              tenantQaEligibility?.financial_classification === 'UNKNOWN' ? 'Cannot designate account with unverified financial environment' :
+                              editingUser.email === 'cheerfulchalet@gmail.com' ? 'Core system account is protected' : ''
+                            }
+                          >
+                            {isTogglingQa ? 'Updating...' : (editingUser.is_disposable_qa ? 'Revoke QA Status' : 'Mark as Disposable QA')}
+                          </button>
+                          {editingUser.is_disposable_qa && (
+                            <button
+                              type="button"
+                              className="btn btn-outline"
+                              style={{ fontSize: '0.8rem', padding: '0.45rem 0.85rem', color: '#b45309', borderColor: '#f59e0b', background: '#fffbeb', fontWeight: 700 }}
+                              onClick={handleOpenQaResetModal}
+                            >
+                              <RefreshCw size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Reset Test Account
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn btn-outline"
+                            style={{
+                              fontSize: '0.8rem',
+                              padding: '0.45rem 0.85rem',
+                              color: editingUser.is_archived ? '#166534' : '#475569',
+                              borderColor: editingUser.is_archived ? '#bbf7d0' : '#cbd5e1',
+                              background: editingUser.is_archived ? '#f0fdf4' : '#f8fafc',
+                              fontWeight: 700
+                            }}
+                            onClick={handleToggleArchiveAccount}
+                            disabled={isArchiving || ['super_admin'].includes(editingUser.role) || editingUser.email === 'cheerfulchalet@gmail.com'}
+                          >
+                            {isArchiving ? 'Updating...' : (editingUser.is_archived ? 'Restore from Archive' : 'Archive QA Account')}
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
-
-                  {!loadingEligibility && tenantQaEligibility && (
-                    <div style={{ marginBottom: '0.8rem' }}>
-                      {tenantQaEligibility.financial_classification === 'TEST_ONLY' && (
-                        <div style={{ padding: '0.5rem 0.75rem', background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '6px', fontSize: '0.78rem', color: '#6d28d9', marginBottom: '0.5rem' }}>
-                          🟣 <strong>Verified TEST Mode:</strong> Account contains {tenantQaEligibility.financials.test_payments} test payment(s) and {tenantQaEligibility.financials.test_invoices} test invoice(s). Eligible for disposable QA designation.
-                        </div>
-                      )}
-                      {tenantQaEligibility.financial_classification === 'LIVE' && (
-                        <div style={{ padding: '0.5rem 0.75rem', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '0.78rem', color: '#b91c1c', marginBottom: '0.5rem' }}>
-                          🔴 <strong>Ineligible for QA Designation:</strong> Account contains recorded LIVE financial records under mandatory legal tax retention. Designation and reset are strictly blocked.
-                        </div>
-                      )}
-                      {tenantQaEligibility.financial_classification === 'UNKNOWN' && (
-                        <div style={{ padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', fontSize: '0.78rem', color: '#b45309', marginBottom: '0.5rem' }}>
-                          ⚠️ <strong>Ineligible for QA Designation:</strong> Account contains unverified or ambiguous financial environment records. Cannot be designated or reset.
-                        </div>
-                      )}
-                      {['super_admin'].includes(editingUser.role) || editingUser.email === 'cheerfulchalet@gmail.com' ? (
-                        <div style={{ padding: '0.5rem 0.75rem', background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.78rem', color: '#334155', marginBottom: '0.5rem' }}>
-                          🛡️ <strong>Permanently Protected Account:</strong> Platform administrator and core hotel accounts are permanently protected from QA classification.
-                        </div>
-                      ) : null}
-                      {editingUser.is_disposable_qa && tenantQaEligibility.block_reasons?.length > 0 && (
-                        <div style={{ padding: '0.5rem 0.75rem', background: '#fffbeb', border: '1px solid #fed7aa', borderRadius: '6px', fontSize: '0.75rem', color: '#9a3412', marginBottom: '0.5rem' }}>
-                          <div style={{ fontWeight: 700, marginBottom: '0.2rem' }}>Reset Ineligibility Reasons:</div>
-                          <ul style={{ margin: 0, paddingLeft: '1.2rem' }}>
-                            {tenantQaEligibility.block_reasons.map((r, i) => <li key={i}>{r}</li>)}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}
-                      onClick={handleToggleQaDisposable}
-                      disabled={
-                        isTogglingQa || 
-                        (!editingUser.is_disposable_qa && tenantQaEligibility && (
-                          tenantQaEligibility.financial_classification === 'LIVE' ||
-                          tenantQaEligibility.financial_classification === 'UNKNOWN' ||
-                          ['super_admin'].includes(editingUser.role) ||
-                          editingUser.email === 'cheerfulchalet@gmail.com'
-                        ))
-                      }
-                      title={
-                        tenantQaEligibility?.financial_classification === 'LIVE' ? 'Cannot designate account with LIVE financial records' :
-                        tenantQaEligibility?.financial_classification === 'UNKNOWN' ? 'Cannot designate account with unverified financial environment' :
-                        editingUser.email === 'cheerfulchalet@gmail.com' ? 'Core system account is protected' : ''
-                      }
-                    >
-                      {isTogglingQa ? 'Updating...' : (editingUser.is_disposable_qa ? 'Revoke QA Status' : 'Mark as Disposable QA')}
-                    </button>
-                    {editingUser.is_disposable_qa && (
-                      <button
-                        type="button"
-                        className="btn btn-outline"
-                        style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem', color: '#b45309', borderColor: '#f59e0b', background: '#fffbeb', fontWeight: 700 }}
-                        onClick={handleOpenQaResetModal}
-                      >
-                        <RefreshCw size={13} style={{ marginRight: '4px', verticalAlign: 'middle' }} /> Reset Test Account
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      style={{
-                        fontSize: '0.8rem',
-                        padding: '0.4rem 0.8rem',
-                        color: editingUser.is_archived ? '#166534' : '#475569',
-                        borderColor: editingUser.is_archived ? '#bbf7d0' : '#cbd5e1',
-                        background: editingUser.is_archived ? '#f0fdf4' : '#f8fafc',
-                        fontWeight: 700
-                      }}
-                      onClick={handleToggleArchiveAccount}
-                      disabled={isArchiving || ['super_admin'].includes(editingUser.role) || editingUser.email === 'cheerfulchalet@gmail.com'}
-                    >
-                      {isArchiving ? 'Updating...' : (editingUser.is_archived ? 'Restore from Archive' : 'Archive QA Account')}
-                    </button>
-                  </div>
                 </div>
-              )}
+              </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              {/* Modal Footer Bar */}
+              <div className="tenant-manage-modal-footer">
                 <button 
                   type="button" 
                   className={`btn ${confirmingDelete ? 'btn-primary' : 'btn-outline'}`} 
-                  style={{ color: confirmingDelete ? 'white' : 'var(--danger)', background: confirmingDelete ? 'var(--danger)' : 'transparent', fontSize: '0.9rem', fontWeight: 700 }} 
+                  style={{
+                    color: confirmingDelete ? '#ffffff' : '#dc2626',
+                    borderColor: confirmingDelete ? '#dc2626' : '#fca5a5',
+                    background: confirmingDelete ? '#dc2626' : '#fef2f2',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    padding: '0.5rem 1rem'
+                  }} 
                   onClick={() => deleteAccount(editingUser.id, editingUser.full_name)}
                 >
                   {confirmingDelete ? 'Confirm Delete' : 'Delete Account'}
                 </button>
-                <button type="submit" className="btn btn-primary" style={{ fontSize: '0.9rem', fontWeight: 700 }} disabled={isUpdating || confirmingDelete}>
-                  {isUpdating ? 'Saving...' : 'Save Changes'}
-                </button>
+                <div className="tenant-manage-footer-right">
+                  <button 
+                    type="button" 
+                    className="btn btn-outline" 
+                    style={{ fontWeight: 600, color: '#475569', borderColor: '#cbd5e1', background: '#ffffff', fontSize: '0.875rem', padding: '0.5rem 1.25rem' }} 
+                    onClick={() => {
+                      setEditingUser(null);
+                      setConfirmingDelete(false);
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit" 
+                    className="btn btn-primary" 
+                    style={{ fontSize: '0.875rem', fontWeight: 700, minWidth: '130px', padding: '0.5rem 1.25rem', background: '#0F2C59' }} 
+                    disabled={isUpdating || confirmingDelete}
+                  >
+                    {isUpdating ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
               </div>
-              <button type="button" className="btn btn-link" style={{ width: '100%', marginTop: '1rem', fontWeight: 600 }} onClick={() => {
-                setEditingUser(null);
-                setConfirmingDelete(false);
-              }}>
-                Cancel
-              </button>
             </form>
           </div>
         </div>

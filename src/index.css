@@ -108,12 +108,15 @@ a {
 
 .sidebar {
   width: var(--sidebar-w);
+  height: 100vh;
+  height: 100dvh;
   background-color: var(--bg-secondary);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   transition: all 0.3s ease;
   z-index: 10;
+  overflow: hidden;
 }
 
 .main-content {
@@ -258,6 +261,20 @@ a {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: contain;
+}
+
+.sidebar-footer {
+  flex-shrink: 0;
+  padding: 1rem;
+  padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--border);
+  background-color: var(--bg-secondary);
 }
 
 .nav-item {
@@ -400,16 +417,25 @@ a {
   .sidebar {
     position: fixed;
     top: 0;
-    left: -280px; /* Off-screen */
-    width: 280px;
+    left: -290px; /* Off-screen */
+    width: 290px;
+    max-width: 85vw;
     height: 100vh;
-    z-index: 1002;
-    box-shadow: 20px 0 50px rgba(0,0,0,0.1);
-    padding-top: env(safe-area-inset-top);
+    height: 100dvh;
+    z-index: 2200;
+    box-shadow: 20px 0 50px rgba(0,0,0,0.15);
+    background-color: var(--bg-secondary);
+    padding-top: env(safe-area-inset-top, 0px);
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    pointer-events: none;
   }
 
   .sidebar.open {
     left: 0;
+    pointer-events: auto;
   }
 
   .main-content {
@@ -469,10 +495,16 @@ a {
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0,0,0,0.4);
-    z-index: 1001;
+    height: 100dvh;
+    background: rgba(15, 23, 42, 0.5);
+    z-index: 2100;
     backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
   }
+}
+
+body.mobile-sidebar-open {
+  overflow: hidden !important;
 }
 
 /* --- NEW PREMIUM POLISH --- */
@@ -704,6 +736,17 @@ a {
     border-top: 1px solid var(--border);
     z-index: 2000;
     box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  /* When mobile drawer is open, temporarily hide bottom navigation to prevent overlap */
+  .mobile-bottom-nav.drawer-open,
+  body.mobile-sidebar-open .mobile-bottom-nav {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    transform: translateY(100%) !important;
   }
 
   /* Capacitor Android specific fallback for 3-button navs that don't report safe area properly */
@@ -1653,4 +1696,237 @@ input[type="date"], input[type="time"] {
   margin: 0 !important;
   line-height: 1.4 !important;
 }
-
+
+/* --- TENANT MANAGEMENT MANAGE ACCOUNT MODAL RESPONSIVE REDESIGN --- */
+.tenant-manage-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.tenant-manage-modal-dialog {
+  width: 100%;
+  max-width: 1080px;
+  max-height: calc(100vh - 3rem);
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 20px 40px -15px rgba(15, 44, 89, 0.15), 0 0 0 1px rgba(15, 44, 89, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleUp 0.2s ease-out;
+  text-align: left;
+  box-sizing: border-box;
+}
+
+.tenant-manage-modal-header {
+  padding: 1.25rem 2rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.tenant-manage-modal-form {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  overflow: hidden;
+  margin: 0;
+}
+
+.tenant-manage-modal-body {
+  padding: 1.5rem 2rem;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+  background: #f8fafc;
+}
+
+.tenant-manage-card {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.tenant-section-header {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #0F2C59;
+  font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-bottom: 1px solid #f1f5f9;
+  padding-bottom: 0.65rem;
+  margin: 0;
+}
+
+.tenant-manage-identity-banner {
+  padding: 1rem 1.25rem;
+  background: #ffffff;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.tenant-manage-id-badge {
+  font-size: 0.75rem;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  background: #f8fafc;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  word-break: break-all;
+}
+
+.tenant-manage-modal-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.25rem;
+  align-items: stretch;
+}
+
+.tenant-manage-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  min-width: 0;
+}
+
+.tenant-checkbox-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  transition: all 0.15s ease-in-out;
+}
+
+.tenant-checkbox-card:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+.tenant-manage-modal-footer {
+  padding: 1.15rem 2rem;
+  border-top: 1px solid #e2e8f0;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+.tenant-manage-footer-right {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+/* Tablet adjustments (viewport <= 1024px) */
+@media (max-width: 1024px) {
+  .tenant-manage-modal-overlay {
+    padding: 1rem;
+  }
+  .tenant-manage-modal-dialog {
+    max-width: 100%;
+    max-height: calc(100vh - 2rem);
+    border-radius: 14px;
+  }
+  .tenant-manage-modal-header {
+    padding: 1.15rem 1.5rem;
+  }
+  .tenant-manage-modal-body {
+    padding: 1.25rem 1.5rem;
+    gap: 1rem;
+  }
+  .tenant-manage-modal-grid {
+    gap: 1rem;
+  }
+  .tenant-manage-modal-footer {
+    padding: 1rem 1.5rem;
+  }
+}
+
+/* Tablet portrait & Mobile adjustments (viewport <= 860px) */
+@media (max-width: 860px) {
+  .tenant-manage-modal-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+}
+
+/* Mobile full-screen layout (viewport <= 640px) */
+@media (max-width: 640px) {
+  .tenant-manage-modal-overlay {
+    padding: 0;
+    align-items: stretch;
+  }
+  .tenant-manage-modal-dialog {
+    max-height: 100%;
+    height: 100%;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+  }
+  .tenant-manage-modal-header {
+    padding: 1rem 1.25rem;
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+  .tenant-manage-modal-body {
+    padding: 1rem 1.25rem;
+    padding-bottom: 1.5rem;
+  }
+  .tenant-manage-card {
+    padding: 1rem;
+  }
+  .tenant-manage-modal-footer {
+    padding: 1rem 1.25rem;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+    flex-direction: column-reverse;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+  .tenant-manage-footer-right {
+    width: 100%;
+    flex-direction: column-reverse;
+    gap: 0.5rem;
+  }
+  .tenant-manage-modal-footer .btn {
+    width: 100%;
+    min-height: 44px;
+  }
+}
