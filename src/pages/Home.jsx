@@ -5,7 +5,7 @@ import { companyBranding } from '../lib/branding';
 import { 
   ArrowRight, LayoutDashboard, BookOpenCheck, CalendarDays, Wallet, 
   FileText, TrendingUp, Users, CreditCard, Sparkles, CheckCircle2, 
-  Shield, Zap, Smartphone, Play, Globe, Check
+  Shield, Zap, Smartphone, Play, Globe, Check, ChevronLeft, ChevronRight
 } from 'lucide-react';
 
 export default function Home() {
@@ -13,6 +13,9 @@ export default function Home() {
   const location = useLocation();
 
   const defaultWebImages = [
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/mou07ccl4i8_1792682511344.JPG',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/x3vy8bg3eq9_1792682515750.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/d0hmc1q3d2g_1792682519310.JPG',
     'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/n65vh5odw7q_1792682523749.jpg',
     'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/xgzosd2n3ep_1792682528874.jpg',
     'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/xvopq7x36na_1792682535913.jpg',
@@ -20,30 +23,52 @@ export default function Home() {
     'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/m2fll4sk2ur_1792682544738.jpg'
   ];
 
-  const configuredWebImages = landingPageContent?.webImages?.filter(url => url && url.trim() !== '');
+  const defaultMobileImages = [
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/o2py90wkk3s_1792686641688.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/sx5d424bm3d_1792686647863.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/w1q8rytk4yn_1792686654745.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/5okzqrdwo14_1792686660643.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/tk1ryt70erq_1792686664477.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/5lq8lrao56x_1792686668111.jpg'
+  ];
+
+  const resolvedContent = Array.isArray(landingPageContent)
+    ? (landingPageContent.find(x => x && typeof x === 'object') || {})
+    : (landingPageContent || {});
+
+  const configuredWebImages = resolvedContent.webImages?.filter(url => url && typeof url === 'string' && url.trim() !== '');
   const webImages = (configuredWebImages && configuredWebImages.length > 0)
     ? configuredWebImages
-    : (landingPageContent?.webImages !== undefined && landingPageContent?.webImages !== null ? configuredWebImages || [] : defaultWebImages);
+    : defaultWebImages;
 
-  const mobileImages = landingPageContent?.mobileImages?.filter(url => url && url.trim() !== '') || [];
+  const configuredMobileImages = resolvedContent.mobileImages?.filter(url => url && typeof url === 'string' && url.trim() !== '');
+  const mobileImages = (configuredMobileImages && configuredMobileImages.length > 0)
+    ? configuredMobileImages
+    : defaultMobileImages;
   
   const [webIdx, setWebIdx] = useState(0);
   const [mobileIdx, setMobileIdx] = useState(0);
+  const [isWebHovered, setIsWebHovered] = useState(false);
 
+  // Independent auto-slide timer for web images (pauses on hover)
   useEffect(() => {
-    if (webImages.length <= 1 && mobileImages.length <= 1) return;
-    
+    if (webImages.length <= 1) return;
     const interval = setInterval(() => {
-      if (webImages.length > 1) {
+      if (!isWebHovered) {
         setWebIdx(prev => (prev + 1) % webImages.length);
       }
-      if (mobileImages.length > 1) {
-        setMobileIdx(prev => (prev + 1) % mobileImages.length);
-      }
     }, 3500);
-    
     return () => clearInterval(interval);
-  }, [webImages.length, mobileImages.length]);
+  }, [webImages.length, isWebHovered]);
+
+  // Independent auto-slide timer for mobile images
+  useEffect(() => {
+    if (mobileImages.length <= 1) return;
+    const interval = setInterval(() => {
+      setMobileIdx(prev => (prev + 1) % mobileImages.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [mobileImages.length]);
 
   useEffect(() => {
     if (location.hash) {
@@ -212,10 +237,16 @@ export default function Home() {
           object-fit: cover;
           object-position: top center;
           opacity: 0;
-          transition: opacity 0.8s ease-in-out;
+          z-index: 1;
+          pointer-events: none;
+          transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
+          transform: scale(1.01);
         }
         .image-slider.active {
           opacity: 1;
+          z-index: 2;
+          pointer-events: auto;
+          transform: scale(1);
         }
         @media (max-width: 768px) {
           .desktop-nav { display: none !important; }
@@ -339,7 +370,11 @@ export default function Home() {
             💬 WhatsApp Notifications
           </div>
 
-          <div className="web-mockup">
+          <div 
+            className="web-mockup"
+            onMouseEnter={() => setIsWebHovered(true)}
+            onMouseLeave={() => setIsWebHovered(false)}
+          >
             <div style={{ background: '#e2e8f0', padding: '12px', display: 'flex', gap: '8px', borderBottom: '1px solid #cbd5e1' }}>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#ef4444' }}></div>
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#f59e0b' }}></div>
@@ -349,23 +384,86 @@ export default function Home() {
             <div style={{ flex: 1, minHeight: 0, width: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.5rem', overflow: 'hidden', position: 'relative' }}>
               {webImages.length > 0 ? (
                 webImages.map((src, i) => (
-                  <img key={i} src={src} className={`image-slider ${i === webIdx ? 'active' : ''}`} alt="Web Dashboard" />
+                  <img key={i} src={src} className={`image-slider ${i === webIdx ? 'active' : ''}`} alt={`Web Dashboard ${i + 1}`} />
                 ))
               ) : (
                 <img src="/booking_management.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Web Dashboard" />
               )}
+
+              {/* Prev / Next Navigation Arrows */}
+              {webImages.length > 1 && (
+                <>
+                  <button 
+                    type="button" 
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebIdx(prev => (prev - 1 + webImages.length) % webImages.length); }} 
+                    aria-label="Previous slide"
+                    style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}
+                  >
+                    <ChevronLeft size={20} />
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWebIdx(prev => (prev + 1) % webImages.length); }} 
+                    aria-label="Next slide"
+                    style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', zIndex: 10, width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(15, 23, 42, 0.65)', border: '1px solid rgba(255,255,255,0.2)', color: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', backdropFilter: 'blur(4px)', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}
+                  >
+                    <ChevronRight size={20} />
+                  </button>
+                </>
+              )}
+
+              {/* Web Slide Indicator Dots & Counter */}
+              {webImages.length > 1 && (
+                <div style={{ position: 'absolute', bottom: '12px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(15, 23, 42, 0.7)', padding: '5px 12px', borderRadius: '20px', backdropFilter: 'blur(4px)', border: '1px solid rgba(255,255,255,0.15)' }}>
+                  {webImages.map((_, dotIdx) => (
+                    <button
+                      key={dotIdx}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setWebIdx(dotIdx); }}
+                      aria-label={`Jump to slide ${dotIdx + 1}`}
+                      style={{ width: dotIdx === webIdx ? '18px' : '7px', height: '7px', borderRadius: '4px', background: dotIdx === webIdx ? '#10b981' : 'rgba(255,255,255,0.5)', border: 'none', padding: 0, cursor: 'pointer', transition: 'all 0.3s ease' }}
+                    />
+                  ))}
+                  <span style={{ fontSize: '11px', color: '#ffffff', marginLeft: '6px', fontWeight: 600, letterSpacing: '0.05em' }}>
+                    {webIdx + 1}/{webImages.length}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           
-          <div className="mobile-mockup float-anim-delayed">
+          <div 
+            className="mobile-mockup float-anim-delayed"
+            onClick={() => mobileImages.length > 1 && setMobileIdx(prev => (prev + 1) % mobileImages.length)}
+            style={{ cursor: mobileImages.length > 1 ? 'pointer' : 'default' }}
+            title={mobileImages.length > 1 ? "Click to view next mobile screen" : ""}
+          >
             {/* MOBILE IMAGE SLIDER */}
-            <div style={{ width: '100%', height: '100%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', textAlign: 'center', padding: '1rem', overflow: 'hidden', position: 'relative' }}>
+            <div style={{ width: '100%', height: '100%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', textAlign: 'center', overflow: 'hidden', position: 'relative' }}>
               {mobileImages.length > 0 ? (
                 mobileImages.map((src, i) => (
-                  <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt="Mobile App" />
+                  <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt={`Mobile App ${i + 1}`} />
                 ))
               ) : (
                 <img src="/calendar.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Mobile App" />
+              )}
+
+              {/* Mobile Slide Indicator Dots */}
+              {mobileImages.length > 1 && (
+                <div style={{ position: 'absolute', bottom: '10px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(15, 23, 42, 0.75)', padding: '4px 10px', borderRadius: '16px', backdropFilter: 'blur(4px)' }}>
+                  {mobileImages.map((_, dotIdx) => (
+                    <button
+                      key={dotIdx}
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setMobileIdx(dotIdx); }}
+                      aria-label={`Jump to mobile slide ${dotIdx + 1}`}
+                      style={{ width: dotIdx === mobileIdx ? '14px' : '5px', height: '5px', borderRadius: '3px', background: dotIdx === mobileIdx ? '#10b981' : 'rgba(255,255,255,0.5)', border: 'none', padding: 0, cursor: 'pointer', transition: 'all 0.3s ease' }}
+                    />
+                  ))}
+                  <span style={{ fontSize: '9px', color: '#ffffff', marginLeft: '4px', fontWeight: 600 }}>
+                    {mobileIdx + 1}/{mobileImages.length}
+                  </span>
+                </div>
               )}
             </div>
           </div>
@@ -446,15 +544,37 @@ export default function Home() {
           </div>
           <div style={{ flex: '1 1 400px', display: 'flex', justifyContent: 'center' }}>
             {/* LARGE MOBILE MOCKUP SLIDER */}
-            <div style={{ width: '300px', height: '600px', background: '#0f172a', borderRadius: '40px', border: '8px solid #1e293b', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflow: 'hidden', position: 'relative' }}>
-              <div style={{ width: '40%', height: '25px', background: '#1e293b', position: 'absolute', top: 0, left: '30%', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: 2 }}></div>
-              <div style={{ width: '100%', height: '100%', background: '#334155', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', overflow: 'hidden' }}>
+            <div 
+              style={{ width: '300px', height: '600px', background: '#0f172a', borderRadius: '40px', border: '8px solid #1e293b', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', overflow: 'hidden', position: 'relative', cursor: mobileImages.length > 1 ? 'pointer' : 'default' }}
+              onClick={() => mobileImages.length > 1 && setMobileIdx(prev => (prev + 1) % mobileImages.length)}
+              title={mobileImages.length > 1 ? "Click to view next mobile screen" : ""}
+            >
+              <div style={{ width: '40%', height: '25px', background: '#1e293b', position: 'absolute', top: 0, left: '30%', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: 10 }}></div>
+              <div style={{ width: '100%', height: '100%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', overflow: 'hidden', position: 'relative' }}>
                 {mobileImages.length > 0 ? (
                   mobileImages.map((src, i) => (
-                    <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt="Mobile App" />
+                    <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt={`Mobile App Preview ${i + 1}`} />
                   ))
                 ) : (
                   <img src="/calendar.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Mobile App" />
+                )}
+
+                {/* Mobile Slide Indicator Dots */}
+                {mobileImages.length > 1 && (
+                  <div style={{ position: 'absolute', bottom: '16px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(15, 23, 42, 0.75)', padding: '5px 12px', borderRadius: '16px', backdropFilter: 'blur(4px)' }}>
+                    {mobileImages.map((_, dotIdx) => (
+                      <button
+                        key={dotIdx}
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setMobileIdx(dotIdx); }}
+                        aria-label={`Jump to mobile slide ${dotIdx + 1}`}
+                        style={{ width: dotIdx === mobileIdx ? '16px' : '6px', height: '6px', borderRadius: '3px', background: dotIdx === mobileIdx ? '#10b981' : 'rgba(255,255,255,0.5)', border: 'none', padding: 0, cursor: 'pointer', transition: 'all 0.3s ease' }}
+                      />
+                    ))}
+                    <span style={{ fontSize: '10px', color: '#ffffff', marginLeft: '5px', fontWeight: 600 }}>
+                      {mobileIdx + 1}/{mobileImages.length}
+                    </span>
+                  </div>
                 )}
               </div>
             </div>

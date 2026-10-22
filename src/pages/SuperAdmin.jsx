@@ -269,13 +269,23 @@ export default function SuperAdmin() {
       { title: "Plans & Billing", description: "Built-in subscription management and automated billing features." }
     ],
     webImages: [
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/mou07ccl4i8_1792682511344.JPG',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/x3vy8bg3eq9_1792682515750.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/d0hmc1q3d2g_1792682519310.JPG',
       'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/n65vh5odw7q_1792682523749.jpg',
       'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/xgzosd2n3ep_1792682528874.jpg',
       'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/xvopq7x36na_1792682535913.jpg',
       'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/wx817p3lfn_1792682541253.jpg',
       'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/m2fll4sk2ur_1792682544738.jpg'
     ],
-    mobileImages: []
+    mobileImages: [
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/o2py90wkk3s_1792686641688.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/sx5d424bm3d_1792686647863.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/w1q8rytk4yn_1792686654745.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/5okzqrdwo14_1792686660643.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/tk1ryt70erq_1792686664477.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/5lq8lrao56x_1792686668111.jpg'
+    ]
   };
   const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
   const DEFAULT_EMAIL_TEMPLATES = {
@@ -703,9 +713,9 @@ export default function SuperAdmin() {
             webImages: superAdminProfile.global_settings.landing_page.webImages !== undefined
               ? superAdminProfile.global_settings.landing_page.webImages
               : DEFAULT_LANDING_CONTENT.webImages,
-            mobileImages: superAdminProfile.global_settings.landing_page.mobileImages !== undefined
+            mobileImages: (superAdminProfile.global_settings.landing_page.mobileImages && superAdminProfile.global_settings.landing_page.mobileImages.length > 0)
               ? superAdminProfile.global_settings.landing_page.mobileImages
-              : []
+              : DEFAULT_LANDING_CONTENT.mobileImages
           };
           setLandingContent(lp);
           if (setLandingPageContent) {
