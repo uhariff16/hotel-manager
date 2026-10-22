@@ -78,7 +78,7 @@ const secondarySupabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 export default function SuperAdmin() {
-  const { profile, session, isDataLoaded, setWebsitePricing } = useSettingsStore();
+  const { profile, session, isDataLoaded, setWebsitePricing, setLandingPageContent } = useSettingsStore();
   const [stats, setStats] = useState({ users: 0, staffCount: 0, properties: 0, bookings: 0, revenue: 0, testRevenue: 0, liveRevenue: 0 });
   const [tenants, setTenants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -267,7 +267,15 @@ export default function SuperAdmin() {
       { title: "Investment Analysis", description: "Specialized tools to analyze property ROI and track investment health." },
       { title: "Property & Staff Management", description: "Oversee multiple properties and manage staff access from one central hub." },
       { title: "Plans & Billing", description: "Built-in subscription management and automated billing features." }
-    ]
+    ],
+    webImages: [
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/n65vh5odw7q_1792682523749.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/xgzosd2n3ep_1792682528874.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/xvopq7x36na_1792682535913.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/wx817p3lfn_1792682541253.jpg',
+      'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/m2fll4sk2ur_1792682544738.jpg'
+    ],
+    mobileImages: []
   };
   const [landingContent, setLandingContent] = useState(DEFAULT_LANDING_CONTENT);
   const DEFAULT_EMAIL_TEMPLATES = {
@@ -688,11 +696,21 @@ export default function SuperAdmin() {
           });
         }
         if (superAdminProfile.global_settings.landing_page) {
-          setLandingContent({
+          const lp = {
             ...DEFAULT_LANDING_CONTENT,
             ...superAdminProfile.global_settings.landing_page,
-            features: superAdminProfile.global_settings.landing_page.features || DEFAULT_LANDING_CONTENT.features
-          });
+            features: superAdminProfile.global_settings.landing_page.features || DEFAULT_LANDING_CONTENT.features,
+            webImages: superAdminProfile.global_settings.landing_page.webImages !== undefined
+              ? superAdminProfile.global_settings.landing_page.webImages
+              : DEFAULT_LANDING_CONTENT.webImages,
+            mobileImages: superAdminProfile.global_settings.landing_page.mobileImages !== undefined
+              ? superAdminProfile.global_settings.landing_page.mobileImages
+              : []
+          };
+          setLandingContent(lp);
+          if (setLandingPageContent) {
+            setLandingPageContent(lp);
+          }
         }
         if (superAdminProfile.global_settings.email_templates) {
           setEmailTemplates({
@@ -1680,9 +1698,12 @@ export default function SuperAdmin() {
   const handleSaveLandingPage = async () => {
     try {
       setIsUpdating(true);
-      await updateGlobalConfigSection('landing_page', {
+      const updatedSettings = await updateGlobalConfigSection('landing_page', {
         p_landing_page: landingContent
       });
+      if (setLandingPageContent) {
+        setLandingPageContent(updatedSettings?.landing_page || landingContent);
+      }
       alert("Landing page content updated successfully!");
     } catch (err) {
       alert("Failed to save landing page: " + err.message);

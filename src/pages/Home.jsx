@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSettingsStore } from '../lib/store';
+import { companyBranding } from '../lib/branding';
 import { 
   ArrowRight, LayoutDashboard, BookOpenCheck, CalendarDays, Wallet, 
   FileText, TrendingUp, Users, CreditCard, Sparkles, CheckCircle2, 
@@ -11,7 +12,19 @@ export default function Home() {
   const { landingPageContent } = useSettingsStore();
   const location = useLocation();
 
-  const webImages = landingPageContent?.webImages?.filter(url => url && url.trim() !== '') || [];
+  const defaultWebImages = [
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/n65vh5odw7q_1792682523749.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/xgzosd2n3ep_1792682528874.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/xvopq7x36na_1792682535913.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/wx817p3lfn_1792682541253.jpg',
+    'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/m2fll4sk2ur_1792682544738.jpg'
+  ];
+
+  const configuredWebImages = landingPageContent?.webImages?.filter(url => url && url.trim() !== '');
+  const webImages = (configuredWebImages && configuredWebImages.length > 0)
+    ? configuredWebImages
+    : (landingPageContent?.webImages !== undefined && landingPageContent?.webImages !== null ? configuredWebImages || [] : defaultWebImages);
+
   const mobileImages = landingPageContent?.mobileImages?.filter(url => url && url.trim() !== '') || [];
   
   const [webIdx, setWebIdx] = useState(0);
@@ -173,6 +186,8 @@ export default function Home() {
           aspect-ratio: 16/9;
           overflow: hidden;
           position: relative;
+          display: flex;
+          flex-direction: column;
         }
         .mobile-mockup {
           position: absolute;
@@ -194,8 +209,8 @@ export default function Home() {
           left: 0;
           width: 100%;
           height: 100%;
-          object-fit: contain;
-          object-position: center;
+          object-fit: cover;
+          object-position: top center;
           opacity: 0;
           transition: opacity 0.8s ease-in-out;
         }
@@ -254,6 +269,7 @@ export default function Home() {
         {/* Desktop Navigation (Center) */}
         <nav className="desktop-nav" style={{ display: 'flex', gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Link to="/" style={{ color: '#059669', textDecoration: 'none' }}>Home</Link>
+          <a href="#about" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>About</a>
           <Link to="/features" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Features</Link>
           <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>How It Works</Link>
           <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Pricing</Link>
@@ -330,7 +346,7 @@ export default function Home() {
               <div style={{ width: 12, height: 12, borderRadius: '50%', background: '#10b981' }}></div>
             </div>
             {/* WEB IMAGE SLIDER */}
-            <div style={{ width: '100%', height: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.5rem', overflow: 'hidden', position: 'relative' }}>
+            <div style={{ flex: 1, minHeight: 0, width: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.5rem', overflow: 'hidden', position: 'relative' }}>
               {webImages.length > 0 ? (
                 webImages.map((src, i) => (
                   <img key={i} src={src} className={`image-slider ${i === webIdx ? 'active' : ''}`} alt="Web Dashboard" />
@@ -377,6 +393,24 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ABOUT SECTION */}
+      <section id="about" style={{ padding: '5rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'center' }}>
+        <div style={{ maxWidth: '820px', margin: '0 auto' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', fontWeight: 700, color: '#059669', background: 'rgba(5, 150, 105, 0.08)', padding: '5px 16px', borderRadius: '20px', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '1.25rem' }}>
+            About StayPilot
+          </div>
+          <h2 style={{ fontSize: '2.25rem', fontWeight: 800, color: '#0F2C59', marginBottom: '1.25rem', letterSpacing: '-0.02em', lineHeight: 1.25, fontFamily: "'Outfit', sans-serif" }}>
+            Purpose-Built for Modern Hospitality
+          </h2>
+          <p style={{ fontSize: '1.15rem', color: '#475569', lineHeight: 1.75, marginBottom: '1.5rem' }}>
+            {companyBranding.aboutDescription}
+          </p>
+          <div style={{ display: 'inline-block', fontSize: '0.9rem', color: '#059669', fontWeight: 600, background: '#ffffff', padding: '6px 18px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+            {companyBranding.productAttribution}
+          </div>
+        </div>
+      </section>
+
 
 
       {/* DEDICATED MOBILE APP SECTION */}
@@ -420,7 +454,7 @@ export default function Home() {
                     <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt="Mobile App" />
                   ))
                 ) : (
-                  '[ Add Mobile Images in Super Admin ]'
+                  <img src="/calendar.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Mobile App" />
                 )}
               </div>
             </div>
@@ -454,16 +488,21 @@ export default function Home() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '2rem'
+        gap: '1.5rem'
       }}>
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: 600 }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
+          <a href="#about" style={{ color: 'inherit', textDecoration: 'none' }}>About</a>
+          <Link to="/features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</Link>
           <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</Link>
           <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
           <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
         </div>
-        <div style={{ fontSize: '0.9rem' }}>
-           © 2026 StayPilot. All rights reserved.
+        <div style={{ fontSize: '0.9rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <div>© {new Date().getFullYear()} StayPilot. All rights reserved.</div>
+          <div style={{ fontSize: '0.825rem', color: '#94a3b8', fontWeight: 500 }}>
+            {companyBranding.productAttribution}
+          </div>
         </div>
       </footer>
     </div>

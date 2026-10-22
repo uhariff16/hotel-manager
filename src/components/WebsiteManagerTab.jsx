@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
-import { LayoutDashboard, BookOpenCheck, CalendarDays, Wallet, FileText, TrendingUp, Users, CreditCard, Sparkles, CheckCircle2, Save, Plus, Trash2, ArrowUp, ArrowDown, Upload } from 'lucide-react';
+import { LayoutDashboard, BookOpenCheck, CalendarDays, Wallet, FileText, TrendingUp, Users, CreditCard, Sparkles, CheckCircle2, Save, Plus, Trash2, ArrowUp, ArrowDown, Upload, ExternalLink, Image as ImageIcon } from 'lucide-react';
 
 export default function WebsiteManagerTab({ landingContent, setLandingContent, onSave, isUpdating }) {
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadNotice, setUploadNotice] = useState(null);
 
   const handleImageUpload = async (event, type) => {
     const file = event.target.files?.[0];
@@ -11,6 +12,7 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
 
     try {
       setIsUploading(true);
+      setUploadNotice(null);
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
       const filePath = `slider/${fileName}`;
@@ -24,13 +26,17 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
       const { data } = supabase.storage.from('public-assets').getPublicUrl(filePath);
       const publicUrl = data.publicUrl;
 
-      const newUrls = type === 'web' 
-        ? [...(landingContent.webImages || []), publicUrl]
-        : [...(landingContent.mobileImages || []), publicUrl];
+      const targetKey = type === 'web' ? 'webImages' : 'mobileImages';
+      const newUrls = [...(landingContent[targetKey] || []), publicUrl];
 
       setLandingContent({ 
         ...landingContent, 
-        [type === 'web' ? 'webImages' : 'mobileImages']: newUrls 
+        [targetKey]: newUrls 
+      });
+
+      setUploadNotice({
+        type: 'success',
+        message: `Image uploaded successfully! Remember to click "Save & Publish" to update staypilot.co.in.`
       });
 
     } catch (err) {
@@ -85,12 +91,138 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
     setLandingContent({ ...landingContent, features: newFeats });
   };
 
+  const renderImageList = (type) => {
+    const isWeb = type === 'web';
+    const key = isWeb ? 'webImages' : 'mobileImages';
+    const list = landingContent[key] || [];
+
+    return (
+      <div style={{ background: '#f8fafc', padding: '1.25rem', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <div>
+            <h4 style={{ margin: 0, color: '#334155', fontWeight: 700, fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <ImageIcon size={18} color="var(--primary, #0F2C59)" />
+              {isWeb ? 'Web Dashboard Images' : 'Mobile App Images'}
+            </h4>
+            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+              {list.length} {list.length === 1 ? 'image' : 'images'} configured
+            </span>
+          </div>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <label className="btn btn-sm btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: isUploading ? 'not-allowed' : 'pointer' }}>
+              {isUploading ? 'Uploading...' : <><Upload size={14} /> Upload Image</>}
+              <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, type)} disabled={isUploading} />
+            </label>
+            <button 
+              type="button" 
+              className="btn btn-sm btn-outline" 
+              onClick={() => setLandingContent({ ...landingContent, [key]: [...list, ''] })} 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}
+            >
+              <Plus size={14} /> Add URL
+            </button>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+          {list.length === 0 && (
+            <div style={{ padding: '1.5rem', textAlign: 'center', background: '#ffffff', borderRadius: '8px', border: '1px dashed #cbd5e1', color: '#94a3b8', fontSize: '0.85rem' }}>
+              No {isWeb ? 'web' : 'mobile'} images added yet. Click <strong>Upload Image</strong> or <strong>Add URL</strong> to get started.
+            </div>
+          )}
+          {list.map((url, idx) => (
+            <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>
+              {/* Thumbnail Preview */}
+              {url && url.trim() ? (
+                <a href={url} target="_blank" rel="noopener noreferrer" title="Click to view full image in new tab" style={{ flexShrink: 0, display: 'block', position: 'relative' }}>
+                  <img 
+                    src={url} 
+                    alt={`${isWeb ? 'Web' : 'Mobile'} Slide ${idx + 1}`} 
+                    style={{ width: '56px', height: '40px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #cbd5e1', display: 'block', background: '#f1f5f9' }} 
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                  <div style={{ position: 'absolute', bottom: 1, right: 1, background: 'rgba(0,0,0,0.6)', borderRadius: '2px', padding: '1px 2px', lineHeight: 1 }}>
+                    <ExternalLink size={10} color="#ffffff" />
+                  </div>
+                </a>
+              ) : (
+                <div style={{ width: '56px', height: '40px', background: '#f1f5f9', borderRadius: '4px', border: '1px dashed #cbd5e1', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', color: '#94a3b8', flexShrink: 0 }}>
+                  Empty
+                </div>
+              )}
+
+              {/* URL input */}
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="https://example.com/image.png" 
+                value={url} 
+                style={{ flex: 1, fontSize: '0.85rem', margin: 0 }}
+                onChange={e => {
+                  const newUrls = [...list];
+                  newUrls[idx] = e.target.value;
+                  setLandingContent({ ...landingContent, [key]: newUrls });
+                }} 
+              />
+
+              {/* Actions: Reorder and Delete */}
+              <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0 }}>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    if (idx > 0) {
+                      const newUrls = [...list];
+                      [newUrls[idx - 1], newUrls[idx]] = [newUrls[idx], newUrls[idx - 1]];
+                      setLandingContent({ ...landingContent, [key]: newUrls });
+                    }
+                  }}
+                  disabled={idx === 0}
+                  title="Move slide up"
+                  style={{ background: 'none', border: 'none', cursor: idx === 0 ? 'default' : 'pointer', color: idx === 0 ? '#cbd5e1' : '#64748b', padding: '4px', display: 'flex', alignItems: 'center' }}
+                >
+                  <ArrowUp size={15} />
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    if (idx < list.length - 1) {
+                      const newUrls = [...list];
+                      [newUrls[idx + 1], newUrls[idx]] = [newUrls[idx], newUrls[idx + 1]];
+                      setLandingContent({ ...landingContent, [key]: newUrls });
+                    }
+                  }}
+                  disabled={idx === list.length - 1}
+                  title="Move slide down"
+                  style={{ background: 'none', border: 'none', cursor: idx === list.length - 1 ? 'default' : 'pointer', color: idx === list.length - 1 ? '#cbd5e1' : '#64748b', padding: '4px', display: 'flex', alignItems: 'center' }}
+                >
+                  <ArrowDown size={15} />
+                </button>
+                <button 
+                  type="button" 
+                  title="Remove image"
+                  onClick={() => {
+                    const newUrls = [...list];
+                    newUrls.splice(idx, 1);
+                    setLandingContent({ ...landingContent, [key]: newUrls });
+                  }} 
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444', padding: '4px', display: 'flex', alignItems: 'center', marginLeft: '0.25rem' }}
+                >
+                  <Trash2 size={16} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
           <h2 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Website Content Manager</h2>
-          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Customize text and features across the public landing page.</p>
+          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Customize text, slider mockups, and features across the public landing page (staypilot.co.in).</p>
         </div>
         <button className="btn btn-primary" onClick={onSave} disabled={isUpdating} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
           <Save size={18} /> {isUpdating ? 'Saving...' : 'Save & Publish'}
@@ -122,75 +254,37 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
 
       {/* Image Sliders Section */}
       <div className="card" style={{ marginBottom: '2rem', background: 'white', borderRadius: '16px', padding: '2rem' }}>
-        <h3 style={{ marginBottom: '1.5rem', color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif", borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>2. Homepage Slider Images</h3>
-        <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '1.5rem' }}>Paste URLs to images to show in the web and mobile mockup placeholders.</p>
-        
-        <div style={{ display: 'grid', gap: '2rem', gridTemplateColumns: '1fr 1fr' }}>
-          {/* Web Images */}
-          <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h4 style={{ margin: 0, color: '#334155', fontWeight: 700, fontSize: '1.1rem' }}>Web Dashboard Images</h4>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <label className="btn btn-sm btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer' }}>
-                  {isUploading ? 'Uploading...' : <><Upload size={14} /> Upload Image</>}
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'web')} disabled={isUploading} />
-                </label>
-                <button className="btn btn-sm btn-outline" onClick={() => setLandingContent({ ...landingContent, webImages: [...(landingContent.webImages || []), ''] })} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
-                  <Plus size={14} /> Add URL
-                </button>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {(!landingContent.webImages || landingContent.webImages.length === 0) && <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>No web images added yet.</span>}
-              {(landingContent.webImages || []).map((url, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input type="text" className="form-input" placeholder="https://example.com/image.png" value={url} onChange={e => {
-                    const newUrls = [...landingContent.webImages];
-                    newUrls[idx] = e.target.value;
-                    setLandingContent({ ...landingContent, webImages: newUrls });
-                  }} />
-                  <button type="button" onClick={() => {
-                    const newUrls = [...landingContent.webImages];
-                    newUrls.splice(idx, 1);
-                    setLandingContent({ ...landingContent, webImages: newUrls });
-                  }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
-                </div>
-              ))}
-            </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <h3 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>2. Homepage Slider Images</h3>
+            <p style={{ fontSize: '0.85rem', color: '#64748b', margin: '0.25rem 0 0 0' }}>Upload screenshots or paste image URLs to showcase in the Web and Mobile mockup placeholders.</p>
           </div>
+          <button 
+            type="button" 
+            className="btn btn-primary" 
+            onClick={onSave} 
+            disabled={isUpdating} 
+            style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.85rem' }}
+          >
+            <Save size={15} /> {isUpdating ? 'Saving...' : 'Save & Publish Slider Images'}
+          </button>
+        </div>
 
-          {/* Mobile Images */}
-          <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-              <h4 style={{ margin: 0, color: '#334155', fontWeight: 700, fontSize: '1.1rem' }}>Mobile App Images</h4>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <label className="btn btn-sm btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem', cursor: 'pointer' }}>
-                  {isUploading ? 'Uploading...' : <><Upload size={14} /> Upload Image</>}
-                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageUpload(e, 'mobile')} disabled={isUploading} />
-                </label>
-                <button className="btn btn-sm btn-outline" onClick={() => setLandingContent({ ...landingContent, mobileImages: [...(landingContent.mobileImages || []), ''] })} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8rem' }}>
-                  <Plus size={14} /> Add URL
-                </button>
-              </div>
+        {uploadNotice && (
+          <div style={{ background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#065f46', fontSize: '0.85rem' }}>
+              <CheckCircle2 size={18} color="#059669" />
+              <span>{uploadNotice.message}</span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {(!landingContent.mobileImages || landingContent.mobileImages.length === 0) && <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>No mobile images added yet.</span>}
-              {(landingContent.mobileImages || []).map((url, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input type="text" className="form-input" placeholder="https://example.com/image.png" value={url} onChange={e => {
-                    const newUrls = [...landingContent.mobileImages];
-                    newUrls[idx] = e.target.value;
-                    setLandingContent({ ...landingContent, mobileImages: newUrls });
-                  }} />
-                  <button type="button" onClick={() => {
-                    const newUrls = [...landingContent.mobileImages];
-                    newUrls.splice(idx, 1);
-                    setLandingContent({ ...landingContent, mobileImages: newUrls });
-                  }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}><Trash2 size={16} /></button>
-                </div>
-              ))}
-            </div>
+            <button className="btn btn-sm btn-primary" onClick={onSave} disabled={isUpdating} style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+              <Save size={14} /> {isUpdating ? 'Saving...' : 'Save & Publish Now'}
+            </button>
           </div>
+        )}
+        
+        <div style={{ display: 'grid', gap: '1.5rem', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+          {renderImageList('web')}
+          {renderImageList('mobile')}
         </div>
       </div>
 
@@ -238,6 +332,20 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
             <textarea className="form-input" style={{ minHeight: '60px' }} value={landingContent.comparisonDescription || ''} onChange={e => handleUpdateHero('comparisonDescription', e.target.value)} />
           </div>
         </div>
+      </div>
+
+      {/* Bottom Save & Publish Bar */}
+      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', marginBottom: '3rem', padding: '1.25rem', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0', flexWrap: 'wrap' }}>
+        <span style={{ fontSize: '0.85rem', color: '#64748b' }}>Make sure to save & publish your changes so they reflect immediately on staypilot.co.in</span>
+        <button 
+          type="button" 
+          className="btn btn-primary" 
+          onClick={onSave} 
+          disabled={isUpdating} 
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, padding: '0.75rem 1.75rem', fontSize: '0.95rem' }}
+        >
+          <Save size={18} /> {isUpdating ? 'Saving...' : 'Save & Publish All Website Content'}
+        </button>
       </div>
 
     </div>
