@@ -706,15 +706,19 @@ export default function SuperAdmin() {
           });
         }
         if (superAdminProfile.global_settings.landing_page) {
+          const rawLp = Array.isArray(superAdminProfile.global_settings.landing_page)
+            ? (superAdminProfile.global_settings.landing_page.find(x => x && typeof x === 'object') || {})
+            : superAdminProfile.global_settings.landing_page;
+
           const lp = {
             ...DEFAULT_LANDING_CONTENT,
-            ...superAdminProfile.global_settings.landing_page,
-            features: superAdminProfile.global_settings.landing_page.features || DEFAULT_LANDING_CONTENT.features,
-            webImages: superAdminProfile.global_settings.landing_page.webImages !== undefined
-              ? superAdminProfile.global_settings.landing_page.webImages
+            ...rawLp,
+            features: rawLp.features || DEFAULT_LANDING_CONTENT.features,
+            webImages: Array.isArray(rawLp.webImages)
+              ? rawLp.webImages
               : DEFAULT_LANDING_CONTENT.webImages,
-            mobileImages: (superAdminProfile.global_settings.landing_page.mobileImages && superAdminProfile.global_settings.landing_page.mobileImages.length > 0)
-              ? superAdminProfile.global_settings.landing_page.mobileImages
+            mobileImages: Array.isArray(rawLp.mobileImages)
+              ? rawLp.mobileImages
               : DEFAULT_LANDING_CONTENT.mobileImages
           };
           setLandingContent(lp);
@@ -1708,14 +1712,85 @@ export default function SuperAdmin() {
   const handleSaveLandingPage = async () => {
     try {
       setIsUpdating(true);
+      const sanitizedContent = {
+        ...landingContent,
+        webImages: Array.isArray(landingContent.webImages)
+          ? landingContent.webImages.filter(url => typeof url === 'string' && url.trim() !== '')
+          : [],
+        mobileImages: Array.isArray(landingContent.mobileImages)
+          ? landingContent.mobileImages.filter(url => typeof url === 'string' && url.trim() !== '')
+          : []
+      };
+
+      // 1. Persist to Supabase via atomic global configuration RPC
       const updatedSettings = await updateGlobalConfigSection('landing_page', {
-        p_landing_page: landingContent
+        p_landing_page: sanitizedContent
       });
-      if (setLandingPageContent) {
-        setLandingPageContent(updatedSettings?.landing_page || landingContent);
+
+      // 2. Validate that the canonical database configuration contains the expected image arrays
+      const canonicalLp = updatedSettings?.landing_page;
+      const rawCanonicalLp = Array.isArray(canonicalLp)
+        ? (canonicalLp.find(x => x && typeof x === 'object') || {})
+        : (canonicalLp && typeof canonicalLp === 'object' ? canonicalLp : {});
+
+      const canonicalWebImages = Array.isArray(rawCanonicalLp.webImages) ? rawCanonicalLp.webImages : null;
+      const canonicalMobileImages = Array.isArray(rawCanonicalLp.mobileImages) ? rawCanonicalLp.mobileImages : null;
+      const canonicalDbValid = canonicalWebImages !== null && canonicalMobileImages !== null;
+
+      // 3. Post-save verification reload: immediately re-fetch public configuration
+      let publicVerified = false;
+      let publicVerificationWarning = '';
+
+      try {
+        const { data: verifiedConfig, error: verifyErr } = await supabase.rpc('get_public_website_config');
+        if (verifyErr) {
+          publicVerificationWarning = `Public RPC error: ${verifyErr.message}`;
+        } else if (!verifiedConfig) {
+          publicVerificationWarning = 'Public RPC returned an empty configuration payload.';
+        } else if (!verifiedConfig.landing_page) {
+          publicVerificationWarning = 'Public RPC returned landing_page: null. The public endpoint is currently reading from an alternate Super Admin profile rather than the canonical profile (9c4e65f5-c0a1-4b3a-8ed2-d01175a73409).';
+        } else {
+          const rawPubLp = Array.isArray(verifiedConfig.landing_page)
+            ? (verifiedConfig.landing_page.find(x => x && typeof x === 'object') || {})
+            : verifiedConfig.landing_page;
+          const pubWeb = Array.isArray(rawPubLp.webImages) ? rawPubLp.webImages.filter(u => typeof u === 'string' && u.trim() !== '') : [];
+          const pubMobile = Array.isArray(rawPubLp.mobileImages) ? rawPubLp.mobileImages.filter(u => typeof u === 'string' && u.trim() !== '') : [];
+
+          const webMatches = pubWeb.length === sanitizedContent.webImages.length &&
+            pubWeb.every((u, i) => u === sanitizedContent.webImages[i]);
+          const mobileMatches = pubMobile.length === sanitizedContent.mobileImages.length &&
+            pubMobile.every((u, i) => u === sanitizedContent.mobileImages[i]);
+
+          if (webMatches && mobileMatches) {
+            publicVerified = true;
+          } else {
+            publicVerificationWarning = `Public RPC returned mismatched image collections (Web: ${pubWeb.length} vs expected ${sanitizedContent.webImages.length}; Mobile: ${pubMobile.length} vs expected ${sanitizedContent.mobileImages.length}).`;
+          }
+        }
+      } catch (vErr) {
+        publicVerificationWarning = `Network error during public verification: ${vErr.message}`;
       }
-      alert("Landing page content updated successfully!");
+
+      // Always update local editor state to the sanitized content that was saved
+      setLandingContent(sanitizedContent);
+      if (setLandingPageContent) {
+        setLandingPageContent(sanitizedContent);
+      }
+
+      // 4. Verification-gated user feedback (prevent false success reporting)
+      if (canonicalDbValid && publicVerified) {
+        alert("Landing page content updated and verified successfully! Published changes are live on staypilot.co.in.");
+      } else {
+        console.warn("[WebsiteManager] Verification Warning:", publicVerificationWarning);
+        alert(
+          `Configuration saved to database, but PUBLIC VERIFICATION FAILED:\n\n` +
+          `${publicVerificationWarning}\n\n` +
+          `Database changes were persisted to the canonical Super Admin profile, but the public website configuration RPC (get_public_website_config) is not returning them.\n\n` +
+          `Public visitors may continue seeing default screenshots until get_public_website_config is synchronized with the canonical Super Admin profile.`
+        );
+      }
     } catch (err) {
+      console.error("Save landing page error:", err);
       alert("Failed to save landing page: " + err.message);
     } finally {
       setIsUpdating(false);

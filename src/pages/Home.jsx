@@ -1,16 +1,63 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useSettingsStore } from '../lib/store';
+import { supabase } from '../lib/supabase';
 import { companyBranding } from '../lib/branding';
 import { 
   ArrowRight, LayoutDashboard, BookOpenCheck, CalendarDays, Wallet, 
   FileText, TrendingUp, Users, CreditCard, Sparkles, CheckCircle2, 
-  Shield, Zap, Smartphone, Play, Globe, Check, ChevronLeft, ChevronRight
+  Shield, ShieldCheck, Zap, Smartphone, Play, Globe, Check, ChevronLeft, ChevronRight, MessageCircle
 } from 'lucide-react';
 
 export default function Home() {
-  const { landingPageContent } = useSettingsStore();
+  const { landingPageContent, setLandingPageContent } = useSettingsStore();
   const location = useLocation();
+
+  const [configStatus, setConfigStatus] = useState('loading'); // 'loading' | 'published' | 'uninitialized' | 'error'
+  const [rpcError, setRpcError] = useState(null);
+
+  // Fresh public configuration fetch on mount / refresh
+  useEffect(() => {
+    let isMounted = true;
+    if (supabase && typeof supabase.rpc === 'function') {
+      supabase.rpc('get_public_website_config').then(({ data, error }) => {
+        if (!isMounted) return;
+        if (error) {
+          console.warn("Public config fetch error on homepage:", error);
+          setRpcError(error.message);
+          setConfigStatus('error');
+          return;
+        }
+        if (data && data.landing_page && typeof data.landing_page === 'object') {
+          const rawLp = Array.isArray(data.landing_page)
+            ? (data.landing_page.find(x => x && typeof x === 'object') || null)
+            : data.landing_page;
+          if (rawLp && typeof rawLp === 'object') {
+            setConfigStatus('published');
+            setRpcError(null);
+            if (setLandingPageContent) {
+              setLandingPageContent(rawLp);
+            }
+          } else {
+            setConfigStatus('uninitialized');
+            setRpcError(null);
+          }
+        } else {
+          // Explicitly uninitialized on server (landing_page is null or not an object)
+          setConfigStatus('uninitialized');
+          setRpcError(null);
+        }
+      }).catch(err => {
+        if (!isMounted) return;
+        console.warn("Public config fetch exception on homepage:", err);
+        setRpcError(err.message || 'Network exception');
+        setConfigStatus('error');
+      });
+    } else {
+      setConfigStatus('uninitialized');
+    }
+    return () => { isMounted = false; };
+  }, [setLandingPageContent]);
 
   const defaultWebImages = [
     'https://lubkdxhqnnghnjhrebat.supabase.co/storage/v1/object/public/public-assets/slider/mou07ccl4i8_1792682511344.JPG',
@@ -33,28 +80,111 @@ export default function Home() {
   ];
 
   const resolvedContent = Array.isArray(landingPageContent)
-    ? (landingPageContent.find(x => x && typeof x === 'object') || {})
-    : (landingPageContent || {});
+    ? (landingPageContent.find(x => x && typeof x === 'object') || null)
+    : landingPageContent;
 
-  const configuredWebImages = resolvedContent.webImages?.filter(url => url && typeof url === 'string' && url.trim() !== '');
-  const webImages = (configuredWebImages && configuredWebImages.length > 0)
-    ? configuredWebImages
-    : defaultWebImages;
+  // Single Source of Truth resolution:
+  // State 1: Published Configuration Available (resolvedContent is valid object)
+  // State 2: Configuration Explicitly Uninitialized (null/undefined & not error) -> defaults
+  // State 3: Loading -> show defaults without flashing
+  // State 4: Fetch Error -> error-safe defaults
+  const hasPublishedConfig = resolvedContent !== null && typeof resolvedContent === 'object';
+  
+  let effectiveStatus = configStatus;
+  if (configStatus === 'error') {
+    effectiveStatus = 'error';
+  } else if (hasPublishedConfig) {
+    effectiveStatus = 'published';
+  }
 
-  const configuredMobileImages = resolvedContent.mobileImages?.filter(url => url && typeof url === 'string' && url.trim() !== '');
-  const mobileImages = (configuredMobileImages && configuredMobileImages.length > 0)
-    ? configuredMobileImages
-    : defaultMobileImages;
+  let webImages = [];
+  let mobileImages = [];
+  let imageSource = 'defaults';
+
+  if (effectiveStatus === 'published' && resolvedContent) {
+    imageSource = 'published';
+    // Published collections are authoritative:
+    // When defined (even if empty []), use EXACT published list.
+    // Only if a collection is completely undefined in the published object, fall back to default assets.
+    webImages = (resolvedContent.webImages !== undefined && Array.isArray(resolvedContent.webImages))
+      ? resolvedContent.webImages.filter(url => typeof url === 'string' && url.trim() !== '')
+      : defaultWebImages;
+    mobileImages = (resolvedContent.mobileImages !== undefined && Array.isArray(resolvedContent.mobileImages))
+      ? resolvedContent.mobileImages.filter(url => typeof url === 'string' && url.trim() !== '')
+      : defaultMobileImages;
+  } else if (effectiveStatus === 'error') {
+    imageSource = 'error-fallback';
+    webImages = defaultWebImages;
+    mobileImages = defaultMobileImages;
+  } else {
+    // 'loading' or 'uninitialized'
+    imageSource = 'defaults';
+    webImages = defaultWebImages;
+    mobileImages = defaultMobileImages;
+  }
   
   const [webIdx, setWebIdx] = useState(0);
   const [mobileIdx, setMobileIdx] = useState(0);
   const [isWebHovered, setIsWebHovered] = useState(false);
+  const [mobileBadgeGroup, setMobileBadgeGroup] = useState(0);
 
-  // Independent auto-slide timer for web images (pauses on hover)
+  // Clamp web index when web images change
+  useEffect(() => {
+    if (webImages.length === 0) {
+      if (webIdx !== 0) setWebIdx(0);
+    } else if (webIdx >= webImages.length) {
+      setWebIdx(0);
+    }
+  }, [webImages.length, webIdx]);
+
+  // Clamp mobile index when mobile images change
+  useEffect(() => {
+    if (mobileImages.length === 0) {
+      if (mobileIdx !== 0) setMobileIdx(0);
+    } else if (mobileIdx >= mobileImages.length) {
+      setMobileIdx(0);
+    }
+  }, [mobileImages.length, mobileIdx]);
+
+  // Rotating mobile feature badges timer (Option A: cycles groups 0, 1, 2 every 5s on mobile)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) return;
+
+    let intervalId = null;
+
+    const startTimer = () => {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = setInterval(() => {
+        if (!document.hidden) {
+          setMobileBadgeGroup(prev => (prev + 1) % 3);
+        }
+      }, 5000);
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        if (intervalId) clearInterval(intervalId);
+      } else {
+        startTimer();
+      }
+    };
+
+    startTimer();
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
+
+  // Independent auto-slide timer for web images (pauses on hover or background tab)
   useEffect(() => {
     if (webImages.length <= 1) return;
     const interval = setInterval(() => {
-      if (!isWebHovered) {
+      if (!isWebHovered && !document.hidden) {
         setWebIdx(prev => (prev + 1) % webImages.length);
       }
     }, 3500);
@@ -65,7 +195,9 @@ export default function Home() {
   useEffect(() => {
     if (mobileImages.length <= 1) return;
     const interval = setInterval(() => {
-      setMobileIdx(prev => (prev + 1) % mobileImages.length);
+      if (!document.hidden) {
+        setMobileIdx(prev => (prev + 1) % mobileImages.length);
+      }
     }, 3500);
     return () => clearInterval(interval);
   }, [mobileImages.length]);
@@ -179,20 +311,108 @@ export default function Home() {
           100% { transform: translateY(0px); }
         }
         .glass-badge {
-          display: flex;
+          display: inline-flex;
           align-items: center;
           gap: 8px;
-          background: rgba(15, 23, 42, 0.7);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          padding: 10px 20px;
-          border-radius: 30px;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
-          font-weight: 700;
+          background: rgba(15, 23, 42, 0.85);
+          backdrop-filter: blur(14px);
+          -webkit-backdrop-filter: blur(14px);
+          border: 1px solid rgba(16, 185, 129, 0.22);
+          padding: 8px 16px;
+          border-radius: 9999px;
+          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.45), 0 0 14px rgba(16, 185, 129, 0.08);
+          font-weight: 600;
           color: #f8fafc;
-          font-size: 0.95rem;
+          font-size: 0.84rem;
+          line-height: 1.2;
           white-space: nowrap;
+          user-select: none;
+          cursor: default;
+          will-change: transform;
+          transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease, color 0.25s ease;
+        }
+        .glass-badge:hover {
+          transform: translateY(-2px) scale(1.025);
+          border-color: rgba(52, 211, 153, 0.5);
+          box-shadow: 0 14px 28px -4px rgba(0, 0, 0, 0.55), 0 0 20px rgba(16, 185, 129, 0.22);
+          color: #ffffff;
+        }
+        .glass-badge-icon {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          color: #34d399;
+          transition: color 0.25s ease;
+        }
+        .glass-badge:hover .glass-badge-icon {
+          color: #6ee7b7;
+        }
+
+        /* Desktop Base Positions */
+        .badge-pos-calendar { position: absolute; top: 14%; left: -6%; z-index: 25; }
+        .badge-pos-financials { position: absolute; bottom: 24%; left: -4%; z-index: 25; }
+        .badge-pos-scanning { position: absolute; top: 42%; right: 18%; z-index: 30; }
+        .badge-pos-security { position: absolute; top: -4%; right: 6%; z-index: 25; }
+        .badge-pos-enquiry { position: absolute; bottom: 6%; right: -10%; z-index: 30; }
+        .badge-pos-invoicing { position: absolute; top: -2%; left: 14%; z-index: 25; }
+        .badge-pos-whatsapp { position: absolute; bottom: -2%; left: 24%; z-index: 25; }
+
+        /* Gentle Staggered Floating Animations (4-6px movement, 3-4s duration) */
+        .badge-anim-1 { animation: badgeFloat1 3.4s ease-in-out infinite 0s; }
+        .badge-anim-2 { animation: badgeFloat2 3.8s ease-in-out infinite 0.6s; }
+        .badge-anim-3 { animation: badgeFloat3 3.5s ease-in-out infinite 1.2s; }
+        .badge-anim-4 { animation: badgeFloat1 3.9s ease-in-out infinite 1.8s; }
+        .badge-anim-5 { animation: badgeFloat2 3.3s ease-in-out infinite 0.3s; }
+        .badge-anim-6 { animation: badgeFloat3 3.7s ease-in-out infinite 0.9s; }
+        .badge-anim-7 { animation: badgeFloat1 3.6s ease-in-out infinite 1.5s; }
+
+        @keyframes badgeFloat1 {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-5px); }
+        }
+        @keyframes badgeFloat2 {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-6px); }
+        }
+        @keyframes badgeFloat3 {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(-4px); }
+        }
+
+        @media (max-width: 1200px) and (min-width: 1025px) {
+          .badge-pos-calendar { left: -2%; }
+          .badge-pos-financials { left: -1%; }
+          .badge-pos-enquiry { right: -4%; }
+        }
+
+        @media (max-width: 1024px) and (min-width: 769px) {
+          .glass-badge {
+            padding: 7px 13px !important;
+            font-size: 0.8rem !important;
+            gap: 6px !important;
+          }
+          .badge-pos-calendar { top: 12% !important; left: 0% !important; }
+          .badge-pos-financials { bottom: 20% !important; left: 0% !important; }
+          .badge-pos-scanning { top: 38% !important; right: 22% !important; }
+          .badge-pos-security { top: -3% !important; right: 4% !important; }
+          .badge-pos-enquiry { bottom: 6% !important; right: 0% !important; }
+          .badge-pos-invoicing { top: -2% !important; left: 8% !important; }
+          .badge-pos-whatsapp { bottom: -2% !important; left: 20% !important; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .glass-badge, 
+          .badge-anim-1, 
+          .badge-anim-2, 
+          .badge-anim-3, 
+          .badge-anim-4, 
+          .badge-anim-5, 
+          .badge-anim-6, 
+          .badge-anim-7 {
+            animation: none !important;
+            transition: none !important;
+          }
         }
         .mockup-container {
           position: relative;
@@ -248,14 +468,47 @@ export default function Home() {
           pointer-events: auto;
           transform: scale(1);
         }
+        @media (min-width: 769px) {
+          .glass-badge.mobile-hidden,
+          .glass-badge.mobile-visible {
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+          }
+        }
+
         @media (max-width: 768px) {
           .desktop-nav { display: none !important; }
           .desktop-btn { display: none !important; }
           .glass-badge {
-            transform: scale(0.68) !important;
-            padding: 5px 10px !important;
-            font-size: 0.75rem !important;
+            padding: 5px 11px !important;
+            font-size: 0.72rem !important;
+            gap: 5px !important;
+            border-radius: 9999px !important;
+            z-index: 35 !important;
+            transition: opacity 0.25s ease-in-out, visibility 0.25s ease-in-out !important;
           }
+          .glass-badge.mobile-hidden {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+          }
+          .glass-badge.mobile-visible {
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+          }
+          .glass-badge-icon svg {
+            width: 13px !important;
+            height: 13px !important;
+          }
+          .badge-pos-calendar { top: 6% !important; left: 2% !important; right: auto !important; }
+          .badge-pos-financials { bottom: 30% !important; left: 2% !important; right: auto !important; }
+          .badge-pos-invoicing { top: 6% !important; right: 2% !important; left: auto !important; }
+          .badge-pos-scanning { top: 38% !important; right: 2% !important; left: auto !important; }
+          .badge-pos-whatsapp { bottom: 4% !important; left: 2% !important; right: auto !important; }
+          .badge-pos-security { top: 6% !important; right: 2% !important; left: auto !important; }
+          .badge-pos-enquiry { bottom: 4% !important; right: 2% !important; left: auto !important; }
           .mockup-container { 
             margin-top: 2rem !important; 
             display: flex;
@@ -274,6 +527,27 @@ export default function Home() {
             border-radius: 20px; 
           }
           .hero-title { font-size: 2.3rem !important; line-height: 1.15 !important; }
+        }
+        @media (max-width: 480px) {
+          .glass-badge {
+            padding: 4px 9px !important;
+            font-size: 0.68rem !important;
+            gap: 4px !important;
+            max-width: 48% !important;
+            overflow: hidden !important;
+            text-overflow: ellipsis !important;
+          }
+          .glass-badge-icon svg {
+            width: 11px !important;
+            height: 11px !important;
+          }
+          .badge-pos-calendar { top: 5% !important; left: 2% !important; right: auto !important; }
+          .badge-pos-financials { bottom: 30% !important; left: 2% !important; right: auto !important; }
+          .badge-pos-invoicing { top: 5% !important; right: 2% !important; left: auto !important; }
+          .badge-pos-scanning { top: 38% !important; right: 2% !important; left: auto !important; }
+          .badge-pos-whatsapp { bottom: 4% !important; left: 2% !important; right: auto !important; }
+          .badge-pos-security { top: 5% !important; right: 2% !important; left: auto !important; }
+          .badge-pos-enquiry { bottom: 4% !important; right: 2% !important; left: auto !important; }
         }
       `}</style>
 
@@ -348,26 +622,33 @@ export default function Home() {
           <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: '80%', height: '80%', background: 'radial-gradient(circle, rgba(52, 211, 153, 0.4) 0%, rgba(56, 189, 248, 0.1) 50%, transparent 70%)', filter: 'blur(60px)', zIndex: 0 }}></div>
 
           {/* FLOATING BADGES */}
-          <div className="glass-badge float-anim-delayed" style={{ position: 'absolute', top: '15%', left: '-8%', zIndex: 20 }}>
-            📅 Visual Calendar
+          <div className={`glass-badge badge-pos-calendar badge-anim-1 ${mobileBadgeGroup === 0 ? 'mobile-visible' : 'mobile-hidden'}`}>
+            <span className="glass-badge-icon"><CalendarDays size={15} /></span>
+            <span>Smart Availability Calendar</span>
           </div>
-          <div className="glass-badge float-anim" style={{ position: 'absolute', bottom: '25%', left: '-5%', zIndex: 20, animationDelay: '1.5s' }}>
-            💰 Auto Financials
+          <div className={`glass-badge badge-pos-financials badge-anim-2 ${mobileBadgeGroup === 0 ? 'mobile-visible' : 'mobile-hidden'}`}>
+            <span className="glass-badge-icon"><TrendingUp size={15} /></span>
+            <span>Automated Financial Tracking</span>
           </div>
-          <div className="glass-badge float-anim" style={{ position: 'absolute', top: '45%', right: '18%', zIndex: 20, animationDelay: '0.8s' }}>
-            ⚡ AI ID Scanning
+          <div className={`glass-badge badge-pos-scanning badge-anim-3 ${mobileBadgeGroup === 1 ? 'mobile-visible' : 'mobile-hidden'}`}>
+            <span className="glass-badge-icon"><Sparkles size={15} /></span>
+            <span>AI-Powered ID Scanning</span>
           </div>
-          <div className="glass-badge float-anim-delayed" style={{ position: 'absolute', top: '-5%', right: '8%', zIndex: 20, animationDelay: '2.5s' }}>
-            🛡️ Secure Data Management
+          <div className={`glass-badge badge-pos-security badge-anim-4 ${mobileBadgeGroup === 2 ? 'mobile-visible' : 'mobile-hidden'}`}>
+            <span className="glass-badge-icon"><ShieldCheck size={15} /></span>
+            <span>Secure & Private</span>
           </div>
-          <div className="glass-badge float-anim" style={{ position: 'absolute', bottom: '5%', right: '-12%', zIndex: 30, animationDelay: '1.2s' }}>
-            📲 Quick Enquiry
+          <div className={`glass-badge badge-pos-enquiry badge-anim-5 ${mobileBadgeGroup === 2 ? 'mobile-visible' : 'mobile-hidden'}`}>
+            <span className="glass-badge-icon"><Smartphone size={15} /></span>
+            <span>Quick Enquiry Management</span>
           </div>
-          <div className="glass-badge float-anim-delayed" style={{ position: 'absolute', top: '-2%', left: '15%', zIndex: 20, animationDelay: '0.5s' }}>
-            🧾 Invoicing
+          <div className={`glass-badge badge-pos-invoicing badge-anim-6 ${mobileBadgeGroup === 0 ? 'mobile-visible' : 'mobile-hidden'}`}>
+            <span className="glass-badge-icon"><FileText size={15} /></span>
+            <span>Effortless Invoicing</span>
           </div>
-          <div className="glass-badge float-anim" style={{ position: 'absolute', bottom: '-2%', left: '25%', zIndex: 20, animationDelay: '2.0s' }}>
-            💬 WhatsApp Notifications
+          <div className={`glass-badge badge-pos-whatsapp badge-anim-7 ${mobileBadgeGroup === 1 ? 'mobile-visible' : 'mobile-hidden'}`}>
+            <span className="glass-badge-icon"><MessageCircle size={15} /></span>
+            <span>Instant WhatsApp Updates</span>
           </div>
 
           <div 
@@ -387,7 +668,10 @@ export default function Home() {
                   <img key={i} src={src} className={`image-slider ${i === webIdx ? 'active' : ''}`} alt={`Web Dashboard ${i + 1}`} />
                 ))
               ) : (
-                <img src="/booking_management.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Web Dashboard" />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', gap: '0.75rem', padding: '2rem', userSelect: 'none' }}>
+                  <LayoutDashboard size={44} style={{ opacity: 0.35, color: '#0F2C59' }} />
+                  <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#64748b' }}>StayPilot Web Dashboard Preview</span>
+                </div>
               )}
 
               {/* Prev / Next Navigation Arrows */}
@@ -445,7 +729,10 @@ export default function Home() {
                   <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt={`Mobile App ${i + 1}`} />
                 ))
               ) : (
-                <img src="/calendar.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Mobile App" />
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', gap: '0.5rem', padding: '1rem', userSelect: 'none' }}>
+                  <Smartphone size={32} style={{ opacity: 0.35, color: '#38bdf8' }} />
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#94a3b8' }}>StayPilot Mobile App</span>
+                </div>
               )}
 
               {/* Mobile Slide Indicator Dots */}
@@ -556,7 +843,10 @@ export default function Home() {
                     <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt={`Mobile App Preview ${i + 1}`} />
                   ))
                 ) : (
-                  <img src="/calendar.png" className="image-slider active" style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt="Mobile App" />
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', gap: '0.75rem', padding: '1.5rem', userSelect: 'none' }}>
+                    <Smartphone size={40} style={{ opacity: 0.35, color: '#38bdf8' }} />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#94a3b8' }}>StayPilot Mobile App Preview</span>
+                  </div>
                 )}
 
                 {/* Mobile Slide Indicator Dots */}
@@ -625,6 +915,43 @@ export default function Home() {
           </div>
         </div>
       </footer>
+
+      {/* Dev Diagnostics HUD (Visible strictly during local development) */}
+      {import.meta.env.DEV && (
+        <div 
+          id="homepage-dev-diagnostics"
+          style={{
+            position: 'fixed',
+            bottom: '16px',
+            left: '16px',
+            zIndex: 99999,
+            background: 'rgba(15, 23, 42, 0.94)',
+            color: '#f8fafc',
+            padding: '10px 14px',
+            borderRadius: '10px',
+            fontSize: '11px',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+            boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)',
+            border: '1px solid rgba(255,255,255,0.15)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '5px',
+            pointerEvents: 'auto',
+            backdropFilter: 'blur(8px)',
+            maxWidth: '340px'
+          }}
+        >
+          <div style={{ fontWeight: 700, color: '#34d399', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span>⚡ HOMEPAGE SLIDER DIAGNOSTICS</span>
+            <span style={{ fontSize: '10px', color: '#94a3b8' }}>DEV ONLY</span>
+          </div>
+          <div>Config State: <span style={{ fontWeight: 700, color: effectiveStatus === 'published' ? '#34d399' : effectiveStatus === 'error' ? '#f87171' : '#fbbf24' }}>{effectiveStatus}</span></div>
+          <div>Image Source: <span style={{ fontWeight: 700, color: '#38bdf8' }}>{imageSource}</span></div>
+          <div>Web Images Count: <span style={{ fontWeight: 700 }}>{webImages.length}</span></div>
+          <div>Mobile Images Count: <span style={{ fontWeight: 700 }}>{mobileImages.length}</span></div>
+          {rpcError && <div style={{ color: '#f87171', wordBreak: 'break-all' }}>RPC Error: {rpcError}</div>}
+        </div>
+      )}
     </div>
   );
 }

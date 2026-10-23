@@ -145,7 +145,16 @@ function App() {
       const { data: config, error: configErr } = await supabase.rpc('get_public_website_config');
       if (config) {
         if (config.pricing) setGlobalPlans(config.pricing);
-        if (config.landing_page) setLandingPageContent(config.landing_page);
+        if (config.landing_page !== undefined) {
+          if (config.landing_page && typeof config.landing_page === 'object') {
+            const rawLp = Array.isArray(config.landing_page)
+              ? (config.landing_page.find(x => x && typeof x === 'object') || null)
+              : config.landing_page;
+            if (rawLp) setLandingPageContent(rawLp);
+          } else if (config.landing_page === null) {
+            setLandingPageContent(null);
+          }
+        }
         if (config.website_pricing) setWebsitePricing(config.website_pricing);
         if (config.tax_settings) setGlobalTaxSettings(config.tax_settings);
         if (config.onboarding_wizard_enabled !== undefined) {

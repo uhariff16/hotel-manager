@@ -5,6 +5,16 @@ import { LayoutDashboard, BookOpenCheck, CalendarDays, Wallet, FileText, Trendin
 export default function WebsiteManagerTab({ landingContent, setLandingContent, onSave, isUpdating }) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadNotice, setUploadNotice] = useState(null);
+  const [savedBaseline, setSavedBaseline] = useState(() => JSON.stringify({
+    webImages: landingContent?.webImages || [],
+    mobileImages: landingContent?.mobileImages || []
+  }));
+
+  const currentImagesJson = JSON.stringify({
+    webImages: landingContent?.webImages || [],
+    mobileImages: landingContent?.mobileImages || []
+  });
+  const hasUnsavedImageChanges = currentImagesJson !== savedBaseline;
 
   const handleImageUpload = async (event, type) => {
     const file = event.target.files?.[0];
@@ -44,6 +54,59 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
     } finally {
       setIsUploading(false);
       event.target.value = '';
+    }
+  };
+
+  const handleImageReplace = async (event, type, idx) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      setUploadNotice(null);
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `slider/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('public-assets')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('public-assets').getPublicUrl(filePath);
+      const publicUrl = data.publicUrl;
+
+      const targetKey = type === 'web' ? 'webImages' : 'mobileImages';
+      const newUrls = [...(landingContent[targetKey] || [])];
+      newUrls[idx] = publicUrl;
+
+      setLandingContent({ 
+        ...landingContent, 
+        [targetKey]: newUrls 
+      });
+
+      setUploadNotice({
+        type: 'success',
+        message: 'Image replaced successfully! Remember to click "Save & Publish" to update staypilot.co.in.'
+      });
+
+    } catch (err) {
+      alert("Replacement failed: " + err.message);
+    } finally {
+      setIsUploading(false);
+      event.target.value = '';
+    }
+  };
+
+  const handleTriggerSave = async () => {
+    if (onSave) {
+      await onSave();
+      setSavedBaseline(JSON.stringify({
+        webImages: landingContent?.webImages || [],
+        mobileImages: landingContent?.mobileImages || []
+      }));
+      setUploadNotice(null);
     }
   };
 
@@ -167,6 +230,13 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
 
               {/* Actions: Reorder and Delete */}
               <div style={{ display: 'flex', gap: '0.2rem', alignItems: 'center', flexShrink: 0 }}>
+                <label 
+                  title="Replace image with new upload" 
+                  style={{ background: 'none', border: 'none', cursor: isUploading ? 'not-allowed' : 'pointer', color: '#64748b', padding: '4px', display: 'flex', alignItems: 'center', margin: 0 }}
+                >
+                  <Upload size={14} />
+                  <input type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => handleImageReplace(e, type, idx)} disabled={isUploading} />
+                </label>
                 <button 
                   type="button" 
                   onClick={() => {
@@ -224,7 +294,7 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
           <h2 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>Website Content Manager</h2>
           <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '0.9rem' }}>Customize text, slider mockups, and features across the public landing page (staypilot.co.in).</p>
         </div>
-        <button className="btn btn-primary" onClick={onSave} disabled={isUpdating} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
+        <button className="btn btn-primary" onClick={handleTriggerSave} disabled={isUpdating} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700 }}>
           <Save size={18} /> {isUpdating ? 'Saving...' : 'Save & Publish'}
         </button>
       </div>
@@ -262,7 +332,7 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
           <button 
             type="button" 
             className="btn btn-primary" 
-            onClick={onSave} 
+            onClick={handleTriggerSave} 
             disabled={isUpdating} 
             style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 700, fontSize: '0.85rem' }}
           >
@@ -276,8 +346,20 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
               <CheckCircle2 size={18} color="#059669" />
               <span>{uploadNotice.message}</span>
             </div>
-            <button className="btn btn-sm btn-primary" onClick={onSave} disabled={isUpdating} style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+            <button className="btn btn-sm btn-primary" onClick={handleTriggerSave} disabled={isUpdating} style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
               <Save size={14} /> {isUpdating ? 'Saving...' : 'Save & Publish Now'}
+            </button>
+          </div>
+        )}
+
+        {hasUnsavedImageChanges && !uploadNotice && (
+          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#92400e', fontSize: '0.85rem' }}>
+              <span style={{ fontSize: '1.1rem' }}>⚠️</span>
+              <span><strong>Unpublished Changes:</strong> You have modified or deleted slider images in the editor. Click <strong>"Save & Publish Slider Images"</strong> to update the live public website.</span>
+            </div>
+            <button className="btn btn-sm btn-primary" onClick={handleTriggerSave} disabled={isUpdating} style={{ fontWeight: 700, whiteSpace: 'nowrap' }}>
+              <Save size={14} /> {isUpdating ? 'Saving...' : 'Save & Publish Slider Images'}
             </button>
           </div>
         )}
@@ -340,7 +422,7 @@ export default function WebsiteManagerTab({ landingContent, setLandingContent, o
         <button 
           type="button" 
           className="btn btn-primary" 
-          onClick={onSave} 
+          onClick={handleTriggerSave} 
           disabled={isUpdating} 
           style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, padding: '0.75rem 1.75rem', fontSize: '0.95rem' }}
         >
