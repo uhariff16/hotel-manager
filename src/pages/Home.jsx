@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
 import { companyBranding } from '../lib/branding';
+import { getWebScreenshotSrcSet, getMobileScreenshotSrcSet } from '../lib/imageOptimization';
 import { 
   ArrowRight, LayoutDashboard, BookOpenCheck, CalendarDays, Wallet, 
   FileText, TrendingUp, Users, CreditCard, Sparkles, CheckCircle2, 
@@ -127,6 +128,36 @@ export default function Home() {
   const [mobileIdx, setMobileIdx] = useState(0);
   const [isWebHovered, setIsWebHovered] = useState(false);
   const [mobileBadgeGroup, setMobileBadgeGroup] = useState(0);
+
+  // Progressive carousel loading: Track mounted/preloaded slides
+  const [loadedWebIndices, setLoadedWebIndices] = useState(() => new Set([0]));
+  const [loadedMobileIndices, setLoadedMobileIndices] = useState(() => new Set([0]));
+
+  // Preload next web slide before transition without blocking initial paint
+  useEffect(() => {
+    if (webImages.length === 0) return;
+    const nextIdx = (webIdx + 1) % webImages.length;
+    setLoadedWebIndices(prev => {
+      if (prev.has(webIdx) && prev.has(nextIdx)) return prev;
+      const next = new Set(prev);
+      next.add(webIdx);
+      next.add(nextIdx);
+      return next;
+    });
+  }, [webIdx, webImages.length]);
+
+  // Preload next mobile slide before transition
+  useEffect(() => {
+    if (mobileImages.length === 0) return;
+    const nextIdx = (mobileIdx + 1) % mobileImages.length;
+    setLoadedMobileIndices(prev => {
+      if (prev.has(mobileIdx) && prev.has(nextIdx)) return prev;
+      const next = new Set(prev);
+      next.add(mobileIdx);
+      next.add(nextIdx);
+      return next;
+    });
+  }, [mobileIdx, mobileImages.length]);
 
   // Clamp web index when web images change
   useEffect(() => {
@@ -459,14 +490,18 @@ export default function Home() {
           opacity: 0;
           z-index: 1;
           pointer-events: none;
-          transition: opacity 0.6s ease-in-out, transform 0.6s ease-in-out;
-          transform: scale(1.01);
+          image-rendering: -webkit-optimize-contrast;
+          image-rendering: crisp-edges;
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+          transform: translateZ(0);
+          transition: opacity 0.6s ease-in-out;
         }
         .image-slider.active {
           opacity: 1;
           z-index: 2;
           pointer-events: auto;
-          transform: scale(1);
+          transform: translateZ(0);
         }
         @media (min-width: 769px) {
           .glass-badge.mobile-hidden,
@@ -568,7 +603,7 @@ export default function Home() {
         boxShadow: '0 4px 30px rgba(0, 0, 0, 0.02)'
       }}>
         <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-          <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '36px', width: 'auto', display: 'block' }} />
+          <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" width="160" height="36" style={{ height: '36px', width: 'auto', display: 'block' }} />
         </Link>
         
         {/* Desktop Navigation (Center) */}
@@ -664,9 +699,24 @@ export default function Home() {
             {/* WEB IMAGE SLIDER */}
             <div style={{ flex: 1, minHeight: 0, width: '100%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', fontSize: '1.5rem', overflow: 'hidden', position: 'relative' }}>
               {webImages.length > 0 ? (
-                webImages.map((src, i) => (
-                  <img key={i} src={src} className={`image-slider ${i === webIdx ? 'active' : ''}`} alt={`Web Dashboard ${i + 1}`} />
-                ))
+                webImages.map((rawSrc, i) => {
+                  if (!loadedWebIndices.has(i)) return null;
+                  const { src, srcSet, sizes } = getWebScreenshotSrcSet(rawSrc);
+                  const isHeroInitial = i === 0;
+                  return (
+                    <img 
+                      key={i} 
+                      src={src} 
+                      srcSet={srcSet}
+                      sizes={sizes}
+                      className={`image-slider ${i === webIdx ? 'active' : ''}`} 
+                      alt={`Web Dashboard ${i + 1}`}
+                      loading={isHeroInitial ? "eager" : "lazy"}
+                      fetchPriority={isHeroInitial ? "high" : "low"}
+                      decoding={isHeroInitial ? "sync" : "async"}
+                    />
+                  );
+                })
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#94a3b8', gap: '0.75rem', padding: '2rem', userSelect: 'none' }}>
                   <LayoutDashboard size={44} style={{ opacity: 0.35, color: '#0F2C59' }} />
@@ -725,9 +775,24 @@ export default function Home() {
             {/* MOBILE IMAGE SLIDER */}
             <div style={{ width: '100%', height: '100%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', textAlign: 'center', overflow: 'hidden', position: 'relative' }}>
               {mobileImages.length > 0 ? (
-                mobileImages.map((src, i) => (
-                  <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt={`Mobile App ${i + 1}`} />
-                ))
+                mobileImages.map((rawSrc, i) => {
+                  if (!loadedMobileIndices.has(i)) return null;
+                  const { src, srcSet, sizes } = getMobileScreenshotSrcSet(rawSrc);
+                  const isHeroInitial = i === 0;
+                  return (
+                    <img 
+                      key={i} 
+                      src={src} 
+                      srcSet={srcSet}
+                      sizes={sizes}
+                      className={`image-slider ${i === mobileIdx ? 'active' : ''}`} 
+                      alt={`Mobile App ${i + 1}`}
+                      loading={isHeroInitial ? "eager" : "lazy"}
+                      fetchPriority={isHeroInitial ? "high" : "low"}
+                      decoding={isHeroInitial ? "sync" : "async"}
+                    />
+                  );
+                })
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', gap: '0.5rem', padding: '1rem', userSelect: 'none' }}>
                   <Smartphone size={32} style={{ opacity: 0.35, color: '#38bdf8' }} />
@@ -839,9 +904,23 @@ export default function Home() {
               <div style={{ width: '40%', height: '25px', background: '#1e293b', position: 'absolute', top: 0, left: '30%', borderBottomLeftRadius: '12px', borderBottomRightRadius: '12px', zIndex: 10 }}></div>
               <div style={{ width: '100%', height: '100%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94a3b8', textAlign: 'center', overflow: 'hidden', position: 'relative' }}>
                 {mobileImages.length > 0 ? (
-                  mobileImages.map((src, i) => (
-                    <img key={i} src={src} className={`image-slider ${i === mobileIdx ? 'active' : ''}`} alt={`Mobile App Preview ${i + 1}`} />
-                  ))
+                  mobileImages.map((rawSrc, i) => {
+                    if (i !== mobileIdx && !loadedMobileIndices.has(i)) return null;
+                    const { src, srcSet, sizes } = getMobileScreenshotSrcSet(rawSrc);
+                    return (
+                      <img 
+                        key={i} 
+                        src={src} 
+                        srcSet={srcSet}
+                        sizes={sizes}
+                        className={`image-slider ${i === mobileIdx ? 'active' : ''}`} 
+                        alt={`Mobile App Preview ${i + 1}`} 
+                        loading="lazy"
+                        fetchPriority="low"
+                        decoding="async"
+                      />
+                    );
+                  })
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#64748b', gap: '0.75rem', padding: '1.5rem', userSelect: 'none' }}>
                     <Smartphone size={40} style={{ opacity: 0.35, color: '#38bdf8' }} />
