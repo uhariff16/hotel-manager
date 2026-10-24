@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Check, Loader2 } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import PlanComparison from '../components/PlanComparison';
+import { companyBranding } from '../lib/branding';
 
 export default function Pricing() {
   const { websitePricing, profile, globalPlans, globalTaxSettings } = useSettingsStore();
@@ -384,6 +385,7 @@ export default function Pricing() {
         
         <nav className="desktop-nav" style={{ display: 'flex', gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Home</Link>
+          <Link to="/#about" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>About</Link>
           <Link to="/features" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Features</Link>
           <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>How It Works</Link>
           <Link to="/pricing" style={{ color: '#059669', textDecoration: 'none' }}>Pricing</Link>
@@ -531,7 +533,9 @@ export default function Pricing() {
 
                     {globalTaxSettings?.enabled && currentPrice > 0 && (
                       <div style={{ textAlign: 'center', color: plan.highlightPlan ? 'rgba(255,255,255,0.7)' : '#94a3b8', fontSize: '0.85rem', fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif", marginTop: '0.25rem' }}>
-                        + {globalTaxSettings.rate}% GST
+                        {globalTaxSettings.pricing_mode === 'inclusive'
+                          ? `Includes ${globalTaxSettings.rate}% GST`
+                          : `+ ${globalTaxSettings.rate}% GST`}
                       </div>
                     )}
 
@@ -666,12 +670,16 @@ export default function Pricing() {
               <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F2C59', letterSpacing: '0.05em' }}>STAY PILOT</span>
             </div>
             <p style={{ color: '#059669', fontWeight: 600, marginBottom: '0.25rem' }}>Know Your Bookings. Know Your Numbers.</p>
-            <p style={{ color: '#64748B', margin: 0 }}>Bookings. Income. Expenses. Simplified.</p>
+            <p style={{ color: '#64748B', margin: '0 0 0.5rem 0' }}>{companyBranding.tagline}</p>
+            <p style={{ fontSize: '0.825rem', color: '#94a3b8', margin: 0, fontWeight: 500 }}>
+              {companyBranding.productAttribution}
+            </p>
           </div>
           
           <div style={{ display: 'flex', gap: '3rem' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', fontWeight: 600 }}>
               <Link to="/" style={{ color: '#64748B', textDecoration: 'none' }}>Home</Link>
+              <Link to="/#about" style={{ color: '#64748B', textDecoration: 'none' }}>About</Link>
               <Link to="/features" style={{ color: '#64748B', textDecoration: 'none' }}>Features</Link>
               <Link to="/how-it-works" style={{ color: '#64748B', textDecoration: 'none' }}>How It Works</Link>
               <Link to="/pricing" style={{ color: '#64748B', textDecoration: 'none' }}>Pricing</Link>
@@ -683,8 +691,9 @@ export default function Pricing() {
             </div>
           </div>
         </div>
-        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem', paddingTop: '2rem', borderTop: '1px solid rgba(255, 255, 255, 0.5)' }}>
-          &copy; {new Date().getFullYear()} Stay Pilot. All rights reserved.
+        <div style={{ textAlign: 'center', color: '#94a3b8', fontSize: '0.875rem', paddingTop: '2rem', borderTop: '1px solid rgba(255, 255, 255, 0.5)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <div>&copy; {new Date().getFullYear()} Stay Pilot. All rights reserved.</div>
+          <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>{companyBranding.productAttribution}</div>
         </div>
       </footer>
     </div>

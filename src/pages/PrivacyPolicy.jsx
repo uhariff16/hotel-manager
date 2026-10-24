@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { useNavigate, Link } from 'react-router-dom';
+import { companyBranding } from '../lib/branding';
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
@@ -98,7 +99,7 @@ export default function PrivacyPolicy() {
 
           <h2 style={{ fontSize: '1.6rem', fontWeight: 800, marginTop: '2rem', marginBottom: '1rem', color: '#0F2C59' }}>6. Contact Us</h2>
           <p style={{ marginBottom: '1rem', color: '#334155' }}>
-            If you have any questions about this privacy policy or our privacy practices, please contact us at uhariff@live.com.
+            If you have any questions about this privacy policy or our privacy practices, please contact us at <a href="mailto:admin@staypilot.co.in" style={{ color: '#059669', textDecoration: 'none', fontWeight: 600 }}>admin@staypilot.co.in</a>.
           </p>
         </div>
       </main>
@@ -115,19 +116,27 @@ export default function PrivacyPolicy() {
       }}>
         <div style={{ maxWidth: '1150px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '2rem' }}>
           
-          <div style={{ display: 'flex', alignItems: 'center' }}>
-            <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '24px', width: 'auto', marginRight: '0.5rem' }} />
-            <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F2C59', letterSpacing: '0.05em' }}>STAY PILOT</span>
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: '0.25rem' }}>
+              <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '24px', width: 'auto', marginRight: '0.5rem' }} />
+              <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#0F2C59', letterSpacing: '0.05em' }}>STAY PILOT</span>
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>
+              {companyBranding.productAttribution}
+            </div>
           </div>
 
           <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap', fontWeight: 600 }}>
             <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
+            <Link to="/#about" style={{ color: 'inherit', textDecoration: 'none' }}>About</Link>
+            <Link to="/features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</Link>
             <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</Link>
             <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
           </div>
 
-          <div style={{ color: '#94a3b8' }}>
-            &copy; {new Date().getFullYear()} Stay Pilot. All rights reserved.
+          <div style={{ color: '#94a3b8', fontSize: '0.875rem', textAlign: 'right' }}>
+            <div>&copy; {new Date().getFullYear()} Stay Pilot. All rights reserved.</div>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8', fontWeight: 500 }}>{companyBranding.productAttribution}</div>
           </div>
         </div>
       </footer>

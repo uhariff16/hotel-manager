@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { companyBranding } from '../lib/branding';
 import { 
   BookOpenCheck, CalendarDays, Wallet, TrendingUp, Users, Zap, Shield, 
   MessageSquare, Send, ArrowRight, Sparkles 
@@ -185,6 +186,7 @@ export default function Features() {
         
         <nav className="desktop-nav" style={{ display: 'flex', gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Home</Link>
+          <Link to="/#about" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>About</Link>
           <Link to="/features" style={{ color: '#059669', textDecoration: 'none' }}>Features</Link>
           <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>How It Works</Link>
           <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none', transition: 'color 0.2s' }} onMouseOver={e => e.target.style.color = '#059669'} onMouseOut={e => e.target.style.color = 'inherit'}>Pricing</Link>
@@ -298,16 +300,21 @@ export default function Features() {
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
-        gap: '2rem'
+        gap: '1.5rem'
       }}>
         <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', justifyContent: 'center', fontWeight: 600 }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>Home</Link>
+          <Link to="/#about" style={{ color: 'inherit', textDecoration: 'none' }}>About</Link>
+          <Link to="/features" style={{ color: 'inherit', textDecoration: 'none' }}>Features</Link>
           <Link to="/how-it-works" style={{ color: 'inherit', textDecoration: 'none' }}>How It Works</Link>
           <Link to="/pricing" style={{ color: 'inherit', textDecoration: 'none' }}>Pricing</Link>
           <Link to="/privacy" style={{ color: 'inherit', textDecoration: 'none' }}>Privacy Policy</Link>
         </div>
-        <div style={{ fontSize: '0.9rem' }}>
-           © {new Date().getFullYear()} StayPilot. All rights reserved.
+        <div style={{ fontSize: '0.9rem', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
+          <div>© {new Date().getFullYear()} StayPilot. All rights reserved.</div>
+          <div style={{ fontSize: '0.825rem', color: '#94a3b8', fontWeight: 500 }}>
+            {companyBranding.productAttribution}
+          </div>
         </div>
       </footer>
     </div>
