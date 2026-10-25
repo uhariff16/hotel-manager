@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { Capacitor } from '@capacitor/core';
 import { supabase } from '../lib/supabase';
+import { getGuestIdSignedUrl } from '../lib/guestIdStorage';
 import toast from 'react-hot-toast';
 import { Camera as CameraIcon, Upload, Loader2, FileText, CheckCircle2 } from 'lucide-react';
 
@@ -16,10 +17,27 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
     }
   }));
   const [isScanning, setIsScanning] = useState(false);
-  const [preview, setPreview] = useState(existingUrl);
+  const [preview, setPreview] = useState('');
 
+  // Dynamically resolve on-demand ephemeral signed URL (5 minutes) for existingUrl
   React.useEffect(() => {
-    setPreview(existingUrl);
+    let isMounted = true;
+    if (!existingUrl) {
+      setPreview('');
+      return;
+    }
+    // Local blob or data URL directly from current scan
+    if (existingUrl.startsWith('blob:') || existingUrl.startsWith('data:')) {
+      setPreview(existingUrl);
+      return;
+    }
+    // Storage path or legacy signed URL: request short-lived preview URL
+    getGuestIdSignedUrl(existingUrl, 300).then(signedUrl => {
+      if (isMounted && signedUrl) {
+        setPreview(signedUrl);
+      }
+    });
+    return () => { isMounted = false; };
   }, [existingUrl]);
 
   const processImage = async (fileOrBase64, isWebFile = false) => {
@@ -40,7 +58,7 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
 
       setPreview(imageUrl);
 
-            // Upload to Supabase first
+      // Upload to Supabase using canonical tenant path
       const fileName = `${tenantId}/${Date.now()}-${side}.jpg`;
       toast.loading('Uploading securely...', { id: `upload-${side}` });
       
@@ -53,12 +71,9 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
 
       if (error) throw error;
 
-      const { data: urlData, error: signError } = await supabase.storage.from('guest_ids').createSignedUrl(fileName, 315360000);
-        const publicUrl = signError ? '' : urlData.signedUrl;
-      
       toast.success('Image Uploaded!', { id: `upload-${side}` });
       
-            // Call AI Edge Function
+      // Call AI Edge Function
       toast.loading(`Analyzing ${side} with AI...`, { id: `ai-${side}` });
       
       // Convert blob to base64 for the Edge Function
@@ -72,6 +87,7 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
         body: { base64Image, side }
       });
       
+      // Pass canonical storage path (fileName) as the stored reference, NOT a 10-year signed URL!
       if (aiError || aiData?.error) {
         const rawError = aiData?.error || aiError?.message || 'Unknown error';
         console.error("CRITICAL AI ERROR (For Super Admin):", rawError);
@@ -82,10 +98,10 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
           toast.error('Smart Scan could not read this image clearly. Please enter details manually.', { id: `ai-${side}`, duration: 4000 });
         }
         
-        onScanComplete({ side, url: publicUrl, text: '', aiData: null });
+        onScanComplete({ side, url: fileName, text: '', aiData: null });
       } else {
         toast.success('AI Data Extracted!', { id: `ai-${side}` });
-        onScanComplete({ side, url: publicUrl, text: '', aiData });
+        onScanComplete({ side, url: fileName, text: '', aiData });
       }
       
     } catch (err) {
@@ -121,62 +137,79 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
     
     // Basic HTML5 Canvas Compression
     const reader = new FileReader();
-          reader.onload = (event) => {
-        const img = new Image();
-        img.onload = () => {
-          let width = img.width;
-          let height = img.height;
-          const MAX_WIDTH = 1200;
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+        const MAX_WIDTH = 1200;
+        
+        if (width > MAX_WIDTH) {
+          height = Math.round((height * MAX_WIDTH) / width);
+          width = MAX_WIDTH;
+        }
+        
+        const canvas = document.createElement('canvas');
+        let ctx = canvas.getContext('2d');
+        
+        const targetBytes = 200 * 1024; // 200 KB
+        let quality = 0.8;
+        
+        const attemptCompression = () => {
+          canvas.width = width;
+          canvas.height = height;
+          ctx.drawImage(img, 0, 0, width, height);
           
-          if (width > MAX_WIDTH) {
-            height = Math.round((height * MAX_WIDTH) / width);
-            width = MAX_WIDTH;
-          }
-          
-          const canvas = document.createElement('canvas');
-          let ctx = canvas.getContext('2d');
-          
-          const targetBytes = 200 * 1024; // 200 KB
-          let quality = 0.8;
-          
-          const attemptCompression = () => {
-            canvas.width = width;
-            canvas.height = height;
-            ctx.drawImage(img, 0, 0, width, height);
-            
-            canvas.toBlob((blob) => {
-              if (blob.size > targetBytes && quality > 0.1) {
-                quality -= 0.1;
-                attemptCompression();
-              } else if (blob.size > targetBytes && quality <= 0.1) {
-                // Image is still too large at lowest quality, shrink dimensions
-                width = Math.round(width * 0.8);
-                height = Math.round(height * 0.8);
-                quality = 0.6; // reset quality slightly for new dimensions
-                attemptCompression();
-              } else {
-                processImage(blob, true);
-              }
-            }, 'image/jpeg', quality);
-          };
-          
-          attemptCompression();
+          canvas.toBlob((blob) => {
+            if (blob.size > targetBytes && quality > 0.1) {
+              quality -= 0.1;
+              attemptCompression();
+            } else if (blob.size > targetBytes && quality <= 0.1) {
+              // Image is still too large at lowest quality, shrink dimensions
+              width = Math.round(width * 0.8);
+              height = Math.round(height * 0.8);
+              quality = 0.6; // reset quality slightly for new dimensions
+              attemptCompression();
+            } else {
+              processImage(blob, true);
+            }
+          }, 'image/jpeg', quality);
         };
-        img.src = event.target.result;
+        
+        attemptCompression();
       };
+      img.src = event.target.result;
+    };
     reader.readAsDataURL(file);
+  };
+
+  const handleOpenPreview = async (e) => {
+    e.preventDefault();
+    if (!existingUrl && !preview) return;
+    if (preview && (preview.startsWith('blob:') || preview.startsWith('data:'))) {
+      window.open(preview, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    const target = existingUrl || preview;
+    const freshSignedUrl = await getGuestIdSignedUrl(target, 300);
+    if (freshSignedUrl) {
+      setPreview(freshSignedUrl);
+      window.open(freshSignedUrl, '_blank', 'noopener,noreferrer');
+    } else {
+      toast.error('Unable to view document. Permission denied or file not found.');
+    }
   };
 
   return (
     <div style={{ border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem', position: 'relative', overflow: 'hidden' }}>
       {preview ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', width: '100%' }}>
-          <a href={preview} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative', width: '100%', height: '120px', borderRadius: '4px', overflow: 'hidden', cursor: 'zoom-in' }}>
-              <img src={preview} alt={`${side} ID`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
-                <CheckCircle2 color="#4ade80" size={32} />
-              </div>
-            </a>
+          <a href={preview} onClick={handleOpenPreview} target="_blank" rel="noopener noreferrer" style={{ display: 'block', position: 'relative', width: '100%', height: '120px', borderRadius: '4px', overflow: 'hidden', cursor: 'zoom-in' }}>
+            <img src={preview} alt={`${side} ID`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', pointerEvents: 'none' }}>
+              <CheckCircle2 color="#4ade80" size={32} />
+            </div>
+          </a>
           <button 
             type="button" 
             className="btn-danger" 
@@ -190,7 +223,6 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
             Clear Image
           </button>
         </div>
-
       ) : (
         <FileText size={32} color="var(--text-muted)" />
       )}

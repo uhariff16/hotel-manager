@@ -6,6 +6,7 @@ import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Gl
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import IDScanner from '../components/IDScanner';
+import { extractGuestIdPath, normalizeGuestIdForPersistence } from '../lib/guestIdStorage';
 
 const parseAgentSource = (sourceStr) => {
   if (!sourceStr) return { isAgent: false, name: '', phone: '' };
@@ -146,6 +147,7 @@ export default function BookingForm() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const frontScannerRef = useRef();
+  const initialDocsRef = useRef({ id_front: '', id_back: '', additional: [] });
   const [collapsedSections, setCollapsedSections] = useState({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
   const toggleSection = (id) => setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
   const focusTarget = new URLSearchParams(location.search).get('focus');
@@ -165,6 +167,7 @@ export default function BookingForm() {
   }, [focusTarget, loading]);
   
   const handleClearForm = () => {
+    initialDocsRef.current = { id_front: '', id_back: '', additional: [] };
     setBookingForm({
       guest_name: '', guest_email: '', guest_company_name: '', guest_gstin: '', gst_amount: 0, gst_rate: 0, phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
       booking_type: 'Room', cottage_id: '', room_ids: [],
@@ -546,6 +549,12 @@ export default function BookingForm() {
             }
           }
 
+          initialDocsRef.current = {
+            id_front: b.id_front_image_url || '',
+            id_back: b.id_back_image_url || '',
+            additional: rawAdditionalGuests.map(g => ({ front: g.id_front_image_url || '', back: g.id_back_image_url || '' }))
+          };
+
           setBookingForm({
             guest_name: b.guest_name,
             guest_email: b.guest_email || '',
@@ -920,7 +929,30 @@ export default function BookingForm() {
     setError(null);
 
     try {
-      const formattedAdditionalGuests = (bookingForm.additional_guests || []).map(g => ({
+      let additionalGuestsValid = true;
+      const formattedAdditionalGuests = (bookingForm.additional_guests || []).map((g, idx) => {
+        const initG = initialDocsRef.current.additional?.[idx] || {};
+        const gFrontNorm = normalizeGuestIdForPersistence({
+          currentValue: g.id_front_image_url,
+          initialValue: initG.front,
+          tenantId: profile?.tenant_id
+        });
+        const gBackNorm = normalizeGuestIdForPersistence({
+          currentValue: g.id_back_image_url,
+          initialValue: initG.back,
+          tenantId: profile?.tenant_id
+        });
+
+        if (!gFrontNorm.valid && !gFrontNorm.wasPreserved) {
+          toast.error(`Additional Guest ${g.name || idx + 1}: ${gFrontNorm.error}`);
+          additionalGuestsValid = false;
+        }
+        if (!gBackNorm.valid && !gBackNorm.wasPreserved) {
+          toast.error(`Additional Guest ${g.name || idx + 1}: ${gBackNorm.error}`);
+          additionalGuestsValid = false;
+        }
+
+        return {
           name: g.name,
           email: g.email || '',
           phone: g.phone_code + g.phone_raw,
@@ -933,9 +965,42 @@ export default function BookingForm() {
           guest_city: g.guest_city || '',
           guest_state: g.guest_state || '',
           guest_pincode: g.guest_pincode || '',
-          id_front_image_url: g.id_front_image_url || '',
-          id_back_image_url: g.id_back_image_url || ''
-        }));
+          id_front_image_url: gFrontNorm.path || '',
+          id_back_image_url: gBackNorm.path || ''
+        };
+      });
+
+      if (!additionalGuestsValid) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Validate & normalize primary guest ID references
+      const frontNorm = normalizeGuestIdForPersistence({
+        currentValue: bookingForm.id_front_image_url,
+        initialValue: initialDocsRef.current.id_front,
+        tenantId: profile?.tenant_id
+      });
+      if (!frontNorm.valid) {
+        toast.error(frontNorm.error, { duration: 5000 });
+        if (!frontNorm.wasPreserved) {
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
+      const backNorm = normalizeGuestIdForPersistence({
+        currentValue: bookingForm.id_back_image_url,
+        initialValue: initialDocsRef.current.id_back,
+        tenantId: profile?.tenant_id
+      });
+      if (!backNorm.valid) {
+        toast.error(backNorm.error, { duration: 5000 });
+        if (!backNorm.wasPreserved) {
+          setIsSubmitting(false);
+          return;
+        }
+      }
 
       // Auto-upsert Agent if applicable
       if (bookingForm.booking_source === 'Agent' && profile?.tenant_id) {
@@ -995,8 +1060,8 @@ export default function BookingForm() {
           guest_state: bookingForm.guest_state,
           guest_pincode: bookingForm.guest_pincode,
           billing_address_different: bookingForm.billing_address_different, billing_door_no: bookingForm.billing_door_no, billing_street: bookingForm.billing_street, billing_city: bookingForm.billing_city, billing_state: bookingForm.billing_state, billing_pincode: bookingForm.billing_pincode,
-          id_front_image_url: bookingForm.id_front_image_url,
-          id_back_image_url: bookingForm.id_back_image_url,
+          id_front_image_url: frontNorm.path || '',
+          id_back_image_url: backNorm.path || '',
         guest_company_name: bookingForm.guest_company_name,
         guest_gstin: bookingForm.guest_gstin,
         gst_amount: bookingForm.gst_amount,
