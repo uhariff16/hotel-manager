@@ -122,6 +122,41 @@ serve(async (req) => {
     const isLive = requestedMode === 'live' && isServerLiveAllowed
     const envMode: 'test' | 'live' = isLive ? 'live' : 'test'
 
+    // SINGLE-TENANT LIVE CHECKOUT ACCESS CONTROL GUARD (Stage 5H.2 / 5H.3)
+    // When LIVE mode is active, checkout is strictly restricted to pre-authorized preview tenants.
+    if (isLive) {
+      const rawAllowlist = Deno.env.get('LIVE_ALLOWED_TENANT_IDS') || ''
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+      const allowedTenantIds = rawAllowlist
+        .split(',')
+        .map(id => id.trim().toLowerCase())
+        .filter(id => id.length > 0)
+
+      const hasInvalidId = allowedTenantIds.length === 0 || allowedTenantIds.some(id => !uuidRegex.test(id))
+
+      if (hasInvalidId) {
+        return new Response(JSON.stringify({
+          error: 'FORBIDDEN_LIVE_PREVIEW_CONFIGURATION',
+          message: 'Razorpay Live checkout is locked. Server preview tenant allowlist is not configured or contains invalid identifiers.'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403
+        })
+      }
+
+      const normalizedTenantId = String(tenantId || '').trim().toLowerCase()
+      if (!allowedTenantIds.includes(normalizedTenantId)) {
+        return new Response(JSON.stringify({
+          error: 'FORBIDDEN_TENANT_LIVE_ACCESS',
+          message: 'Live checkout is currently restricted to authorized preview tenants. Your tenant account is not authorized for live transactions.'
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 403
+        })
+      }
+    }
+
     const keyId = (isLive
       ? Deno.env.get('RAZORPAY_LIVE_KEY_ID')
       : Deno.env.get('RAZORPAY_TEST_KEY_ID')
