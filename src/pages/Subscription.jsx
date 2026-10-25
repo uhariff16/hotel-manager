@@ -875,7 +875,7 @@ export default function Subscription() {
                   </div>
                   {globalTaxSettings?.enabled && plan.id !== 'free' && (
                     <div style={{ color: 'var(--text-muted)', fontSize: '0.775rem', fontWeight: '600', marginTop: '0.2rem' }}>
-                      + {globalTaxSettings.rate}% GST
+                      {globalTaxSettings.pricing_mode === 'inclusive' ? `Includes ${globalTaxSettings.rate}% GST` : `+ ${globalTaxSettings.rate}% GST`}
                     </div>
                   )}
                 </div>
@@ -1201,7 +1201,9 @@ export default function Subscription() {
               </div>
               {globalTaxSettings?.enabled && (
                 <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                  + {globalTaxSettings.rate}% GST will be added during checkout.
+                  {globalTaxSettings.pricing_mode === 'inclusive'
+                    ? `Includes ${globalTaxSettings.rate}% GST.`
+                    : `+ ${globalTaxSettings.rate}% GST will be added during checkout.`}
                 </div>
               )}
             </div>
@@ -1240,10 +1242,25 @@ export default function Subscription() {
               const basePricePaise = Math.round((selectedPlan.rawPrice || 0) * 100);
               const isGstActive = Boolean(globalTaxSettings?.enabled) && Number(globalTaxSettings?.rate || 0) > 0;
               const gstRate = isGstActive ? Number(globalTaxSettings.rate) : 0;
-              const gstAmountPaise = isGstActive ? Math.round(basePricePaise * (gstRate / 100)) : 0;
-              const totalAmountPaise = basePricePaise + gstAmountPaise;
+              const pricingMode = globalTaxSettings?.pricing_mode === 'inclusive' ? 'inclusive' : 'exclusive';
 
-              const rawPriceDisplay = (basePricePaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+              let effectiveBasePaise = basePricePaise;
+              let gstAmountPaise = 0;
+              let totalAmountPaise = basePricePaise;
+
+              if (isGstActive) {
+                if (pricingMode === 'inclusive') {
+                  totalAmountPaise = basePricePaise;
+                  effectiveBasePaise = Math.round(totalAmountPaise / (1 + (gstRate / 100)));
+                  gstAmountPaise = totalAmountPaise - effectiveBasePaise;
+                } else {
+                  gstAmountPaise = Math.round(basePricePaise * (gstRate / 100));
+                  totalAmountPaise = basePricePaise + gstAmountPaise;
+                  effectiveBasePaise = basePricePaise;
+                }
+              }
+
+              const rawPriceDisplay = (effectiveBasePaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
               const gstAmountDisplay = (gstAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
               const totalAmountDisplay = (totalAmountPaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
@@ -1289,7 +1306,7 @@ export default function Subscription() {
                     
                     {isGstActive && (
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
-                        <span>GST ({gstRate}%)</span>
+                        <span>GST ({gstRate}%{pricingMode === 'inclusive' ? ' incl.' : ''})</span>
                         <span>{'₹' + gstAmountDisplay}</span>
                       </div>
                     )}

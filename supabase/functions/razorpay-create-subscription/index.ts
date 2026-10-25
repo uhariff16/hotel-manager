@@ -30,10 +30,10 @@ serve(async (req) => {
     // 1. Authenticate user
     const authHeader = req.headers.get('Authorization')
     if (!authHeader) throw new Error('Missing Authorization header')
-    
+
     const token = authHeader.replace('Bearer ', '')
     const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token)
-    
+
     if (userError || !user) {
       throw new Error('Unauthorized: ' + (userError?.message || 'No user found'))
     }
@@ -50,8 +50,8 @@ serve(async (req) => {
     }
 
     if (userProfile.role === 'staff') {
-      return new Response(JSON.stringify({ 
-        error: 'Subscription purchase is restricted to property owners (Tenant Admins).' 
+      return new Response(JSON.stringify({
+        error: 'Subscription purchase is restricted to property owners (Tenant Admins).'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 403
@@ -60,10 +60,16 @@ serve(async (req) => {
 
     tenantId = userProfile.role === 'tenant_admin' ? userProfile.id : (userProfile.tenant_id || user.id)
 
-    const { plan_type } = await req.json()
+    const rawPayload = await req.json().catch(() => ({}))
+    const plan_type = rawPayload?.plan_type
     if (!plan_type || plan_type === 'free') {
       throw new Error('Invalid plan type')
     }
+
+    // Untrusted Client Environment Tampering Safeguard:
+    // Razorpay mode is determined exclusively by authoritative server-side configuration.
+    // Explicit client attempts to force live mode without server authorization are rejected.
+    const clientRequestedEnv = String(rawPayload?.environment || rawPayload?.mode || '').toLowerCase().trim()
 
     // 3. Fetch Global Settings & Determine Mode with Database Error Checking
     const { data: adminProfiles, error: adminErr } = await supabaseAdmin
@@ -77,18 +83,36 @@ serve(async (req) => {
       throw new Error(`Could not load global settings: ${adminErr?.message || 'No super_admin settings found'}`)
     }
 
-    const masterProfile = adminProfiles.find(p => p.global_settings?.pricing) || adminProfiles[0]
+    const CANONICAL_ADMIN_ID = '9c4e65f5-c0a1-4b3a-8ed2-d01175a73409'
+    const masterProfile = adminProfiles.find(p => p.id === CANONICAL_ADMIN_ID)
+      || adminProfiles.find(p => p.global_settings?.pricing)
+      || adminProfiles[0]
     const settings = masterProfile.global_settings || {}
-    const pricingConfig = settings.pricing?.published || settings.pricing || {}
+    const pricingConfig = settings.pricing?.published
+      || settings.pricing?.plans
+      || (settings.pricing && (settings.pricing.pro || settings.pricing.custom_1786983013013) ? settings.pricing : null)
+      || settings.website_pricing?.published
+      || settings.pricing
+      || {}
     const razorpayConfig = settings.razorpay_settings || {}
 
     // DUAL-MODE ENVIRONMENT RESOLUTION & FAIL-CLOSED SAFEGUARD
     const requestedMode = razorpayConfig.mode || 'test'
     const isServerLiveAllowed = Deno.env.get('ALLOW_RAZORPAY_LIVE_MODE') === 'true'
 
+    if (clientRequestedEnv === 'live' && (!isServerLiveAllowed || requestedMode !== 'live')) {
+      return new Response(JSON.stringify({
+        error: 'FORBIDDEN_ENVIRONMENT_OVERRIDE',
+        message: 'Client-specified live environment is prohibited. Razorpay mode is governed exclusively by server-side configuration.'
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 403
+      })
+    }
+
     if (requestedMode === 'live' && !isServerLiveAllowed) {
-      return new Response(JSON.stringify({ 
-        error: 'Razorpay Live Mode is requested in Super Admin settings, but server-side ALLOW_RAZORPAY_LIVE_MODE is not enabled. System locked in Test Mode for security.' 
+      return new Response(JSON.stringify({
+        error: 'Razorpay Live Mode is requested in Super Admin settings, but server-side ALLOW_RAZORPAY_LIVE_MODE is not enabled. System locked in Test Mode for security.'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 403
@@ -98,17 +122,24 @@ serve(async (req) => {
     const isLive = requestedMode === 'live' && isServerLiveAllowed
     const envMode: 'test' | 'live' = isLive ? 'live' : 'test'
 
-    const keyId = (isLive 
-      ? Deno.env.get('RAZORPAY_LIVE_KEY_ID') 
+    const keyId = (isLive
+      ? Deno.env.get('RAZORPAY_LIVE_KEY_ID')
       : Deno.env.get('RAZORPAY_TEST_KEY_ID')
     )?.trim()
-    const keySecret = (isLive 
-      ? Deno.env.get('RAZORPAY_LIVE_KEY_SECRET') 
+    const keySecret = (isLive
+      ? Deno.env.get('RAZORPAY_LIVE_KEY_SECRET')
       : Deno.env.get('RAZORPAY_TEST_KEY_SECRET')
     )?.trim()
 
     if (!keyId || !keySecret) {
       throw new Error(`Razorpay ${isLive ? 'Live' : 'Test'} credentials not configured in server environment`)
+    }
+
+    if (isLive && !keyId.startsWith('rzp_live_')) {
+      throw new Error('Razorpay security guard: Live mode requires key starting with rzp_live_')
+    }
+    if (!isLive && !keyId.startsWith('rzp_test_')) {
+      throw new Error('Razorpay security guard: Test mode requires key starting with rzp_test_')
     }
 
     let targetPlanKey = plan_type
@@ -123,10 +154,25 @@ serve(async (req) => {
       }
     }
 
-    const planData = pricingConfig[targetPlanKey]
-    if (!planData) {
-      throw new Error(`Plan '${plan_type}' not found in global pricing settings`)
+    let planData = pricingConfig[targetPlanKey]
+    if (!planData && settings.website_pricing?.published) {
+      const webPublished = settings.website_pricing.published
+      if (webPublished[targetPlanKey]) {
+        planData = webPublished[targetPlanKey]
+      } else {
+        const lowerType = String(plan_type).toLowerCase()
+        const foundKey = Object.keys(webPublished).find(k => {
+          if (lowerType === 'solo' && (k === 'custom_1786983013013' || k === 'solo')) return true
+          if ((lowerType === 'growth' || lowerType === 'pro') && (k === 'pro' || k === 'growth')) return true
+          if ((lowerType === 'staymaster' || lowerType === 'premium') && (k === 'premium' || k === 'staymaster')) return true
+          return false
+        })
+        if (foundKey) planData = webPublished[foundKey]
+      }
     }
+
+    if (!planData) {
+      throw new Error(`Plan '${plan_type}' not found in global pricing settings`)}
 
     // 4. MANDATORY PRE-CHECKOUT BILLING VALIDATION GUARD
     // Prevents acquiring reservation lease or initiating Razorpay checkout if tenant cannot be invoiced
@@ -177,8 +223,8 @@ serve(async (req) => {
     }
 
     if (rpcRes.status === 'blocked' || rpcRes.status === 'blocked_active_subscription') {
-      return new Response(JSON.stringify({ 
-        error: `You already have an active paid subscription (${rpcRes.plan_type || 'paid plan'}). Plan changes are managed via support.` 
+      return new Response(JSON.stringify({
+        error: `You already have an active paid subscription (${rpcRes.plan_type || 'paid plan'}). Plan changes are managed via support.`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400
@@ -186,8 +232,8 @@ serve(async (req) => {
     }
 
     if (rpcRes.status === 'reconciliation_required' || rpcRes.status === 'blocked_reconciliation_required') {
-      return new Response(JSON.stringify({ 
-        error: `Your account has an unresolved subscription transaction (Ref: ${rpcRes.razorpay_subscription_id || 'unresolved'}). Please contact support to complete your plan activation.` 
+      return new Response(JSON.stringify({
+        error: `Your account has an unresolved subscription transaction (Ref: ${rpcRes.razorpay_subscription_id || 'unresolved'}). Please contact support to complete your plan activation.`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 400
@@ -195,8 +241,8 @@ serve(async (req) => {
     }
 
     if (rpcRes.status === 'pending_lease' || rpcRes.status === 'reservation_in_progress') {
-      return new Response(JSON.stringify({ 
-        error: 'A checkout reservation is currently in progress for your account. Please wait a moment and try again.' 
+      return new Response(JSON.stringify({
+        error: 'A checkout reservation is currently in progress for your account. Please wait a moment and try again.'
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 409
@@ -234,7 +280,7 @@ serve(async (req) => {
     // 5. Calculate Effective Price & GST with Integer Paise Precision
     const basePriceRupees = isPromoActive ? promoPrice : basePrice
     const basePricePaise = Math.round(basePriceRupees * 100)
-    
+
     // Apply Super Admin GST settings if enabled and effective (server-side time check)
     const taxSettings = settings.tax_settings || {}
     const isEffective = !taxSettings.effective_from || new Date(taxSettings.effective_from).getTime() <= Date.now()
@@ -272,10 +318,10 @@ serve(async (req) => {
         })
         if (listRes.ok) {
           const listData = await listRes.json()
-          const matchingPlan = listData.items?.find((p: any) => 
-            p.amount === priceInPaise && 
-            p.period === 'monthly' && 
-            p.interval === 1 && 
+          const matchingPlan = listData.items?.find((p: any) =>
+            p.amount === priceInPaise &&
+            p.period === 'monthly' &&
+            p.interval === 1 &&
             (p.notes?.plan_type === targetPlanKey || p.item?.name?.includes(targetPlanKey) || p.item?.name?.includes(planData.displayPlanName || planData.name || '')) &&
             (!isGstEnabled || (p.notes?.gst_rate === String(gstRate) && (p.notes?.pricing_mode || 'exclusive') === pricingMode))
           )
@@ -306,8 +352,8 @@ serve(async (req) => {
               currency: 'INR',
               description: `Monthly SaaS Subscription${isGstEnabled ? ` (${pricingMode === 'inclusive' ? 'incl.' : '+'} ${gstRate}% GST)` : ''}`
             },
-            notes: { 
-              plan_type: targetPlanKey, 
+            notes: {
+              plan_type: targetPlanKey,
               environment: envMode,
               gst_rate: String(gstRate),
               pricing_mode: pricingMode,
@@ -420,12 +466,12 @@ serve(async (req) => {
     if (!rzpCustomerId) {
       const tenantBilling = userProfile.global_settings?.tenant_billing || {}
       const customerContact = userProfile.phone || userProfile.phone_number || undefined
-      
+
       const customerPayload: Record<string, any> = {
         name: tenantBilling.companyName || userProfile.full_name || 'Stay Pilot Tenant',
         email: user.email,
         fail_existing: 0,
-        notes: { 
+        notes: {
           tenant_id: tenantId,
           environment: envMode
         }
@@ -434,7 +480,7 @@ serve(async (req) => {
       if (customerContact) {
         customerPayload.contact = customerContact
       }
-      
+
       if (tenantBilling.gstin) {
         customerPayload.gstin = tenantBilling.gstin
       }
@@ -447,11 +493,11 @@ serve(async (req) => {
         },
         body: JSON.stringify(customerPayload)
       })
-      
+
       if (!customerRes.ok) {
         const errData = await customerRes.json().catch(() => ({}))
         const errDesc = errData?.error?.description || errData?.message || ''
-        
+
         // If customer already exists on Razorpay for this merchant, retrieve and reuse it
         if (errDesc.includes('Customer already exists') || customerRes.status === 400) {
           console.warn(`[Phase R2] Customer exists on Razorpay for ${user.email}. Looking up existing customer record.`)
@@ -559,7 +605,7 @@ serve(async (req) => {
 
     // OUTCOME 1: Uncertain API Outcome (Network timeout, abort, connection drop, or 5xx server error)
     if (subFetchError || (subRes && subRes.status >= 500)) {
-      const errorMsg = subFetchError 
+      const errorMsg = subFetchError
         ? `Timeout or network failure during Razorpay subscription creation (${subFetchError.message || subFetchError})`
         : `Razorpay API server error HTTP ${subRes?.status}`
 
@@ -575,7 +621,7 @@ serve(async (req) => {
         p_reason: errorMsg
       }).catch((e: any) => console.error("Failed to flag uncertain reservation", e))
 
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: `CHECKOUT_UNCERTAIN_OUTCOME: The payment gateway took too long to respond. To prevent duplicate subscription creation, your reservation is temporarily held for verification. Please contact support. Reference: ${reservationId}`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -596,7 +642,7 @@ serve(async (req) => {
         p_reason: `confirmed_rejection: ${errDesc}`
       }).catch((e: any) => console.error("Failed to release lease on confirmed rejection", e))
 
-      return new Response(JSON.stringify({ 
+      return new Response(JSON.stringify({
         error: `Subscription creation rejected by Razorpay: ${errDesc}`
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -634,6 +680,16 @@ serve(async (req) => {
 
     if (!confirmErr && confirmRes?.status === 'success') {
       updatedRows = [{ id: tenantId }]
+      // Update tax and authorized amount metadata on confirmed subscription (Stage 5B hardening)
+      await supabaseAdmin
+        .from('saas_subscriptions')
+        .update({
+          authorized_amount_paise: priceInPaise,
+          pricing_mode: isGstEnabled ? pricingMode : 'none',
+          tax_policy: 'standard'
+        })
+        .eq('tenant_id', tenantId)
+        .eq('razorpay_subscription_id', subData.id)
     } else {
       // Direct update matching tenant_id and checkout_token
       let updateQuery = supabaseAdmin
@@ -648,6 +704,9 @@ serve(async (req) => {
           cancel_at_period_end: false,
           checkout_token: null,
           checkout_expires_at: null,
+          authorized_amount_paise: priceInPaise,
+          pricing_mode: isGstEnabled ? pricingMode : 'none',
+          tax_policy: 'standard',
           updated_at: new Date().toISOString()
         })
         .eq('tenant_id', tenantId)
@@ -692,10 +751,10 @@ serve(async (req) => {
 
     // Return subscription_id and customer_id to frontend for modal display
     return new Response(
-      JSON.stringify({ 
-        subscription_id: subData.id, 
+      JSON.stringify({
+        subscription_id: subData.id,
         key_id: keyId,
-        customer_id: rzpCustomerId 
+        customer_id: rzpCustomerId
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 }
     )

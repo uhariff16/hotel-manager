@@ -28,6 +28,7 @@ export const GST_ACTIVATION_RELEASE_APPROVED = true;
 
 export const GST_STATUSES = Object.freeze(['draft', 'pending_verification', 'active', 'disabled']);
 export const GST_PRICING_MODES = Object.freeze(['inclusive', 'exclusive']);
+export const GST_LEGACY_RENEWAL_POLICIES = Object.freeze(['fixed_gross', 'manual_review']);
 
 /** Form keys of the fields that are optional in basic (non-GST) mode. */
 export const SELLER_OPTIONAL_FIELDS = Object.freeze([
@@ -345,6 +346,9 @@ export function buildGstConfigurationPatch(existingDb, form, actorId, nowIso = n
   next.pricing_mode = str(form?.pricingMode).trim() || null;
   next.effective_from = effRaw ? new Date(effRaw).toISOString() : null;
   next.status = isEnabled ? 'active' : (form?.status === 'pending_verification' ? 'pending_verification' : 'disabled');
+  if (form?.legacyRenewalPolicy && GST_LEGACY_RENEWAL_POLICIES.includes(form.legacyRenewalPolicy)) {
+    next.legacy_renewal_policy = form.legacyRenewalPolicy;
+  }
   next.updated_at = nowIso;
   next.updated_by = actorId || null;
   return next;
