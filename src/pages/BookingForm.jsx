@@ -6,7 +6,7 @@ import { CalendarCheck, CheckCircle2, ArrowLeft, User, Users, Calendar, Info, Gl
 import { eachDayOfInterval, isWeekend, format } from 'date-fns';
 import { useSettingsStore } from '../lib/store';
 import IDScanner from '../components/IDScanner';
-import { extractGuestIdPath, normalizeGuestIdForPersistence } from '../lib/guestIdStorage';
+import { extractGuestIdPath, normalizeGuestIdForPersistence, uploadGuestIdFile, rollbackUploadedGuestIdFiles } from '../lib/guestIdStorage';
 
 const parseAgentSource = (sourceStr) => {
   if (!sourceStr) return { isAgent: false, name: '', phone: '' };
@@ -148,6 +148,7 @@ export default function BookingForm() {
   const [error, setError] = useState(null);
   const frontScannerRef = useRef();
   const initialDocsRef = useRef({ id_front: '', id_back: '', additional: [] });
+  const pendingGuestDocsRef = useRef({ primary: { front: null, back: null }, additional: {} });
   const [collapsedSections, setCollapsedSections] = useState({ 1: false, 2: false, 3: false, 4: false, 5: false, 6: false });
   const toggleSection = (id) => setCollapsedSections(prev => ({ ...prev, [id]: !prev[id] }));
   const focusTarget = new URLSearchParams(location.search).get('focus');
@@ -168,6 +169,7 @@ export default function BookingForm() {
   
   const handleClearForm = () => {
     initialDocsRef.current = { id_front: '', id_back: '', additional: [] };
+    pendingGuestDocsRef.current = { primary: { front: null, back: null }, additional: {} };
     setBookingForm({
       guest_name: '', guest_email: '', guest_company_name: '', guest_gstin: '', gst_amount: 0, gst_rate: 0, phone_number: '', phone_code: '+91', phone_raw: '', check_in_date: '', check_out_date: '', adults_count: 1, kids_count: 0,
       booking_type: 'Room', cottage_id: '', room_ids: [],
@@ -299,11 +301,18 @@ export default function BookingForm() {
   const [rooms, setRooms] = useState([]);
   const [activeBookings, setActiveBookings] = useState([]);
 
-  const handleIDScanComplete = ({ side, url, aiData }) => {
+  const handleIDScanComplete = ({ side, file, previewUrl, url, aiData, isCleared }) => {
+    if (isCleared) {
+      pendingGuestDocsRef.current.primary[side] = null;
+    } else if (file) {
+      pendingGuestDocsRef.current.primary[side] = file;
+    }
+
     setBookingForm(prev => {
       const next = { ...prev };
-      if (side === 'front') next.id_front_image_url = url;
-      if (side === 'back') next.id_back_image_url = url;
+      const targetVal = isCleared ? '' : (previewUrl || url || '');
+      if (side === 'front') next.id_front_image_url = targetVal;
+      if (side === 'back') next.id_back_image_url = targetVal;
       
       if (aiData) {
         // Extract everything found on the image, regardless of side
@@ -343,13 +352,21 @@ export default function BookingForm() {
       return next;
     });
   };
-  const handleAdditionalGuestIDScanComplete = (index, { side, url, aiData }) => {
+  const handleAdditionalGuestIDScanComplete = (index, { side, file, previewUrl, url, aiData, isCleared }) => {
+    pendingGuestDocsRef.current.additional[index] = pendingGuestDocsRef.current.additional[index] || { front: null, back: null };
+    if (isCleared) {
+      pendingGuestDocsRef.current.additional[index][side] = null;
+    } else if (file) {
+      pendingGuestDocsRef.current.additional[index][side] = file;
+    }
+
     setBookingForm(prev => {
       const guests = [...(prev.additional_guests || [])];
       const g = { ...guests[index] };
+      const targetVal = isCleared ? '' : (previewUrl || url || '');
       
-      if (side === 'front') g.id_front_image_url = url;
-      if (side === 'back') g.id_back_image_url = url;
+      if (side === 'front') g.id_front_image_url = targetVal;
+      if (side === 'back') g.id_back_image_url = targetVal;
       
       if (aiData) {
         if (aiData.name) { g.name = aiData.name; g.highlight_name = true; }
@@ -928,17 +945,81 @@ export default function BookingForm() {
     setIsSubmitting(true);
     setError(null);
 
+    let failureStage = 'UPLOAD_PHASE';
+    const newlyUploadedPaths = [];
     try {
+      // DEFERRED GUEST ID UPLOAD (Stage 5H.9J):
+      // Only upload in-memory captured files to private Supabase Storage upon final booking confirmation.
+      let primaryFrontPath = bookingForm.id_front_image_url;
+      let primaryBackPath = bookingForm.id_back_image_url;
+
+      if (pendingGuestDocsRef.current.primary.front) {
+        toast.loading('Uploading Guest ID (Front)...', { id: 'upload-id-front' });
+        const { path, error: upErr } = await uploadGuestIdFile({
+          file: pendingGuestDocsRef.current.primary.front,
+          tenantId: profile?.tenant_id,
+          side: 'front'
+        });
+        toast.dismiss('upload-id-front');
+        if (upErr) throw new Error(`Failed to upload Front Guest ID: ${upErr.message || upErr}`);
+        newlyUploadedPaths.push(path);
+        primaryFrontPath = path;
+      }
+
+      if (pendingGuestDocsRef.current.primary.back) {
+        toast.loading('Uploading Guest ID (Back)...', { id: 'upload-id-back' });
+        const { path, error: upErr } = await uploadGuestIdFile({
+          file: pendingGuestDocsRef.current.primary.back,
+          tenantId: profile?.tenant_id,
+          side: 'back'
+        });
+        toast.dismiss('upload-id-back');
+        if (upErr) throw new Error(`Failed to upload Back Guest ID: ${upErr.message || upErr}`);
+        newlyUploadedPaths.push(path);
+        primaryBackPath = path;
+      }
+
       let additionalGuestsValid = true;
-      const formattedAdditionalGuests = (bookingForm.additional_guests || []).map((g, idx) => {
+      const formattedAdditionalGuests = [];
+      for (let idx = 0; idx < (bookingForm.additional_guests || []).length; idx++) {
+        const g = bookingForm.additional_guests[idx];
+        let gFrontPath = g.id_front_image_url;
+        let gBackPath = g.id_back_image_url;
+
+        if (pendingGuestDocsRef.current.additional[idx]?.front) {
+          toast.loading(`Uploading Additional Guest ${idx + 1} ID (Front)...`, { id: `upload-g-front-${idx}` });
+          const { path, error: upErr } = await uploadGuestIdFile({
+            file: pendingGuestDocsRef.current.additional[idx].front,
+            tenantId: profile?.tenant_id,
+            side: 'front'
+          });
+          toast.dismiss(`upload-g-front-${idx}`);
+          if (upErr) throw new Error(`Failed to upload Additional Guest ${idx + 1} Front ID: ${upErr.message || upErr}`);
+          newlyUploadedPaths.push(path);
+          gFrontPath = path;
+        }
+
+        if (pendingGuestDocsRef.current.additional[idx]?.back) {
+          toast.loading(`Uploading Additional Guest ${idx + 1} ID (Back)...`, { id: `upload-g-back-${idx}` });
+          const { path, error: upErr } = await uploadGuestIdFile({
+            file: pendingGuestDocsRef.current.additional[idx].back,
+            tenantId: profile?.tenant_id,
+            side: 'back'
+          });
+          toast.dismiss(`upload-g-back-${idx}`);
+          if (upErr) throw new Error(`Failed to upload Additional Guest ${idx + 1} Back ID: ${upErr.message || upErr}`);
+          newlyUploadedPaths.push(path);
+          gBackPath = path;
+        }
+
         const initG = initialDocsRef.current.additional?.[idx] || {};
         const gFrontNorm = normalizeGuestIdForPersistence({
-          currentValue: g.id_front_image_url,
+          currentValue: gFrontPath,
           initialValue: initG.front,
           tenantId: profile?.tenant_id
         });
         const gBackNorm = normalizeGuestIdForPersistence({
-          currentValue: g.id_back_image_url,
+          currentValue: gBackPath,
           initialValue: initG.back,
           tenantId: profile?.tenant_id
         });
@@ -952,7 +1033,7 @@ export default function BookingForm() {
           additionalGuestsValid = false;
         }
 
-        return {
+        formattedAdditionalGuests.push({
           name: g.name,
           email: g.email || '',
           phone: g.phone_code + g.phone_raw,
@@ -967,36 +1048,45 @@ export default function BookingForm() {
           guest_pincode: g.guest_pincode || '',
           id_front_image_url: gFrontNorm.path || '',
           id_back_image_url: gBackNorm.path || ''
-        };
-      });
+        });
+      }
 
       if (!additionalGuestsValid) {
+        if (newlyUploadedPaths.length > 0) {
+          await rollbackUploadedGuestIdFiles(newlyUploadedPaths, { failureStage: 'UPLOAD_PHASE' });
+        }
         setIsSubmitting(false);
         return;
       }
 
       // Validate & normalize primary guest ID references
       const frontNorm = normalizeGuestIdForPersistence({
-        currentValue: bookingForm.id_front_image_url,
+        currentValue: primaryFrontPath,
         initialValue: initialDocsRef.current.id_front,
         tenantId: profile?.tenant_id
       });
       if (!frontNorm.valid) {
         toast.error(frontNorm.error, { duration: 5000 });
         if (!frontNorm.wasPreserved) {
+          if (newlyUploadedPaths.length > 0) {
+            await rollbackUploadedGuestIdFiles(newlyUploadedPaths, { failureStage: 'UPLOAD_PHASE' });
+          }
           setIsSubmitting(false);
           return;
         }
       }
 
       const backNorm = normalizeGuestIdForPersistence({
-        currentValue: bookingForm.id_back_image_url,
+        currentValue: primaryBackPath,
         initialValue: initialDocsRef.current.id_back,
         tenantId: profile?.tenant_id
       });
       if (!backNorm.valid) {
         toast.error(backNorm.error, { duration: 5000 });
         if (!backNorm.wasPreserved) {
+          if (newlyUploadedPaths.length > 0) {
+            await rollbackUploadedGuestIdFiles(newlyUploadedPaths, { failureStage: 'UPLOAD_PHASE' });
+          }
           setIsSubmitting(false);
           return;
         }
@@ -1081,26 +1171,38 @@ export default function BookingForm() {
         bookingData.balance_amount = bookingData.total_amount;
       }
 
+      failureStage = 'DB_IN_FLIGHT';
       let result;
-      if (id) {
-        result = await supabase.from('bookings').update(bookingData).eq('id', id);
-        if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
-          alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
-          console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, billing_address_different, billing_door_no, billing_street, billing_city, billing_state, billing_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
-          result = await supabase.from('bookings').update(cleanData).eq('id', id);
+      try {
+        if (id) {
+          result = await supabase.from('bookings').update(bookingData).eq('id', id);
+          if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
+            alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
+            console.warn("DB columns missing. Retrying save without them.");
+            const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, billing_address_different, billing_door_no, billing_street, billing_city, billing_state, billing_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
+            result = await supabase.from('bookings').update(cleanData).eq('id', id);
+          }
+        } else {
+          result = await supabase.from('bookings').insert([bookingData]).select();
+          if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
+            alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
+            console.warn("DB columns missing. Retrying save without them.");
+            const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, billing_address_different, billing_door_no, billing_street, billing_city, billing_state, billing_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
+            result = await supabase.from('bookings').insert([cleanData]).select();
+          }
         }
-      } else {
-        result = await supabase.from('bookings').insert([bookingData]).select();
-        if (result.error && (result.error.message?.includes('column') || result.error.code === '42703')) {
-          alert("Notice: Room Type, Breakfast, Additional Guests, or Guest Address columns could not be saved to the database. Please run the SQL migration scripts in your Supabase SQL Editor to add these columns.");
-          console.warn("DB columns missing. Retrying save without them.");
-          const { room_type, breakfast, additional_guests, guest_door_no, guest_street, guest_city, guest_state, guest_pincode, billing_address_different, billing_door_no, billing_street, billing_city, billing_state, billing_pincode, guest_company_name, guest_gstin, gst_amount, gst_rate, addon_costs_itemized, ...cleanData } = bookingData;
-          result = await supabase.from('bookings').insert([cleanData]).select();
-        }
+      } catch (dbNetworkErr) {
+        failureStage = 'AMBIGUOUS_DB_OUTCOME';
+        throw dbNetworkErr;
       }
 
-      if (result.error) throw result.error;
+      if (result.error) {
+        failureStage = 'CONFIRMED_DB_REJECTION';
+        throw result.error;
+      }
+
+      // Successfully committed to PostgreSQL
+      failureStage = 'POST_COMMIT';
 
       const targetId = id || result.data?.[0]?.id;
       
@@ -1141,9 +1243,27 @@ export default function BookingForm() {
         toast.success(id ? 'Booking updated successfully!' : 'Booking created successfully!');
       }
 
+      // Reset pending documents ref upon successful booking commit
+      pendingGuestDocsRef.current = { primary: { front: null, back: null }, additional: {} };
+
       navigate('/bookings');
     } catch (err) {
       console.error(err);
+      if (newlyUploadedPaths.length > 0) {
+        if (failureStage === 'UPLOAD_PHASE' || failureStage === 'CONFIRMED_DB_REJECTION') {
+          console.warn(`Booking operation failed during ${failureStage}. Safely rolling back uncommitted uploaded objects:`, newlyUploadedPaths);
+          try {
+            await rollbackUploadedGuestIdFiles(newlyUploadedPaths, { failureStage });
+          } catch (cleanupErr) {
+            console.error('Failed to rollback uncommitted storage objects:', cleanupErr);
+          }
+        } else {
+          // AMBIGUOUS_DB_OUTCOME, DB_IN_FLIGHT, or POST_COMMIT:
+          // SAFETY INVARIANT: Never assume database transaction was rolled back on ambiguous network/timeout outcome.
+          // Preserving the object prevents broken attachments if the booking was actually committed in PostgreSQL.
+          console.warn(`[SAFETY GUARD] Booking operation terminated with ambiguous outcome (${failureStage}). Preserving ${newlyUploadedPaths.length} uploaded object(s) to prevent data loss on committed booking:`, newlyUploadedPaths);
+        }
+      }
       setError(err.message);
     } finally {
       setIsSubmitting(false);

@@ -18,12 +18,25 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
   }));
   const [isScanning, setIsScanning] = useState(false);
   const [preview, setPreview] = useState('');
+  const activeObjectUrlRef = React.useRef(null);
+
+  // Revoke any created object URL on component unmount to prevent memory leaks
+  React.useEffect(() => {
+    return () => {
+      if (activeObjectUrlRef.current) {
+        URL.revokeObjectURL(activeObjectUrlRef.current);
+        activeObjectUrlRef.current = null;
+      }
+    };
+  }, []);
 
   // Dynamically resolve on-demand ephemeral signed URL (5 minutes) for existingUrl
   React.useEffect(() => {
     let isMounted = true;
     if (!existingUrl) {
-      setPreview('');
+      if (!activeObjectUrlRef.current) {
+        setPreview('');
+      }
       return;
     }
     // Local blob or data URL directly from current scan
@@ -47,33 +60,36 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
 
     try {
       if (isWebFile) {
+        // Enforce 10MB pre-compression sanity check
+        if (fileOrBase64.size > 10 * 1024 * 1024) {
+          toast.error('Selected image is too large. Please select an image under 10MB.');
+          setIsScanning(false);
+          return;
+        }
         fileToUpload = fileOrBase64;
-        imageUrl = URL.createObjectURL(fileOrBase64);
       } else {
         // Base64 from Capacitor
         const response = await fetch(`data:image/jpeg;base64,${fileOrBase64}`);
         fileToUpload = await response.blob();
-        imageUrl = URL.createObjectURL(fileToUpload);
       }
 
+      // Revoke any previous preview object URL to prevent memory accumulation on retakes
+      if (activeObjectUrlRef.current) {
+        URL.revokeObjectURL(activeObjectUrlRef.current);
+        activeObjectUrlRef.current = null;
+      }
+
+      imageUrl = URL.createObjectURL(fileToUpload);
+      activeObjectUrlRef.current = imageUrl;
       setPreview(imageUrl);
 
-      // Upload to Supabase using canonical tenant path
-      const fileName = `${tenantId}/${Date.now()}-${side}.jpg`;
-      toast.loading('Uploading securely...', { id: `upload-${side}` });
+      // DEFERRED UPLOAD ARCHITECTURE (Stage 5H.9J):
+      // Do NOT upload to Supabase Storage immediately upon capture.
+      // The image blob is held in browser memory for preview and passed to onScanComplete.
+      // Storage upload only occurs upon final booking confirmation/submission.
+      toast.success('Image Captured!', { id: `capture-${side}`, duration: 2500 });
       
-      const { data, error } = await supabase.storage
-        .from('guest_ids')
-        .upload(fileName, fileToUpload, {
-          contentType: 'image/jpeg',
-          upsert: false
-        });
-
-      if (error) throw error;
-
-      toast.success('Image Uploaded!', { id: `upload-${side}` });
-      
-      // Call AI Edge Function
+      // Call AI Edge Function using memory base64
       toast.loading(`Analyzing ${side} with AI...`, { id: `ai-${side}` });
       
       // Convert blob to base64 for the Edge Function
@@ -87,7 +103,6 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
         body: { base64Image, side }
       });
       
-      // Pass canonical storage path (fileName) as the stored reference, NOT a 10-year signed URL!
       if (aiError || aiData?.error) {
         const rawError = aiData?.error || aiError?.message || 'Unknown error';
         console.error("CRITICAL AI ERROR (For Super Admin):", rawError);
@@ -98,17 +113,17 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
           toast.error('Smart Scan could not read this image clearly. Please enter details manually.', { id: `ai-${side}`, duration: 4000 });
         }
         
-        onScanComplete({ side, url: fileName, text: '', aiData: null });
+        onScanComplete({ side, file: fileToUpload, previewUrl: imageUrl, url: imageUrl, text: '', aiData: null, isNewUpload: true });
       } else {
         toast.success('AI Data Extracted!', { id: `ai-${side}` });
-        onScanComplete({ side, url: fileName, text: '', aiData });
+        onScanComplete({ side, file: fileToUpload, previewUrl: imageUrl, url: imageUrl, text: '', aiData, isNewUpload: true });
       }
       
     } catch (err) {
       console.error(err);
       toast.error('Failed to process image');
       toast.dismiss(`ocr-${side}`);
-      toast.dismiss(`upload-${side}`);
+      toast.dismiss(`capture-${side}`);
     } finally {
       setIsScanning(false);
     }
@@ -216,8 +231,12 @@ const IDScanner = React.forwardRef(({ side, onScanComplete, existingUrl, tenantI
             style={{ width: '100%', fontSize: '0.8rem', padding: '0.4rem' }}
             onClick={(e) => {
               e.stopPropagation();
+              if (activeObjectUrlRef.current) {
+                URL.revokeObjectURL(activeObjectUrlRef.current);
+                activeObjectUrlRef.current = null;
+              }
               setPreview('');
-              onScanComplete({ side, url: '', text: '' });
+              onScanComplete({ side, file: null, previewUrl: '', url: '', text: '', aiData: null, isCleared: true });
             }}
           >
             Clear Image

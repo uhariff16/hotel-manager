@@ -361,3 +361,192 @@ export async function getGuestIdSignedUrl(urlOrPath, expiresIn = 300, client = n
     return '';
   }
 }
+
+/**
+ * Generates an unpredictable, tenant-isolated canonical storage path:
+ * `<tenant_id>/<timestamp>_<random>-<side>.jpg`
+ * 
+ * Enforces:
+ * - Valid UUID format for tenantId.
+ * - Strict side allowlist ('front' | 'back').
+ * - Unpredictable collision-resistant random token (12 hex chars).
+ * - Safe filename conforming to SAFE_FILENAME_REGEX and isCanonicalGuestIdPath.
+ * 
+ * @param {object} params
+ * @param {string} params.tenantId - Owning tenant UUID
+ * @param {string} [params.side] - 'front' | 'back'
+ * @returns {string} Canonical storage path
+ */
+/**
+ * Generates a cryptographically secure random hexadecimal token.
+ * 
+ * SECURITY RULES:
+ * - Uses Web Crypto API (crypto.getRandomValues or crypto.randomUUID).
+ * - ZERO use of Math.random().
+ * - Fails closed with an Error if a cryptographically secure PRNG is unavailable.
+ * 
+ * @param {number} bytes - Number of random bytes (default: 6 bytes = 12 hex characters)
+ * @returns {string} Hexadecimal string of length bytes * 2
+ */
+export function getCryptographicRandomToken(bytes = 6) {
+  const c = typeof globalThis !== 'undefined' && globalThis.crypto
+    ? globalThis.crypto
+    : (typeof window !== 'undefined' && window.crypto ? window.crypto : null);
+
+  if (!c) {
+    throw new Error('Cryptographically secure random number generator (crypto) is required but unavailable in this environment.');
+  }
+
+  if (typeof c.getRandomValues === 'function') {
+    const buffer = new Uint8Array(bytes);
+    c.getRandomValues(buffer);
+    return Array.from(buffer, b => b.toString(16).padStart(2, '0')).join('');
+  }
+
+  if (typeof c.randomUUID === 'function') {
+    return c.randomUUID().replace(/-/g, '').slice(0, bytes * 2);
+  }
+
+  throw new Error('Cryptographically secure random number generator (crypto) lacks getRandomValues/randomUUID.');
+}
+
+/**
+ * Generates an unpredictable, tenant-isolated canonical storage path:
+ * `<tenant_id>/<timestamp>_<random>-<side>.jpg`
+ * 
+ * Enforces:
+ * - Valid UUID format for tenantId.
+ * - Strict side allowlist ('front' | 'back').
+ * - Cryptographically secure collision-resistant random token (12 hex chars).
+ * - Safe filename conforming to SAFE_FILENAME_REGEX and isCanonicalGuestIdPath.
+ * - ZERO reliance on Math.random().
+ * 
+ * @param {object} params
+ * @param {string} params.tenantId - Owning tenant UUID
+ * @param {string} [params.side] - 'front' | 'back'
+ * @returns {string} Canonical storage path
+ */
+export function generateCanonicalGuestIdPath({ tenantId, side = 'front' }) {
+  if (!tenantId || typeof tenantId !== 'string') {
+    throw new Error('Tenant ID is required to generate a canonical storage path.');
+  }
+  const cleanTenant = tenantId.trim().toLowerCase();
+  if (!UUID_REGEX.test(cleanTenant)) {
+    throw new Error(`Invalid tenant ID format: ${tenantId}`);
+  }
+
+  const safeSide = side === 'back' ? 'back' : 'front';
+  const randToken = getCryptographicRandomToken(6);
+
+  const filename = `${Date.now()}_${randToken}-${safeSide}.jpg`;
+  const fullPath = `${cleanTenant}/${filename}`;
+
+  if (!isCanonicalGuestIdPath(fullPath, cleanTenant)) {
+    throw new Error(`Generated path failed canonical verification: ${fullPath}`);
+  }
+
+  return fullPath;
+}
+
+/**
+ * Uploads a guest ID image to the private 'guest_ids' bucket using deferred, unpredictable naming.
+ * 
+ * @param {object} params
+ * @param {Blob|File} params.file - Image file/blob to upload
+ * @param {string} params.tenantId - Tenant UUID for folder isolation
+ * @param {string} [params.side] - 'front' | 'back'
+ * @param {object} [params.client] - Optional Supabase client (for test isolation)
+ * @returns {Promise<{ path: string, error?: any }>}
+ */
+export async function uploadGuestIdFile({ file, tenantId, side = 'front', client = null }) {
+  if (!file) {
+    return { path: '', error: new Error('No file provided for upload.') };
+  }
+  if (!tenantId) {
+    return { path: '', error: new Error('Tenant ID is required for upload.') };
+  }
+
+  try {
+    const canonicalPath = generateCanonicalGuestIdPath({ tenantId, side });
+    const supabaseClient = client || await getSupabaseClient();
+    if (!supabaseClient) {
+      return { path: '', error: new Error('No Supabase client available for storage upload.') };
+    }
+
+    const { error } = await supabaseClient.storage
+      .from('guest_ids')
+      .upload(canonicalPath, file, {
+        contentType: 'image/jpeg',
+        upsert: false
+      });
+
+    if (error) {
+      return { path: '', error };
+    }
+
+    return { path: canonicalPath };
+  } catch (err) {
+    return { path: '', error: err };
+  }
+}
+
+/**
+ * Safely rolls back / removes storage objects that were uploaded during a failed booking operation.
+ * 
+ * SAFETY GUARDS (Stage 5H.9J.1):
+ * 1. Requires proven failure stage ('UPLOAD_PHASE' or 'CONFIRMED_DB_REJECTION').
+ * 2. If failure stage is ambiguous, timeout, or post-commit, skips deletion to prevent
+ *    deleting attachments that may have been committed to PostgreSQL.
+ * 3. Only operates on valid canonical paths created in the current operation.
+ * 4. Rejects any malformed or traversal paths.
+ * 5. Fails closed: catches and logs errors without throwing.
+ * 
+ * @param {string[]} paths - Array of canonical paths to remove
+ * @param {object} [options]
+ * @param {'UPLOAD_PHASE'|'CONFIRMED_DB_REJECTION'|'AMBIGUOUS_DB_OUTCOME'|'POST_COMMIT'|string} [options.failureStage]
+ * @param {object} [options.client] - Optional Supabase client
+ * @returns {Promise<{ removed: string[], preserved: string[], reason?: string }>}
+ */
+export async function rollbackUploadedGuestIdFiles(paths = [], { failureStage = 'UNKNOWN', client = null } = {}) {
+  if (!Array.isArray(paths) || paths.length === 0) {
+    return { removed: [], preserved: [] };
+  }
+
+  const validPaths = paths.filter(p => isCanonicalGuestIdPath(p));
+  if (validPaths.length === 0) {
+    return { removed: [], preserved: [] };
+  }
+
+  // Safety Gate: Only allow deletion if outcome is conclusively proven to have NOT been committed
+  const safeStages = ['UPLOAD_PHASE', 'CONFIRMED_DB_REJECTION'];
+  if (!safeStages.includes(failureStage)) {
+    console.warn(`[GUEST ID ROLLBACK GUARD] Ambiguous or unsafe failure stage "${failureStage}". Preserving ${validPaths.length} objects to prevent data loss on committed booking:`, validPaths);
+    return {
+      removed: [],
+      preserved: validPaths,
+      reason: `AMBIGUOUS_STAGE_${failureStage}`
+    };
+  }
+
+  try {
+    const supabaseClient = client || await getSupabaseClient();
+    if (!supabaseClient) {
+      console.warn('rollbackUploadedGuestIdFiles: Supabase client unavailable for cleanup');
+      return { removed: [], preserved: validPaths, reason: 'NO_CLIENT' };
+    }
+
+    const { error } = await supabaseClient.storage
+      .from('guest_ids')
+      .remove(validPaths);
+
+    if (error) {
+      console.warn('rollbackUploadedGuestIdFiles: Error removing orphaned objects:', error.message);
+      return { removed: [], preserved: validPaths, reason: error.message };
+    }
+
+    return { removed: validPaths, preserved: [] };
+  } catch (err) {
+    console.error('rollbackUploadedGuestIdFiles unexpected error:', err);
+    return { removed: [], preserved: validPaths, reason: err.message };
+  }
+}
