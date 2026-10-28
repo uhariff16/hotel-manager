@@ -46,24 +46,24 @@ export function getWebScreenshotSrcSet(src) {
     return { src, srcSet: undefined, sizes: undefined };
   }
 
-  // 600w: mobile viewports
-  // 1000w: standard 1x desktop (renders at ~950px-1000px)
-  // 1400w: 1.5x displays / laptop screens
-  // 1920w: 2x high-DPI Retina / 4K monitors (pin-sharp text)
-  const widths = [600, 1000, 1400, 1920];
+  // 640w: mobile viewports
+  // 1000w: standard compact desktop / tablet
+  // 1400w: 1x full-width desktop showcase (1140px display container)
+  // 1920w: 2x high-DPI Retina & 4K displays (delivers full native 1919x1006 pixel sharpness)
+  const widths = [640, 1000, 1400, 1920];
   const srcSet = widths
-    .map(w => `${getOptimizedImageUrl(src, { width: w, quality: 88, format: 'webp' })} ${w}w`)
+    .map(w => `${getOptimizedImageUrl(src, { width: w, quality: 90, format: 'webp', resize: 'contain' })} ${w}w`)
     .join(', ');
 
-  const sizes = '(max-width: 768px) 94vw, (max-width: 1200px) 85vw, 1000px';
-  const fallbackSrc = getOptimizedImageUrl(src, { width: 1000, quality: 88, format: 'webp' });
+  const sizes = '(max-width: 768px) 96vw, (max-width: 1200px) 90vw, 1140px';
+  const fallbackSrc = getOptimizedImageUrl(src, { width: 1400, quality: 90, format: 'webp', resize: 'contain' });
 
   return { src: fallbackSrc, srcSet, sizes };
 }
 
 /**
  * Returns responsive srcset, sizes, and fallback src for mobile phone screenshots.
- * Container width: 190px - 260px in phone mockups, 1x to 3x DPR.
+ * Container width: 240px - 295px in phone mockups, 1x to 3x DPR.
  *
  * @param {string} src - The original source screenshot URL.
  * @returns {{ src: string, srcSet: string|undefined, sizes: string|undefined }}
@@ -73,17 +73,16 @@ export function getMobileScreenshotSrcSet(src) {
     return { src, srcSet: undefined, sizes: undefined };
   }
 
-  // 360w: 1x mobile / small preview
-  // 480w: standard 2x mockup on desktop (~230px * 2)
-  // 720w: 3x high-DPI modern phones (~240px * 3)
-  // 1080w: max original resolution for crisp native UI text
-  const widths = [360, 480, 720, 1080];
+  // 480w: compact mobile phone viewports
+  // 720w: 1x & 1.5x desktop phone mockup (~250px)
+  // 1080w: full native 1080x2400 resolution for 2x/3x Retina & 4K displays
+  const widths = [480, 720, 1080];
   const srcSet = widths
-    .map(w => `${getOptimizedImageUrl(src, { width: w, quality: 90, format: 'webp' })} ${w}w`)
+    .map(w => `${getOptimizedImageUrl(src, { width: w, quality: 92, format: 'webp', resize: 'contain' })} ${w}w`)
     .join(', ');
 
-  const sizes = '(max-width: 768px) 220px, 260px';
-  const fallbackSrc = getOptimizedImageUrl(src, { width: 480, quality: 90, format: 'webp' });
+  const sizes = '(max-width: 480px) 110px, (max-width: 768px) 160px, 260px';
+  const fallbackSrc = getOptimizedImageUrl(src, { width: 720, quality: 92, format: 'webp', resize: 'contain' });
 
   return { src: fallbackSrc, srcSet, sizes };
 }
