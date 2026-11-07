@@ -7,6 +7,7 @@ import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
 import { INDIAN_STATES, getStateCodeByName } from '../lib/indianStates';
 import { validateTenantBilling, formatFullAddress, loadTenantBillingProfile, saveTenantBillingProfile, saveTenantGuestGstSettings } from '../lib/tenantBilling';
+import { getTrialPresentationState } from '../lib/trial';
 
 const DEFAULT_CONFIRM_TEMPLATE = `🏡 Booking Confirmed – {resort_name}
 
@@ -205,7 +206,7 @@ export default function Settings() {
   });
 
   // Stay Pilot Subscription Billing Profile State
-  const [subscriptionBilling, setSubscriptionBilling] = useState(() => loadTenantBillingProfile(profile));
+  const [subscriptionBilling, setSubscriptionBilling] = useState(() => loadTenantBillingProfile(profile, resorts));
   const [subscriptionBillingErrors, setSubscriptionBillingErrors] = useState({});
   const [savingSubscriptionBilling, setSavingSubscriptionBilling] = useState(false);
   const [subscriptionBillingSuccess, setSubscriptionBillingSuccess] = useState(false);
@@ -216,7 +217,7 @@ export default function Settings() {
   const [guestGstSuccess, setGuestGstSuccess] = useState(false);
   const [guestGstError, setGuestGstError] = useState(null);
 
-  // Synchronize state when store profile changes/loads
+  // Synchronize state when store profile or resorts changes/loads
   useEffect(() => {
     if (profile) {
       if (!userName && profile.full_name) {
@@ -236,9 +237,9 @@ export default function Settings() {
       if (profile?.global_settings?.id_retention_days !== undefined) {
         setIdRetentionDays(profile.global_settings.id_retention_days);
       }
-      setSubscriptionBilling(loadTenantBillingProfile(profile));
+      setSubscriptionBilling(loadTenantBillingProfile(profile, resorts));
     }
-  }, [profile]);
+  }, [profile, resorts]);
 
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768);
 
@@ -1459,15 +1460,23 @@ export default function Settings() {
                         </span>
                       </div>
                       <div>
-                        {validateTenantBilling(subscriptionBilling).isValid ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, padding: '4px 10px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
-                            <CheckCircle2 size={14} /> Profile Complete
-                          </span>
-                        ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, padding: '4px 10px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                            <AlertTriangle size={14} /> Incomplete — Required for Paid Subscriptions
-                          </span>
-                        )}
+                        {(() => {
+                          const isComplete = validateTenantBilling(subscriptionBilling).isValid;
+                          if (isComplete) {
+                            return (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, padding: '4px 10px', borderRadius: '12px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                <CheckCircle2 size={14} /> Profile Complete
+                              </span>
+                            );
+                          }
+                          const trialInfo = getTrialPresentationState({ profile });
+                          const isTrial = trialInfo.isActiveTrial;
+                          return (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontSize: '0.8rem', fontWeight: 700, padding: '4px 10px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.15)', color: '#d97706', border: '1px solid rgba(245, 158, 11, 0.3)' }}>
+                              <AlertTriangle size={14} /> {isTrial ? 'Optional during Free Trial — Required upon Paid Upgrade' : 'Incomplete — Required for Paid Subscriptions'}
+                            </span>
+                          );
+                        })()}
                       </div>
                     </div>
                     <p className="settings-card-desc">

@@ -88,15 +88,23 @@ export function formatFullAddress(billing) {
 }
 
 /**
- * Load and normalize billing profile from user profile
+ * Load and normalize billing profile from user profile and optional resort profile
+ * @param {Object} profile 
+ * @param {Object|Array} [resorts] Optional resort or resorts list to prefill missing tenant identity/address
  */
-export function loadTenantBillingProfile(profile) {
+export function loadTenantBillingProfile(profile, resorts = null) {
   const billing = profile?.global_settings?.billing || {};
   const tenantBilling = profile?.global_settings?.tenant_billing || {};
 
-  const name = billing.name || tenantBilling.companyName || tenantBilling.name || profile?.full_name || '';
-  const email = billing.email || profile?.email || '';
-  const addressLine1 = billing.address_line1 || billing.address || tenantBilling.address || '';
+  // Extract fallback resort data if provided
+  const resort = Array.isArray(resorts) ? (resorts[0] || null) : (resorts && typeof resorts === 'object' ? resorts : null);
+  const resortName = resort?.name || '';
+  const resortEmail = resort?.email || '';
+  const resortAddress = resort?.address || '';
+
+  const name = billing.name || tenantBilling.companyName || tenantBilling.name || resortName || profile?.full_name || '';
+  const email = billing.email || resortEmail || profile?.email || '';
+  const addressLine1 = billing.address_line1 || billing.address || tenantBilling.address || resortAddress || '';
   const addressLine2 = billing.address_line2 || '';
   const city = billing.city || '';
   const state = billing.state || '';
