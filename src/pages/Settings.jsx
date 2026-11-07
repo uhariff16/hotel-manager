@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettingsStore } from '../lib/store';
 import { supabase } from '../lib/supabase';
-import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, CheckCircle, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor, X, Tag, Receipt, ReceiptText, PackagePlus, UserRound, Building2, Lock, AlertCircle, Info, CreditCard } from 'lucide-react';
+import { AlertTriangle, User, Palette, ShieldAlert, Mail, MessageCircle, Settings as SettingsIcon, Save, CheckCircle2, CheckCircle, XCircle, Loader2, Database, Trash2, FileText, Fingerprint, Sun, Moon, Monitor, X, Tag, Receipt, ReceiptText, PackagePlus, UserRound, Building2, Lock, AlertCircle, Info, CreditCard, ShieldCheck, Clock } from 'lucide-react';
 import { NativeBiometric } from '@capgo/capacitor-native-biometric';
 import { Preferences } from '@capacitor/preferences';
 import { Capacitor } from '@capacitor/core';
@@ -196,6 +196,7 @@ export default function Settings() {
     address: profile?.global_settings?.tenant_billing?.address || ''
   });
   const [idRetentionDays, setIdRetentionDays] = useState(profile?.global_settings?.id_retention_days || 30);
+  const [savingRetention, setSavingRetention] = useState(false);
   const [tenantGst, setTenantGst] = useState({
     enabled: profile?.global_settings?.tenant_gst?.enabled || false,
     slabThreshold: profile?.global_settings?.tenant_gst?.slabThreshold ?? 7500,
@@ -232,6 +233,9 @@ export default function Settings() {
         lowerRate: profile?.global_settings?.tenant_gst?.lowerRate ?? 5,
         higherRate: profile?.global_settings?.tenant_gst?.higherRate ?? 18
       });
+      if (profile?.global_settings?.id_retention_days !== undefined) {
+        setIdRetentionDays(profile.global_settings.id_retention_days);
+      }
       setSubscriptionBilling(loadTenantBillingProfile(profile));
     }
   }, [profile]);
@@ -777,17 +781,100 @@ export default function Settings() {
   };
 
   const saveRetentionPolicy = async () => {
+    const days = Number(idRetentionDays);
+    if (isNaN(days) || !Number.isInteger(days) || days < 30 || days > 90) {
+      alert('Guest ID retention period must be an integer between 30 and 90 days.');
+      return;
+    }
+
+    setSavingRetention(true);
     try {
-      const currentGlobalSettings = profile?.global_settings || {};
-      const updatedGlobal = {
-        ...currentGlobalSettings,
-        id_retention_days: idRetentionDays
-      };
-      const { error } = await supabase.from('profiles').update({ global_settings: updatedGlobal }).eq('id', profile.id);
-      if (error) throw error;
-      alert('Retention policy saved successfully!');
+      // 1. Attempt update via dedicated secure RPC
+      const { data: rpcData, error: rpcError } = await supabase.rpc('save_tenant_guest_id_retention', {
+        p_retention_days: days
+      });
+
+      if (!rpcError) {
+        const currentGlobal = profile?.global_settings || {};
+        const updatedGlobal = { ...currentGlobal, id_retention_days: days };
+        setProfile({ ...profile, global_settings: updatedGlobal });
+        alert('Retention policy saved successfully!');
+        return;
+      }
+
+      // 2. If RPC does not yet exist in database, attempt direct table update
+      if (rpcError.code === 'PGRST202' || (rpcError.message && rpcError.message.includes('function') && rpcError.message.includes('does not exist'))) {
+        const currentGlobalSettings = profile?.global_settings || {};
+        const updatedGlobal = {
+          ...currentGlobalSettings,
+          id_retention_days: days
+        };
+        const { error: directError } = await supabase.from('profiles').update({ global_settings: updatedGlobal }).eq('id', profile.id);
+        if (directError) {
+          if (directError.message && directError.message.includes('Privilege escalation denied')) {
+            throw new Error('Guest ID retention configuration is pending database migration. Please apply migration proposal_20261106220000_allow_tenant_guest_id_retention.sql.');
+          }
+          throw directError;
+        }
+        setProfile({ ...profile, global_settings: updatedGlobal });
+        alert('Retention policy saved successfully!');
+        return;
+      }
+
+      throw rpcError;
     } catch (err) {
       alert('Failed to save policy: ' + err.message);
+    } finally {
+      setSavingRetention(false);
+    }
+  };
+
+  const handleAnalyzeData = async () => {
+    setIsAnalyzing(true);
+    setCleanupStats(null);
+    try {
+      const startDate = `${cleanupYear}-01-01T00:00:00Z`;
+      const endDate = `${cleanupYear}-12-31T23:59:59Z`;
+      
+      const [bks, inc, exp] = await Promise.all([
+        supabase.from('bookings').select('id, status', { count: 'exact' }).eq('resort_id', activeResortId).gte('check_in_date', startDate).lte('check_in_date', endDate),
+        supabase.from('incomes').select('id', { count: 'exact' }).eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate),
+        supabase.from('expenses').select('id', { count: 'exact' }).eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate)
+      ]);
+      
+      setCleanupStats({
+        bookings: bks.count || 0,
+        incomes: inc.count || 0,
+        expenses: exp.count || 0,
+        total: (bks.count || 0) + (inc.count || 0) + (exp.count || 0)
+      });
+    } catch (err) {
+      alert("Error analyzing data: " + err.message);
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleDeleteData = async () => {
+    if (!window.confirm(`Are you absolutely sure you want to permanently delete ${cleanupStats.total} records from ${cleanupYear}?`)) return;
+    
+    setIsCleaning(true);
+    try {
+      const startDate = `${cleanupYear}-01-01T00:00:00Z`;
+      const endDate = `${cleanupYear}-12-31T23:59:59Z`;
+      
+      await Promise.all([
+        supabase.from('bookings').delete().eq('resort_id', activeResortId).gte('check_in_date', startDate).lte('check_in_date', endDate),
+        supabase.from('incomes').delete().eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate),
+        supabase.from('expenses').delete().eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate)
+      ]);
+      
+      alert(`Successfully cleaned up data for ${cleanupYear}`);
+      setCleanupStats(null);
+    } catch (err) {
+      alert("Error cleaning data: " + err.message);
+    } finally {
+      setIsCleaning(false);
     }
   };
 
@@ -1849,156 +1936,200 @@ export default function Settings() {
             </div>
           )}
 
-          {/* DATA MANAGER TAB */}
+          {/* DATA MANAGER & PRIVACY TAB */}
           {activeTab === 'data_manager' && (
             <>
               {(profile?.role === 'tenant_admin' || profile?.role === 'super_admin') && (
-                <div className="settings-card">
-                  <div className="settings-card-header">
-                    <div className="settings-card-icon" style={{ background: 'rgba(239, 68, 68, 0.1)', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.25)' }}>
-                      <Database size={20} />
-                    </div>
-                    <div>
-                      <h2 className="settings-card-title">Data Manager & Retention Policy</h2>
-                      <p className="settings-card-desc">Manage data retention policies and safely purge archived operational records.</p>
-                    </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.75rem' }}>
+                  {/* Tab Internal Header */}
+                  <div>
+                    <h2 style={{ fontSize: '1.35rem', fontWeight: 700, color: 'var(--text-main)', margin: '0 0 0.35rem 0' }}>
+                      Data Management &amp; Privacy
+                    </h2>
+                    <p style={{ fontSize: '0.875rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.45 }}>
+                      Manage guest identification privacy and historical business records separately.
+                    </p>
                   </div>
-                    
-                    <div style={{ background: 'var(--bg-secondary)', padding: '1rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontSize: '1rem', margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>Guest ID Retention Policy</h3>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 1rem 0' }}>
-                        To minimize PII liability, uploaded guest ID images will be automatically purged from the cloud storage after this many days.
-                      </p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+
+                  {/* CARD 1: Guest ID & Privacy */}
+                  <div className="settings-card">
+                    <div className="settings-card-header">
+                      <div className="settings-card-icon" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', borderColor: 'rgba(16, 185, 129, 0.25)' }}>
+                        <ShieldCheck size={20} />
+                      </div>
+                      <div>
+                        <h3 className="settings-card-title">Guest ID &amp; Privacy</h3>
+                        <p className="settings-card-desc">
+                          Control how long uploaded guest identification images remain stored. Images are automatically removed according to your retention policy.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.25rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1rem' }}>
+                        <div>
+                          <label htmlFor="guest-id-retention-slider" className="form-label" style={{ fontWeight: 600, margin: 0 }}>
+                            Guest ID Retention Period
+                          </label>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block', marginTop: '0.2rem' }}>
+                            Range: 30 to 90 days
+                          </span>
+                        </div>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', borderRadius: '9999px', padding: '0.35rem 0.85rem' }}>
+                          <Clock size={15} style={{ color: '#10b981' }} />
+                          <span id="retention-period-badge" style={{ fontSize: '1rem', fontWeight: 700, color: '#10b981' }}>{idRetentionDays} Days</span>
+                        </div>
+                      </div>
+
+                      <div style={{ marginBottom: '0.5rem' }}>
                         <input 
+                          id="guest-id-retention-slider"
                           type="range" 
                           min="30" 
                           max="90" 
                           step="1"
                           value={idRetentionDays}
                           onChange={(e) => setIdRetentionDays(Number(e.target.value))}
-                          style={{ flex: 1 }}
+                          aria-label="Guest ID retention period in days"
+                          style={{ width: '100%', cursor: 'pointer', accentColor: '#10b981' }}
                         />
-                        <span style={{ fontWeight: 'bold', minWidth: '60px' }}>{idRetentionDays} days</span>
-                        <button className="btn-primary" onClick={saveRetentionPolicy} style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}>Save Policy</button>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+                          <span>30 days (Min)</span>
+                          <span>60 days</span>
+                          <span>90 days (Max)</span>
+                        </div>
+                      </div>
+
+                      <p style={{ fontSize: '0.825rem', color: 'var(--text-muted)', margin: '0.75rem 0 0 0', lineHeight: 1.4 }}>
+                        Uploaded guest ID images older than {idRetentionDays} days are scheduled for automatic purge from secure cloud storage.
+                      </p>
+
+                      <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'flex-start' }}>
+                        <button 
+                          type="button"
+                          className="btn btn-primary" 
+                          onClick={saveRetentionPolicy} 
+                          disabled={savingRetention}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.55rem 1.25rem', fontSize: '0.875rem' }}
+                        >
+                          {savingRetention ? <Loader2 size={16} className="spin" /> : <Save size={16} />}
+                          <span>{savingRetention ? 'Saving Policy...' : 'Save Policy'}</span>
+                        </button>
                       </div>
                     </div>
-                  
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
-                    <div style={{ flex: 1 }}>
-                      <label className="form-label">Select Year for Cleanup</label>
-                      <select 
-                        className="form-control" 
-                        value={cleanupYear} 
-                        onChange={(e) => { setCleanupYear(e.target.value === '' ? '' : Number(e.target.value)); setCleanupStats(null); }}
-                      >
-                        {[...Array(10)].map((_, i) => {
-                          const year = new Date().getFullYear() - i;
-                          return <option key={year} value={year}>{year}</option>;
-                        })}
-                      </select>
+
+                    {/* Information Note */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', padding: '0.85rem 1rem', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.2)', borderRadius: '10px' }}>
+                      <Info size={18} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: '2px' }} />
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-main)', lineHeight: 1.45 }}>
+                        <strong>Note:</strong> This policy manages uploaded guest ID images. It does not delete booking, income, or expense records.
+                      </div>
                     </div>
-                    <button 
-                      className="btn btn-primary" 
-                      style={{ minWidth: '150px' }}
-                      onClick={async () => {
-                        setIsAnalyzing(true);
-                        setCleanupStats(null);
-                        try {
-                          const startDate = `${cleanupYear}-01-01T00:00:00Z`;
-                          const endDate = `${cleanupYear}-12-31T23:59:59Z`;
-                          
-                          const [bks, inc, exp] = await Promise.all([
-                            supabase.from('bookings').select('id, status', { count: 'exact' }).eq('resort_id', activeResortId).gte('check_in_date', startDate).lte('check_in_date', endDate),
-                            supabase.from('incomes').select('id', { count: 'exact' }).eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate),
-                            supabase.from('expenses').select('id', { count: 'exact' }).eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate)
-                          ]);
-                          
-                          setCleanupStats({
-                            bookings: bks.count || 0,
-                            incomes: inc.count || 0,
-                            expenses: exp.count || 0,
-                            total: (bks.count || 0) + (inc.count || 0) + (exp.count || 0)
-                          });
-                        } catch (err) {
-                          alert("Error analyzing data: " + err.message);
-                        } finally {
-                          setIsAnalyzing(false);
-                        }
-                      }}
-                      disabled={isAnalyzing || isCleaning}
-                    >
-                      {isAnalyzing ? <Loader2 size={16} className="spin" /> : 'Analyze Data'}
-                    </button>
                   </div>
 
-                  {cleanupStats && (
-                    <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1.5rem' }}>
-                      <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-color)' }}>
-                        Analysis Results for {cleanupYear}
-                      </h3>
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
-                        <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--primary)' }}>{cleanupStats.bookings}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Bookings</div>
-                        </div>
-                        <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#10b981' }}>{cleanupStats.incomes}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Income Records</div>
-                        </div>
-                        <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#ef4444' }}>{cleanupStats.expenses}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Expense Records</div>
-                        </div>
-                        <div style={{ background: 'var(--bg-color)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--border)', textAlign: 'center' }}>
-                          <div style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-color)' }}>{cleanupStats.total}</div>
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Total Records</div>
-                        </div>
+                  {/* CARD 2: Operational Data Cleanup */}
+                  <div className="settings-card">
+                    <div className="settings-card-header">
+                      <div className="settings-card-icon" style={{ background: 'rgba(239, 68, 68, 0.08)', color: 'var(--danger)', borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                        <Trash2 size={20} />
                       </div>
-                      
-                      {cleanupStats.total > 0 ? (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
-                          <div style={{ padding: '0.75rem 1rem', background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', borderRadius: '8px', fontSize: '0.85rem', textAlign: 'center' }}>
-                            <AlertTriangle size={16} style={{ display: 'inline', verticalAlign: 'text-bottom', marginRight: '4px' }} /> 
-                            <strong>Warning:</strong> Cleaning up will permanently delete these {cleanupStats.total} records from your database. This action cannot be undone.
-                          </div>
-                          <button 
-                            className="btn btn-danger"
-                            style={{ width: '100%', maxWidth: '300px', background: '#ef4444', color: 'white', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}
-                            disabled={isCleaning}
-                            onClick={async () => {
-                              if (!window.confirm(`Are you absolutely sure you want to permanently delete ${cleanupStats.total} records from ${cleanupYear}?`)) return;
-                              
-                              setIsCleaning(true);
-                              try {
-                                const startDate = `${cleanupYear}-01-01T00:00:00Z`;
-                                const endDate = `${cleanupYear}-12-31T23:59:59Z`;
-                                
-                                await Promise.all([
-                                  supabase.from('bookings').delete().eq('resort_id', activeResortId).gte('check_in_date', startDate).lte('check_in_date', endDate),
-                                  supabase.from('incomes').delete().eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate),
-                                  supabase.from('expenses').delete().eq('resort_id', activeResortId).gte('date', startDate).lte('date', endDate)
-                                ]);
-                                
-                                alert(`Successfully cleaned up data for ${cleanupYear}`);
-                                setCleanupStats(null);
-                              } catch (err) {
-                                alert("Error cleaning data: " + err.message);
-                              } finally {
-                                setIsCleaning(false);
-                              }
-                            }}
-                          >
-                            {isCleaning ? <Loader2 size={16} className="spin" /> : 'Permanently Delete ' + cleanupYear + ' Data'}
-                          </button>
-                        </div>
-                      ) : (
-                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>
-                          No records found for {cleanupYear}. Your system is clean!
-                        </div>
-                      )}
+                      <div>
+                        <h3 className="settings-card-title">Operational Data Cleanup</h3>
+                        <p className="settings-card-desc">
+                          Review historical booking and financial records for a selected year before permanently deleting them.
+                        </p>
+                      </div>
                     </div>
-                  )}
+
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', marginBottom: '1.5rem' }}>
+                      <div style={{ flex: '1 1 240px' }}>
+                        <label htmlFor="cleanup-year-select" className="form-label" style={{ fontWeight: 600, marginBottom: '0.4rem', display: 'block' }}>
+                          Select Year for Cleanup
+                        </label>
+                        <select 
+                          id="cleanup-year-select"
+                          className="form-control" 
+                          value={cleanupYear} 
+                          onChange={(e) => { 
+                            setCleanupYear(e.target.value === '' ? '' : Number(e.target.value)); 
+                            setCleanupStats(null); 
+                          }}
+                          disabled={isAnalyzing || isCleaning}
+                          style={{ width: '100%', height: '42px', padding: '0 0.75rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-color)', color: 'var(--text-main)', fontSize: '0.95rem' }}
+                        >
+                          {[...Array(10)].map((_, i) => {
+                            const year = new Date().getFullYear() - i;
+                            return <option key={year} value={year}>{year}</option>;
+                          })}
+                        </select>
+                      </div>
+                      <button 
+                        type="button"
+                        className="btn btn-primary" 
+                        style={{ height: '42px', minWidth: '150px', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}
+                        onClick={handleAnalyzeData}
+                        disabled={isAnalyzing || isCleaning || !cleanupYear}
+                      >
+                        {isAnalyzing ? <Loader2 size={16} className="spin" /> : 'Analyze Data'}
+                      </button>
+                    </div>
+
+                    {cleanupStats && (
+                      <div style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', borderRadius: '12px', padding: '1.5rem', marginBottom: '1rem' }}>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-main)' }}>
+                          Analysis Results for {cleanupYear}
+                        </h3>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '1rem', marginBottom: '1.5rem' }}>
+                          <div style={{ background: 'var(--bg-color)', padding: '1.25rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--primary)' }}>{cleanupStats.bookings.toLocaleString()}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Bookings</div>
+                          </div>
+                          <div style={{ background: 'var(--bg-color)', padding: '1.25rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#10b981' }}>{cleanupStats.incomes.toLocaleString()}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Income Records</div>
+                          </div>
+                          <div style={{ background: 'var(--bg-color)', padding: '1.25rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#ef4444' }}>{cleanupStats.expenses.toLocaleString()}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Expense Records</div>
+                          </div>
+                          <div style={{ background: 'var(--bg-color)', padding: '1.25rem 1rem', borderRadius: '10px', border: '1px solid var(--border)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                            <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--text-main)' }}>{cleanupStats.total.toLocaleString()}</div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 500 }}>Total Records</div>
+                          </div>
+                        </div>
+                        
+                        {cleanupStats.total > 0 ? (
+                          <div style={{ background: 'rgba(239, 68, 68, 0.05)', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '10px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.75rem', color: '#ef4444', fontSize: '0.85rem', lineHeight: 1.45, textAlign: 'left', width: '100%' }}>
+                              <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} /> 
+                              <div>
+                                <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>
+                                  Permanent deletion cannot be undone. Review the selected year and record counts carefully before continuing.
+                                </div>
+                                <div style={{ opacity: 0.9 }}>
+                                  Cleaning up will permanently delete these {cleanupStats.total.toLocaleString()} records from your database. This action cannot be undone.
+                                </div>
+                              </div>
+                            </div>
+                            <button 
+                              type="button"
+                              className="btn btn-danger"
+                              style={{ width: '100%', maxWidth: '360px', background: '#ef4444', color: '#ffffff', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1.25rem', borderRadius: '8px', fontWeight: 600, border: 'none', cursor: isCleaning ? 'not-allowed' : 'pointer' }}
+                              disabled={isCleaning}
+                              onClick={handleDeleteData}
+                            >
+                              {isCleaning ? <Loader2 size={16} className="spin" /> : <Trash2 size={16} />}
+                              <span>{isCleaning ? 'Cleaning Data...' : `Permanently Delete ${cleanupYear} Data`}</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.25rem', background: 'var(--bg-color)', borderRadius: '8px', border: '1px solid var(--border)', fontSize: '0.9rem' }}>
+                            No records found for {cleanupYear}. Your system is clean!
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </>
