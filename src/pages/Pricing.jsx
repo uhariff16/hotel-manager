@@ -373,14 +373,14 @@ export default function Pricing() {
       )}
 
       {/* HEADER */}
-      <header style={{ 
+      <header className="public-header" style={{ 
         display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
         padding: '1.25rem 2rem', background: 'rgba(255, 255, 255, 0.75)', backdropFilter: 'blur(16px)',
         borderBottom: '1px solid rgba(255, 255, 255, 0.4)', position: 'sticky', top: isPreview ? '44px' : '0', zIndex: 100,
         boxShadow: '0 4px 30px rgba(0, 0, 0, 0.02)'
       }}>
-        <Link to="/" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
-          <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" style={{ height: '36px', width: 'auto', display: 'block' }} />
+        <Link to="/" className="public-header-logo-link" style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}>
+          <img src="/stay-pilot-logo.png" alt="Stay Pilot Logo" className="public-header-logo" style={{ height: '36px', width: 'auto', display: 'block' }} />
         </Link>
         
         <nav className="desktop-nav" style={{ display: 'flex', gap: '2.5rem', alignItems: 'center', fontWeight: 600, color: '#334155', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
@@ -391,9 +391,9 @@ export default function Pricing() {
           <Link to="/pricing" style={{ color: '#059669', textDecoration: 'none' }}>Pricing</Link>
         </nav>
         
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <Link to="/auth" className="desktop-btn" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#0F2C59', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sign In</Link>
-          <Link to="/pricing" className="btn" style={{ 
+        <div className="public-header-actions" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <Link to="/auth" className="public-header-signin-btn" style={{ padding: '0.5rem 1rem', fontWeight: 600, color: '#0F2C59', textDecoration: 'none', fontFamily: "'Plus Jakarta Sans', sans-serif" }}>Sign In</Link>
+          <Link to="/pricing" className="public-header-get-started-btn btn" style={{ 
             padding: '0.65rem 1.6rem', background: 'linear-gradient(135deg, #059669 0%, #10b981 100%)', 
             color: 'white', borderRadius: '8px', fontWeight: 700, textDecoration: 'none',
             boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)', fontFamily: "'Plus Jakarta Sans', sans-serif"
