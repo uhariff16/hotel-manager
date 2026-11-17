@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, ShieldCheck, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send, FileText, Info, Building2, CreditCard } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, ShieldCheck, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send, FileText, Info, Building2, CreditCard, Filter, X, ArrowUpDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import WebsitePricingTab from '../components/WebsitePricingTab';
@@ -10,6 +10,7 @@ import WebsiteManagerTab from '../components/WebsiteManagerTab';
 import SupportInbox from '../components/SupportInbox';
 import SubscriptionMonitoringTab from '../components/SubscriptionMonitoringTab';
 import { normalizePlanReports } from '../components/PlanComparison';
+import { resolveAccountPresentation } from '../lib/subscriptionDiscrepancies';
 import {
   DEFAULT_TRADE_NAME, TRADE_NAME_MAX_LENGTH, GST_ACTIVATION_RELEASE_APPROVED,
   ConfigValidationError, ConfigAuthorizationError,
@@ -83,8 +84,22 @@ export default function SuperAdmin() {
   const [stats, setStats] = useState({ users: 0, staffCount: 0, properties: 0, bookings: 0, revenue: 0, testRevenue: 0, liveRevenue: 0 });
   const [tenants, setTenants] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState('all');       // 'all' | 'tenant_admin' | 'staff'
+  const [filterPlan, setFilterPlan] = useState('all');       // 'all' | 'solo' | 'growth' | 'stay_master' | 'free'
+  const [filterStatus, setFilterStatus] = useState('all');   // 'all' | 'active' | 'cancelled' | 'created' | 'suspended'
+  const [filterEnv, setFilterEnv] = useState('all');         // 'all' | 'LIVE' | 'TEST_ONLY' | 'UNKNOWN' | 'NONE'
+  const [sortBy, setSortBy] = useState('joined_desc');       // 'joined_desc' | 'joined_asc' | 'name_asc' | 'name_desc' | 'bookings_desc' | 'properties_desc'
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
+
+  const resetAllFilters = () => {
+    setFilterRole('all');
+    setFilterPlan('all');
+    setFilterStatus('all');
+    setFilterEnv('all');
+    setSearchTerm('');
+    setSortBy('joined_desc');
+  };
 
   const DEFAULT_PLANS = {
     free: {
@@ -572,13 +587,17 @@ export default function SuperAdmin() {
         const tenantResorts = (r || []).filter(res => res.tenant_id === activeTenantId);
         const resortNamesList = tenantResorts.map(res => res.name || 'Unnamed Resort');
 
-        const tenantSub = (subs || []).find(s => s.tenant_id === activeTenantId && s.status === 'active') ||
-                          (subs || []).find(s => s.tenant_id === activeTenantId);
+        const tenantSubs = (subs || []).filter(s => s.tenant_id === activeTenantId);
+        const pres = resolveAccountPresentation({
+          user,
+          tenantSubscriptions: tenantSubs,
+          pricingConfig: pricingConfig || DEFAULT_PLANS,
+          ownerProfile: owner
+        });
 
         // Environment-aware financial classification
         const tenantPayments = (payments || []).filter(p => p.tenant_id === activeTenantId);
         const tenantInvoices = (invoices || []).filter(inv => inv.tenant_id === activeTenantId);
-        const tenantSubs = (subs || []).filter(s => s.tenant_id === activeTenantId);
 
         const hasLive = 
           tenantPayments.some(p => String(p.environment || '').toLowerCase() === 'live') ||
@@ -608,9 +627,15 @@ export default function SuperAdmin() {
           propertyCount: resortNamesList.length,
           propertyNames: resortNamesList,
           bookingCount: (b || []).filter(book => book.tenant_id === activeTenantId).length,
-          activeSub: tenantSub || null,
-          effectivePlan: tenantSub?.staypilot_plan_type || user.plan_type || 'free',
-          effectiveSubStatus: resolveEffectiveSubStatus(user, tenantSub),
+          activeSub: pres.activePaidSubscription || pres.latestSubscription || null,
+          effectivePlan: pres.effectivePlanKey,
+          effectivePlanName: pres.effectivePlanName,
+          effectiveSubStatus: pres.effectiveStatus,
+          entitlementCategory: pres.entitlementCategory,
+          isLegacy: pres.isLegacy,
+          isGrandfathered: pres.isGrandfathered,
+          hasHistoricalSubscriptionMismatch: pres.hasHistoricalSubscriptionMismatch,
+          mismatchExplanation: pres.mismatchExplanation,
           financialEnv,
           is_archived: Boolean(user.is_archived)
         };
@@ -1798,6 +1823,137 @@ export default function SuperAdmin() {
     }
   };
 
+  const normalizePlanType = (planKey) => {
+    if (!planKey) return 'free';
+    const raw = String(planKey).toLowerCase().trim();
+    const cfgName = pricingConfig?.[planKey]?.name?.toLowerCase() || '';
+
+    if (raw === 'custom_1786983013013' || raw === 'solo' || cfgName.includes('solo')) return 'solo';
+    if (raw === 'pro' || raw === 'growth' || cfgName.includes('growth')) return 'growth';
+    if (raw === 'premium' || raw === 'stay_master' || raw === 'enterprise' || cfgName.includes('master') || cfgName.includes('stay master')) return 'stay_master';
+    if (raw === 'free' || cfgName.includes('free') || cfgName.includes('starter')) return 'free';
+    return raw;
+  };
+
+  const hasActiveFilters = filterRole !== 'all' || filterPlan !== 'all' || filterStatus !== 'all' || filterEnv !== 'all' || Boolean(searchTerm.trim()) || sortBy !== 'joined_desc';
+
+  const tabAccounts = useMemo(() => {
+    return tenants.filter(t => {
+      const matchesTabRole = (adminActiveTab === 'platform_staff' 
+        ? ['super_admin', 'support_admin', 'billing_admin'].includes(t.role)
+        : ['tenant_admin', 'staff'].includes(t.role)
+      );
+      if (!matchesTabRole) return false;
+      if (adminActiveTab !== 'platform_staff') {
+        if (tenantSubFilter === 'active' && t.is_archived) return false;
+        if (tenantSubFilter === 'qa' && (!t.is_disposable_qa || t.is_archived)) return false;
+        if (tenantSubFilter === 'archived' && !t.is_archived) return false;
+      }
+      return true;
+    });
+  }, [tenants, adminActiveTab, tenantSubFilter]);
+
+  const totalInScope = tabAccounts.length;
+
+  const filterCounts = useMemo(() => {
+    const counts = {
+      roles: { all: tabAccounts.length, tenant_admin: 0, staff: 0, super_admin: 0, billing_admin: 0, support_admin: 0 },
+      plans: { all: tabAccounts.length, solo: 0, growth: 0, stay_master: 0, free: 0 },
+      statuses: { all: tabAccounts.length, active: 0, cancelled: 0, created: 0, suspended: 0, disabled: 0, halted: 0 },
+      envs: { all: tabAccounts.length, LIVE: 0, TEST_ONLY: 0, UNKNOWN: 0, NONE: 0 }
+    };
+
+    tabAccounts.forEach(t => {
+      if (counts.roles[t.role] !== undefined) counts.roles[t.role]++;
+
+      const normPlan = normalizePlanType(t.effectivePlan || t.plan_type);
+      if (counts.plans[normPlan] !== undefined) counts.plans[normPlan]++;
+
+      const st = (t.effectiveSubStatus || t.subscription_status || 'active').toLowerCase();
+      if (st === 'active') counts.statuses.active++;
+      else if (st === 'cancelled') counts.statuses.cancelled++;
+      else if (st === 'created') counts.statuses.created++;
+      else if (st === 'halted') counts.statuses.halted++;
+      else if (st === 'suspended' || st === 'disabled') counts.statuses.suspended++;
+
+      const env = t.financialEnv || 'NONE';
+      if (counts.envs[env] !== undefined) counts.envs[env]++;
+    });
+
+    return counts;
+  }, [tabAccounts, pricingConfig]);
+
+  const filteredAndSortedAccounts = useMemo(() => {
+    const list = tabAccounts.filter(t => {
+      // Role filter
+      if (filterRole !== 'all' && t.role !== filterRole) return false;
+
+      // Plan filter (for accounts tab)
+      if (adminActiveTab !== 'platform_staff' && filterPlan !== 'all') {
+        const normPlan = normalizePlanType(t.effectivePlan || t.plan_type);
+        if (normPlan !== filterPlan) return false;
+      }
+
+      // Status filter
+      if (filterStatus !== 'all') {
+        const st = (t.effectiveSubStatus || t.subscription_status || 'active').toLowerCase();
+        if (filterStatus === 'suspended' || filterStatus === 'disabled') {
+          if (!['suspended', 'disabled'].includes(st)) return false;
+        } else if (filterStatus === 'created') {
+          if (st !== 'created') return false;
+        } else if (st !== filterStatus) {
+          return false;
+        }
+      }
+
+      // Environment filter
+      if (filterEnv !== 'all') {
+        const env = t.financialEnv || 'NONE';
+        if (filterEnv !== env) return false;
+      }
+
+      // Search term
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase().trim();
+        const normPlan = normalizePlanType(t.effectivePlan || t.plan_type);
+        const planName = pricingConfig?.[t.effectivePlan]?.name?.toLowerCase() || normPlan;
+
+        const matchesSearch = (
+          t.full_name?.toLowerCase().includes(term) || 
+          t.email?.toLowerCase().includes(term) || 
+          t.phone?.toLowerCase().includes(term) ||
+          t.id?.toLowerCase().includes(term) ||
+          t.role?.toLowerCase().includes(term) ||
+          t.ownerName?.toLowerCase().includes(term) ||
+          planName.includes(term) ||
+          (t.propertyNames || []).some(p => p.toLowerCase().includes(term))
+        );
+        if (!matchesSearch) return false;
+      }
+
+      return true;
+    });
+
+    return list.sort((a, b) => {
+      switch (sortBy) {
+        case 'joined_asc':
+          return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+        case 'joined_desc':
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+        case 'name_asc':
+          return (a.full_name || '').localeCompare(b.full_name || '');
+        case 'name_desc':
+          return (b.full_name || '').localeCompare(a.full_name || '');
+        case 'bookings_desc':
+          return (b.bookingCount || 0) - (a.bookingCount || 0);
+        case 'properties_desc':
+          return (b.propertyCount || 0) - (a.propertyCount || 0);
+        default:
+          return new Date(b.created_at || 0) - new Date(a.created_at || 0);
+      }
+    });
+  }, [tabAccounts, filterRole, filterPlan, filterStatus, filterEnv, searchTerm, sortBy, pricingConfig, adminActiveTab]);
+
   if (!profile) return null;
   
   const isPlatformAdminRender = ['super_admin', 'support_admin', 'billing_admin'].includes(profile?.role);
@@ -2078,11 +2234,11 @@ export default function SuperAdmin() {
                   style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: '#0F2C59', borderColor: '#cbd5e1' }}
                   onClick={() => {
                     const headers = ['ID', 'Full Name', 'Email', 'Role', 'Owner (Tenant)', 'Properties (Names)', 'Property Count', 'Booking Count', 'Plan', 'Status', 'Joined Date'];
-                    const rows = tenants.map(t => [
+                    const rows = filteredAndSortedAccounts.map(t => [
                       t.id,
                       t.full_name,
                       t.email,
-                      t.role === 'tenant_admin' ? 'Tenant Admin' : 'Staff',
+                      t.role === 'tenant_admin' ? 'Tenant Admin' : t.role === 'staff' ? 'Staff' : t.role,
                       t.role === 'staff' ? t.ownerName : 'N/A',
                       (t.propertyNames || []).join('; '),
                       t.propertyCount || 0,
@@ -2175,6 +2331,293 @@ export default function SuperAdmin() {
               </div>
             )}
 
+            {/* Quick Role Toggle Bar */}
+            {adminActiveTab !== 'platform_staff' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginRight: '0.25rem' }}>
+                  Account Type:
+                </span>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: filterRole === 'all' ? '#0F2C59' : '#f1f5f9',
+                    color: filterRole === 'all' ? '#ffffff' : '#334155',
+                    border: 'none',
+                    fontWeight: 700,
+                    borderRadius: '16px',
+                    padding: '0.25rem 0.8rem',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => setFilterRole('all')}
+                >
+                  All ({filterCounts.roles.all})
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: filterRole === 'tenant_admin' ? '#0F2C59' : '#f1f5f9',
+                    color: filterRole === 'tenant_admin' ? '#ffffff' : '#334155',
+                    border: 'none',
+                    fontWeight: 700,
+                    borderRadius: '16px',
+                    padding: '0.25rem 0.8rem',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => setFilterRole('tenant_admin')}
+                >
+                  🏢 Tenant Admins ({filterCounts.roles.tenant_admin})
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    background: filterRole === 'staff' ? '#0F2C59' : '#f1f5f9',
+                    color: filterRole === 'staff' ? '#ffffff' : '#334155',
+                    border: 'none',
+                    fontWeight: 700,
+                    borderRadius: '16px',
+                    padding: '0.25rem 0.8rem',
+                    fontSize: '0.75rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onClick={() => setFilterRole('staff')}
+                >
+                  👥 Staff Members ({filterCounts.roles.staff})
+                </button>
+              </div>
+            )}
+
+            {/* Dynamic Multi-Criteria Filter Toolbar */}
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.65rem',
+              alignItems: 'center',
+              marginBottom: '1rem',
+              padding: '0.85rem 1rem',
+              background: '#f8fafc',
+              borderRadius: '12px',
+              border: '1px solid #e2e8f0'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0F2C59', fontWeight: 700, fontSize: '0.85rem', marginRight: '0.25rem' }}>
+                <Filter size={15} style={{ color: '#0F2C59' }} />
+                <span>Filters:</span>
+              </div>
+
+              {/* Role Filter */}
+              <select
+                className="form-select"
+                style={{
+                  padding: '0.4rem 0.75rem',
+                  fontSize: '0.825rem',
+                  borderRadius: '8px',
+                  border: filterRole !== 'all' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
+                  background: filterRole !== 'all' ? '#f0fdf4' : 'white',
+                  color: '#0F2C59',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: '36px'
+                }}
+                value={filterRole}
+                onChange={e => setFilterRole(e.target.value)}
+              >
+                <option value="all">Role: All ({filterCounts.roles.all})</option>
+                {adminActiveTab === 'platform_staff' ? (
+                  <>
+                    <option value="super_admin">Super Admin ({filterCounts.roles.super_admin})</option>
+                    <option value="billing_admin">Billing Admin ({filterCounts.roles.billing_admin})</option>
+                    <option value="support_admin">Support Admin ({filterCounts.roles.support_admin})</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="tenant_admin">Tenant Admin ({filterCounts.roles.tenant_admin})</option>
+                    <option value="staff">Staff Member ({filterCounts.roles.staff})</option>
+                  </>
+                )}
+              </select>
+
+              {/* Plan Filter with live counts */}
+              {adminActiveTab !== 'platform_staff' && (
+                <select
+                  className="form-select"
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    fontSize: '0.825rem',
+                    borderRadius: '8px',
+                    border: filterPlan !== 'all' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
+                    background: filterPlan !== 'all' ? '#f0fdf4' : 'white',
+                    color: '#0F2C59',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    minHeight: '36px'
+                  }}
+                  value={filterPlan}
+                  onChange={e => setFilterPlan(e.target.value)}
+                >
+                  <option value="all">Plan: All Plans ({filterCounts.plans.all})</option>
+                  <option value="solo">Solo ({filterCounts.plans.solo})</option>
+                  <option value="growth">Growth ({filterCounts.plans.growth})</option>
+                  <option value="stay_master">Stay Master ({filterCounts.plans.stay_master})</option>
+                  <option value="free">Free Starter ({filterCounts.plans.free})</option>
+                </select>
+              )}
+
+              {/* Status Filter with live counts */}
+              <select
+                className="form-select"
+                style={{
+                  padding: '0.4rem 0.75rem',
+                  fontSize: '0.825rem',
+                  borderRadius: '8px',
+                  border: filterStatus !== 'all' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
+                  background: filterStatus !== 'all' ? '#f0fdf4' : 'white',
+                  color: '#0F2C59',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: '36px'
+                }}
+                value={filterStatus}
+                onChange={e => setFilterStatus(e.target.value)}
+              >
+                <option value="all">Status: All Statuses ({filterCounts.statuses.all})</option>
+                <option value="active">Active ({filterCounts.statuses.active})</option>
+                <option value="created">Created / Pending ({filterCounts.statuses.created})</option>
+                <option value="cancelled">Cancelled ({filterCounts.statuses.cancelled})</option>
+                <option value="suspended">Suspended / Disabled ({filterCounts.statuses.suspended})</option>
+              </select>
+
+              {/* Environment Filter with live counts */}
+              <select
+                className="form-select"
+                style={{
+                  padding: '0.4rem 0.75rem',
+                  fontSize: '0.825rem',
+                  borderRadius: '8px',
+                  border: filterEnv !== 'all' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
+                  background: filterEnv !== 'all' ? '#f0fdf4' : 'white',
+                  color: '#0F2C59',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  minHeight: '36px'
+                }}
+                value={filterEnv}
+                onChange={e => setFilterEnv(e.target.value)}
+              >
+                <option value="all">Env: All Envs ({filterCounts.envs.all})</option>
+                <option value="LIVE">🔴 Live Financials ({filterCounts.envs.LIVE})</option>
+                <option value="TEST_ONLY">🟣 Test Mode ({filterCounts.envs.TEST_ONLY})</option>
+                <option value="UNKNOWN">⚠️ Unknown Env ({filterCounts.envs.UNKNOWN})</option>
+                <option value="NONE">⚪ No Financials ({filterCounts.envs.NONE})</option>
+              </select>
+
+              {/* Sort By Dropdown */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <ArrowUpDown size={14} style={{ color: '#64748b' }} />
+                <select
+                  className="form-select"
+                  style={{
+                    padding: '0.4rem 0.75rem',
+                    fontSize: '0.825rem',
+                    borderRadius: '8px',
+                    border: sortBy !== 'joined_desc' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
+                    background: sortBy !== 'joined_desc' ? '#f0fdf4' : 'white',
+                    color: '#0F2C59',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    minHeight: '36px'
+                  }}
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value)}
+                >
+                  <option value="joined_desc">Sort: Newest Joined</option>
+                  <option value="joined_asc">Sort: Oldest Joined</option>
+                  <option value="name_asc">Sort: Name (A-Z)</option>
+                  <option value="name_desc">Sort: Name (Z-A)</option>
+                  <option value="bookings_desc">Sort: Most Bookings</option>
+                  <option value="properties_desc">Sort: Most Properties</option>
+                </select>
+              </div>
+
+              {/* Clear All Filters Button */}
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    color: '#dc2626',
+                    background: '#fef2f2',
+                    border: '1px solid #fecaca',
+                    borderRadius: '8px',
+                    cursor: 'pointer'
+                  }}
+                  onClick={resetAllFilters}
+                >
+                  <X size={14} /> Clear All
+                </button>
+              )}
+
+              {/* Result Count Badge */}
+              <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+                Showing <strong style={{ color: '#0F2C59' }}>{filteredAndSortedAccounts.length}</strong> of {totalInScope} accounts
+              </div>
+            </div>
+
+            {/* Active Filter Chips Row */}
+            {hasActiveFilters && (
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Active Filters:</span>
+                {filterRole !== 'all' && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#e0e7ff', color: '#3730a3', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                    Role: {filterRole === 'tenant_admin' ? 'Tenant Admin' : filterRole === 'staff' ? 'Staff' : filterRole}
+                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setFilterRole('all')} />
+                  </span>
+                )}
+                {filterPlan !== 'all' && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#dbeafe', color: '#1e40af', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                    Plan: {filterPlan.toUpperCase()}
+                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setFilterPlan('all')} />
+                  </span>
+                )}
+                {filterStatus !== 'all' && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#fef3c7', color: '#92400e', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                    Status: {filterStatus.toUpperCase()}
+                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setFilterStatus('all')} />
+                  </span>
+                )}
+                {filterEnv !== 'all' && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                    Env: {filterEnv === 'LIVE' ? 'Live Financials' : filterEnv === 'TEST_ONLY' ? 'Test Mode' : filterEnv === 'UNKNOWN' ? 'Unknown Env' : 'No Financials'}
+                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setFilterEnv('all')} />
+                  </span>
+                )}
+                {sortBy !== 'joined_desc' && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#ecfdf5', color: '#065f46', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                    Sort: {sortBy.replace('_', ' ').toUpperCase()}
+                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setSortBy('joined_desc')} />
+                  </span>
+                )}
+                {searchTerm.trim() && (
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#f1f5f9', color: '#475569', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
+                    Search: "{searchTerm}"
+                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setSearchTerm('')} />
+                  </span>
+                )}
+              </div>
+            )}
+
             <div className="table-container" style={{ overflowX: 'auto' }}>
               <table className="table" style={{ width: '100%', minWidth: '1200px', borderCollapse: 'collapse', textAlign: 'left' }}>
                 <thead>
@@ -2189,27 +2632,7 @@ export default function SuperAdmin() {
                   </tr>
                 </thead>
                 <tbody>
-                  {tenants.filter(t => {
-                    const matchesRole = (adminActiveTab === 'platform_staff' 
-                      ? ['super_admin', 'support_admin', 'billing_admin'].includes(t.role)
-                      : ['tenant_admin', 'staff'].includes(t.role)
-                    );
-                    if (!matchesRole) return false;
-
-                    if (adminActiveTab !== 'platform_staff') {
-                      if (tenantSubFilter === 'active' && t.is_archived) return false;
-                      if (tenantSubFilter === 'qa' && (!t.is_disposable_qa || t.is_archived)) return false;
-                      if (tenantSubFilter === 'archived' && !t.is_archived) return false;
-                    }
-
-                    const term = searchTerm.toLowerCase();
-                    return (
-                      t.full_name?.toLowerCase().includes(term) || 
-                      t.email?.toLowerCase().includes(term) ||
-                      t.id?.toLowerCase().includes(term) ||
-                      t.role?.toLowerCase().includes(term)
-                    );
-                  }).map(tenant => (
+                  {filteredAndSortedAccounts.map(tenant => (
                     <tr key={tenant.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s ease', ':hover': { backgroundColor: '#f8fafc' } }}>
                       <td style={{ verticalAlign: 'middle', padding: '1.25rem 0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
@@ -2388,6 +2811,27 @@ export default function SuperAdmin() {
                       </td>
                     </tr>
                   ))}
+                  {filteredAndSortedAccounts.length === 0 && (
+                    <tr>
+                      <td colSpan="7" style={{ textAlign: 'center', padding: '3.5rem 1rem', color: '#64748b' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
+                          <Filter size={36} style={{ color: '#cbd5e1' }} />
+                          <span style={{ fontWeight: 800, fontSize: '1rem', color: '#1e293b' }}>No accounts match the selected filters</span>
+                          <span style={{ fontSize: '0.85rem', color: '#94a3b8' }}>Try adjusting your search query, role, plan, status, or environment filters.</span>
+                          {hasActiveFilters && (
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-outline"
+                              style={{ marginTop: '0.5rem', fontWeight: 700, borderColor: '#cbd5e1', color: '#0F2C59' }}
+                              onClick={resetAllFilters}
+                            >
+                              Reset All Filters
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

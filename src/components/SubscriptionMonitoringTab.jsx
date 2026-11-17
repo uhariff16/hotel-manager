@@ -13,6 +13,7 @@ import {
 import {
   formatINR,
   formatDateStr,
+  normalizePlanName,
   detectSubscriptionDiscrepancies,
   synthesizeHistoricalInventory,
   calculateSubscriptionMetrics
@@ -753,10 +754,7 @@ export default function SubscriptionMonitoringTab({
                           color: item.displayPlan === 'premium' || item.displayPlan === 'stay_master' ? '#92400E' :
                                  item.displayPlan === 'growth' || item.displayPlan === 'pro' ? '#1E40AF' : '#475569'
                         }}>
-                          {item.displayPlan === 'custom_1786983013013' || item.displayPlan === 'solo' ? 'Solo' :
-                           item.displayPlan === 'growth' || item.displayPlan === 'pro' ? 'Growth' :
-                           item.displayPlan === 'premium' || item.displayPlan === 'stay_master' ? 'Stay Master' :
-                           item.displayPlan.toUpperCase()}
+                          {normalizePlanName(item.displayPlan, globalPlans)}
                         </span>
                       </td>
 
@@ -802,21 +800,37 @@ export default function SubscriptionMonitoringTab({
 
                       {/* Recorded Status */}
                       <td style={{ padding: '0.85rem 1rem', verticalAlign: 'middle' }}>
-                        <span style={{
-                          display: 'inline-block',
-                          padding: '0.25rem 0.6rem',
-                          borderRadius: '6px',
-                          fontSize: '0.75rem',
-                          fontWeight: 800,
-                          background: item.status === 'active' ? '#ECFDF5' :
-                                      item.status === 'cancelled' ? '#FEF3C7' :
-                                      item.status === 'historical_invoice' ? '#F1F5F9' : '#F1F5F9',
-                          color: item.status === 'active' ? '#047857' :
-                                 item.status === 'cancelled' ? '#B45309' :
-                                 item.status === 'historical_invoice' ? '#64748B' : '#475569'
-                        }}>
-                          {item.status === 'historical_invoice' ? 'Historical Invoice' : item.status.toUpperCase()}
-                        </span>
+                        {item.discrepancies?.some(d => d.code === 'D-02') ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '0.25rem 0.6rem',
+                            borderRadius: '6px',
+                            fontSize: '0.725rem',
+                            fontWeight: 700,
+                            background: '#F1F5F9',
+                            color: '#64748B',
+                            border: '1px solid #CBD5E1'
+                          }} title="Checkout initiated but never completed. Inert / No billing.">
+                            ABANDONED
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-block',
+                            padding: '0.25rem 0.6rem',
+                            borderRadius: '6px',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            background: item.status === 'active' ? '#ECFDF5' :
+                                        item.status === 'cancelled' ? '#FEF3C7' :
+                                        item.status === 'historical_invoice' ? '#F1F5F9' : '#F1F5F9',
+                            color: item.status === 'active' ? '#047857' :
+                                   item.status === 'cancelled' ? '#B45309' :
+                                   item.status === 'historical_invoice' ? '#64748B' : '#475569'
+                          }}>
+                            {item.status === 'historical_invoice' ? 'Historical Invoice' : item.status.toUpperCase()}
+                          </span>
+                        )}
                       </td>
 
                       {/* Paid Through */}
@@ -1081,36 +1095,41 @@ export default function SubscriptionMonitoringTab({
 
             {/* Modal Body */}
             <div style={{ padding: '1.5rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {/* Discrepancy Alert Banner if present */}
-              {selectedSub.discrepancies.length > 0 && (
-                <div style={{
-                  background: selectedSub.hasActionableDiscrepancy ? '#FEF2F2' : '#F0FDF4',
-                  border: selectedSub.hasActionableDiscrepancy ? '1px solid #FECDD3' : '1px solid #BBF7D0',
-                  borderRadius: '10px',
-                  padding: '1rem 1.25rem'
-                }}>
-                  <div style={{ fontWeight: 800, fontSize: '0.875rem', color: selectedSub.hasActionableDiscrepancy ? '#DC2626' : '#16A34A', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.4rem' }}>
-                    {selectedSub.hasActionableDiscrepancy ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
-                    {selectedSub.hasActionableDiscrepancy ? 'Reconciliation Warnings Detected' : 'Reconciliation Status: Normal'}
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    {selectedSub.discrepancies.map((d, dIdx) => (
-                      <div key={dIdx} style={{ fontSize: '0.8rem', color: d.severity === 'warning' ? '#991B1B' : '#475569' }}>
-                        <strong>[{d.code}] {d.title}:</strong> {d.description}
+              {/* Discrepancy Health & Alert Banner */}
+              {(() => {
+                const actionable = selectedSub.discrepancies.filter(d => d.severity === 'warning' || d.severity === 'error');
+                return (
+                  <div style={{
+                    background: actionable.length > 0 ? '#FEF2F2' : '#F0FDF4',
+                    border: actionable.length > 0 ? '1px solid #FECDD3' : '1px solid #BBF7D0',
+                    borderRadius: '10px',
+                    padding: '1rem 1.25rem'
+                  }}>
+                    <div style={{ fontWeight: 800, fontSize: '0.875rem', color: actionable.length > 0 ? '#DC2626' : '#16A34A', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: actionable.length > 0 ? '0.4rem' : '0' }}>
+                      {actionable.length > 0 ? <AlertTriangle size={16} /> : <CheckCircle size={16} />}
+                      {actionable.length > 0 ? `Reconciliation Warnings Detected (${actionable.length})` : 'Reconciliation Status: Normal & Verified'}
+                    </div>
+                    {actionable.length > 0 && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.35rem' }}>
+                        {actionable.map((d, dIdx) => (
+                          <div key={dIdx} style={{ fontSize: '0.8rem', color: '#991B1B' }}>
+                            <strong>[{d.code}] {d.title}:</strong> {d.description}
+                          </div>
+                        ))}
                       </div>
-                    ))}
+                    )}
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
-              {/* 1. Tenant Information */}
+              {/* 1. Tenant & Property Information */}
               <div style={{ border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1.1rem', background: '#FFFFFF' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <User size={14} /> Tenant Identity
+                  <User size={14} /> Tenant Identity & Property
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.85rem' }}>
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Tenant / Business Name</span>
+                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Subscriber / Business Name</span>
                     <strong style={{ color: '#0F2C59' }}>{selectedSub.tenant?.full_name || 'Unmapped'}</strong>
                   </div>
                   <div>
@@ -1118,12 +1137,16 @@ export default function SubscriptionMonitoringTab({
                     <strong style={{ color: '#0F2C59' }}>{selectedSub.tenant?.email || '—'}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Tenant UUID</span>
-                    <span style={{ fontFamily: 'monospace', fontSize: '0.775rem', color: '#475569' }}>{selectedSub.tenant_id || '—'}</span>
+                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Associated Property</span>
+                    <strong style={{ color: '#0F2C59' }}>
+                      {selectedSub.tenantResorts && selectedSub.tenantResorts.length > 0 ? selectedSub.tenantResorts.join(', ') : 'None registered'}
+                    </strong>
                   </div>
                   <div>
                     <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Configured Plan / Role</span>
-                    <strong style={{ color: '#0F2C59' }}>{selectedSub.tenant?.plan_type || 'free'} ({selectedSub.tenant?.role || 'tenant_admin'})</strong>
+                    <strong style={{ color: '#0F2C59' }}>
+                      {normalizePlanName(selectedSub.tenant?.plan_type, globalPlans)} ({selectedSub.tenant?.role === 'tenant_admin' ? 'Tenant Admin' : (selectedSub.tenant?.role === 'super_admin' ? 'Super Admin' : (selectedSub.tenant?.role === 'billing_admin' ? 'Billing Admin' : selectedSub.tenant?.role || 'User'))})
+                    </strong>
                   </div>
                 </div>
               </div>
@@ -1131,16 +1154,28 @@ export default function SubscriptionMonitoringTab({
               {/* 2. Subscription Information */}
               <div style={{ border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1.1rem', background: '#FFFFFF' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <CreditCard size={14} /> Subscription Details
+                  <CreditCard size={14} /> Subscription Details & Overview
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.85rem' }}>
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Razorpay Subscription ID</span>
-                    <span style={{ fontFamily: 'monospace', fontWeight: 700, color: '#0F2C59' }}>{selectedSub.razorpay_subscription_id || '—'}</span>
+                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Subscribed Plan</span>
+                    <strong style={{ color: '#0F2C59' }}>
+                      {normalizePlanName(selectedSub.staypilot_plan_type || selectedSub.plan_type, globalPlans)}
+                    </strong>
                   </div>
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Razorpay Customer ID</span>
-                    <span style={{ fontFamily: 'monospace', color: '#475569' }}>{selectedSub.razorpay_customer_id || '—'}</span>
+                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Entitlement Source</span>
+                    <span style={{
+                      display: 'inline-block',
+                      fontSize: '0.75rem',
+                      fontWeight: 800,
+                      padding: '0.15rem 0.5rem',
+                      borderRadius: '4px',
+                      background: selectedSub.status === 'active' ? '#ECFDF5' : selectedSub.status === 'cancelled' && selectedSub.entitlement?.isPaidThrough ? '#FEF3C7' : '#F1F5F9',
+                      color: selectedSub.status === 'active' ? '#065F46' : selectedSub.status === 'cancelled' && selectedSub.entitlement?.isPaidThrough ? '#92400E' : '#64748B'
+                    }}>
+                      {selectedSub.status === 'active' ? 'Active Entitlement' : selectedSub.status === 'cancelled' && selectedSub.entitlement?.isPaidThrough ? 'Paid Grace Access' : (['created', 'pending'].includes(selectedSub.status) ? 'Abandoned Checkout (Inert)' : 'Expired / Inactive')}
+                    </span>
                   </div>
                   <div>
                     <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Recorded Status</span>
@@ -1176,7 +1211,7 @@ export default function SubscriptionMonitoringTab({
                   </div>
 
                   {selectedSub.subPayments.length > 0 ? (
-                    <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: selectedSub.subInvoices.length > 0 ? '0.75rem' : '0' }}>
                       {selectedSub.subPayments.map((p, pIdx) => (
                         <div key={pIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
                           <div>
@@ -1184,20 +1219,81 @@ export default function SubscriptionMonitoringTab({
                             <span style={{ color: '#64748B', marginLeft: '0.5rem' }}>({formatDateStr(p.created_at)})</span>
                           </div>
                           <div>
-                            <strong style={{ color: '#059669' }}>{formatINR(p.amount)}</strong>
+                            <strong style={{ color: '#059669' }}>{formatINR(p.amount, true)}</strong>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div style={{ fontSize: '0.8rem', color: '#94A3B8' }}>
+                    <div style={{ fontSize: '0.8rem', color: '#94A3B8', marginBottom: selectedSub.subInvoices.length > 0 ? '0.75rem' : '0' }}>
                       No payment records found for this subscription.
+                    </div>
+                  )}
+
+                  {selectedSub.subInvoices.length > 0 && (
+                    <div style={{ background: '#F8FAFC', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      {selectedSub.subInvoices.map((inv, invIdx) => (
+                        <div key={invIdx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem' }}>
+                          <div>
+                            <span style={{ fontFamily: 'monospace', color: '#0F2C59', fontWeight: 700 }}>{inv.invoice_number}</span>
+                            <span style={{ color: '#64748B', marginLeft: '0.5rem' }}>({formatDateStr(inv.issued_at || inv.created_at)})</span>
+                          </div>
+                          <div>
+                            <strong style={{ color: '#0F2C59' }}>{formatINR(inv.total_amount_paise, true)}</strong>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
               </div>
 
-              {/* 4. Audit & Verification Policy Note */}
+              {/* 4. Audit Advisories & Operational Notes */}
+              {(() => {
+                const informational = selectedSub.discrepancies.filter(d => d.severity === 'info');
+                if (informational.length === 0) return null;
+                return (
+                  <div style={{ border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1.1rem', background: '#F8FAFC' }}>
+                    <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <Info size={14} /> Audit Trail & System Notes
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      {informational.map((d, dIdx) => (
+                        <div key={dIdx} style={{ fontSize: '0.8rem', color: '#475569' }}>
+                          <span style={{ fontWeight: 700, color: '#334155' }}>[{d.code}] {d.title}:</span> {d.description}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* 5. Technical Identifiers (Audit References) */}
+              <div style={{ border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1rem', background: '#FFFFFF' }}>
+                <div style={{ fontSize: '0.775rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.5rem' }}>
+                  Technical References
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.5rem', fontSize: '0.775rem', fontFamily: 'monospace' }}>
+                  <div>
+                    <span style={{ color: '#94A3B8', display: 'block', fontFamily: 'sans-serif', fontSize: '0.7rem' }}>Subscription ID</span>
+                    <span style={{ color: '#0F2C59' }}>{selectedSub.razorpay_subscription_id || '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#94A3B8', display: 'block', fontFamily: 'sans-serif', fontSize: '0.7rem' }}>Customer ID</span>
+                    <span style={{ color: '#0F2C59' }}>{selectedSub.razorpay_customer_id || '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#94A3B8', display: 'block', fontFamily: 'sans-serif', fontSize: '0.7rem' }}>Tenant UUID</span>
+                    <span style={{ color: '#0F2C59' }}>{selectedSub.tenant_id || '—'}</span>
+                  </div>
+                  <div>
+                    <span style={{ color: '#94A3B8', display: 'block', fontFamily: 'sans-serif', fontSize: '0.7rem' }}>Plan ID</span>
+                    <span style={{ color: '#0F2C59' }}>{selectedSub.razorpay_plan_id || '—'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* 6. Read-Only Notice */}
               <div style={{ background: '#F8FAFC', borderRadius: '10px', padding: '0.85rem 1rem', border: '1px solid #E2E8F0', fontSize: '0.775rem', color: '#64748B' }}>
                 <strong>Audit Boundary Notice:</strong> This inspection panel operates in strict read-only mode. No subscription mutation, cancellation, resumption, or payment collection actions are permitted from this screen.
               </div>
