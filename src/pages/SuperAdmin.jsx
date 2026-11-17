@@ -2,12 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, ShieldCheck, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send, FileText, Info, Building2 } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, ShieldCheck, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send, FileText, Info, Building2, CreditCard } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import WebsitePricingTab from '../components/WebsitePricingTab';
 import WebsiteManagerTab from '../components/WebsiteManagerTab';
 import SupportInbox from '../components/SupportInbox';
+import SubscriptionMonitoringTab from '../components/SubscriptionMonitoringTab';
 import { normalizePlanReports } from '../components/PlanComparison';
 import {
   DEFAULT_TRADE_NAME, TRADE_NAME_MAX_LENGTH, GST_ACTIVATION_RELEASE_APPROVED,
@@ -1837,6 +1838,7 @@ export default function SuperAdmin() {
           { id: 'overview', label: 'Dashboard Overview', icon: <TrendingUp size={16} />, roles: ['super_admin', 'billing_admin'] },
           { id: 'accounts', label: `Tenants & Staff (${tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role)).length})`, icon: <Users size={16} />, roles: ['super_admin'] },
           { id: 'platform_staff', label: `Platform Staff (${tenants.filter(t => ['super_admin', 'support_admin', 'billing_admin'].includes(t.role)).length})`, icon: <ShieldAlert size={16} />, roles: ['super_admin'] },
+          { id: 'subscriptions', label: 'Subscriptions', icon: <CreditCard size={16} />, roles: ['super_admin', 'billing_admin'] },
           { id: 'plans', label: 'Subscription Plans', icon: <DollarSign size={16} />, roles: ['super_admin', 'billing_admin'] },
           { id: 'settings', label: 'Platform Settings', icon: <Shield size={16} />, roles: ['super_admin', 'billing_admin'] },
           { id: 'emails', label: 'Email Templates', icon: <Mail size={16} />, roles: ['super_admin'] },
@@ -2390,6 +2392,16 @@ export default function SuperAdmin() {
               </table>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* TAB: SUBSCRIPTION MONITORING (STAGE 12B.2) */}
+      {adminActiveTab === 'subscriptions' && (
+        <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
+          <SubscriptionMonitoringTab
+            profile={profile}
+            globalPlans={pricingConfig}
+          />
         </div>
       )}
 

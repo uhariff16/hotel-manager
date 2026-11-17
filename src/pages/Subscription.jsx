@@ -4,6 +4,7 @@ import { Check, Zap, Crown, CreditCard, Shield, X, Lock, Sparkles, ArrowRight, F
 import { supabase } from '../lib/supabase';
 import { createPortal } from 'react-dom';
 import { getTrialPresentationState } from '../lib/trial';
+import { resolveEffectiveSubscription } from '../lib/subscriptionEntitlement';
 import { resolveEffectivePlan } from '../utils/planEntitlements';
 import { useLocation, useNavigate } from 'react-router-dom';
 import PlanComparison, { getSanitizedFeatures } from '../components/PlanComparison';
@@ -137,9 +138,9 @@ export default function Subscription() {
         return;
       }
 
-      if (activeSubscription?.status === 'active') {
+      if (trialState.isPaid || activeSubscription?.status === 'active') {
         clearCheckoutIntent();
-        const activePlanName = getPlanName(activeSubscription.staypilot_plan_type);
+        const activePlanName = getPlanName(activeSubscription?.staypilot_plan_type || profile?.plan_type);
         alert(`You already have an active subscription for ${activePlanName}. Subscriptions can be managed below.`);
         navigate('/subscription', { replace: true });
         return;
@@ -151,7 +152,7 @@ export default function Subscription() {
     };
 
     initAutoCheckout();
-  }, [checkoutPlan, profile?.id, profile?.role, profile?.subscription_status, globalPlans, activeSubscription, subDataLoading]);
+  }, [checkoutPlan, profile?.id, profile?.role, profile?.subscription_status, globalPlans, activeSubscription, subDataLoading, trialState.isPaid]);
 
   useEffect(() => {
     const handleOpenCheckoutEvent = (e) => {
@@ -165,17 +166,22 @@ export default function Subscription() {
   const fetchSubscriptionData = async () => {
      setSubDataLoading(true);
      try {
-       const { data: subData } = await supabase.from('saas_subscriptions')
+       const tenantId = profile?.role === 'staff' ? (profile?.tenant_id || profile?.id) : profile?.id;
+       const { data: subsData, error: subsError } = await supabase.from('saas_subscriptions')
          .select('*')
-         .eq('tenant_id', profile.id)
-         .eq('status', 'active')
+         .eq('tenant_id', tenantId)
+         .in('status', ['active', 'cancelled', 'created', 'halted'])
          .order('created_at', { ascending: false })
-         .limit(1)
-         .maybeSingle();
-       setActiveSubscription(subData || null);
+         .limit(10);
+
+       if (!subsError && subsData && subsData.length > 0) {
+         setActiveSubscription(resolveEffectiveSubscription(subsData));
+       } else {
+         setActiveSubscription(null);
+       }
 
        const { data: payData } = await supabase.from('saas_payments')
-         .select('*, saas_invoices(*)').eq('tenant_id', profile.id).order('created_at', { ascending: false });
+         .select('*, saas_invoices(*)').eq('tenant_id', tenantId).order('created_at', { ascending: false });
        if (payData) setPaymentHistory(payData);
      } catch (e) {
        console.error("Failed to load subscription data", e);
@@ -699,9 +705,14 @@ export default function Subscription() {
               )}
             </div>
 
-            {activeSubscription?.status === 'active' && activeSubscription?.cancel_at_period_end && (
+            {trialState.isCancelledPaidThrough && (
               <div style={{ marginTop: '0.75rem', fontSize: '0.825rem', color: '#d97706', background: 'rgba(245, 158, 11, 0.08)', padding: '0.5rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span>Your subscription is scheduled for cancellation. Full paid features remain active through {activeSubscription.current_period_end ? new Date(activeSubscription.current_period_end).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : 'the end of your current billing period'} and automatic renewal has stopped.</span>
+                <span>Your subscription has been cancelled. Full paid features remain active through {trialState.paidPeriodEndFormatted || 'the end of your current billing period'} and automatic renewal has stopped.</span>
+              </div>
+            )}
+            {trialState.isScheduledCancellation && !trialState.isCancelledPaidThrough && (
+              <div style={{ marginTop: '0.75rem', fontSize: '0.825rem', color: '#d97706', background: 'rgba(245, 158, 11, 0.08)', padding: '0.5rem 0.85rem', borderRadius: '8px', border: '1px solid rgba(245, 158, 11, 0.2)', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+                <span>Your subscription is scheduled for cancellation. Full paid features remain active through {trialState.paidPeriodEndFormatted || 'the end of your current billing period'} and automatic renewal has stopped.</span>
               </div>
             )}
           </div>
@@ -712,7 +723,7 @@ export default function Subscription() {
               className="btn btn-outline"
               style={{ padding: '0.6rem 1.1rem', fontSize: '0.875rem', fontWeight: 700, borderRadius: '8px', minHeight: '40px', textDecoration: 'none' }}
             >
-              {activeSubscription?.status === 'active' ? 'Manage Plan' : 'Explore Plans'}
+              {trialState.isPaid ? 'Manage Plan' : 'Explore Plans'}
             </a>
             {hasBillingHistory && (
               <a 
@@ -1100,7 +1111,7 @@ export default function Subscription() {
           <span><strong>Secure Payments:</strong> Transactions are encrypted with 256-bit SSL security.</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-          {activeSubscription && !activeSubscription.cancel_at_period_end && (
+          {activeSubscription && activeSubscription.status === 'active' && !activeSubscription.cancel_at_period_end && (
             <button
               onClick={handleCancelSubscription}
               disabled={loading === 'cancel'}

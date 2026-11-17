@@ -3,6 +3,7 @@ import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { ClipboardList, LayoutDashboard, Home, CalendarDays, Wallet, Settings as SettingsIcon, BookOpenCheck, FileText, Menu, X, Hotel, LogOut, CreditCard, ShieldAlert, Users, TrendingUp, Activity, Database, LifeBuoy, AlertCircle } from 'lucide-react';
 import { useSettingsStore } from '../lib/store';
 import { getTrialPresentationState } from '../lib/trial';
+import { resolveEffectiveSubscription } from '../lib/subscriptionEntitlement';
 import { Capacitor } from '@capacitor/core';
 
 import { supabase } from '../lib/supabase';
@@ -42,15 +43,19 @@ export default function AppLayout() {
           if (adminData) setTenantAdminData(adminData);
         }
         if (tenantId) {
-          const { data: subData } = await supabase
+          const { data: subsData, error: subsError } = await supabase
             .from('saas_subscriptions')
             .select('*')
             .eq('tenant_id', tenantId)
-            .eq('status', 'active')
+            .in('status', ['active', 'cancelled', 'created', 'halted'])
             .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          if (subData) setActiveSubscription(subData);
+            .limit(10);
+          if (!subsError && subsData && subsData.length > 0) {
+            const effectiveSub = resolveEffectiveSubscription(subsData);
+            setActiveSubscription(effectiveSub);
+          } else {
+            setActiveSubscription(null);
+          }
         }
       } catch (e) {
         console.error('Failed to load trial context in layout:', e);

@@ -1,4 +1,5 @@
 import { format } from 'date-fns';
+import { evaluateSubscriptionEntitlement } from './subscriptionEntitlement.js';
 
 /**
  * PURE presentation helper for trial & subscription lifecycle state.
@@ -32,7 +33,11 @@ export function getTrialPresentationState({ profile, activeSubscription, globalP
       priceText: '₹0',
       offerPriceText: '₹0',
       effectiveMonthlyPrice: 0,
-      effectivePriceText: '₹0'
+      effectivePriceText: '₹0',
+      subEntitlement: evaluateSubscriptionEntitlement({ subscription: null }),
+      isCancelledPaidThrough: false,
+      isScheduledCancellation: false,
+      paidPeriodEndFormatted: ''
     };
   }
 
@@ -48,8 +53,13 @@ export function getTrialPresentationState({ profile, activeSubscription, globalP
   const isLegacy = effectiveProfile.is_legacy_account === true || profile.is_legacy_account === true;
   const isSuspended = profile.subscription_status === 'suspended' || effectiveProfile.subscription_status === 'suspended';
 
-  // Paid state is determined by active saas_subscriptions record
-  const isPaid = activeSubscription?.status === 'active';
+  // Paid state is determined by verified subscription entitlement evaluator (Stage 12B.1 Hardening)
+  // Grants paid access to active subscriptions and cancelled subscriptions within their verified paid-through period
+  const subEntitlement = evaluateSubscriptionEntitlement({
+    subscription: activeSubscription,
+    evaluationTime: new Date()
+  });
+  const isPaid = subEntitlement.hasPaidEntitlement;
 
   // Plan metadata from global_settings.pricing
   const planConfig = globalPlans?.[planKey] || {};
@@ -131,6 +141,10 @@ export function getTrialPresentationState({ profile, activeSubscription, globalP
     priceText,
     offerPriceText,
     effectiveMonthlyPrice,
-    effectivePriceText
+    effectivePriceText,
+    subEntitlement,
+    isCancelledPaidThrough: subEntitlement.isCancelledPaidThrough,
+    isScheduledCancellation: subEntitlement.isScheduledCancellation,
+    paidPeriodEndFormatted: subEntitlement.periodEnd ? format(subEntitlement.periodEnd, 'dd MMM yyyy') : ''
   };
 }
