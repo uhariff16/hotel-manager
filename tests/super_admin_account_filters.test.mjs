@@ -209,4 +209,33 @@ describe('SuperAdmin Account Filters & Betterment Suite', () => {
     assert.equal(sortedByBookingsDesc[0].id, 'user_1');
   });
 
+  test('Test 8: Metric Summary Cards in SuperAdmin.jsx', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const content = fs.readFileSync(path.resolve('src/pages/SuperAdmin.jsx'), 'utf8');
+
+    assert.ok(content.includes('Metric Summary Cards Grid'), 'SuperAdmin must include Metric Summary Cards Grid');
+    assert.ok(content.includes('Tenant Admins'), 'Must include Tenant Admins card');
+    assert.ok(content.includes('Staff Members'), 'Must include Staff Members card');
+    assert.ok(content.includes('Active Access'), 'Must include Active Access card');
+    assert.ok(content.includes('Super Admins'), 'Must include Super Admins card');
+    assert.ok(content.includes('Billing Admins'), 'Must include Billing Admins card');
+    assert.ok(content.includes('Support Admins'), 'Must include Support Admins card');
+  });
+
+  test('Test 9: Streamlined Horizontal Toolbar & Simplified Filters in SuperAdmin.jsx', async () => {
+    const fs = await import('fs');
+    const path = await import('path');
+    const content = fs.readFileSync(path.resolve('src/pages/SuperAdmin.jsx'), 'utf8');
+
+    // Verify unified horizontal toolbar elements
+    assert.ok(content.includes('accounts-search-input'), 'Must include search input matching subscription style');
+    assert.ok(content.includes('accounts-role-filter'), 'Must include role filter dropdown');
+    assert.ok(content.includes('accounts-plan-filter'), 'Must include plan filter dropdown');
+    assert.ok(content.includes('accounts-status-filter'), 'Must include status filter dropdown');
+    assert.ok(content.includes('accounts-sort-select'), 'Must include sort select dropdown');
+    assert.ok(content.includes('accounts-reset-filters-btn'), 'Must include reset filters button');
+    assert.ok(content.includes('handleExportAccountsToExcel'), 'Must include clean export to excel function');
+  });
+
 });

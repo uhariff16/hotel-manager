@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import { createClient } from '@supabase/supabase-js';
 import { useSettingsStore } from '../lib/store';
-import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, ShieldCheck, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send, FileText, Info, Building2, CreditCard, Filter, X, ArrowUpDown } from 'lucide-react';
+import { Users, Hotel, TrendingUp, DollarSign, Search, ShieldAlert, ShieldCheck, CheckCircle, XCircle, UserPlus, Trash2, Mail, Lock, Shield, MessageCircle, MessageSquare, Plus, ArrowUp, ArrowDown, LayoutDashboard, Save, Eye, RefreshCw, RotateCcw, Settings, MoreHorizontal, Calendar, Briefcase, Phone, Download, Upload, AlertCircle, Send, FileText, Info, Building2, CreditCard, Filter, X, ArrowUpDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import WebsitePricingTab from '../components/WebsitePricingTab';
@@ -1954,6 +1954,42 @@ export default function SuperAdmin() {
     });
   }, [tabAccounts, filterRole, filterPlan, filterStatus, filterEnv, searchTerm, sortBy, pricingConfig, adminActiveTab]);
 
+  const handleExportAccountsToExcel = () => {
+    const headers = ['ID', 'Full Name', 'Email', 'Role', 'Owner (Tenant)', 'Properties (Names)', 'Property Count', 'Booking Count', 'Plan', 'Status', 'Joined Date'];
+    const rows = filteredAndSortedAccounts.map(t => [
+      t.id,
+      t.full_name,
+      t.email,
+      t.role === 'tenant_admin' ? 'Tenant Admin' : t.role === 'staff' ? 'Staff' : t.role,
+      t.role === 'staff' ? t.ownerName : 'N/A',
+      (t.propertyNames || []).join('; '),
+      t.propertyCount || 0,
+      t.bookingCount || 0,
+      pricingConfig[t.plan_type]?.name || t.plan_type || 'Free Starter',
+      (t.effectiveSubStatus || t.subscription_status || 'active').toUpperCase(),
+      t.created_at ? new Date(t.created_at).toLocaleDateString('en-CA') : ''
+    ]);
+
+    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
+    worksheet['!cols'] = [
+      { wch: 38 }, // ID
+      { wch: 25 }, // Full Name
+      { wch: 30 }, // Email
+      { wch: 15 }, // Role
+      { wch: 20 }, // Owner
+      { wch: 40 }, // Properties
+      { wch: 15 }, // Property Count
+      { wch: 15 }, // Booking Count
+      { wch: 20 }, // Plan
+      { wch: 10 }, // Status
+      { wch: 15 }  // Joined Date
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Accounts");
+    XLSX.writeFile(workbook, adminActiveTab === 'platform_staff' ? "staypilot_platform_staff.xlsx" : "staypilot_accounts.xlsx");
+  };
+
   if (!profile) return null;
   
   const isPlatformAdminRender = ['super_admin', 'support_admin', 'billing_admin'].includes(profile?.role);
@@ -2126,7 +2162,7 @@ export default function SuperAdmin() {
         <div style={{ animation: 'fadeIn 0.2s ease-out' }}>
           
           {/* Header Controls for accounts list */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <h3 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
                 {adminActiveTab === 'platform_staff' ? 'Platform Admin Accounts' : 'Tenant & Staff Accounts'}
@@ -2135,6 +2171,252 @@ export default function SuperAdmin() {
             <button className="btn btn-primary" onClick={() => setShowUserForm(!showUserForm)}>
               <UserPlus size={20} /> {showUserForm ? 'Hide Creator' : 'Create New Account'}
             </button>
+          </div>
+
+          {/* Metric Summary Cards Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+            gap: '1rem',
+            marginBottom: '1.5rem'
+          }}>
+            {adminActiveTab === 'platform_staff' ? (
+              <>
+                {/* Super Admins */}
+                <div
+                  onClick={() => setFilterRole(filterRole === 'super_admin' ? 'all' : 'super_admin')}
+                  style={{
+                    background: '#FFFFFF',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    border: filterRole === 'super_admin' ? '2px solid #7C3AED' : '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#7C3AED', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Super Admins
+                    </span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#F3E8FF', color: '#7C3AED', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <ShieldCheck size={18} />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#7C3AED', lineHeight: 1.1 }}>
+                    {filterCounts.roles.super_admin}
+                  </div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.775rem', color: '#64748B' }}>
+                    Full platform root access
+                  </div>
+                </div>
+
+                {/* Billing Admins */}
+                <div
+                  onClick={() => setFilterRole(filterRole === 'billing_admin' ? 'all' : 'billing_admin')}
+                  style={{
+                    background: '#FFFFFF',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    border: filterRole === 'billing_admin' ? '2px solid #2563EB' : '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Billing Admins
+                    </span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#DBEAFE', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CreditCard size={18} />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#2563EB', lineHeight: 1.1 }}>
+                    {filterCounts.roles.billing_admin}
+                  </div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.775rem', color: '#64748B' }}>
+                    Subscription & monitoring
+                  </div>
+                </div>
+
+                {/* Support Admins */}
+                <div
+                  onClick={() => setFilterRole(filterRole === 'support_admin' ? 'all' : 'support_admin')}
+                  style={{
+                    background: '#FFFFFF',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    border: filterRole === 'support_admin' ? '2px solid #059669' : '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Support Admins
+                    </span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#DCFCE7', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <MessageSquare size={18} />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#059669', lineHeight: 1.1 }}>
+                    {filterCounts.roles.support_admin}
+                  </div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.775rem', color: '#64748B' }}>
+                    Help desk moderators
+                  </div>
+                </div>
+
+                {/* Total Platform Team */}
+                <div
+                  onClick={() => setFilterRole('all')}
+                  style={{
+                    background: '#FFFFFF',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    border: filterRole === 'all' && !searchTerm ? '2px solid #0F2C59' : '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F2C59', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Total Team
+                    </span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EEF2F6', color: '#0F2C59', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Users size={18} />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#0F2C59', lineHeight: 1.1 }}>
+                    {filterCounts.roles.all}
+                  </div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.775rem', color: '#64748B' }}>
+                    Total platform staff
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Tenant Admins */}
+                <div
+                  onClick={() => setFilterRole(filterRole === 'tenant_admin' ? 'all' : 'tenant_admin')}
+                  style={{
+                    background: '#FFFFFF',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    border: filterRole === 'tenant_admin' ? '2px solid #0F2C59' : '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0F2C59', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Tenant Admins
+                    </span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#EEF2F6', color: '#0F2C59', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Hotel size={18} />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#0F2C59', lineHeight: 1.1 }}>
+                    {filterCounts.roles.tenant_admin}
+                  </div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.775rem', color: '#64748B' }}>
+                    Property owner accounts
+                  </div>
+                </div>
+
+                {/* Staff Members */}
+                <div
+                  onClick={() => setFilterRole(filterRole === 'staff' ? 'all' : 'staff')}
+                  style={{
+                    background: '#FFFFFF',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    border: filterRole === 'staff' ? '2px solid #2563EB' : '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#2563EB', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Staff Members
+                    </span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#DBEAFE', color: '#2563EB', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Users size={18} />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#2563EB', lineHeight: 1.1 }}>
+                    {filterCounts.roles.staff}
+                  </div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.775rem', color: '#64748B' }}>
+                    Operational staff accounts
+                  </div>
+                </div>
+
+                {/* Active Access */}
+                <div
+                  onClick={() => setFilterStatus(filterStatus === 'active' ? 'all' : 'active')}
+                  style={{
+                    background: '#FFFFFF',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    border: filterStatus === 'active' ? '2px solid #059669' : '1px solid #E2E8F0',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Active Access
+                    </span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#DCFCE7', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <CheckCircle size={18} />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: '#059669', lineHeight: 1.1 }}>
+                    {filterCounts.statuses.active}
+                  </div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.775rem', color: '#64748B' }}>
+                    Paid, trial & legacy active
+                  </div>
+                </div>
+
+                {/* Disabled / Expired */}
+                <div
+                  onClick={() => setFilterStatus(filterStatus === 'suspended' ? 'all' : 'suspended')}
+                  style={{
+                    background: '#FFFFFF',
+                    padding: '1.25rem',
+                    borderRadius: '12px',
+                    border: filterStatus === 'suspended' ? '2px solid #DC2626' : (filterCounts.statuses.suspended > 0 ? '1px solid #FCA5A5' : '1px solid #E2E8F0'),
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: filterCounts.statuses.suspended > 0 ? '#DC2626' : '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                      Disabled / Expired
+                    </span>
+                    <span style={{ width: '32px', height: '32px', borderRadius: '8px', background: filterCounts.statuses.suspended > 0 ? '#FEE2E2' : '#F1F5F9', color: filterCounts.statuses.suspended > 0 ? '#DC2626' : '#94A3B8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <AlertCircle size={18} />
+                    </span>
+                  </div>
+                  <div style={{ fontSize: '2rem', fontWeight: 900, color: filterCounts.statuses.suspended > 0 ? '#DC2626' : '#0F2C59', lineHeight: 1.1 }}>
+                    {filterCounts.statuses.suspended}
+                  </div>
+                  <div style={{ marginTop: '0.4rem', fontSize: '0.775rem', color: filterCounts.statuses.suspended > 0 ? '#DC2626' : '#64748B' }}>
+                    {filterCounts.statuses.suspended > 0 ? 'Trial expired or suspended' : 'Zero accounts disabled'}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Account Creator Form Card */}
@@ -2211,224 +2493,121 @@ export default function SuperAdmin() {
             </div>
           )}
 
-          {/* Accounts Search & List Table Card */}
-          <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <h4 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif" }}>
-                {adminActiveTab === 'platform_staff' ? 'Platform Team' : 'Registered Accounts List'}
-              </h4>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <div style={{ position: 'relative' }}>
-                  <Search size={18} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-                  <input 
-                    type="text" 
-                    className="form-input" 
-                    placeholder="Search tenants or staff..." 
-                    style={{ paddingLeft: '2.5rem', width: '300px' }} 
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                </div>
-                <button 
-                  className="btn btn-outline" 
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: 600, color: '#0F2C59', borderColor: '#cbd5e1' }}
-                  onClick={() => {
-                    const headers = ['ID', 'Full Name', 'Email', 'Role', 'Owner (Tenant)', 'Properties (Names)', 'Property Count', 'Booking Count', 'Plan', 'Status', 'Joined Date'];
-                    const rows = filteredAndSortedAccounts.map(t => [
-                      t.id,
-                      t.full_name,
-                      t.email,
-                      t.role === 'tenant_admin' ? 'Tenant Admin' : t.role === 'staff' ? 'Staff' : t.role,
-                      t.role === 'staff' ? t.ownerName : 'N/A',
-                      (t.propertyNames || []).join('; '),
-                      t.propertyCount || 0,
-                      t.bookingCount || 0,
-                      pricingConfig[t.plan_type]?.name || t.plan_type || 'Free Starter',
-                      (t.effectiveSubStatus || t.subscription_status || 'active').toUpperCase(),
-                      t.created_at ? new Date(t.created_at).toLocaleDateString('en-CA') : ''
-                    ]);
-
-                    const worksheet = XLSX.utils.aoa_to_sheet([headers, ...rows]);
-                    
-                    // Set column widths to prevent #### for dates and long IDs
-                    worksheet['!cols'] = [
-                      { wch: 38 }, // ID
-                      { wch: 25 }, // Full Name
-                      { wch: 30 }, // Email
-                      { wch: 15 }, // Role
-                      { wch: 20 }, // Owner
-                      { wch: 40 }, // Properties
-                      { wch: 15 }, // Property Count
-                      { wch: 15 }, // Booking Count
-                      { wch: 20 }, // Plan
-                      { wch: 10 }, // Status
-                      { wch: 15 }  // Joined Date
-                    ];
-
-                    const workbook = XLSX.utils.book_new();
-                    XLSX.utils.book_append_sheet(workbook, worksheet, "Accounts");
-                    XLSX.writeFile(workbook, "staypilot_accounts.xlsx");
-                  }}
-                >
-                  <Download size={16} /> Export to Excel
-                </button>
-              </div>
+          {/* Sub-tab selection for Tenants & Staff */}
+          {adminActiveTab !== 'platform_staff' && (
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  background: tenantSubFilter === 'active' ? '#0F2C59' : '#FFFFFF',
+                  color: tenantSubFilter === 'active' ? '#FFFFFF' : '#475569',
+                  border: tenantSubFilter === 'active' ? '1px solid #0F2C59' : '1px solid #CBD5E1',
+                  fontWeight: 700,
+                  borderRadius: '20px',
+                  padding: '0.4rem 1rem',
+                  fontSize: '0.825rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                }}
+                onClick={() => setTenantSubFilter('active')}
+              >
+                Active Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && !t.is_archived).length})
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  background: tenantSubFilter === 'qa' ? '#B45309' : '#FFFFFF',
+                  color: tenantSubFilter === 'qa' ? '#FFFFFF' : '#475569',
+                  border: tenantSubFilter === 'qa' ? '1px solid #B45309' : '1px solid #CBD5E1',
+                  fontWeight: 700,
+                  borderRadius: '20px',
+                  padding: '0.4rem 1rem',
+                  fontSize: '0.825rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                }}
+                onClick={() => setTenantSubFilter('qa')}
+              >
+                🧪 QA Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && t.is_disposable_qa && !t.is_archived).length})
+              </button>
+              <button
+                type="button"
+                className="btn btn-sm"
+                style={{
+                  background: tenantSubFilter === 'archived' ? '#475569' : '#FFFFFF',
+                  color: tenantSubFilter === 'archived' ? '#FFFFFF' : '#475569',
+                  border: tenantSubFilter === 'archived' ? '1px solid #475569' : '1px solid #CBD5E1',
+                  fontWeight: 700,
+                  borderRadius: '20px',
+                  padding: '0.4rem 1rem',
+                  fontSize: '0.825rem',
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
+                }}
+                onClick={() => setTenantSubFilter('archived')}
+              >
+                🗄️ Archived Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && t.is_archived).length})
+              </button>
             </div>
-            
-            {adminActiveTab !== 'platform_staff' && (
-              <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.25rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.75rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    background: tenantSubFilter === 'active' ? '#0F2C59' : '#f1f5f9',
-                    color: tenantSubFilter === 'active' ? '#ffffff' : '#475569',
-                    border: 'none',
-                    fontWeight: 700,
-                    borderRadius: '20px',
-                    padding: '0.35rem 0.9rem',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => setTenantSubFilter('active')}
-                >
-                  Active Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && !t.is_archived).length})
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    background: tenantSubFilter === 'qa' ? '#b45309' : '#f1f5f9',
-                    color: tenantSubFilter === 'qa' ? '#ffffff' : '#475569',
-                    border: 'none',
-                    fontWeight: 700,
-                    borderRadius: '20px',
-                    padding: '0.35rem 0.9rem',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => setTenantSubFilter('qa')}
-                >
-                  🧪 QA Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && t.is_disposable_qa && !t.is_archived).length})
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    background: tenantSubFilter === 'archived' ? '#475569' : '#f1f5f9',
-                    color: tenantSubFilter === 'archived' ? '#ffffff' : '#475569',
-                    border: 'none',
-                    fontWeight: 700,
-                    borderRadius: '20px',
-                    padding: '0.35rem 0.9rem',
-                    fontSize: '0.8rem',
-                    cursor: 'pointer'
-                  }}
-                  onClick={() => setTenantSubFilter('archived')}
-                >
-                  🗄️ Archived Accounts ({tenants.filter(t => ['tenant_admin', 'staff'].includes(t.role) && t.is_archived).length})
-                </button>
-              </div>
-            )}
+          )}
 
-            {/* Quick Role Toggle Bar */}
-            {adminActiveTab !== 'platform_staff' && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.85rem', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginRight: '0.25rem' }}>
-                  Account Type:
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    background: filterRole === 'all' ? '#0F2C59' : '#f1f5f9',
-                    color: filterRole === 'all' ? '#ffffff' : '#334155',
-                    border: 'none',
-                    fontWeight: 700,
-                    borderRadius: '16px',
-                    padding: '0.25rem 0.8rem',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                  onClick={() => setFilterRole('all')}
-                >
-                  All ({filterCounts.roles.all})
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    background: filterRole === 'tenant_admin' ? '#0F2C59' : '#f1f5f9',
-                    color: filterRole === 'tenant_admin' ? '#ffffff' : '#334155',
-                    border: 'none',
-                    fontWeight: 700,
-                    borderRadius: '16px',
-                    padding: '0.25rem 0.8rem',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                  onClick={() => setFilterRole('tenant_admin')}
-                >
-                  🏢 Tenant Admins ({filterCounts.roles.tenant_admin})
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm"
-                  style={{
-                    background: filterRole === 'staff' ? '#0F2C59' : '#f1f5f9',
-                    color: filterRole === 'staff' ? '#ffffff' : '#334155',
-                    border: 'none',
-                    fontWeight: 700,
-                    borderRadius: '16px',
-                    padding: '0.25rem 0.8rem',
-                    fontSize: '0.75rem',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease'
-                  }}
-                  onClick={() => setFilterRole('staff')}
-                >
-                  👥 Staff Members ({filterCounts.roles.staff})
-                </button>
-              </div>
-            )}
+          {/* Unified Single-Row Search & Filters Bar (matches Subscriptions toolbar) */}
+          <div style={{
+            background: '#FFFFFF',
+            padding: '1.15rem 1.25rem',
+            borderRadius: '12px',
+            border: '1px solid #E2E8F0',
+            marginBottom: '1.25rem',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+          }}>
+            {/* Omnibar Search */}
+            <div style={{ position: 'relative', flex: '1 1 280px' }}>
+              <Search size={16} style={{ position: 'absolute', left: '0.85rem', top: '50%', transform: 'translateY(-50%)', color: '#94A3B8' }} />
+              <input
+                type="text"
+                id="accounts-search-input"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder={adminActiveTab === 'platform_staff' ? "Search platform staff name or email..." : "Search tenant name, email, property, or owner..."}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 0.85rem 0.55rem 2.4rem',
+                  borderRadius: '8px',
+                  border: '1px solid #CBD5E1',
+                  fontSize: '0.875rem',
+                  outline: 'none',
+                  fontFamily: "'Outfit', sans-serif"
+                }}
+              />
+            </div>
 
-            {/* Dynamic Multi-Criteria Filter Toolbar */}
-            <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '0.65rem',
-              alignItems: 'center',
-              marginBottom: '1rem',
-              padding: '0.85rem 1rem',
-              background: '#f8fafc',
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#0F2C59', fontWeight: 700, fontSize: '0.85rem', marginRight: '0.25rem' }}>
-                <Filter size={15} style={{ color: '#0F2C59' }} />
-                <span>Filters:</span>
-              </div>
-
+            {/* Dropdown Filters, Sort, Reset, & Export */}
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', alignItems: 'center' }}>
               {/* Role Filter */}
               <select
-                className="form-select"
-                style={{
-                  padding: '0.4rem 0.75rem',
-                  fontSize: '0.825rem',
-                  borderRadius: '8px',
-                  border: filterRole !== 'all' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
-                  background: filterRole !== 'all' ? '#f0fdf4' : 'white',
-                  color: '#0F2C59',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  minHeight: '36px'
-                }}
+                id="accounts-role-filter"
                 value={filterRole}
                 onChange={e => setFilterRole(e.target.value)}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '8px',
+                  border: filterRole !== 'all' ? '1.5px solid #0F2C59' : '1px solid #CBD5E1',
+                  fontSize: '0.85rem',
+                  background: filterRole !== 'all' ? '#F0FDF4' : '#FFFFFF',
+                  color: '#0F2C59',
+                  fontWeight: 600,
+                  fontFamily: "'Outfit', sans-serif",
+                  cursor: 'pointer'
+                }}
               >
-                <option value="all">Role: All ({filterCounts.roles.all})</option>
+                <option value="all">All Roles</option>
                 {adminActiveTab === 'platform_staff' ? (
                   <>
                     <option value="super_admin">Super Admin ({filterCounts.roles.super_admin})</option>
@@ -2437,31 +2616,31 @@ export default function SuperAdmin() {
                   </>
                 ) : (
                   <>
-                    <option value="tenant_admin">Tenant Admin ({filterCounts.roles.tenant_admin})</option>
-                    <option value="staff">Staff Member ({filterCounts.roles.staff})</option>
+                    <option value="tenant_admin">Tenant Admins ({filterCounts.roles.tenant_admin})</option>
+                    <option value="staff">Staff Members ({filterCounts.roles.staff})</option>
                   </>
                 )}
               </select>
 
-              {/* Plan Filter with live counts */}
+              {/* Plan Filter (only for accounts tab) */}
               {adminActiveTab !== 'platform_staff' && (
                 <select
-                  className="form-select"
-                  style={{
-                    padding: '0.4rem 0.75rem',
-                    fontSize: '0.825rem',
-                    borderRadius: '8px',
-                    border: filterPlan !== 'all' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
-                    background: filterPlan !== 'all' ? '#f0fdf4' : 'white',
-                    color: '#0F2C59',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    minHeight: '36px'
-                  }}
+                  id="accounts-plan-filter"
                   value={filterPlan}
                   onChange={e => setFilterPlan(e.target.value)}
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '8px',
+                    border: filterPlan !== 'all' ? '1.5px solid #0F2C59' : '1px solid #CBD5E1',
+                    fontSize: '0.85rem',
+                    background: filterPlan !== 'all' ? '#F0FDF4' : '#FFFFFF',
+                    color: '#0F2C59',
+                    fontWeight: 600,
+                    fontFamily: "'Outfit', sans-serif",
+                    cursor: 'pointer'
+                  }}
                 >
-                  <option value="all">Plan: All Plans ({filterCounts.plans.all})</option>
+                  <option value="all">All Plans</option>
                   <option value="solo">Solo ({filterCounts.plans.solo})</option>
                   <option value="growth">Growth ({filterCounts.plans.growth})</option>
                   <option value="stay_master">Stay Master ({filterCounts.plans.stay_master})</option>
@@ -2469,154 +2648,119 @@ export default function SuperAdmin() {
                 </select>
               )}
 
-              {/* Status Filter with live counts */}
+              {/* Status Filter */}
               <select
-                className="form-select"
-                style={{
-                  padding: '0.4rem 0.75rem',
-                  fontSize: '0.825rem',
-                  borderRadius: '8px',
-                  border: filterStatus !== 'all' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
-                  background: filterStatus !== 'all' ? '#f0fdf4' : 'white',
-                  color: '#0F2C59',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  minHeight: '36px'
-                }}
+                id="accounts-status-filter"
                 value={filterStatus}
                 onChange={e => setFilterStatus(e.target.value)}
-              >
-                <option value="all">Status: All Statuses ({filterCounts.statuses.all})</option>
-                <option value="active">Active ({filterCounts.statuses.active})</option>
-                <option value="created">Created / Pending ({filterCounts.statuses.created})</option>
-                <option value="cancelled">Cancelled ({filterCounts.statuses.cancelled})</option>
-                <option value="suspended">Suspended / Disabled ({filterCounts.statuses.suspended})</option>
-              </select>
-
-              {/* Environment Filter with live counts */}
-              <select
-                className="form-select"
                 style={{
-                  padding: '0.4rem 0.75rem',
-                  fontSize: '0.825rem',
+                  padding: '0.5rem 0.75rem',
                   borderRadius: '8px',
-                  border: filterEnv !== 'all' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
-                  background: filterEnv !== 'all' ? '#f0fdf4' : 'white',
+                  border: filterStatus !== 'all' ? '1.5px solid #0F2C59' : '1px solid #CBD5E1',
+                  fontSize: '0.85rem',
+                  background: filterStatus !== 'all' ? '#F0FDF4' : '#FFFFFF',
                   color: '#0F2C59',
                   fontWeight: 600,
-                  cursor: 'pointer',
-                  minHeight: '36px'
+                  fontFamily: "'Outfit', sans-serif",
+                  cursor: 'pointer'
                 }}
-                value={filterEnv}
-                onChange={e => setFilterEnv(e.target.value)}
               >
-                <option value="all">Env: All Envs ({filterCounts.envs.all})</option>
-                <option value="LIVE">🔴 Live Financials ({filterCounts.envs.LIVE})</option>
-                <option value="TEST_ONLY">🟣 Test Mode ({filterCounts.envs.TEST_ONLY})</option>
-                <option value="UNKNOWN">⚠️ Unknown Env ({filterCounts.envs.UNKNOWN})</option>
-                <option value="NONE">⚪ No Financials ({filterCounts.envs.NONE})</option>
+                <option value="all">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="created">Created / Pending</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="suspended">Suspended / Disabled</option>
               </select>
 
               {/* Sort By Dropdown */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                <ArrowUpDown size={14} style={{ color: '#64748b' }} />
-                <select
-                  className="form-select"
-                  style={{
-                    padding: '0.4rem 0.75rem',
-                    fontSize: '0.825rem',
-                    borderRadius: '8px',
-                    border: sortBy !== 'joined_desc' ? '1.5px solid #0F2C59' : '1px solid #cbd5e1',
-                    background: sortBy !== 'joined_desc' ? '#f0fdf4' : 'white',
-                    color: '#0F2C59',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    minHeight: '36px'
-                  }}
-                  value={sortBy}
-                  onChange={e => setSortBy(e.target.value)}
-                >
-                  <option value="joined_desc">Sort: Newest Joined</option>
-                  <option value="joined_asc">Sort: Oldest Joined</option>
-                  <option value="name_asc">Sort: Name (A-Z)</option>
-                  <option value="name_desc">Sort: Name (Z-A)</option>
-                  <option value="bookings_desc">Sort: Most Bookings</option>
-                  <option value="properties_desc">Sort: Most Properties</option>
-                </select>
-              </div>
+              <select
+                id="accounts-sort-select"
+                value={sortBy}
+                onChange={e => setSortBy(e.target.value)}
+                style={{
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '8px',
+                  border: sortBy !== 'joined_desc' ? '1.5px solid #0F2C59' : '1px solid #CBD5E1',
+                  fontSize: '0.85rem',
+                  background: sortBy !== 'joined_desc' ? '#F0FDF4' : '#FFFFFF',
+                  color: '#0F2C59',
+                  fontWeight: 600,
+                  fontFamily: "'Outfit', sans-serif",
+                  cursor: 'pointer'
+                }}
+              >
+                <option value="joined_desc">Sort: Newest Joined</option>
+                <option value="joined_asc">Sort: Oldest Joined</option>
+                <option value="name_asc">Sort: Name (A-Z)</option>
+                <option value="name_desc">Sort: Name (Z-A)</option>
+                {adminActiveTab !== 'platform_staff' && (
+                  <>
+                    <option value="bookings_desc">Sort: Most Bookings</option>
+                    <option value="properties_desc">Sort: Most Properties</option>
+                  </>
+                )}
+              </select>
 
-              {/* Clear All Filters Button */}
+              {/* Reset Filters */}
               {hasActiveFilters && (
                 <button
                   type="button"
-                  className="btn btn-sm"
+                  id="accounts-reset-filters-btn"
+                  onClick={resetAllFilters}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '0.3rem',
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.8rem',
-                    fontWeight: 700,
-                    color: '#dc2626',
-                    background: '#fef2f2',
-                    border: '1px solid #fecaca',
+                    gap: '0.35rem',
+                    padding: '0.5rem 0.85rem',
                     borderRadius: '8px',
-                    cursor: 'pointer'
+                    border: '1px solid #E2E8F0',
+                    background: '#F8FAFC',
+                    color: '#64748B',
+                    fontSize: '0.825rem',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    fontFamily: "'Outfit', sans-serif"
                   }}
-                  onClick={resetAllFilters}
                 >
-                  <X size={14} /> Clear All
+                  <RotateCcw size={14} /> Reset Filters
                 </button>
               )}
 
-              {/* Result Count Badge */}
-              <div style={{ marginLeft: 'auto', fontSize: '0.8rem', color: '#64748b', fontWeight: 600 }}>
+              {/* Export to Excel */}
+              <button
+                type="button"
+                className="btn btn-outline"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  padding: '0.5rem 0.85rem',
+                  borderRadius: '8px',
+                  fontWeight: 600,
+                  fontSize: '0.825rem',
+                  color: '#0F2C59',
+                  borderColor: '#CBD5E1',
+                  cursor: 'pointer',
+                  background: '#FFFFFF',
+                  fontFamily: "'Outfit', sans-serif"
+                }}
+                onClick={handleExportAccountsToExcel}
+              >
+                <Download size={14} /> Export
+              </button>
+            </div>
+          </div>
+
+          {/* Accounts Table Card */}
+          <div className="card" style={{ background: 'white', borderRadius: '16px', border: '1px solid rgba(15, 44, 89, 0.08)', boxShadow: '0 10px 30px rgba(15, 44, 89, 0.02)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <h4 style={{ margin: 0, color: '#0F2C59', fontWeight: 800, fontFamily: "'Outfit', sans-serif", fontSize: '1.15rem' }}>
+                {adminActiveTab === 'platform_staff' ? 'Platform Team Members' : 'Registered Accounts List'}
+              </h4>
+              <div style={{ fontSize: '0.85rem', color: '#64748B', fontWeight: 600 }}>
                 Showing <strong style={{ color: '#0F2C59' }}>{filteredAndSortedAccounts.length}</strong> of {totalInScope} accounts
               </div>
             </div>
-
-            {/* Active Filter Chips Row */}
-            {hasActiveFilters && (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center', marginBottom: '1rem' }}>
-                <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' }}>Active Filters:</span>
-                {filterRole !== 'all' && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#e0e7ff', color: '#3730a3', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
-                    Role: {filterRole === 'tenant_admin' ? 'Tenant Admin' : filterRole === 'staff' ? 'Staff' : filterRole}
-                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setFilterRole('all')} />
-                  </span>
-                )}
-                {filterPlan !== 'all' && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#dbeafe', color: '#1e40af', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
-                    Plan: {filterPlan.toUpperCase()}
-                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setFilterPlan('all')} />
-                  </span>
-                )}
-                {filterStatus !== 'all' && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#fef3c7', color: '#92400e', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
-                    Status: {filterStatus.toUpperCase()}
-                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setFilterStatus('all')} />
-                  </span>
-                )}
-                {filterEnv !== 'all' && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#f3e8ff', color: '#6b21a8', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
-                    Env: {filterEnv === 'LIVE' ? 'Live Financials' : filterEnv === 'TEST_ONLY' ? 'Test Mode' : filterEnv === 'UNKNOWN' ? 'Unknown Env' : 'No Financials'}
-                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setFilterEnv('all')} />
-                  </span>
-                )}
-                {sortBy !== 'joined_desc' && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#ecfdf5', color: '#065f46', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
-                    Sort: {sortBy.replace('_', ' ').toUpperCase()}
-                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setSortBy('joined_desc')} />
-                  </span>
-                )}
-                {searchTerm.trim() && (
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', background: '#f1f5f9', color: '#475569', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px' }}>
-                    Search: "{searchTerm}"
-                    <X size={12} style={{ cursor: 'pointer' }} onClick={() => setSearchTerm('')} />
-                  </span>
-                )}
-              </div>
-            )}
 
             <div className="table-container" style={{ overflowX: 'auto' }}>
               <table className="table" style={{ width: '100%', minWidth: '1200px', borderCollapse: 'collapse', textAlign: 'left' }}>

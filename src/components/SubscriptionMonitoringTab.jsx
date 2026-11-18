@@ -719,14 +719,18 @@ export default function SubscriptionMonitoringTab({
                     >
                       {/* Tenant */}
                       <td style={{ padding: '0.85rem 1rem', verticalAlign: 'middle' }}>
-                        <div style={{ fontWeight: 700, color: '#0F2C59' }}>
-                          {item.tenant?.full_name || 'Unmapped Tenant'}
+                        <div style={{ fontWeight: 700, color: '#0F2C59', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <Hotel size={13} style={{ color: '#0F2C59', flexShrink: 0 }} />
+                          <span>
+                            {item.tenantResorts.length > 0
+                              ? item.tenantResorts[0] + (item.tenantResorts.length > 1 ? ` (+${item.tenantResorts.length - 1})` : '')
+                              : (item.tenant?.full_name || 'Unmapped Tenant')}
+                          </span>
                         </div>
-                        {item.tenantResorts.length > 0 && (
-                          <div style={{ fontSize: '0.775rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                            <Hotel size={12} />
-                            {item.tenantResorts[0]}
-                            {item.tenantResorts.length > 1 && ` (+${item.tenantResorts.length - 1})`}
+                        {item.tenant?.full_name && (item.tenantResorts.length === 0 || item.tenant.full_name.trim().toLowerCase() !== item.tenantResorts[0].trim().toLowerCase()) && (
+                          <div style={{ fontSize: '0.775rem', color: '#64748B', display: 'flex', alignItems: 'center', gap: '0.25rem', marginTop: '0.15rem' }}>
+                            <User size={12} style={{ color: '#94A3B8' }} />
+                            <span>{item.tenant.full_name}</span>
                           </div>
                         )}
                       </td>
@@ -1125,22 +1129,22 @@ export default function SubscriptionMonitoringTab({
               {/* 1. Tenant & Property Information */}
               <div style={{ border: '1px solid #E2E8F0', borderRadius: '10px', padding: '1.1rem', background: '#FFFFFF' }}>
                 <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.04em', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <User size={14} /> Tenant Identity & Property
+                  <Hotel size={14} /> Tenant Identity & Property
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', fontSize: '0.85rem' }}>
                   <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Subscriber / Business Name</span>
+                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Property / Resort Name</span>
+                    <strong style={{ color: '#0F2C59' }}>
+                      {selectedSub.tenantResorts && selectedSub.tenantResorts.length > 0 ? selectedSub.tenantResorts.join(', ') : 'None registered'}
+                    </strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Subscriber / Account Owner</span>
                     <strong style={{ color: '#0F2C59' }}>{selectedSub.tenant?.full_name || 'Unmapped'}</strong>
                   </div>
                   <div>
                     <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Account Email</span>
                     <strong style={{ color: '#0F2C59' }}>{selectedSub.tenant?.email || '—'}</strong>
-                  </div>
-                  <div>
-                    <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Associated Property</span>
-                    <strong style={{ color: '#0F2C59' }}>
-                      {selectedSub.tenantResorts && selectedSub.tenantResorts.length > 0 ? selectedSub.tenantResorts.join(', ') : 'None registered'}
-                    </strong>
                   </div>
                   <div>
                     <span style={{ color: '#64748B', display: 'block', fontSize: '0.775rem' }}>Configured Plan / Role</span>
